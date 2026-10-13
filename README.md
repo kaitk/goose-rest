@@ -26,7 +26,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
 | 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
 | 🟢 | Waiting on another thread | `rest::ask`, resuming through the program's `Waiting` enum, replies of any size in pieces (`waiting.goose`, `examples/waiting/`) |
-| 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
+| 🟡 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty on goose-http's REST tiers and three of its own, F, R, and M (`bench/rest.sh`); the servers pass their checks, and the runs wait on the Linux desktop (task 010) |
 
 ## Layout
 
