@@ -7,6 +7,7 @@ namespace rest;
 
 import std;
 import http from "github.com/kaitk/goose-http@04791ac50b69d99e93c08dc2c3f3ff8d4ab1867c";
+import .check;
 
 // The path a route matches: the request target without its query, as goose-http
 // reads it.
