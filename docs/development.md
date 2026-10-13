@@ -49,8 +49,32 @@ update the pin in `README.md` and the table above.
 
 goose-rest imports goose-http by its full commit hash; git can't fetch an abbreviated
 one. Move it to a pushed commit of goose-http's `main`, in its own commit, once the
-tests pass, and update the README's Pins table. Until goose-http's task 027 lands its
+tests pass. The hash appears in `rest.goose`, in each root file under `test/`, and in
+the README's Pins table and Use section; change all of them. A root that declares
+goose-http at another commit than `rest.goose` gets a warning, and from another source
+an error, so a test can't point at a local goose-http checkout instead. Until goose-http's task 027 lands its
 breaking changes, expect each move to need code changes here.
+
+## Run the tests
+
+`scripts/test.sh` runs every test and stops at the first failure:
+
+1. `goose check` on each root file under `test/`. `rest.goose` isn't checked on its own:
+   `goose check` refuses a file without `main` ("program needs exactly one global fn
+   main()"), so the tests' roots check it.
+2. `scripts/test-unit.sh`, which runs each `test/test_*.goose` through TinyCC. Each test
+   asserts what it tests and exits nonzero on the first failed `assert`.
+3. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
+   it. The compiler's own lines (`parsed ok`, `typechecked ok`, `bce`) go to standard
+   error and aren't compared.
+4. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function.
+
+```sh
+GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
+```
+
+The first run fetches goose-http at its pin into `~/.goose/pkg`, so it needs network
+access; later runs don't. Both scripts write only into `build/`, which git ignores.
 
 ## Run the spikes
 
@@ -61,4 +85,19 @@ $GOOSE spikes/02-middleware-exit/main.goose
 ```
 
 Its README gives the exact commands, including any `goose -O2 -o file.c` that reads the
-generated C, and the output it expects.
+generated C, and the output it expects. When a pin move changes a spike's output on
+purpose, update its README and its `expected.txt` together.
+
+## Use the package from git
+
+A program outside the repository imports the package as a user's does, at a pushed
+commit, by its full hash, next to goose-http at the pin (README, "Use"). The compiler
+fetches it into `~/.goose/pkg/github.com/kaitk/goose-rest/<12-hex hash>/`. Check it
+with `goose build` and a program whose `main` spawns a `thread_fn` that calls
+`http::serve`: `goose run` refuses it ("JIT mode does not support threads yet"), as
+TinyCC can't place thread-local storage. This held on 2026-10-13, at goose-rest
+`d3e847b`, on macOS: the program built, and its server answered `curl` with
+`rest::path_of`'s result.
+
+Before pushing, a `file:///<absolute path to this repository>@<hash>` source runs the
+same git fetch on a local commit.

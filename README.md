@@ -5,7 +5,10 @@ A REST framework for [Goose](https://github.com/aardappel/goose), on
 differs, at no cost over a hand-written router wherever the language allows. Routes are
 code, middleware is an inlined block, extractors are chosen by type, and errors return
 straight to the route. An optional generator writes types, JSON readers and writers,
-and a router from an OpenAPI document. Proof of concept; the name is provisional.
+and a router from an OpenAPI document.
+
+Experimental: a proof of concept with no framework API yet, and the name is provisional.
+Nothing here is stable enough to build on.
 
 The design is in [`docs/architecture/README.md`](docs/architecture/README.md), and the
 Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
@@ -16,6 +19,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 
 | | Part | Notes |
 |---|---|---|
+| 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything (task 001) |
 | 🟢 | Language checks | Spikes 01–05 pass on `a6249a4`, three with workarounds the design takes |
 | 🟡 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest` (task 002) |
 | 🔴 | Generator | Types, readers, and writers from OpenAPI (task 003) |
@@ -27,10 +31,26 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 ## Layout
 
 ```text
+rest.goose     the package's entry, namespace rest
+test/          unit tests, test_*.goose, each a root file
+scripts/       test.sh runs every test; test-unit.sh the unit tests alone
 spikes/        language checks the design relies on, one folder each with a README
 docs/          architecture, development setup, Goose findings
 tasks/         task tracking (tasks/README.md)
 ```
+
+## Use
+
+A program declares both packages in its root file, goose-http at the pin below and
+goose-rest at a pushed commit, each by its full hash:
+
+```goose
+import http from "github.com/kaitk/goose-http@04791ac50b69d99e93c08dc2c3f3ff8d4ab1867c";
+import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
+```
+
+Build it with `goose build`: a server reaches `thread_spawn`, which `goose run` (TinyCC)
+can't run.
 
 ## Pins
 
