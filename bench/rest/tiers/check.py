@@ -14,7 +14,8 @@ the values, separated by spaces. A path no route has is 404.
 Tier M, tier A behind a middleware stack: every answer, errors included,
 carries Server-Timing: app;dur=<ms>; one with Origin: https://app.example
 carries Access-Control-Allow-Origin for it; a request without a bearer token
-is 401; a preflight is 204 without one. DATADIR is goose-http's datasets,
+is 401; a preflight is 2xx without one, as the Fetch standard accepts any ok status
+(goose-rest and dusty answer 204, tower-http and actix-cors 200). DATADIR is goose-http's datasets,
 for an item to compare.
 
 Exits non-zero with a message on the first failure.
@@ -112,7 +113,7 @@ def tier_m(port, data):
 
     def asked(method, path, headers, want):
         status, r, body = s.ask(method, path, headers=headers)
-        if status != want:
+        if status != want and not (want == "2xx" and 200 <= status < 300):
             fail(f"{method} {path} {headers}: {status} {body[:200]!r}, want {want}")
         timing = r.getheader("server-timing") or ""
         if not re.fullmatch(r"app;dur=[0-9]+(\.[0-9]+)?", timing):
@@ -131,7 +132,7 @@ def tier_m(port, data):
     asked("GET", "/api/me", both, 401)
     asked("GET", "/api/items/0", both, 404)
     asked("GET", "/api/items/1", {"Origin": ORIGIN}, 401)
-    r, _ = asked("OPTIONS", "/api/items/1", {"Origin": ORIGIN, "Access-Control-Request-Method": "POST"}, 204)
+    r, _ = asked("OPTIONS", "/api/items/1", {"Origin": ORIGIN, "Access-Control-Request-Method": "POST"}, "2xx")
     if "POST" not in (r.getheader("access-control-allow-methods") or "").upper():
         fail(f"preflight: Access-Control-Allow-Methods {r.getheader('access-control-allow-methods')!r}")
     print("tier m: ok")
