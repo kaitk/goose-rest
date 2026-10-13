@@ -19,14 +19,12 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 
 | | Part | Notes |
 |---|---|---|
-| 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything (task 001) |
-| 🟢 | Language checks | Spikes 01–05 pass on `a6249a4`, three with workarounds the design takes |
-| 🟢 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest`, pass on `a6249a4` (task 002) |
-| 🟢 | Generator | Types, readers, and writers from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md), task 003) |
-| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape ([below](#errors), task 004) |
-| 🔴 | Extractors, middleware | Tasks 005–006 |
-| 🟢 | Generated router | `dispatch` from the paths, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths), tasks 007, 008) |
-| 🟡 | Generator | Query, header, and cookie parameters wait on extractors (task 005) |
+| 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything |
+| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape ([below](#errors)) |
+| 🟢 | Extractors | Path, query, header, and cookie parameters; `take<T>` for a JSON body or a program's own type; `once` ([below](#extractors)) |
+| 🔴 | Middleware, scopes, examples | Task 006 |
+| 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
+| 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
 | 🔴 | Waiting on another thread | Task 009 |
 | 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
 
@@ -35,6 +33,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 ```text
 rest.goose     the package's entry, namespace rest
 runtime.goose  Cx, serve, route, fail, json, text, otherwise, and the error shape
+extract.goose  the extractors: parameters, headers, cookies, take, once
 check.goose    what generated code calls: code points, string formats, numbers
 gen/           goose-rest gen, the generator (gen/main.goose)
 test/          unit tests, test_*.goose, each a root file; test/gen/ golden files
@@ -68,8 +67,7 @@ thread_fn worker(cfg: http::Config) {
         var r = http::router(cx.req);
         if http::on(r, "GET", "/projects/:id") {
             rest::route(cx) {
-                let id, ok = parse_int(http::param(r, "id"));
-                guard ok else { rest::fail(cx, 400, "bad_id"); }
+                let id = rest::param_int(cx, r, "id");   // 400 unless an integer
                 rest::json(cx, 200, find_project(cx, id));   // fails 404 itself
             };
         } else {
@@ -84,6 +82,42 @@ thread_fn worker(cfg: http::Config) {
 for each request. `rest::json` writes a value through its type's `format` overload, which
 the generator writes for each schema.
 
+## Extractors
+
+Each extractor reads one part of the request, and fails the route with 400 when that
+part is malformed ([Errors](#errors)), so it runs inside `rest::route`. A value that
+has escapes to decode is decoded into `cx.scratch`, which lasts until the handler
+returns. Otherwise the extractor returns the request's own bytes.
+
+| Call | Gives | Fails with `detail` |
+|---|---|---|
+| `rest::param(cx, r, "name")` | the path parameter, decoded | |
+| `rest::param_int(cx, r, "id")` | the path parameter as an `i64` | `id: integer` |
+| `rest::query(cx, "q")` | the query parameter, decoded with `+` as a space, and whether it's there | |
+| `rest::query_int(cx, "page")`, `rest::query_bool(cx, "all")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `page: integer`, `all: boolean` |
+| `rest::header(cx, "X-Request-Id")`, `rest::cookie(cx, "sid")` | the value, and whether it's there | |
+| `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
+| `rest::require(cx, "q", found)` | | `q: required` |
+| `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
+
+`rest::take<T>` reads any type with an overload declared in the `rest` namespace, as
+`fn rest::from_request(cx, v: const app::Session?) -> app::Session`. `v` is always null,
+and its type picks the overload. The generator writes one for each schema object, which
+reads the JSON body: 415 unless the request says `application/json`, and 400
+`invalid_body` for a body the reader refuses.
+
+```goose
+rest::route(cx) {
+    let body = rest::take<api::ProjectCreate>(cx);
+    let page, has_page = rest::query_int(cx, "page");
+    rest::json(cx, 201, create_project(cx, body, if has_page { page } else { 1 }));
+};
+```
+
+`rest::once(cx.state.profile) { load_profile(...) }` computes a value on its first call
+in a request and returns it from then on. The slot is a `rest::Once<T>` field of the
+per-request state, so each request starts it anew.
+
 ## Errors
 
 Every error goose-rest answers is JSON with one member, `error`, a code in snake_case:
@@ -96,11 +130,11 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 |---|---|---|
 | any | the code given | `rest::fail(cx, status, code)` |
 | 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
-| 400 | `invalid_parameter`, with `detail` | `rest::fail_param`, and the generated router: a path parameter that doesn't fit its schema, as `id: minimum` |
+| 400 | `invalid_parameter`, with `detail` | the [extractors](#extractors), `rest::fail_param`, and the generated router: a parameter missing, malformed, or outside its schema, as `id: integer`, `q: required`, or `page: minimum` |
 | 400 | `bad_path` | `rest::otherwise`: a path with a dot-segment or an escaped control byte |
 | 404 | `not_found` | `rest::otherwise`: no route's path matched |
 | 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
-| 415 | `unsupported_media_type` | the generated router: a JSON body sent as another media type |
+| 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,

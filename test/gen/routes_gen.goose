@@ -48,6 +48,80 @@ fn format(out: u8[>..]&, v: const ProjectCreate&) {
     out.push('}');
 }
 
+// The ProjectCreate a request's JSON body holds, for rest::take: 415 for another
+// media type, and 400 invalid_body for a body read_project_create refuses.
+fn rest::from_request(cx, v: const api::ProjectCreate?) -> api::ProjectCreate {
+    rest::json_body(cx) { r, scratch => api::read_project_create(r, scratch) }
+}
+
+// The query, header, and cookie parameters of list_projects.
+struct ListProjectsParams {
+    has_page: bool,
+    page: i64,
+    has_archived: bool,
+    archived: bool,
+    has_q: bool,
+    q: const u8[:],
+}
+
+// list_projects's parameters, for rest::take: 400 invalid_parameter for one that's
+// missing or doesn't fit its schema.
+fn rest::from_request(cx, v: const api::ListProjectsParams?) -> api::ListProjectsParams {
+    let page_s, has_page = rest::query(cx, "page");
+    let page = if has_page { rest::int_of(cx, page_s, "page") } else { 0 };
+    if has_page && (page < -2147483648 || page > 2147483647) { rest::fail_param(cx, "page: format"); }
+    if has_page && page < 1 { rest::fail_param(cx, "page: minimum"); }
+    if has_page && page > 1000 { rest::fail_param(cx, "page: maximum"); }
+    let archived_s, has_archived = rest::query(cx, "archived");
+    let archived = if has_archived { rest::bool_of(cx, archived_s, "archived") } else { false };
+    let q, has_q = rest::query(cx, "q");
+    if has_q {
+        let n_ = rest::code_points(q);
+        if n_ < 0 { rest::fail_param(cx, "q: not UTF-8"); }
+        if n_ > 3 { rest::fail_param(cx, "q: maxLength"); }
+    }
+    return api::ListProjectsParams { has_page: has_page, page: page, has_archived: has_archived, archived: archived, has_q: has_q, q: q };
+}
+
+// The query, header, and cookie parameters of list_exports.
+struct ListExportsParams {
+    x_trace: const u8[:],
+    has_theme: bool,
+    theme: const u8[:],
+    has_x_limit: bool,
+    x_limit: i64,
+}
+
+// list_exports's parameters, for rest::take: 400 invalid_parameter for one that's
+// missing or doesn't fit its schema.
+fn rest::from_request(cx, v: const api::ListExportsParams?) -> api::ListExportsParams {
+    let x_trace, has_x_trace = rest::header(cx, "X-Trace");
+    rest::require(cx, "X-Trace", has_x_trace);
+    if has_x_trace {
+        let n_ = rest::code_points(x_trace);
+        if n_ < 0 { rest::fail_param(cx, "X-Trace: not UTF-8"); }
+        if n_ < 2 { rest::fail_param(cx, "X-Trace: minLength"); }
+    }
+    let theme, has_theme = rest::cookie(cx, "theme");
+    let x_limit_s, has_x_limit = rest::header(cx, "X-Limit");
+    let x_limit = if has_x_limit { rest::int_of(cx, x_limit_s, "X-Limit") } else { 0 };
+    if has_x_limit && x_limit < 1 { rest::fail_param(cx, "X-Limit: minimum"); }
+    return api::ListExportsParams { x_trace: x_trace, has_theme: has_theme, theme: theme, has_x_limit: has_x_limit, x_limit: x_limit };
+}
+
+// The query, header, and cookie parameters of create_export.
+struct CreateExportParams {
+    has_x_trace: bool,
+    x_trace: const u8[:],
+}
+
+// create_export's parameters, for rest::take: 400 invalid_parameter for one that's
+// missing or doesn't fit its schema.
+fn rest::from_request(cx, v: const api::CreateExportParams?) -> api::CreateExportParams {
+    let x_trace, has_x_trace = rest::header(cx, "X-Trace");
+    return api::CreateExportParams { has_x_trace: has_x_trace, x_trace: x_trace };
+}
+
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes.
@@ -151,18 +225,15 @@ fn dispatch(cx, state) {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
                             let s_ = app::security_session(cx, state);
-                            app::list_projects(cx, state, s_);
+                            let q_ = rest::take<ListProjectsParams>(cx);
+                            app::list_projects(cx, state, s_, q_);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
                             let s_ = app::security_session(cx, state);
-                            guard http::has_type(cx.req, "application/json") else { rest::fail(cx, 415, "unsupported_media_type"); }
-                            var r_ = json::reader(cx.body);
-                            var scratch_: u8[>..] = [];
-                            let body_ = read_project_create(r_, scratch_);
-                            if !json::finish(r_) { rest::fail_body(cx, r_); }
+                            let body_ = rest::take<ProjectCreate>(cx);
                             app::create_project(cx, state, s_, body_);
                         };
                         return;
@@ -266,14 +337,16 @@ fn dispatch(cx, state) {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
                             let s_ = app::security_session(cx, state);
-                            app::list_exports(cx, state, s_);
+                            let q_ = rest::take<ListExportsParams>(cx);
+                            app::list_exports(cx, state, s_, q_);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
                             let s_ = app::security_session(cx, state);
-                            app::create_export(cx, state, s_);
+                            let q_ = rest::take<CreateExportParams>(cx);
+                            app::create_export(cx, state, s_, q_);
                         };
                         return;
                     }
@@ -494,7 +567,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let s_ = app::security_session(cx, state);
-                                            let org = s3;
+                                            let org = rest::path_str(cx, s3, "org");
                                             app::get_org(cx, state, s_, org);
                                         };
                                         return;
@@ -502,7 +575,7 @@ fn dispatch(cx, state) {
                                     if m == "PATCH" {
                                         rest::route(cx) {
                                             let s_ = app::security_session(cx, state);
-                                            let org = s3;
+                                            let org = rest::path_str(cx, s3, "org");
                                             app::update_org(cx, state, s_, org);
                                         };
                                         return;
@@ -510,7 +583,7 @@ fn dispatch(cx, state) {
                                     if m == "DELETE" {
                                         rest::route(cx) {
                                             let s_ = app::security_session(cx, state);
-                                            let org = s3;
+                                            let org = rest::path_str(cx, s3, "org");
                                             app::delete_org(cx, state, s_, org);
                                         };
                                         return;
@@ -525,7 +598,7 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let s_ = app::security_session(cx, state);
-                                                    let org = s3;
+                                                    let org = rest::path_str(cx, s3, "org");
                                                     app::list_org_members(cx, state, s_, org);
                                                 };
                                                 return;
@@ -533,7 +606,7 @@ fn dispatch(cx, state) {
                                             if m == "POST" {
                                                 rest::route(cx) {
                                                     let s_ = app::security_session(cx, state);
-                                                    let org = s3;
+                                                    let org = rest::path_str(cx, s3, "org");
                                                     app::add_org_member(cx, state, s_, org);
                                                 };
                                                 return;
@@ -548,7 +621,7 @@ fn dispatch(cx, state) {
                                                     if m == "DELETE" {
                                                         rest::route(cx) {
                                                             let s_ = app::security_session(cx, state);
-                                                            let org = s3;
+                                                            let org = rest::path_str(cx, s3, "org");
                                                             let user = rest::path_int(cx, s5, "user");
                                                             app::remove_org_member(cx, state, s_, org, user);
                                                         };
@@ -569,18 +642,15 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let s_ = app::security_session(cx, state);
-                                    app::list_projects(cx, state, s_);
+                                    let q_ = rest::take<ListProjectsParams>(cx);
+                                    app::list_projects(cx, state, s_, q_);
                                 };
                                 return;
                             }
                             if m == "POST" {
                                 rest::route(cx) {
                                     let s_ = app::security_session(cx, state);
-                                    guard http::has_type(cx.req, "application/json") else { rest::fail(cx, 415, "unsupported_media_type"); }
-                                    var r_ = json::reader(cx.body);
-                                    var scratch_: u8[>..] = [];
-                                    let body_ = read_project_create(r_, scratch_);
-                                    if !json::finish(r_) { rest::fail_body(cx, r_); }
+                                    let body_ = rest::take<ProjectCreate>(cx);
                                     app::create_project(cx, state, s_, body_);
                                 };
                                 return;
@@ -803,7 +873,7 @@ fn dispatch(cx, state) {
                                                             let s_ = app::security_session(cx, state);
                                                             let id = rest::path_int(cx, s3, "id");
                                                             if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                            let comment = s5;
+                                                            let comment = rest::path_str(cx, s5, "comment");
                                                             app::update_comment(cx, state, s_, id, comment);
                                                         };
                                                         return;
@@ -1018,14 +1088,16 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let s_ = app::security_session(cx, state);
-                                            app::list_exports(cx, state, s_);
+                                            let q_ = rest::take<ListExportsParams>(cx);
+                                            app::list_exports(cx, state, s_, q_);
                                         };
                                         return;
                                     }
                                     if m == "POST" {
                                         rest::route(cx) {
                                             let s_ = app::security_session(cx, state);
-                                            app::create_export(cx, state, s_);
+                                            let q_ = rest::take<CreateExportParams>(cx);
+                                            app::create_export(cx, state, s_, q_);
                                         };
                                         return;
                                     }

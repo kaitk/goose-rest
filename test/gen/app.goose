@@ -34,7 +34,16 @@ fn delete_org(cx, state, s, org) { rest::text(cx, 200, str("delete_org ", org));
 fn list_org_members(cx, state, s, org) { rest::text(cx, 200, str("list_org_members ", org)); }
 fn add_org_member(cx, state, s, org) { rest::text(cx, 200, str("add_org_member ", org)); }
 fn remove_org_member(cx, state, s, org, user) { rest::text(cx, 200, str("remove_org_member ", org, " ", user)); }
-fn list_projects(cx, state, s) { rest::text(cx, 200, "list_projects"); }
+// Names each parameter given, so that a request without any answers as the
+// if chain does.
+fn list_projects(cx, state, s, q) {
+    var t: u8[>..] = [];
+    t.append("list_projects");
+    if q.has_page { format(t, " page=", q.page); }
+    if q.has_archived { format(t, " archived=", q.archived); }
+    if q.has_q { format(t, " q=", q.q); }
+    rest::text(cx, 200, t);
+}
 fn create_project(cx, state, s, body) { rest::text(cx, 201, str("create_project ", body.name)); }
 fn get_project(cx, state, s, id) { rest::text(cx, 200, str("get_project ", id)); }
 fn update_project(cx, state, s, id) { rest::text(cx, 200, str("update_project ", id)); }
@@ -68,8 +77,14 @@ fn list_deliveries(cx, state, s, id) { rest::text(cx, 200, str("list_deliveries 
 fn time_report(cx, state, s) { rest::text(cx, 200, "time_report"); }
 fn user_time_report(cx, state, s, user) { rest::text(cx, 200, str("user_time_report ", user)); }
 fn budget_report(cx, state, s) { rest::text(cx, 200, "budget_report"); }
-fn list_exports(cx, state, s) { rest::text(cx, 200, "list_exports"); }
-fn create_export(cx, state, s) { rest::text(cx, 200, "create_export"); }
+fn list_exports(cx, state, s, q) {
+    var t: u8[>..] = [];
+    format(t, "list_exports ", q.x_trace);
+    if q.has_theme { format(t, " theme=", q.theme); }
+    if q.has_x_limit { format(t, " limit=", q.x_limit); }
+    rest::text(cx, 200, t);
+}
+fn create_export(cx, state, s, q) { rest::text(cx, 200, "create_export"); }
 fn get_export(cx, state, s, id) { rest::text(cx, 200, str("get_export ", id)); }
 fn delete_export(cx, state, s, id) { rest::text(cx, 200, str("delete_export ", id)); }
 fn cancel_export(cx, state, s, id) { rest::text(cx, 200, str("cancel_export ", id)); }

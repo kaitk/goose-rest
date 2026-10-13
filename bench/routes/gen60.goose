@@ -15,7 +15,8 @@ import .app;
 thread_fn worker(cfg: http::Config) {
     let e = http::serve_epoll(cfg) { req, body, out =>
         var state = rest::NoState { .. };
-        var cx = rest::Cx<rest::NoState> { req: req, body: body, out: out, state: state };
+        var scratch: u8[>..] = [];
+        var cx = rest::Cx<rest::NoState> { req: req, body: body, out: out, state: state, scratch: scratch };
         api::dispatch(cx, state);
     };
     guard e.code != 0 else { return; }

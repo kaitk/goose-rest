@@ -6,14 +6,16 @@ import std;
 import json;
 import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
 
-// A request's context: its head, its body, where its answer goes, and the
+// A request's context: its head, its body, where its answer goes, the
 // application's per-request state, which goose-http keeps in the
-// connection's slot and starts from fresh for each request.
+// connection's slot and starts from fresh for each request, and scratch
+// for what the extractors decode, which lasts until the handler returns.
 struct Cx<S> {
     req: const http::Request&,
     body: const u8[:],
     out: http::Reply,
     state: S&,
+    scratch: u8[>..]&,
 }
 
 // The per-request state of a program that keeps none.
@@ -25,7 +27,8 @@ struct NoState { unused: bool = false }
 fn serve<S, H>(cfg: http::Config, fresh: S) -> http::Error {
     return http::serve(cfg, fresh) { ev, st, out =>
         if http::whole_only(ev, out) {
-            var cx = Cx<S> { req: ev.req, body: ev.data, out: out, state: st };
+            var scratch: u8[>..] = [];
+            var cx = Cx<S> { req: ev.req, body: ev.data, out: out, state: st, scratch: scratch };
             H(cx);
         }
     };
@@ -80,22 +83,16 @@ fn fail_param(cx, detail: const u8[:]) {
     return [Failure { status: 400, at: -1, code: str("invalid_parameter"), detail: str(detail) }] from attempt;
 }
 
-// seg as a decimal integer, or a failure, "<name>: integer", for anything
-// else: a sign other than a leading '-', another byte, or no digits.
-fn path_int(cx, seg: const u8[:], name: const u8[:]) -> i64 {
-    let neg = seg.len > 0 && seg[0] == '-';
-    var i = if neg { 1 } else { 0 };
-    guard i < seg.len else { fail_param(cx, str(name, ": integer")); }
-    var v: i64 = 0;
-    while i < seg.len {
-        let c = seg[i];
-        guard c >= '0' && c <= '9' else { fail_param(cx, str(name, ": integer")); }
-        let digit: i64 = c - '0';
-        guard v <= (9223372036854775807 - digit) / 10 else { fail_param(cx, str(name, ": integer")); }
-        v = v * 10 + digit;
-        i++;
-    }
-    return if neg { -v } else { v };
+// The JSON body as R(r, scratch), a generated reader, reads it: 415 unless
+// the request says it's application/json, and 400 invalid_body for a body
+// R refused or one with more after its value. Generated from_request
+// overloads call it.
+fn json_body<R>(cx) {
+    guard http::has_type(cx.req, "application/json") else { fail(cx, 415, "unsupported_media_type"); }
+    var r = json::reader(cx.body);
+    let v = R(&r, cx.scratch);   // a block given the local itself gets a copy of it
+    if !json::finish(r) { fail_body(cx, r); }
+    v
 }
 
 // The segment of path after its '/' at at, and where the segment ends: at

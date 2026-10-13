@@ -14,10 +14,15 @@ import .gen.app;
 fn t(cx, s: const u8[:]) { rest::text(cx, 200, s); }
 
 // The if chain, flat, each route answering as the handler in gen/app.goose
-// it stands for.
+// it stands for, given a request without query, header, or cookie
+// parameters but X-Trace. Inside one route, since rest::param can fail.
 fn chain(cx) {
+    rest::route(cx) { chain_routes(cx); };
+}
+
+fn chain_routes(cx) {
     var r = http::router(cx.req);
-    fn p(name: const u8[:]) -> const u8[:] { http::param(r, name) }
+    fn p(name: const u8[:]) -> const u8[:] { rest::param(cx, r, name) }
     if http::on(r, "GET", "/health") { t(cx, "health"); }
     else if http::on(r, "POST", "/v1/auth/login") { t(cx, "login"); }
     else if http::on(r, "POST", "/v1/auth/logout") { t(cx, "logout"); }
@@ -72,7 +77,10 @@ fn chain(cx) {
     else if http::on(r, "GET", "/v1/reports/time") { t(cx, "time_report"); }
     else if http::on(r, "GET", "/v1/reports/time/:user") { t(cx, str("user_time_report ", p("user"))); }
     else if http::on(r, "GET", "/v1/reports/budget") { t(cx, "budget_report"); }
-    else if http::on(r, "GET", "/v1/reports/exports") { t(cx, "list_exports"); }
+    else if http::on(r, "GET", "/v1/reports/exports") {
+        let trace, found = rest::header(cx, "X-Trace");
+        t(cx, str("list_exports ", trace));
+    }
     else if http::on(r, "POST", "/v1/reports/exports") { t(cx, "create_export"); }
     else if http::on(r, "GET", "/v1/reports/exports/:id") { t(cx, str("get_export ", p("id"))); }
     else if http::on(r, "DELETE", "/v1/reports/exports/:id") { t(cx, str("delete_export ", p("id"))); }
@@ -89,15 +97,16 @@ fn answer(text: const u8[:], generated: bool) -> u8[>..] {
     var keep = true;
     var st = http::Stream { .. };
     var state = rest::NoState { .. };
+    var scratch: u8[>..] = [];
     var cx = rest::Cx<rest::NoState> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
                                        keep_alive: keep, minor: 1, head: req.method == "HEAD", stream: st },
-                                       state: state };
+                                       state: state, scratch: scratch };
     if generated { api::dispatch(cx, state); } else { chain(cx); }
     return out;
 }
 
-fn request(method: const u8[:], target: const u8[:]) -> u8[>..] {
-    str(method, " ", target, " HTTP/1.1\r\nHost: x\r\nCookie: session=1\r\n\r\n")
+fn request(method: const u8[:], target: const u8[:], fields: const u8[:] = "X-Trace: t1\r\n") -> u8[>..] {
+    str(method, " ", target, " HTTP/1.1\r\nHost: x\r\nCookie: session=1\r\n", fields, "\r\n")
 }
 
 fn same(got: const u8[:], want: const u8[:], text: const u8[:]) {
@@ -167,6 +176,38 @@ fn test_security_and_parameters() {
          "{\"error\":\"invalid_parameter\",\"detail\":\"id: integer\"}", "me/avatar");
 }
 
+fn bad(detail: const u8[:]) -> u8[>..] { str("{\"error\":\"invalid_parameter\",\"detail\":\"", detail, "\"}") }
+
+fn test_query_header_cookie() {
+    fn says(target: const u8[:], fields: const u8[:] = "X-Trace: t1\r\n") -> u8[>..] {
+        return str(body_of(answer(request("GET", target, fields), true)));
+    }
+    same(says("/v1/projects?page=2&archived=false&q=a+%C3%A9"), "list_projects page=2 archived=false q=a é", "all");
+    same(says("/v1/projects?q=abc&page=1000"), "list_projects page=1000 q=abc", "bounds");
+    same(says("/v1/projects?page=0"), bad("page: minimum"), "page 0");
+    same(says("/v1/projects?page=1001"), bad("page: maximum"), "page 1001");
+    same(says("/v1/projects?page=2147483648"), bad("page: format"), "page 2^31");
+    same(says("/v1/projects?page=two"), bad("page: integer"), "page two");
+    same(says("/v1/projects?page="), bad("page: integer"), "page empty");
+    same(says("/v1/projects?archived=1"), bad("archived: boolean"), "archived 1");
+    same(says("/v1/projects?q=abcd"), bad("q: maxLength"), "q abcd");
+    same(says("/v1/projects?q=%FF"), bad("q: not UTF-8"), "q %FF");
+    same(says("/v1/orgs/a%2Fb"), "get_org a/b", "org decoded");
+    same(says("/v1/reports/exports", "X-Trace: t1\r\nCookie: theme=dark\r\nX-Limit: 5\r\n"),
+         "list_exports t1 theme=dark limit=5", "header and cookie");
+    same(says("/v1/reports/exports", ""), bad("X-Trace: required"), "no X-Trace");
+    same(says("/v1/reports/exports", "X-Trace: t\r\n"), bad("X-Trace: minLength"), "X-Trace t");
+    same(says("/v1/reports/exports", "X-Trace: t1\r\nX-Limit: 0\r\n"), bad("X-Limit: minimum"), "X-Limit 0");
+    same(says("/v1/reports/exports", "X-Trace: t1\r\nX-Limit: x\r\n"), bad("X-Limit: integer"), "X-Limit x");
+    // The path item's X-Trace, which list_exports overrides, is optional.
+    same(str(body_of(answer(request("POST", "/v1/reports/exports", ""), true))), "create_export", "optional X-Trace");
+    // Security and path parameters come first.
+    same(says("/v1/reports/exports?page=x", ""), bad("X-Trace: required"), "first failure");
+    let whole = answer(request("GET", "/v1/projects?page=0"), true);
+    same(whole, str("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: 54\r\n\r\n",
+                    bad("page: minimum")), "whole answer");
+}
+
 fn post(content_type: const u8[:], body: const u8[:]) -> u8[>..] {
     let text = str("POST /v1/projects HTTP/1.1\r\nHost: x\r\nCookie: session=1\r\n", content_type,
                    "Content-Length: ", body.len, "\r\n\r\n", body);
@@ -186,6 +227,7 @@ fn test_body() {
 fn main() {
     test_same_as_chain();
     test_security_and_parameters();
+    test_query_header_cookie();
     test_body();
     print("test_router: ok");
 }

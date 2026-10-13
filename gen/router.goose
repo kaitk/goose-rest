@@ -15,12 +15,77 @@ fn indent(level: i64) -> const u8[:] { SPACES[..min(4 * level, SPACES.len)] }
 // What the router's emitters read, and where they write.
 struct Tables {
     out: u8[>..]&,
+    ns: const u8[:],
     handlers: const u8[:],
     routes: const Route[:],
     segs: const Seg[:],
     ops: const Op[:],
-    params: const PathParam[:],
+    params: const Param[:],
     objs: const Obj[:],
+}
+
+// The checks on an integer x, the parameter p, at indent: present says
+// it was given, for an optional one.
+fn int_checks(t: Tables&, p: Param, x: const u8[:], present: const u8[:], ind: const u8[:]) {
+    if p.int32 {
+        let open = if present.len > 0 { "(" } else { "" };
+        let close = if present.len > 0 { ")" } else { "" };
+        format(t.out, ind, "if ", present, open, x, " < -2147483648 || ", x, " > 2147483647", close,
+               " { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
+    }
+    if p.has_minimum {
+        format(t.out, ind, "if ", present, x, " < ", p.minimum, " { rest::fail_param(cx, \"", p.name, ": minimum\"); }\n");
+    }
+    if p.has_maximum {
+        format(t.out, ind, "if ", present, x, " > ", p.maximum, " { rest::fail_param(cx, \"", p.name, ": maximum\"); }\n");
+    }
+}
+
+// The struct of o's query, header, and cookie parameters, and its
+// from_request, which reads and checks each and fails the route at the
+// first that doesn't fit.
+fn emit_params(t: Tables&, o: Op) {
+    let qs = t.params[o.first_q..o.first_q + o.count_q];
+    format(t.out, "\n// The query, header, and cookie parameters of ", o.handler, ".\nstruct ", o.params_type, " {\n");
+    for q in qs {
+        if !q.required { format(t.out, "    has_", q.local, ": bool,\n"); }
+        format(t.out, "    ", q.local, ": ", if q.int { "i64" } else if q.boolean { "bool" } else { "const u8[:]" }, ",\n");
+    }
+    t.out.append("}\n");
+    format(t.out, "\n// ", o.handler, "'s parameters, for rest::take: 400 invalid_parameter for one that's\n");
+    t.out.append("// missing or doesn't fit its schema.\n");
+    format(t.out, "fn rest::from_request(cx, v: const ", t.ns, "::", o.params_type, "?) -> ", t.ns, "::", o.params_type, " {\n");
+    for q in qs {
+        let from = match q.at { P_QUERY => "query", P_HEADER => "header", _ => "cookie" };
+        let raw = if q.int || q.boolean { "_s" } else { "" };
+        format(t.out, "    let ", q.local, raw, ", has_", q.local, " = rest::", from, "(cx, \"", q.name, "\");\n");
+        if q.required { format(t.out, "    rest::require(cx, \"", q.name, "\", has_", q.local, ");\n"); }
+        if q.int || q.boolean {
+            format(t.out, "    let ", q.local, " = if has_", q.local, " { rest::", if q.int { "int_of" } else { "bool_of" },
+                   "(cx, ", q.local, "_s, \"", q.name, "\") } else { ", if q.int { "0" } else { "false" }, " };\n");
+        }
+        let present: u8[>..] = if q.required { "" } else { str("has_", q.local, " && ") };
+        if q.int { int_checks(t, q, q.local, present, "    "); }
+        if q.min_len >= 0 || q.max_len >= 0 {
+            format(t.out, "    if has_", q.local, " {\n");
+            format(t.out, "        let n_ = rest::code_points(", q.local, ");\n");
+            format(t.out, "        if n_ < 0 { rest::fail_param(cx, \"", q.name, ": not UTF-8\"); }\n");
+            if q.min_len >= 0 {
+                format(t.out, "        if n_ < ", q.min_len, " { rest::fail_param(cx, \"", q.name, ": minLength\"); }\n");
+            }
+            if q.max_len >= 0 {
+                format(t.out, "        if n_ > ", q.max_len, " { rest::fail_param(cx, \"", q.name, ": maxLength\"); }\n");
+            }
+            t.out.append("    }\n");
+        }
+    }
+    format(t.out, "    return ", t.ns, "::", o.params_type, " {");
+    for q, i in qs {
+        if i > 0 { t.out.push(','); }
+        if !q.required { format(t.out, " has_", q.local, ": has_", q.local, ","); }
+        format(t.out, " ", q.local, ": ", q.local);
+    }
+    t.out.append(" };\n}\n");
 }
 
 // The statements, at level, that answer a request whose path matched r:
@@ -40,33 +105,18 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
             let p = t.params[o.first + k];
             k++;
             if !p.int {
-                format(t.out, in2, "let ", p.local, " = s", i + 1, ";\n");
+                format(t.out, in2, "let ", p.local, " = rest::path_str(cx, s", i + 1, ", \"", p.name, "\");\n");
                 continue;
             }
             format(t.out, in2, "let ", p.local, " = rest::path_int(cx, s", i + 1, ", \"", p.name, "\");\n");
-            if p.int32 {
-                format(t.out, in2, "if ", p.local, " < -2147483648 || ", p.local, " > 2147483647 { rest::fail_param(cx, \"",
-                       p.name, ": format\"); }\n");
-            }
-            if p.has_minimum {
-                format(t.out, in2, "if ", p.local, " < ", p.minimum, " { rest::fail_param(cx, \"", p.name, ": minimum\"); }\n");
-            }
-            if p.has_maximum {
-                format(t.out, in2, "if ", p.local, " > ", p.maximum, " { rest::fail_param(cx, \"", p.name, ": maximum\"); }\n");
-            }
+            int_checks(t, p, p.local, "", in2);
         }
-        if o.body >= 0 {
-            format(t.out, in2, "guard http::has_type(cx.req, \"application/json\") else { rest::fail(cx, 415, \"unsupported_media_type\"); }\n");
-            format(t.out, in2, "var r_ = json::reader(cx.body);\n");
-            format(t.out, in2, "var scratch_: u8[>..] = [];\n");
-            format(t.out, in2, "let body_ = read_");
-            format_snake_name(t.out, t.objs[o.body].name);
-            t.out.append("(r_, scratch_);\n");
-            format(t.out, in2, "if !json::finish(r_) { rest::fail_body(cx, r_); }\n");
-        }
+        if o.count_q > 0 { format(t.out, in2, "let q_ = rest::take<", o.params_type, ">(cx);\n"); }
+        if o.body >= 0 { format(t.out, in2, "let body_ = rest::take<", t.objs[o.body].name, ">(cx);\n"); }
         format(t.out, in2, t.handlers, "::", o.handler, "(cx, state");
         if o.scheme.len > 0 { t.out.append(", s_"); }
         for p in t.params[o.first..o.first + o.count] { format(t.out, ", ", p.local); }
+        if o.count_q > 0 { t.out.append(", q_"); }
         if o.body >= 0 { t.out.append(", body_"); }
         t.out.append(");\n");
         format(t.out, ind, "    };\n", ind, "    return;\n", ind, "}\n");
@@ -130,9 +180,11 @@ recursive fn emit_node(t: Tables&, idx: i64[>..<]&, lo: i64, hi: i64, d: i64, le
 }
 
 // Writes dispatch, which calls the handlers in the namespace handlers.
-fn emit_router(out: u8[>..]&, handlers: const u8[:], routes: const Route[:], segs: const Seg[:], ops: const Op[:],
-               params: const PathParam[:], objs: const Obj[:]) {
-    var t = Tables { out: out, handlers: handlers, routes: routes, segs: segs, ops: ops, params: params, objs: objs };
+fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: const Route[:], segs: const Seg[:],
+               ops: const Op[:], params: const Param[:], objs: const Obj[:]) {
+    var t = Tables { out: out, ns: ns, handlers: handlers, routes: routes, segs: segs, ops: ops, params: params,
+                     objs: objs };
+    for o in ops { if o.count_q > 0 { emit_params(t, o); } }
     format(out, "\n// Answers a request through the handler in ", handlers, " that its path and method\n");
     out.append("// name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
     out.append("// a path; and as rest::otherwise does for a path no route takes.\n");

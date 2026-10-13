@@ -1,0 +1,134 @@
+// Extractors: the typed parts of a request. Each one that finds a part
+// missing or malformed fails the enclosing route with 400
+// {"error":"invalid_parameter","detail":"<name>: <check>"} (README,
+// "Errors"), so every caller runs inside rest::route.
+namespace rest;
+
+import std;
+import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
+
+// The value of T the request holds, as T's from_request overload reads it.
+// The generator writes one for each schema object, which reads the JSON
+// body, and one for each operation's parameters. A program declares its own
+// in this namespace, since a generic body finds names only where it's
+// defined (spike 01):
+//
+//   fn rest::from_request(cx, v: const app::Session?) -> app::Session { ... }
+//
+// v is always null: its type picks the overload, and the result is built
+// where the caller puts it, so T may hold u8[] fields.
+fn take<T>(cx) -> T {
+    let none: const T? = null;
+    return from_request(cx, none);
+}
+
+// s with its escapes decoded, and with '+' as a space when plus is set: s
+// itself when it has neither, or else decoded onto cx.scratch, which the
+// result then points into. A '%' without two hex digits fails the route
+// with "<name>: encoding".
+fn decoded(cx, s: const u8[:], plus: bool, name: const u8[:]) -> const u8[:] {
+    var plain = true;
+    for c in s { if c == '%' || plus && c == '+' { plain = false; } }
+    if plain { return s; }
+    let at = cx.scratch.len;
+    guard http::decode(s, cx.scratch, plus) else { fail_param(cx, str(name, ": encoding")); }
+    return cx.scratch[at..];
+}
+
+// s as a decimal integer, or a failure, "<name>: integer", for anything
+// else: a sign other than a leading '-', another byte, no digits, or a value
+// past i64.
+fn int_of(cx, s: const u8[:], name: const u8[:]) -> i64 {
+    let neg = s.len > 0 && s[0] == '-';
+    var i = if neg { 1 } else { 0 };
+    guard i < s.len else { fail_param(cx, str(name, ": integer")); }
+    var v: i64 = 0;
+    while i < s.len {
+        let c = s[i];
+        guard c >= '0' && c <= '9' else { fail_param(cx, str(name, ": integer")); }
+        let digit: i64 = c - '0';
+        guard v <= (9223372036854775807 - digit) / 10 else { fail_param(cx, str(name, ": integer")); }
+        v = v * 10 + digit;
+        i++;
+    }
+    return if neg { -v } else { v };
+}
+
+// s as JSON's true or false, or a failure, "<name>: boolean".
+fn bool_of(cx, s: const u8[:], name: const u8[:]) -> bool {
+    if s == "true" { return true; }
+    guard s == "false" else { fail_param(cx, str(name, ": boolean")); }
+    return false;
+}
+
+// Fails the route with "<name>: required" unless found.
+fn require(cx, name: const u8[:], found: bool) {
+    guard found else { fail_param(cx, str(name, ": required")); }
+}
+
+// The path parameter name of the route r matched, decoded.
+fn param(cx, r: const http::Router&, name: const u8[:]) -> const u8[:] {
+    return decoded(cx, http::param(r, name), false, name);
+}
+
+// The path parameter name of the route r matched, as an integer.
+fn param_int(cx, r: const http::Router&, name: const u8[:]) -> i64 {
+    return path_int(cx, http::param(r, name), name);
+}
+
+// A path segment, still encoded, decoded.
+fn path_str(cx, seg: const u8[:], name: const u8[:]) -> const u8[:] {
+    return decoded(cx, seg, false, name);
+}
+
+// A path segment, still encoded, as an integer named name.
+fn path_int(cx, seg: const u8[:], name: const u8[:]) -> i64 {
+    return int_of(cx, decoded(cx, seg, false, name), name);
+}
+
+// The query parameter name, decoded with '+' as a space, and whether the
+// query has it; the first, if it repeats. The key is compared as sent.
+fn query(cx, name: const u8[:]) -> const u8[:], bool {
+    let v, found = http::query_of(cx.req.target, name);
+    guard found else { return v, false; }
+    return decoded(cx, v, true, name), true;
+}
+
+// The query parameter name as an integer, and whether the query has it.
+fn query_int(cx, name: const u8[:]) -> i64, bool {
+    let v, found = query(cx, name);
+    guard found else { return 0, false; }
+    return int_of(cx, v, name), true;
+}
+
+// The query parameter name as true or false, and whether the query has it.
+fn query_bool(cx, name: const u8[:]) -> bool, bool {
+    let v, found = query(cx, name);
+    guard found else { return false, false; }
+    return bool_of(cx, v, name), true;
+}
+
+// The header field name's value, its name compared ignoring case, and
+// whether the request has it; the first, if it repeats.
+fn header(cx, name: const u8[:]) -> const u8[:], bool {
+    return http::field_of(cx.req, name);
+}
+
+// The cookie name's value, compared as sent, and whether the request has
+// it; the first, if it repeats.
+fn cookie(cx, name: const u8[:]) -> const u8[:], bool {
+    return http::cookie_of(cx.req, name);
+}
+
+// A value computed on first use and kept for the rest of the request. A
+// field of the per-request state, which starts each request undone.
+struct Once<T> { done: bool = false, value: T }
+
+// slot's value, computed by F() the first time a request asks for it.
+fn once<T, F>(slot: Once<T>&) -> T& {
+    if !slot.done {
+        slot.value = F();
+        slot.done = true;
+    }
+    return slot.value;
+}

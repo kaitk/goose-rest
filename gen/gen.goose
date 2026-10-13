@@ -92,23 +92,38 @@ struct Named {
 // A segment of a path template: literal text, or a parameter, {name}.
 struct Seg { text: const u8[:], param: bool }
 
-// A path parameter of an operation, in its template's order: its name, the
-// Goose local it becomes, and its type, an integer with its bounds or a
-// string.
-struct PathParam {
+// Where a parameter is, in Param.at, as OpenAPI's in names it.
+let P_PATH = 0;
+let P_QUERY = 1;
+let P_HEADER = 2;
+let P_COOKIE = 3;
+let PLACES = ["path", "query", "header", "cookie"];
+
+// A parameter of an operation: its name, the Goose local or field it
+// becomes, where it is, whether it's required, and its type: an integer
+// with its bounds, a boolean, or a string with its lengths in code points.
+struct Param {
     name: const u8[:],
     local: const u8[:],
+    at: i64 = P_PATH,
+    required: bool = true,
     int: bool,
+    boolean: bool = false,
     int32: bool = false,
     has_minimum: bool = false,
     minimum: i64 = 0,
     has_maximum: bool = false,
     maximum: i64 = 0,
+    min_len: i64 = -1,
+    max_len: i64 = -1,
 }
 
 // An operation: its method as HTTP spells it, its handler's name, the
 // security scheme it names ("" for none), and the object its JSON body is
-// read as (-1 for none). Its parameters are params[first..first + count].
+// read as (-1 for none). Its path parameters are params[first..first +
+// count], in the template's order, and its query, header, and cookie ones
+// params[first_q..first_q + count_q], which the struct named params_type
+// holds.
 struct Op {
     method: const u8[:],
     handler: const u8[:],
@@ -116,6 +131,9 @@ struct Op {
     body: i64 = -1,
     first: i64 = 0,
     count: i64 = 0,
+    first_q: i64 = 0,
+    count_q: i64 = 0,
+    params_type: const u8[:] = "",
 }
 
 // A path: its template, its segments segs[first_seg..first_seg + nsegs], its
@@ -164,7 +182,14 @@ let BODY_KEYS = ["content", "required", "description"];
 
 // Names dispatch uses for its own parameters and locals, which no path
 // parameter may take, besides s and e followed by digits, its segments.
-let DISPATCH_NAMES = ["cx", "state", "path", "m", "plain", "s_", "r_", "scratch_", "body_"];
+let DISPATCH_NAMES = ["cx", "state", "path", "m", "plain", "s_", "q_", "body_"];
+
+// Names a parameters struct's from_request uses for its own, which no query,
+// header, or cookie parameter may take.
+let PARAMS_NAMES = ["cx", "v", "n_"];
+
+// Header parameters OpenAPI says are ignored (OpenAPI 3.1 §4.8.12.1).
+let IGNORED_HEADERS = ["accept", "content-type", "authorization"];
 
 fn is_one_of(s: const u8[:], set: const u8[:][:]) -> bool {
     for x in set { if x == s { return true; } }
@@ -297,7 +322,7 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
     var routes: Route[>..] = [];
     var segs: Seg[>..] = [];
     var ops: Op[>..] = [];
-    var params: PathParam[>..] = [];
+    var params: Param[>..] = [];
 
     fn fail(ptr: const u8[:], msg: const u8[:]) {
         return str(ptr, ": ", msg) from generate;
@@ -677,50 +702,83 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         return strs[start..end];
     }
 
+    // Where the parameter object p is: one of PLACES.
+    fn place_of(p: json::Node&, pptr: const u8[:]) -> i64 {
+        let where, ok = json::as_string(json::member(p, "in"));
+        guard ok else { fail(ptr1(pptr, "in"), "must be a string"); }
+        for s, i in PLACES { if s == where { return i; } }
+        fail(ptr1(pptr, "in"), str("must be path, query, header, or cookie, not ", where));
+        return -1;
+    }
+
     // Checks a parameter object of the path whose segments start at
-    // first_seg: a required path parameter named in the template.
+    // first_seg: a path parameter is required and named in the template, and
+    // a header parameter isn't one OpenAPI ignores.
     fn check_param(p: json::Node&, pptr: const u8[:], first_seg: i64, nsegs: i64) {
         json::each(p) { k =>
             guard is_one_of(k.key, PARAMETER_KEYS) else { fail(ptr1(pptr, k.key), "not supported on a parameter"); }
         };
-        let where, ok = json::as_string(json::member(p, "in"));
-        guard ok else { fail(ptr1(pptr, "in"), "must be a string"); }
-        guard where == "path" else {
-            fail(ptr1(pptr, "in"), str("only path parameters are supported, not ", where));
-        }
+        let at = place_of(p, pptr);
         let name, nok = json::as_string(json::member(p, "name"));
-        guard nok else { fail(ptr1(pptr, "name"), "must be a string"); }
+        guard nok && name.len > 0 && is_plain(name) else {
+            fail(ptr1(pptr, "name"), "must be a string without '\"', '\\' or a control character");
+        }
+        let r = json::member(p, "required");
+        let req, rok = json::as_bool(r);
+        guard rok || !r else { fail(ptr1(pptr, "required"), "must be true or false"); }
+        if at == P_HEADER {
+            var lower: u8[>..] = [];
+            for c in name { lower.push(if is_upper(c) { c + ('a' - 'A') } else { c }); }
+            guard !is_one_of(lower, IGNORED_HEADERS) else {
+                fail(ptr1(pptr, "name"), str("OpenAPI ignores a header parameter named ", name));
+            }
+        }
+        guard at == P_PATH else { return; }
         var found = false;
         for s in segs[first_seg..first_seg + nsegs] { if s.param && s.text == name { found = true; } }
         guard found else { fail(ptr1(pptr, "name"), "names no parameter of the path"); }
-        let req, rok = json::as_bool(json::member(p, "required"));
         guard rok && req else { fail(pptr, "a path parameter must have required: true"); }
     }
 
-    // The type of the path parameter p, named name: an integer, with
-    // minimum, maximum and format, or a string.
-    fn param_of(p: json::Node&, pptr: const u8[:], name: const u8[:]) -> PathParam {
+    // The parameter p, named name, at where: an integer, with minimum,
+    // maximum and format; a string, with minLength and maxLength off the
+    // path; or a boolean, off the path.
+    fn param_of(p: json::Node&, pptr: const u8[:], name: const u8[:], where: i64) -> Param {
         let schema = json::member(p, "schema");
         guard schema else { fail(pptr, "a parameter needs a schema"); }
         let sptr = ptr1(pptr, "schema");
-        let local = local_name(name, ptr1(pptr, "name"), DISPATCH_NAMES);
+        let local = local_name(name, ptr1(pptr, "name"), if where == P_PATH { DISPATCH_NAMES } else { PARAMS_NAMES });
+        let req, rok = json::as_bool(json::member(p, "required"));
         let t, ok = json::as_string(json::member(schema, "type"));
-        guard ok && (t == "integer" || t == "string") else {
-            fail(sptr, "a path parameter's schema is an integer or a string");
+        if where == P_PATH {
+            guard ok && (t == "integer" || t == "string") else {
+                fail(sptr, "a path parameter's schema is an integer or a string");
+            }
+        } else {
+            guard ok && (t == "integer" || t == "string" || t == "boolean") else {
+                fail(sptr, "a parameter's schema is an integer, a string, or a boolean");
+            }
+        }
+        var pp = Param { name: name, local: local, at: where, required: rok && req, int: t == "integer",
+                         boolean: t == "boolean" };
+        if t == "boolean" {
+            check_keys(schema, sptr, [], "a boolean parameter");
+            return pp;
         }
         if t == "string" {
-            check_keys(schema, sptr, [], "a string parameter");
-            return PathParam { name: name, local: local, int: false };
+            if where == P_PATH { check_keys(schema, sptr, [], "a path parameter's string"); }
+            else { check_keys(schema, sptr, ["minLength", "maxLength"], "a string parameter"); }
+            pp.min_len = count_of(schema, sptr, "minLength");
+            pp.max_len = count_of(schema, sptr, "maxLength");
+            return pp;
         }
         check_keys(schema, sptr, ["minimum", "maximum", "format"], "an integer parameter");
-        var int32 = false;
         let f = json::member(schema, "format");
         if f {
             let fs, fok = json::as_string(f);
             guard fok && (fs == "int32" || fs == "int64") else { fail(ptr1(sptr, "format"), "only int32 and int64 are supported"); }
-            int32 = fs == "int32";
+            pp.int32 = fs == "int32";
         }
-        var pp = PathParam { name: name, local: local, int: true, int32: int32 };
         let lo, has_lo = json::as_i64(bound(schema, sptr, "minimum", true));
         let hi, has_hi = json::as_i64(bound(schema, sptr, "maximum", true));
         pp.has_minimum = has_lo;
@@ -728,6 +786,42 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         pp.has_maximum = has_hi;
         pp.maximum = hi;
         return pp;
+    }
+
+    // The number of elements of list, an array.
+    fn count_in(list: json::Node?) -> i64 {
+        guard list else { return 0; }
+        return match list.val { Arr a => a.count, _ => 0 };
+    }
+
+    // The index of the parameter in list named name at where, or -1.
+    fn index_at(list: json::Node?, name: const u8[:], where: i64, ptr: const u8[:]) -> i64 {
+        for k in count_in(list) {
+            let p .= nth(list, k);
+            let n, ok = json::as_string(json::member(p, "name"));
+            if ok && n == name && place_of(p, ptr) == where { return k; }
+        }
+        return -1;
+    }
+
+    // Adds the query, header, and cookie parameters of list, at lptr, to
+    // params: those that other, the operation's own list, doesn't declare
+    // again, or all when other is null.
+    fn add_params(list: json::Node?, lptr: const u8[:], other: json::Node?) {
+        for k in count_in(list) {
+            let p .= nth(list, k);
+            let pptr = ptr1(lptr, str(k));
+            let where = place_of(p, pptr);
+            if where == P_PATH { continue; }
+            let given, nok = json::as_string(json::member(p, "name"));
+            guard index_at(list, given, where, pptr) == k else { fail(pptr, "a repeated parameter"); }
+            if index_at(other, given, where, pptr) >= 0 { continue; }
+            // Kept in strs: test_generator's documents can't store the
+            // JSON's own slice here (not reduced to a minimal program yet).
+            let at = strs.len;
+            strs.append(given);
+            params.push(param_of(p, pptr, strs[at..], where));
+        }
     }
 
     // The object component a request body is read as.
@@ -791,17 +885,44 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             let at_shared = index_of_name(shared, s.text);
             guard at_own >= 0 || at_shared >= 0 else { fail(optr, str("no parameter declares {", s.text, "}")); }
             let cptr = if at_own >= 0 { ptr1(pptr, str(at_own)) } else { ptr1(sptr, str(at_shared)) };
-            let pp = if at_own >= 0 { param_of(nth(own, at_own), cptr, s.text) }
-                     else { param_of(nth(shared, at_shared), cptr, s.text) };
+            let pp = if at_own >= 0 { param_of(nth(own, at_own), cptr, s.text, P_PATH) }
+                     else { param_of(nth(shared, at_shared), cptr, s.text, P_PATH) };
             for q in params[first..] {
                 guard q.local != pp.local else { fail(cptr, str("two parameters make the name ", pp.local)); }
             }
             params.push(pp);
         }
+        let count = params.len - first;
+        // The query, header, and cookie parameters: the path item's, then
+        // the operation's own, which override one of the same name and place.
+        let first_q = params.len;
+        add_params(shared, sptr, own);
+        add_params(own, pptr, null);
+        var params_type: const u8[:] = strs[..0];
+        if params.len > first_q {
+            let at = strs.len;
+            format_pascal(strs, id);
+            strs.append("Params");
+            params_type = strs[at..];
+            type_name(params_type, ptr1(optr, "operationId"));
+            // Each name the struct and its from_request declare, once.
+            var names: (const u8[:])[>..] = [];
+            for q in params[first_q..] {
+                let n = strs.len;
+                format(strs, q.local, " has_", q.local, " ");
+                if q.int || q.boolean { format(strs, q.local, "_s"); }
+                each_split(strs[n..], ' ') { if it.len > 0 { names.push(it); } };
+            }
+            for a, k in names {
+                for b in names[k + 1..] {
+                    guard a != b else { fail(ptr1(optr, "parameters"), str("two parameters make the name ", a)); }
+                }
+            }
+        }
         let rb = json::member(node, "requestBody");
         let body = if rb { body_of(rb, ptr1(optr, "requestBody")) } else { -1 };
-        ops.push(Op { method: method, handler: handler, scheme: scheme, body: body, first: first,
-                      count: params.len - first });
+        ops.push(Op { method: method, handler: handler, scheme: scheme, body: body, first: first, count: count,
+                      first_q: first_q, count_q: params.len - first_q, params_type: params_type });
     }
 
     // Each path's template, segments, and operations, checked against the
@@ -937,6 +1058,6 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
     }
 
     emit(out, ns, if routes.len > 0 { handlers } else { "" }, source, objs, enums, fields, variants);
-    if routes.len > 0 { emit_router(out, handlers, routes, segs, ops, params, objs); }
+    if routes.len > 0 { emit_router(out, ns, handlers, routes, segs, ops, params, objs); }
     return "";
 }

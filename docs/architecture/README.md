@@ -30,9 +30,8 @@ From the spec at `a6249a4` (2026-10-12), each checked by a spike
   stack. This is cheaper than Actix's `Transform` and Tower's `Layer`, and is the
   framework's main idea.
 - **Extractors by overload.** Generics are monomorphized and re-checked per
-  instantiation (§7.7), so `rest::take<T>(cx) { v => ... }` calls
-  `from_request(cx, v: T&)` and overloading chooses by `T`, as Actix's `FromRequest`
-  trait does.
+  instantiation (§7.7), so `rest::take<T>(cx)` calls `from_request(cx, v: const T?)`
+  and overloading chooses by `T`, as Actix's `FromRequest` trait does.
 - **No derive.** Goose has no macros, reflection, or compile-time evaluation. What Rust
   gets from serde's derive, goose-rest gets from the `format` hook written by hand, or
   from the generator ([below](#the-generator)).
@@ -51,7 +50,7 @@ From the spec at `a6249a4` (2026-10-12), each checked by a spike
 | `HttpServer::new(\|\| App::new())` builds an `App` per worker thread | Each worker's `thread_fn` builds its own state and calls `rest::serve` | The same model. Goose enforces it: workers share nothing. |
 | `web::Data<T>`, `app_data` | `App`, a struct of references to the worker's locals, passed to handlers by name | A struct holds at most one resizable, as its last field (§3.4); references avoid that limit (Appendix A.6). |
 | `App::route`, `web::scope`, `web::resource`, guards | An if chain over `http::router`, with prefix scopes; guards are `if` conditions | No handler table. |
-| `FromRequest` extractors as handler arguments | `rest::take<T>(cx) { v => ... }`, or a direct call such as `rest::param_int(cx, r, "id")` | `T` is given explicitly; Goose can't infer it from a block's parameter (spike 01). |
+| `FromRequest` extractors as handler arguments | `let v = rest::take<T>(cx);`, or a direct call such as `rest::param_int(cx, r, "id")` | `T` is given explicitly; Goose can't infer it from a block's parameter (spike 01). |
 | Middleware: `wrap`, `from_fn`, `Transform` | Blocks around the dispatch or a route, inlined into it | No boxing and no call per layer (spike 04). |
 | `ResponseError`, `Result<impl Responder, E>`, `?` | `rest::fail(cx, status, code)` returns from `rest::route` from any depth | `return ... from` replaces threading a `Result` up (spike 03). |
 | `Responder`, `web::Json<T>` | `rest::json(cx, status, v)`, which calls `format(out, v)` | The `format` hook is Goose's one type-directed lookup (§3.7, §11.1). |
@@ -224,7 +223,7 @@ fn handle(cx: rest::Cx&, app: App&) {
             } else if http::on(r, "POST", "/projects") {
                 rest::route(cx) {
                     let s = security_session(cx, app);
-                    rest::take<ProjectCreate>(cx) { body => create_project(cx, app, s, body) }
+                    create_project(cx, app, s, rest::take<ProjectCreate>(cx))
                 };
             } else {
                 http::otherwise(r, cx.out);           // 404, or 405 with Allow
@@ -235,8 +234,15 @@ fn handle(cx: rest::Cx&, app: App&) {
 ```
 
 `ProjectCreate` has a reader the program declares as
-`fn rest::from_request(cx: rest::Cx&, v: app::ProjectCreate&)` (spike 01), and `Project`
-a `fn format(out: u8[>..]&, p: const Project&)` in its own namespace.
+`fn rest::from_request(cx, v: const app::ProjectCreate?) -> app::ProjectCreate` (spike
+01), and `Project` a `fn format(out: u8[>..]&, p: const Project&)` in its own namespace.
+
+Decided (2026-10-13, task 005): `take<T>` returns the value, and `from_request` gets a
+null `const T?` whose type picks the overload. A `from_request(cx, v: T&)` that fills
+a default `T` can't build a `T` holding `u8[]` fields, which can't be assigned after
+construction (spike 05). A returned `T` is built at the caller's destination. The block
+form, `take<T>(cx) { v => ... }`, would hand the block a copy of a local (goose-http's
+findings).
 
 ### Handlers
 
@@ -282,9 +288,12 @@ fn security_session(cx: rest::Cx&, app: App&) -> Session {
 }
 
 fn profile(cx: rest::Cx&, app: App&, s: Session) -> const Profile& {
-    return rest::once(cx, cx.state.profile) { load_profile(app, s.user) };
+    return rest::once(cx.state.profile) { load_profile(app, s.user) };
 }
 ```
+
+`cx.state.profile` is a `rest::Once<Profile>`, which starts each request undone (task
+005).
 
 `cx.state` is `goose-http`'s per-request state `S`: fixed-size, kept in a `reusable`
 pool slot (§5.4), and reset per request (`http.goose:596`). Application state can't
@@ -399,6 +408,11 @@ fn dispatch(cx: rest::Cx&, app: app::App&) {
 }
 ```
 
+Built (task 005): each object also gets a `fn rest::from_request` that reads the JSON
+body, and an operation with query, header, or cookie parameters gets a struct of them,
+`<OperationId>Params`, with its own `from_request`. The router reads both with
+`rest::take` and passes them to the handler after the path parameters.
+
 Each handler call is typed from its operation. A missing `app::get_project`, or one
 whose `id` isn't an `i64`, fails to compile, which keeps schema and code in step
 without Elysia's dry run and fingerprint. `/health` names no `security`, so no session
@@ -418,7 +432,7 @@ overwrites the slot (§3.5).
 enum Waiting { None, Report { org: i64, from: i64, to: i64 } }
 
 // On the worker: sends the job to the database thread and returns.
-fn report(cx: rest::Cx&, app: App&, s: Session, q: api::ReportQuery) {
+fn report(cx: rest::Cx&, app: App&, s: Session, q: api::ReportParams) {
     rest::ask(cx, app.db, ReportJob { org: s.org, from: q.from, to: q.to },
               Waiting.Report { org: s.org, from: q.from, to: q.to });
 }

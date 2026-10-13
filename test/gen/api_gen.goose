@@ -148,6 +148,12 @@ fn format(out: u8[>..]&, v: const ProjectCreate&) {
     out.push('}');
 }
 
+// The ProjectCreate a request's JSON body holds, for rest::take: 415 for another
+// media type, and 400 invalid_body for a body read_project_create refuses.
+fn rest::from_request(cx, v: const api::ProjectCreate?) -> api::ProjectCreate {
+    rest::json_body(cx) { r, scratch => api::read_project_create(r, scratch) }
+}
+
 // #/components/schemas/Owner
 struct Owner {
     id: i64,
@@ -231,6 +237,12 @@ fn format(out: u8[>..]&, v: const Owner&) {
         }
     }
     out.push('}');
+}
+
+// The Owner a request's JSON body holds, for rest::take: 415 for another
+// media type, and 400 invalid_body for a body read_owner refuses.
+fn rest::from_request(cx, v: const api::Owner?) -> api::Owner {
+    rest::json_body(cx) { r, scratch => api::read_owner(r, scratch) }
 }
 
 // #/components/schemas/Project
@@ -566,6 +578,12 @@ fn format(out: u8[>..]&, v: const Project&) {
     out.push('}');
 }
 
+// The Project a request's JSON body holds, for rest::take: 415 for another
+// media type, and 400 invalid_body for a body read_project refuses.
+fn rest::from_request(cx, v: const api::Project?) -> api::Project {
+    rest::json_body(cx) { r, scratch => api::read_project(r, scratch) }
+}
+
 // #/components/schemas/Project/properties/settings
 struct ProjectSettings {
     has_notify: bool,
@@ -641,4 +659,10 @@ fn format(out: u8[>..]&, v: const ProjectSettings&) {
         out.push(']');
     }
     out.push('}');
+}
+
+// The ProjectSettings a request's JSON body holds, for rest::take: 415 for another
+// media type, and 400 invalid_body for a body read_project_settings refuses.
+fn rest::from_request(cx, v: const api::ProjectSettings?) -> api::ProjectSettings {
+    rest::json_body(cx) { r, scratch => api::read_project_settings(r, scratch) }
 }

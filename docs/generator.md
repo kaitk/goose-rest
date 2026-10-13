@@ -100,6 +100,10 @@ For a schema `Project`, the file has:
   gap ([findings](goose-findings.md#a-block-cant-push-a-value-whose-call-grows-a-parameters-array)).
 - `fn format(out: u8[>..]&, v: const Project&)`, the writer, which `rest::json` finds by
   its namespace (spike 07).
+- `fn rest::from_request(cx, v: const api::Project?) -> api::Project`, the extractor
+  `rest::take<api::Project>(cx)` calls: it reads the JSON body with the reader, and
+  fails with 415 for another media type and 400 `invalid_body` for a body the reader
+  refuses (README, "Extractors").
 
 For an enum `Status`: `enum Status`, `fn status_of(s) -> Status, bool`, and `fn
 format(out, v: Status)`.
@@ -146,13 +150,14 @@ let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
 | A path, `/projects/{id}` | matched segment by segment; a parameter takes a whole, non-empty segment |
 | An operation, `get`, `post`, ... | a call to `<handlers>::<operationId in snake_case>` inside `rest::route` |
 | A path parameter, `"type": "integer"` | an `i64` from `rest::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
-| A path parameter, `"type": "string"` | the segment, still encoded, as `http::param` gives it |
-| `requestBody` with `application/json` and a `$ref` to an object | the object, read with its reader; 415 for another media type |
+| A path parameter, `"type": "string"` | the segment, decoded, from `rest::path_str` |
+| Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
+| `requestBody` with `application/json` and a `$ref` to an object | the object, from `rest::take`; 415 for another media type |
 | `security: [{"<scheme>": []}]`, on the operation or the document | `<handlers>::security_<scheme>(cx, state)`, whose result the handler gets |
 
 A handler takes `cx`, `state`, then the security check's result if the operation names
-a scheme, its path parameters in the template's order, and its body. For
-`GET /projects/{id}` with `security: [{"session": []}]`:
+a scheme, its path parameters in the template's order, its parameters struct, and its
+body. For `GET /projects/{id}` with `security: [{"session": []}]`:
 
 ```goose
 fn get_project(cx, state, s, id: i64) { ... }    // in app, the handlers' namespace
@@ -160,7 +165,32 @@ fn security_session(cx, state) -> Session { ... }
 ```
 
 An operation's `security: []` overrides the document's. A path item's `parameters`
-apply to each of its operations, and an operation's own replace one of the same name.
+apply to each of its operations, and an operation's own replace one of the same name
+and place.
+
+An operation with query, header, or cookie parameters gets a struct of them, named after
+its `operationId` in PascalCase with `Params` after it, and a `fn rest::from_request`
+that reads and checks each. The struct holds the path item's parameters, then the
+operation's own, each a field in snake_case: `X-Request-Id` becomes `x_request_id`.
+An optional parameter has a `has_<field>: bool` before its field.
+
+| Schema | Field | Read with |
+|---|---|---|
+| `"type": "integer"`, with `minimum`, `maximum`, `format` (`int32`, `int64`) | `i64` | `rest::int_of` |
+| `"type": "boolean"` | `bool`, from `true` or `false` | `rest::bool_of` |
+| `"type": "string"`, with `minLength`, `maxLength` | `const u8[:]`, a query parameter decoded with `+` as a space | as it is |
+
+A query parameter's value is decoded; a header's and a cookie's are given as sent. A
+parameter that's missing when `required`, malformed, or outside its schema fails the
+route with `400 {"error":"invalid_parameter","detail":"page: minimum"}`, named as the
+document names it. For `listProjects` with an optional integer `page` and a required
+string `q`:
+
+```goose
+struct ListProjectsParams { has_page: bool, page: i64, q: const u8[:] }
+
+fn list_projects(cx, state, s, q) { ... q.page ... }    // in app
+```
 `summary`, `description`, `tags`, `deprecated`, `externalDocs`, `responses`, and a
 parameter's `description`, `deprecated`, and examples are read for nothing. The
 handler writes the response; `responses` isn't checked against it.
@@ -174,12 +204,19 @@ Each of these is an error at its JSON pointer:
   `/a/{id}` and `/a/{key}`.
 - An operation without `operationId`, an `operationId` that isn't a Goose identifier in
   snake_case, and two that make the same handler name.
-- A parameter `in` the query, a header, or a cookie (task 005); a path parameter without
-  `required: true`, or one the template doesn't name; a template parameter no
-  parameter declares; a parameter's `style`, `explode`, or `content`; a schema other
-  than an integer or a string, and on a string any keyword.
-- A parameter or handler named after one of `dispatch`'s locals (`cx`, `state`, `path`,
-  `m`, `plain`, `s_`, `r_`, `scratch_`, `body_`, and `s` or `e` followed by digits).
+- A parameter `in` anything but the path, the query, a header, or a cookie; a path
+  parameter without `required: true`, or one the template doesn't name; a template
+  parameter no parameter declares; a parameter's `style`, `explode`, or `content`; a
+  `required` that isn't `true` or `false`; a parameter repeated in one list.
+- A path parameter's schema other than an integer or a string, and on a string any
+  keyword. Another parameter's other than an integer, a boolean, or a string with
+  `minLength` and `maxLength`, so `default`, `enum`, and arrays among them.
+- A header parameter named `Accept`, `Content-Type`, or `Authorization`, which OpenAPI
+  says to ignore.
+- A path parameter or handler named after one of `dispatch`'s locals (`cx`, `state`,
+  `path`, `m`, `plain`, `s_`, `q_`, `body_`, and `s` or `e` followed by digits); another
+  parameter named `cx`, `v`, or `n_`; two parameters whose fields, `has_` fields, or
+  locals come out the same; a parameters struct named as another type.
 - A request body that isn't `required: true`, isn't `application/json`, or isn't a
   `$ref` to an object component.
 - More than one security requirement (alternatives), more than one scheme in one,
@@ -208,9 +245,10 @@ checks the rest byte for byte against such a chain.
    method gets 405, and `OPTIONS` 204, each with the path's `Allow`, a constant.
 5. A path nothing matched is 404, or 204 for `OPTIONS *`.
 
-Each answer is in the README's error shape. A path parameter that doesn't fit its
-schema is `400 {"error":"invalid_parameter","detail":"id: minimum"}`, after the
-security check.
+Each answer is in the README's error shape. A route checks the security scheme first,
+then the path parameters, the other parameters, and the body, and answers the first
+failure: a path parameter that doesn't fit its schema is `400
+{"error":"invalid_parameter","detail":"id: minimum"}`.
 
 ## Tests
 

@@ -52,8 +52,10 @@ fn main() {
     var keep = true;
     var st = http::Stream { .. };
     var state = rest::NoState { .. };
+    var scratch: u8[>..] = [];
     var cx = rest::Cx<rest::NoState> { req: req, body: "", out: http::Reply { buf: out, common: "",
-                                       keep_alive: keep, minor: 1, head: false, stream: st }, state: state };
+                                       keep_alive: keep, minor: 1, head: false, stream: st }, state: state,
+                                       scratch: scratch };
     for id in [4, 0, 5] { handle(cx, id); }
     print(status, "\n", out);
 }

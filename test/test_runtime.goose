@@ -35,8 +35,9 @@ fn answers<H>(text: const u8[:], want: const u8[:], more: const u8[:] = "") {
     var st = http::Stream { .. };
     var state = rest::NoState { .. };
     let body = text[req.len..];
+    var scratch: u8[>..] = [];
     var cx = rest::Cx<rest::NoState> { req: req, body: body, out: http::Reply { buf: out, common: "", keep_alive: keep,
-                        minor: 1, head: false, stream: st }, state: state };
+                        minor: 1, head: false, stream: st }, state: state, scratch: scratch };
     H(cx);
     same(out, str(want, more));
 }

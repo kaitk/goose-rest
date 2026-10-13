@@ -30,7 +30,7 @@ fn delete_org(cx, state, s, org) { ok(cx); }
 fn list_org_members(cx, state, s, org) { ok(cx); }
 fn add_org_member(cx, state, s, org) { ok(cx); }
 fn remove_org_member(cx, state, s, org, user) { ok(cx); }
-fn list_projects(cx, state, s) { ok(cx); }
+fn list_projects(cx, state, s, q) { ok(cx); }
 fn create_project(cx, state, s, body) { ok(cx); }
 fn get_project(cx, state, s, id) { ok(cx); }
 fn update_project(cx, state, s, id) { ok(cx); }
@@ -64,8 +64,8 @@ fn list_deliveries(cx, state, s, id) { ok(cx); }
 fn time_report(cx, state, s) { ok(cx); }
 fn user_time_report(cx, state, s, user) { ok(cx); }
 fn budget_report(cx, state, s) { ok(cx); }
-fn list_exports(cx, state, s) { ok(cx); }
-fn create_export(cx, state, s) { ok(cx); }
+fn list_exports(cx, state, s, q) { ok(cx); }
+fn create_export(cx, state, s, q) { ok(cx); }
 fn get_export(cx, state, s, id) { ok(cx); }
 fn delete_export(cx, state, s, id) { ok(cx); }
 fn cancel_export(cx, state, s, id) { ok(cx); }

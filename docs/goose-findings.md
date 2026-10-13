@@ -229,3 +229,29 @@ an error names the rule it breaks.
 
 Workaround: find the index inside the block and fetch the node after it, as the
 generator's `index_of_name` and `nth` do (`gen/gen.goose`).
+
+## A block given a local struct gets a copy of it
+
+Found on `a6249a4`, task 005. Status: open, recorded in goose-http's findings ("A block
+given a local struct writes to a copy of it", found on `5c83a5a`)
+
+`rest::json_body` hands its block a `json::Reader` it declared, `R(r, cx.scratch)`, and
+the block's reader advanced a copy: `json::finish` then found the whole body unread and
+reported "trailing input" at byte 0. Expected: the block's parameter binds the local
+itself, as an untyped function parameter does.
+
+    struct Cursor { pos: i64 }
+
+    fn advance(c: Cursor&) { c.pos++; }
+
+    fn twice<F>() {
+        var c = Cursor { pos: 0 };
+        F(c);           // F(&c) passes the local itself
+        F(c);
+        print(c.pos);   // 0
+    }
+
+    fn main() { twice() { it => advance(it); }; }
+
+Workaround: pass the local as a reference, `R(&r, cx.scratch)`, which is shorter than
+goose-http's struct holding a reference.

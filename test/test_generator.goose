@@ -136,8 +136,28 @@ fn test_paths() {
     fails(api("""{"/a": {"get": {"operationId": "get-a!"}}}"""),
         "#/paths/~1a/get/operationId: a name of letters, digits, '_', '-', '.' and spaces is supported");
     fails(api("""{"/a/{id}": {"get": {"operationId": "a"}}}"""), "#/paths/~1a~1{id}/get: no parameter declares {id}");
-    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}]}}}"""),
-        "#/paths/~1a/get/parameters/0/in: only path parameters are supported, not query");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "body", "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/in: must be path, query, header, or cookie, not body");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "number"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/schema: a parameter's schema is an integer, a string, or a boolean");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string", "format": "uuid"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/schema/format: not supported on a string parameter");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "boolean", "default": true}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/schema/default: not supported on a boolean parameter");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "required": "yes", "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/required: must be true or false");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "Authorization", "in": "header", "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/name: OpenAPI ignores a header parameter named Authorization");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "q", "in": "query", "schema": {"type": "integer"}}]}}}"""),
+        "#/paths/~1a/get/parameters/1: a repeated parameter");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "q", "in": "header", "schema": {"type": "integer"}}]}}}"""),
+        "#/paths/~1a/get/parameters: two parameters make the name q");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "has_q", "in": "cookie", "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a/get/parameters: two parameters make the name has_q");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "v", "in": "query", "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/name: the name v is one the generated code uses");
+    fails("""{"openapi": "3.1.0", "paths": {"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}]}}}, "components": {"schemas": {"AParams": {"type": "object", "properties": {}}}}}""",
+        "#/paths/~1a/get/operationId: another type has this name");
     fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "schema": {"type": "integer"}}]}}}"""),
         "#/paths/~1a~1{id}/get/parameters/0: a path parameter must have required: true");
     fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "style": "label", "schema": {"type": "integer"}}]}}}"""),
@@ -145,7 +165,7 @@ fn test_paths() {
     fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "number"}}]}}}"""),
         "#/paths/~1a~1{id}/get/parameters/0/schema: a path parameter's schema is an integer or a string");
     fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string", "maxLength": 3}}]}}}"""),
-        "#/paths/~1a~1{id}/get/parameters/0/schema/maxLength: not supported on a string parameter");
+        "#/paths/~1a~1{id}/get/parameters/0/schema/maxLength: not supported on a path parameter's string");
     fails(api("""{"/a/{path}": {"get": {"operationId": "a", "parameters": [{"name": "path", "in": "path", "required": true, "schema": {"type": "string"}}]}}}"""),
         "#/paths/~1a~1{path}/get/parameters/0/name: the name path is one the generated code uses");
     fails(api("""{"/a": {"post": {"operationId": "a", "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/A"}}}}}}}"""),

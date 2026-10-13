@@ -39,7 +39,14 @@
       "delete": { "operationId": "removeOrgMember" }
     },
     "/v1/projects": {
-      "get": { "operationId": "listProjects" },
+      "get": {
+        "operationId": "listProjects",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "format": "int32", "minimum": 1, "maximum": 1000 } },
+          { "name": "archived", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 3 } }
+        ]
+      },
       "post": {
         "operationId": "createProject",
         "requestBody": {
@@ -125,7 +132,18 @@
       "get": { "operationId": "userTimeReport" }
     },
     "/v1/reports/budget": { "get": { "operationId": "budgetReport" } },
-    "/v1/reports/exports": { "get": { "operationId": "listExports" }, "post": { "operationId": "createExport" } },
+    "/v1/reports/exports": {
+      "parameters": [{ "name": "X-Trace", "in": "header", "schema": { "type": "string" } }],
+      "get": {
+        "operationId": "listExports",
+        "parameters": [
+          { "name": "X-Trace", "in": "header", "required": true, "schema": { "type": "string", "minLength": 2 } },
+          { "name": "theme", "in": "cookie", "schema": { "type": "string" } },
+          { "name": "X-Limit", "in": "header", "schema": { "type": "integer", "minimum": 1 } }
+        ]
+      },
+      "post": { "operationId": "createExport" }
+    },
     "/v1/reports/exports/{id}": {
       "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
       "get": { "operationId": "getExport" },
