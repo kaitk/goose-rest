@@ -149,7 +149,8 @@ Workaround: none. The generator refuses `pattern` (docs/generator.md).
 
 ## A thread can't read a string-literal global, so json::format_number fails in a thread
 
-Found on `a6249a4`, task 004. Status: open
+Found on `a6249a4`, task 004. Status: open, reported as
+[aardappel/goose#31](https://github.com/aardappel/goose/issues/31) (2026-10-13)
 
 A global initialized with a string literal, `let PAIRS = "0001";` or `const PAIRS =
 "0001";`, is a slice of static data, and a function a `thread_fn` reaches can't read it:
@@ -183,7 +184,8 @@ form `json::format_number` writes. Declaring the table as `let DIGIT_PAIRS: u8[2
 
 ## A loop's checking doesn't settle when a block rebinds a reference that's stored
 
-Found on `a6249a4`, task 008. Status: open
+Found on `a6249a4`, task 008. Status: open, reported as
+[aardappel/goose#32](https://github.com/aardappel/goose/issues/32) (2026-10-13)
 
 A loop that rebinds an optional reference with `.=` inside a block, then stores what it
 leads to, fails to check when the function holding the loop runs from another block:
