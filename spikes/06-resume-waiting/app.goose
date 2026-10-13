@@ -42,12 +42,9 @@ struct St { waiting: Waiting = Waiting.None }
 var db: http::MailAddress;
 
 inline fn handle(ev: http::Event, st: St&, out: http::Reply) {
-    match ev {
-        Request r => route(r.req, st, out),
-        Wake w => resume(st.waiting, st, w.data, w.tag, out),
-        Timeout => http::respond(out, 504, "text/plain", "timeout"),
-        _ => {},
-    }
+    if ev.kind == http::REQUEST { route(ev.req, st, out); }
+    else if ev.kind == http::WAKE { resume(st.waiting, st, ev.data, ev.tag, out); }
+    else if ev.kind == http::TIMEOUT { http::respond(out, 504, "text/plain", "timeout"); }
 }
 
 fn route(req: const http::Request&, st: St&, out: http::Reply) {

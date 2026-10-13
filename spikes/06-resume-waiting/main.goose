@@ -4,10 +4,10 @@
 //
 // app::handle is a handler as http::serve takes it (server.goose serves it).
 // Here main plays the loop's part, so that the output is fixed: it hands each
-// request to handle, takes the worker's box, and calls handle with Wake for
+// request to handle, takes the worker's box, and calls handle with WAKE for
 // the exchange a message is addressed to, as the loops' delivered does.
 import std;
-import http from "github.com/kaitk/goose-http@04791ac50b69d99e93c08dc2c3f3ff8d4ab1867c";
+import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
 import app;
 
 // A request, through to its whole response, which it prints without CRs.
@@ -19,7 +19,7 @@ fn exchange(box: http::Box, key: u64, text: const u8[:]) {
     var stream = http::Stream { later: http::address(box, key), .. };
     var st = app::St { .. };
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: r.minor, head: false, stream: stream };
-    app::handle(http::Event.Request { req: r, data: "", whole: true, trailers: "" }, st, reply);
+    app::handle(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, reply);
     var wakes = 0;
     while stream.waiting {
         assert(http::mail_wait(box, 5000));
@@ -27,7 +27,8 @@ fn exchange(box: http::Box, key: u64, text: const u8[:]) {
             if stream.waiting && k == key {
                 stream.waiting = false;
                 wakes++;
-                app::handle(http::Event.Wake { data: bytes, tag: tag }, st, reply);
+                app::handle(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
+                                          tag: tag }, st, reply);
             }
         };
     }

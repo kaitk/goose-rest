@@ -1,7 +1,7 @@
 // Unit tests for the checks the generated readers call (check.goose).
 // scripts/test-unit.sh runs them through TinyCC.
 import std;
-import http from "github.com/kaitk/goose-http@04791ac50b69d99e93c08dc2c3f3ff8d4ab1867c";
+import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
 import rest from "../";
 
 fn test_code_points() {

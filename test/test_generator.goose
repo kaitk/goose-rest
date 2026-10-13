@@ -3,7 +3,7 @@
 // writes is tested by test_gen.goose and by scripts/test.sh's golden files.
 // scripts/test-unit.sh runs this through TinyCC.
 import std;
-import http from "github.com/kaitk/goose-http@04791ac50b69d99e93c08dc2c3f3ff8d4ab1867c";
+import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
 import rest from "../";
 import rest.gen.gen;
 

@@ -4,7 +4,7 @@
 //
 //   routes60 http [port]   (WORKERS 1)
 import std;
-import http from "github.com/kaitk/goose-http@04791ac50b69d99e93c08dc2c3f3ff8d4ab1867c";
+import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
 
 // Whether path is prefix or below it. The prefix is compared byte for byte,
 // so a path that escapes an unreserved byte in it, which http::on would

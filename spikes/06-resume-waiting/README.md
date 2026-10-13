@@ -3,16 +3,18 @@
 Checks the design's [waiting on another thread](../../docs/architecture/README.md#waiting-on-another-thread).
 A route asks a database thread over goose-http's mailbox with a job sent as a `to_bytes`
 image. It keeps what it needs in a fixed-mode `Waiting` enum in the per-request state,
-and resumes at `Wake` through one case function per variant. Also checks that a missing
+and resumes at `WAKE` through one case function per variant. Also checks that a missing
 case fails to compile, and what a reply larger than a mailbox slot needs.
 
-Goose commit: `a6249a4`. goose-http: `04791ac`.
+Goose commit: `a6249a4`. goose-http: `cfb9c02`, where `http::Event` is a struct whose
+`kind` the handler tests; it was an enum at `04791ac`, where the spike first passed with
+the same output (2026-10-13).
 
 - `app.goose`: the handler, `/report` and `/export`, the `Waiting` enum, the `resume`
   case functions, and the database thread.
 - `main.goose`: plays the loop's part with real boxes and a real thread, so the output
   is fixed. It hands each request to `app::handle`, takes the worker's box, and calls
-  `handle` with `Wake` for the exchange a message is addressed to, as the loops'
+  `handle` with `WAKE` for the exchange a message is addressed to, as the loops'
   `delivered` does.
 - `server.goose`: the same handler under `http::serve`, for `curl`.
 - `missing_case.goose`: case functions with one variant left out.
@@ -33,8 +35,8 @@ curl -s 'localhost:8080/export?org=7&rows=2000' | wc -lc
 
 The route sets `st.waiting`, calls `http::later`, and sends the job, a one-element
 array's `to_bytes` image holding the reply's `http::MailAddress`. The database thread
-reads it with `from_bytes`, which verifies it, and replies to that address. At `Wake`,
-`resume(st.waiting, st, w.data, w.tag, out)` dispatches on the tag to the variant's case
+reads it with `from_bytes`, which verifies it, and replies to that address. At `WAKE`,
+`resume(st.waiting, st, ev.data, ev.tag, out)` dispatches on the tag to the variant's case
 function, which gets the variant's fields by value. A case that must change the state,
 as the export's does to count its pieces, writes a new variant into `st.waiting`, which
 a fixed-mode enum allows. `main.goose` prints:
@@ -87,7 +89,7 @@ missing_case.goose:10: error: no matching overload for call to resume
   in fn main() instantiated from missing_case.goose:8
 ```
 
-The same in `app.goose` fails the same way at `handle`'s `Wake` arm. The message doesn't
+The same in `app.goose` fails the same way at `handle`'s `WAKE` branch. The message doesn't
 name the missing variant, where a `match` says `match does not cover variant
 Waiting.None` ([findings](../../docs/goose-findings.md#a-case-function-call-missing-a-variant-doesnt-name-it)).
 
@@ -101,7 +103,7 @@ memory to pass a reference through instead. Two ways work:
   then holds `mail_slots × mail_size` bytes from the start, and every slot pays for the
   largest reply. Fine for replies with a known, small bound.
 - **Pieces.** The sender splits the reply into pieces of at most a slot, tagged `MORE`
-  until the `LAST`. The handler begins a chunked response at the first `Wake`, sends each
+  until the `LAST`. The handler begins a chunked response at the first `WAKE`, sends each
   piece as a chunk, and calls `http::later` again until `LAST`. `later` keeps the same
   address within an exchange, so the pieces need no new key, and the loop delivers the
   rest of a take to the exchange once `later` has made it wait again. This is what
