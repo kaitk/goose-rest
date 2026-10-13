@@ -130,7 +130,10 @@ JSON Schema.
 
 The subset grows with use. It starts with objects, arrays, strings with length and
 format, integers and numbers with bounds, enums, nullable fields, and `$ref`. A
-construct outside the subset is a generator error, not silently dropped.
+construct outside the subset is a generator error, not silently dropped. The
+[generator reference](../generator.md) lists the subset as built (task 003, 2026-10-13).
+`pattern` waits on anchors in Goose's `regex`
+([findings](../goose-findings.md#the-regex-module-has-no-anchors-so-json-schemas-pattern-cant-be-checked)).
 
 The OpenAPI JSON is the whole input: the Goose generator reads it and needs nothing else,
 so goose-rest itself needs no JavaScript toolchain. A schema format of goose-rest's own
@@ -174,6 +177,11 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
   order, then builds the struct with one literal, in place, with no copy. Each slice
   starts as `r.text[..0]`, not `""`. A limited-array field that a repeated key appends
   to overruns its capacity and aborts (§3.3): clear it first, or use the same pattern.
+- A nested object can't be read into a local and then put in the struct, for the same
+  reason. The reader records where each nested object or array starts, skips it, and
+  reads it inside the struct literal, so it too is built at its destination. A struct
+  built into a local and then returned costs no copy: the compiler builds it at the
+  caller's destination (task 003, 2026-10-13).
 - Keys dispatch on `match key.len`, then compare bytes. `key == "name"` already compares
   lengths first (§4.5), so the generator doesn't add `key.len == 4 &&`.
 - Recursion can't keep growable data across a recursive call, so a recursive schema (a
@@ -276,14 +284,16 @@ live there; it is `App`.
 ```text
 api.ts              the document, typed to the subset (optional)    (written)
 api.json            the OpenAPI subset                              (written, or from api.ts)
-api.gen.goose       types, readers, writers, router                 (generated)
+api_gen.goose       types, readers, writers, router                 (generated)
 app.goose           handlers, security checks, application state    (written)
 main.goose          workers and middleware                          (written)
 ```
 
-The build runs `goose-rest gen api.json -o api.gen.goose`, after writing `api.json`
-from `api.ts` where there is one. Whether the generated files are committed is open.
-Committing them shows each schema change as a diff in review.
+The build runs `goose-rest gen api.json -o api_gen.goose`, after writing `api.json`
+from `api.ts` where there is one. The generated file is `api_gen.goose`, not
+`api.gen.goose`, because an import names a module by identifiers separated by dots
+(2026-10-13). Whether the generated files are committed is open. Committing them shows
+each schema change as a diff in review.
 
 ```json
 "paths": {
@@ -302,43 +312,56 @@ Committing them shows each schema change as a diff in review.
 "components": { "schemas": {
   "ProjectCreate": { "type": "object", "required": ["name"], "additionalProperties": false,
     "properties": { "name":  {"type": "string", "minLength": 1, "maxLength": 120},
-                    "color": {"type": "string", "pattern": "^#[0-9a-f]{6}$"} } }
+                    "color": {"type": "string", "maxLength": 7} } }
 }}
 ```
 
-The generator writes plain Goose, read and debugged like any other file, never edited:
+The generator writes plain Goose, read and debugged like any other file, never edited.
+The types, readers, and writers are built (task 003); this is its output for
+`ProjectCreate`, shortened, and the [reference](../generator.md) has the rest. The
+router below them is proposed (task 008).
 
 ```goose
 namespace api;
 
-struct ProjectCreate { name: u8[..480], has_color: bool, color: u8[] }
+struct ProjectCreate { name: u8[..480], has_color: bool, color: u8[..28] }
 
-// Reads and validates in one pass, then builds the value once. Errors are
-// sticky, as json::Reader's are.
-fn read(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
+// Reads the ProjectCreate at the cursor, checks it, and builds it once. Errors
+// are sticky, as json::Reader's are: after one, it returns an empty value.
+fn read_project_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
     var name = r.text[..0];
+    var has_name = false;
     var color = r.text[..0];
-    var seen_name = false;
     var has_color = false;
     json::each_member(r) { key =>
         match key.len {
-            4 => if key == "name" { name = json::read_string(r, scratch); seen_name = true; }
-                 else { rest::unknown(r, key); },
+            4 => if key == "name" { name = json::read_string(r, scratch); has_name = true; }
+                 else { json::fail(r, "unknown member"); },
             5 => if key == "color" { color = json::read_string(r, scratch); has_color = true; }
-                 else { rest::unknown(r, key); },
-            _ => rest::unknown(r, key),       // additionalProperties: false
+                 else { json::fail(r, "unknown member"); },
+            _ => json::fail(r, "unknown member"),     // additionalProperties: false
         }
     };
-    guard seen_name else { rest::invalid(r, "name", "required"); }
-    let n = rest::code_points(name);
-    guard n >= 1 && n <= 120 else { rest::invalid(r, "name", "length"); }
+    if !has_name { json::fail(r, "name: required"); }
+    {
+        let n_ = rest::code_points(name);             // -1 unless UTF-8
+        if n_ < 0 { json::fail(r, "name: not UTF-8"); }
+        if n_ >= 0 && n_ < 1 { json::fail(r, "name: minLength"); }
+        if n_ > 120 { json::fail(r, "name: maxLength"); }
+    }
+    ...                                               // color's maxLength
+    if r.error.len > 0 { return ProjectCreate { .. }; }
     return ProjectCreate { name: name, has_color: has_color, color: color };
 }
 
-// Writes only declared fields, each key's bytes a constant.
-fn format(out: u8[>..]&, p: const Project&) {
-    out.append("{\"id\":");   json::format_int(out, p.id);
-    out.append(",\"name\":"); json::format_string(out, p.name);
+// Writes only the declared fields, each key's bytes a constant.
+fn format(out: u8[>..]&, v: const ProjectCreate&) {
+    out.append("{\"name\":");
+    json::format_string(out, v.name);
+    if v.has_color {
+        out.append(",\"color\":");
+        json::format_string(out, v.color);
+    }
     out.push('}');
 }
 
@@ -366,8 +389,9 @@ fn dispatch(cx: rest::Cx&, app: app::App&) {
 Each handler call is typed from its operation. A missing `app::get_project`, or one
 whose `id` isn't an `i64`, fails to compile, which keeps schema and code in step
 without Elysia's dry run and fingerprint. `/health` names no `security`, so no session
-code is generated for it. `rest::unknown` copies the key with `str()` or leaves it out
-of the message, since it is a slice of the request.
+code is generated for it. A reader's errors are static text, a property name and a
+keyword, because the reader's error is a slice and the key is a slice of the request;
+`json::Reader`'s `error_at` locates the member.
 
 ### Waiting on another thread
 

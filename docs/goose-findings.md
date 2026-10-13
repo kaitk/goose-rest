@@ -122,3 +122,27 @@ Workaround: push through a named function that takes both arrays,
 the block. Binding `let p = read(scratch)` first is refused too, since `p` isn't
 fixed-size and isn't copied implicitly (§4.1). The generated array readers push each
 element this way: `json::each_element` takes the element's reader as a block.
+
+## The regex module has no anchors, so JSON Schema's pattern can't be checked
+
+Found on `a6249a4`, task 003. Status: open
+
+`regex::compile` refuses `^`, `$`, `\A` and `\z`, as `stdlib.md` documents. JSON
+Schema's `pattern` is an ECMA-262 regex that matches anywhere in the string, so schemas
+anchor it to mean the whole string, `"^#[0-9a-f]{6}$"`. Without anchors, neither form
+can be checked: an unanchored search finds the pattern anywhere, and comparing the
+first match's span with the string's is wrong under leftmost-first matching (`a|ab` on
+`ab` matches `a`). Expected: `^` and `$`, or a full-match function.
+
+    import std;
+    import regex;
+
+    fn main() {
+        var err: u8[>..] = [];
+        let re = regex::compile("^#[0-9a-f]{6}$", err);
+        print(err);
+    }
+
+    regex: anchors are not supported at offset 0 in ^#[0-9a-f]{6}$
+
+Workaround: none. The generator refuses `pattern` (docs/generator.md).

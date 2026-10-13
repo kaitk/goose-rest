@@ -49,7 +49,7 @@ directory. What only one machine needs, such as where its Goose checkout is, goe
 
 ## Generated code
 
-- Generated `.gen.goose` files are never edited by hand. Change the generator or the
+- Generated `_gen.goose` files are never edited by hand. Change the generator or the
   schema, and regenerate.
 - A schema construct outside the supported subset is a generator error that names the
   construct and its JSON pointer, never silently dropped.

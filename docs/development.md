@@ -64,12 +64,30 @@ breaking changes, expect each move to need code changes here.
    main()"), so the tests' roots check it.
 2. `scripts/test-unit.sh`, which runs each `test/test_*.goose` through TinyCC. Each test
    asserts what it tests and exits nonzero on the first failed `assert`.
-3. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
+3. The generator on each schema under `test/gen/`, whose output must match the golden
+   `_gen.goose` beside it byte for byte. A change to the generator regenerates them
+   ([generator.md](generator.md#tests)).
+4. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it. The compiler's own lines (`parsed ok`, `typechecked ok`, `bce`) go to standard
    error and aren't compared. TinyCC can't run threads, so a `main.goose` that calls
    `thread_spawn` (spike 06) is built with `goose build` into `build/spike` and run
    from there.
-4. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function.
+5. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function.
+
+A test can import a module of the package by name once its root declares the package:
+`test/test_generator.goose` declares `import rest from "../";` and then imports
+`gen/gen.goose` as `import rest.gen.gen;`.
+
+Goose traps met while writing the generator and its tests (2026-10-13):
+
+- A `"""` string must start its text on the line after the `"""` if it spans lines.
+  Keep a one-line JSON document on one line.
+- A slice that starts as `""` can't later point into a buffer, nor into the JSON
+  document: start it from that buffer (`r.text[..0]`), or return it from a function
+  (spike 05).
+- An optional reference field is rebound with `.=`, not assigned: `ty.minimum .= n`.
+- Mutually recursive emitters need `recursive fn`; split them instead where one level
+  is enough (`write_value` and `write_one`).
 
 ```sh
 GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh

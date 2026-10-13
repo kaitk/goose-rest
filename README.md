@@ -22,7 +22,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything (task 001) |
 | 🟢 | Language checks | Spikes 01–05 pass on `a6249a4`, three with workarounds the design takes |
 | 🟢 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest`, pass on `a6249a4` (task 002) |
-| 🔴 | Generator | Types, readers, and writers from OpenAPI (task 003) |
+| 🟢 | Generator | Types, readers, and writers from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md), task 003) |
 | 🔴 | Runtime | Context, routes, errors, extractors, middleware (tasks 004–006) |
 | 🔴 | Generated router | If measurement justifies it (tasks 007, 008) |
 | 🔴 | Waiting on another thread | Task 009 |
@@ -32,10 +32,12 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 
 ```text
 rest.goose     the package's entry, namespace rest
-test/          unit tests, test_*.goose, each a root file
+check.goose    the checks generated readers call: code points, string formats
+gen/           goose-rest gen, the generator (gen/main.goose)
+test/          unit tests, test_*.goose, each a root file; test/gen/ golden files
 scripts/       test.sh runs every test; test-unit.sh the unit tests alone
 spikes/        language checks the design relies on, one folder each with a README
-docs/          architecture, development setup, Goose findings
+docs/          architecture, generator reference, development setup, Goose findings
 tasks/         task tracking (tasks/README.md)
 ```
 
