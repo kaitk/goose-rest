@@ -112,13 +112,15 @@ interleaved runs:
 - [x] goose-rest gathers bodies larger than the read buffer up to a route's limit
 - [x] goose-rest serves tiers A to D, and passes goose-http's `bench/rest/check.py`
       (macOS, 2026-10-14, both loops and both JSON ways)
-- [ ] Axum, actix-web, and dusty serve them through their routers, extractors, and
+- [x] Axum, actix-web, and dusty serve them through their routers, extractors, and
       middleware, built in release mode (`ReleaseFast` for dusty) in their fastest
-      documented configuration, with the same worker count
+      documented configuration, with the same worker count (macOS checks, 2026-10-14;
+      each entry's `NOTES.md` has its configuration and the TechEmpower commit it follows)
 - [ ] Where a framework answers an error before the handler (a 404, 405, or bad query)
       differently from the checker's expectation, the difference is recorded beside its
-      rows, not worked around with a catch-all route
-- [ ] Tiers F, R, and M served by every framework, each with a checker
+      rows, not worked around with a catch-all route (recorded in each entry's
+      `NOTES.md`; goes beside the rows once there are results)
+- [x] Tiers F, R, and M served by every framework, each with a checker
 - [ ] Measured against goose-http alone with goose-http's `bench/rest.sh`, wrapped by
       goose-rest's `bench/rest.sh`, which runs tiers F, R, and M itself
 - [ ] Instruction counts from `count.sh`
