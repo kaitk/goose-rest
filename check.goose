@@ -1,8 +1,18 @@
 // Checks the generated JSON readers call: a string's length in code points,
-// and the string formats the generator supports.
+// and the string formats the generator supports. And the number writer the
+// generated writers call.
 namespace rest;
 
 import std;
+
+// v as a JSON number, null for NaN or an infinity, which JSON lacks. std's
+// text of a double reads back as it, and is valid JSON. json::format_number
+// writes the shortest form, but a thread can't call it: it reads a global
+// that holds a slice (docs/goose-findings.md).
+fn format_number(out: u8[>..]&, v: f64) {
+    if v != v || v - v != 0.0 { out.append("null"); return; }
+    format(out, v);
+}
 
 // The code points in s, or -1 when s isn't UTF-8 (RFC 3629). JSON Schema's
 // minLength and maxLength count code points, and a string that passes a

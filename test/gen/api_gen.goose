@@ -496,7 +496,7 @@ fn format(out: u8[>..]&, v: const Project&) {
     format(out, v.status);
     if v.has_budget {
         out.append(",\"budget\":");
-        json::format_number(out, v.budget);
+        rest::format_number(out, v.budget);
     }
     if v.has_priority {
         out.append(",\"priority\":");
@@ -529,7 +529,7 @@ fn format(out: u8[>..]&, v: const Project&) {
         out.push('[');
         for e_, i_ in v.scores {
             if i_ > 0 { out.push(','); }
-            json::format_number(out, e_);
+            rest::format_number(out, e_);
         }
         out.push(']');
     }

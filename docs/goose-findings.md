@@ -146,3 +146,37 @@ first match's span with the string's is wrong under leftmost-first matching (`a|
     regex: anchors are not supported at offset 0 in ^#[0-9a-f]{6}$
 
 Workaround: none. The generator refuses `pattern` (docs/generator.md).
+
+## A thread can't read a string-literal global, so json::format_number fails in a thread
+
+Found on `a6249a4`, task 004. Status: open
+
+A global initialized with a string literal, `let PAIRS = "0001";` or `const PAIRS =
+"0001";`, is a slice of static data, and a function a `thread_fn` reaches can't read it:
+the compiler refuses it as a global that holds references. §11.2 says the opposite:
+"`const` globals with compile-time initializers are static data (§1.2), read-only and
+therefore shared as they are." The stdlib's `json::format_number` reads such a global,
+`DIGIT_PAIRS`, in `put_digits`, so no thread can write a JSON number with it, and every
+goose-http server answers requests on threads. Expected: the literal global is shared,
+as §11.2 says, or the stdlib declares its table flat.
+
+    import std;
+
+    let PAIRS = "0001";
+    // let PAIRS: u8[4] = "0001";   // builds
+
+    thread_fn worker(i: i64) { print(PAIRS[i]); }
+
+    fn main() { thread_wait(thread_spawn(worker, 1)); }
+
+    error: thread programs may access only flat globals (§11.2): PAIRS holds references
+    (reached from thread_fn worker)
+
+The same error comes from a `thread_fn` that calls `json::format_number(out, 0.5)`,
+pointing at `stdlib/json.goose:144`.
+
+Workaround: the generated writers call `rest::format_number` (`check.goose`), which
+writes `null` for NaN and the infinities and std's text of the double otherwise. That
+text reads back as the same double and is valid JSON, but isn't always the shortest
+form `json::format_number` writes. Declaring the table as `let DIGIT_PAIRS: u8[200] =
+"..."` would fix the stdlib.
