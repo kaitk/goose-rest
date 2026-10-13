@@ -1,0 +1,51 @@
+-- /report: 1 wake(s), state Report { 3, 1, 10 }
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 48
+
+{"org":3,"from":1,"to":10,"days":10,"total":165}
+database: 192 bytes whole: FULL; in 3 pieces of at most 64
+-- /export: 3 wake(s), state Export { 7, 3, 192 }
+HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+Content-Type: text/csv
+
+40
+7,0,0
+7,1,1
+7,2,4
+7,3,9
+7,4,16
+7,5,25
+7,6,36
+7,7,49
+7,8,64
+7,9,8
+40
+1
+7,10,100
+7,11,121
+7,12,144
+7,13,169
+7,14,196
+7,15,225
+7,16,256
+40
+
+7,17,289
+7,18,324
+7,19,361
+7,20,400
+7,21,441
+7,22,484
+7,23,529
+
+0
+
+
+-- /nothing: 0 wake(s), state Waiting.None
+HTTP/1.1 404 Not Found
+Content-Type: text/plain
+Content-Length: 0
+
+
