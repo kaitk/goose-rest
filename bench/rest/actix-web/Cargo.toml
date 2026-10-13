@@ -1,0 +1,29 @@
+[package]
+name = "rest-actix-web"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Crates and features as TechEmpower's actix entry has them for its actix-web
+# server (NOTES.md), at current versions; tokio at goose-http's
+# bench/rest/hyper pin. actix-multipart, actix-cors, futures-util, and
+# serde_json's ordered Value for tier F are what the routes add.
+[dependencies]
+rest-app = { path = "../rust-app" }
+actix-cors = "0.7.2"
+actix-http = "3.12"
+actix-multipart = { version = "0.8.5", default-features = false }
+actix-server = "2"
+actix-service = "2"
+actix-web = "4.16.0"
+futures-util = { version = "0.3", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+snmalloc-rs = "0.7.6"
+tokio = "=1.53.2"
+
+# TechEmpower's actix profile.
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1

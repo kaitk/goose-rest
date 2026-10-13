@@ -1,0 +1,33 @@
+[package]
+name = "rest-axum"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Crates and features as TechEmpower's axum entry has them (NOTES.md), at
+# current versions; tokio, hyper, and hyper-util at goose-http's
+# bench/rest/hyper pins. axum-extra's cookies, tower-http's limit and CORS,
+# http-body-util, multer, axum's multipart parser, and serde_json's ordered
+# Value for tier F are what the routes add.
+[dependencies]
+rest-app = { path = "../rust-app" }
+axum = { version = "0.8.9", default-features = false, features = ["json", "query", "http1", "tokio"] }
+axum-extra = { version = "0.12.6", default-features = false, features = ["cookie"] }
+futures-util = { version = "0.3", default-features = false }
+http-body-util = "0.1.5"
+multer = "=3.1.0"
+hyper = { version = "=1.12.0", features = ["server", "http1"] }
+hyper-util = { version = "=0.1.21", features = ["tokio", "server-auto", "http1"] }
+mimalloc = "0.1.52"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+socket2 = { version = "0.6", features = ["all"] }
+tokio = { version = "=1.53.2", features = ["full"] }
+tower = { version = "0.5.2", features = ["util"] }
+tower-http = { version = "0.7.1", features = ["set-header", "limit", "cors"] }
+
+# TechEmpower's axum profile.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
