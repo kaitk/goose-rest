@@ -49,8 +49,8 @@ update the pin in `README.md` and the table above.
 
 goose-rest imports goose-http by its full commit hash; git can't fetch an abbreviated
 one. Move it to a pushed commit of goose-http's `main`, in its own commit, once the
-tests pass. The hash appears in `rest.goose`, in each root file under `test/`, and in
-the README's Pins table and Use section; change all of them. A root that declares
+tests pass. The hash appears in `rest.goose`, in each root file under `test/` and
+`bench/routes/`, and in the README's Pins table and Use section; change all of them. A root that declares
 goose-http at another commit than `rest.goose` gets a warning, and from another source
 an error, so a test can't point at a local goose-http checkout instead. Until goose-http's task 027 lands its
 breaking changes, expect each move to need code changes here.
@@ -113,6 +113,28 @@ $GOOSE build -o build/spike06 spikes/06-resume-waiting/main.goose && build/spike
 Its README gives the exact commands, including any `goose -O2 -o file.c` that reads the
 generated C, and the output it expects. When a pin move changes a spike's output on
 purpose, update its README and its `expected.txt` together.
+
+## Count instructions per request
+
+goose-http's `bench/count.sh` counts a server's user instructions with Linux `perf`, and
+macOS has none. `bench/routes.sh` uses its load on macOS instead: the server runs under
+`/usr/bin/time -l`, whose "instructions retired" include the kernel's, and the count is
+divided by the requests (goose-http's development.md, "macOS"). Docker Desktop's VM
+exposes no hardware counters, so `perf` can't run there either.
+
+```sh
+GOOSE=$PWD/../goose-upstream/build-macos/goose bench/routes.sh
+```
+
+Traps met measuring task 007 (2026-10-13, h2load 1.70.0):
+
+- h2load counts a 4xx response as "failed", not "succeeded", and `count.sh` exits unless
+  every request succeeded. `bench/routes.sh` checks h2load's status-code line instead.
+- `h2load -d /dev/null` fails with "Could not mmap file" at `-t 8`; an empty regular
+  file can't be mapped either.
+- h2load's POSTs ran at a tenth of its GETs' rate against the same server, which kept
+  the connection open: about 35,000 requests a second against 330,000. The kernel's
+  share then buries a router's cost, so `bench/routes.sh` sends only GETs.
 
 ## Use the package from git
 
