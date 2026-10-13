@@ -1,0 +1,5 @@
+# Zig 0.16 fetches packages beside build.zig.zon, and caches and installs here
+# when built in place rather than from a copy (NOTES.md).
+zig-pkg/
+.zig-cache/
+zig-out/
