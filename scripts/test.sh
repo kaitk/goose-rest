@@ -2,7 +2,8 @@
 # Runs every test this repository has, and fails on the first failure: the
 # typecheck of each root file under test/, the unit tests through TinyCC
 # (scripts/test-unit.sh), the generator's output for each schema under
-# test/gen/ against its golden file, then each spike, whose output must match the
+# test/gen/ and examples/ against its golden file, each example served and
+# requested (scripts/test-examples.sh), then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
 # also keep main as its only Goose function: everything else inlined. And
@@ -33,12 +34,16 @@ step "test-unit.sh"
 # committed source byte for byte. test_gen.goose, among the unit tests,
 # compiles one and round-trips JSON through it.
 mkdir -p "$root/build/gen"
-for f in "$root"/test/gen/*.json; do
+for f in "$root"/test/gen/*.json "$root"/examples/*/api.json; do
     name=$(basename "$f" .json)
+    dir=$(dirname "$f")
     step "gen ${f#"$root"/}"
     "$goose" "$root/gen/main.goose" -- gen "$f" -o "$root/build/gen/${name}_gen.goose"
-    diff -u "$root/test/gen/${name}_gen.goose" "$root/build/gen/${name}_gen.goose"
+    diff -u "$dir/${name}_gen.goose" "$root/build/gen/${name}_gen.goose"
 done
+
+step "test-examples.sh"
+"$root/scripts/test-examples.sh"
 
 mkdir -p "$root/build"
 for f in "$root"/spikes/*/main.goose "$root"/spikes/*/*/main.goose; do

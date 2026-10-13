@@ -22,7 +22,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything |
 | 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape ([below](#errors)) |
 | 🟢 | Extractors | Path, query, header, and cookie parameters; `take<T>` for a JSON body or a program's own type; `once` ([below](#extractors)) |
-| 🔴 | Middleware, scopes, examples | Task 006 |
+| 🟢 | Middleware, scopes, examples | CORS, a bearer check, Server-Timing and the access log, prefix scopes ([below](#middleware)); a JSON API with and without a schema |
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
 | 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
 | 🔴 | Waiting on another thread | Task 009 |
@@ -31,20 +31,22 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 ## Layout
 
 ```text
-rest.goose     the package's entry, namespace rest
-runtime.goose  Cx, serve, route, fail, json, text, otherwise, and the error shape
-extract.goose  the extractors: parameters, headers, cookies, take, once
-check.goose    what generated code calls: code points, string formats, numbers
-gen/           goose-rest gen, the generator (gen/main.goose)
-test/          unit tests, test_*.goose, each a root file; test/gen/ golden files
-scripts/       test.sh runs every test; test-unit.sh the unit tests alone
-bench/         measurements: routes.sh counts the if chain's instructions (task 007)
-spikes/        language checks the design relies on, one folder each with a README
-docs/          architecture, generator reference, development setup, Goose findings
-tasks/         task tracking (tasks/README.md)
+rest.goose        the package's entry, namespace rest
+runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error shape
+extract.goose     the extractors: parameters, headers, cookies, take, once
+middleware.goose  CORS, bearer, timed, and scope
+examples/         a JSON API without a schema and one with a schema
+check.goose       what generated code calls: code points, string formats, numbers
+gen/              goose-rest gen, the generator (gen/main.goose)
+test/             unit tests, test_*.goose, each a root file; test/gen/ golden files
+scripts/          test.sh runs every test; test-unit.sh the unit tests alone
+bench/            measurements: routes.sh counts the if chain's instructions (task 007)
+spikes/           language checks the design relies on, one folder each with a README
+docs/             architecture, generator reference, development setup, Goose findings
+tasks/            task tracking (tasks/README.md)
 ```
 
-## Use
+## Quick start
 
 A program declares both packages in its root file, goose-http at the pin below and
 goose-rest at a pushed commit, each by its full hash:
@@ -55,32 +57,84 @@ import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 ```
 
 Build it with `goose build`: a server reaches `thread_spawn`, which `goose run` (TinyCC)
-can't run.
+can't run. Two examples serve a small projects API, and `scripts/test.sh` builds and
+requests each:
+
+| Example | What it shows |
+|---|---|
+| [`examples/plain/`](examples/plain/main.goose) | Without a schema: routes in an `http::router` chain under a scope, extractors, a hand-written body reader, and the middleware |
+| [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose` |
+
+```sh
+goose build -o build/examples/plain examples/plain/main.goose
+build/examples/plain 8080
+curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
+     -d '{"name": "goose"}' localhost:8080/v1/projects
+```
 
 A worker serves with `rest::serve`, which calls its block with a `rest::Cx` for each
 request whose body has come whole. A route runs inside `rest::route`, so that `rest::fail`
-answers from any depth below it:
+answers from any depth below it. From `examples/plain/`:
 
 ```goose
-thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx =>
-        var r = http::router(cx.req);
-        if http::on(r, "GET", "/projects/:id") {
-            rest::route(cx) {
-                let id = rest::param_int(cx, r, "id");   // 400 unless an integer
-                rest::json(cx, 200, find_project(cx, id));   // fails 404 itself
-            };
-        } else {
-            rest::otherwise(cx, r);           // 404, or 405 with Allow
-        }
+fn handle(cx, app: App&) {
+    rest::timed(cx) {                                  // Server-Timing and the access log
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+            var r = http::router(cx.req);
+            if http::on(r, "GET", "/health") {
+                rest::text(cx, 200, "ok");
+            } else if rest::scope(r, "/v1") {          // the rest of the path, under /v1
+                rest::route(cx) { projects(cx, app, r); };
+            } else {
+                rest::otherwise(cx, r);                // 404, or 405 with Allow
+            }
+        };
     };
+}
+
+fn projects(cx, app: App&, r: http::Router&) {
+    if http::on(r, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, r, "id")));
+    } else if http::on(r, "POST", "/projects") {
+        rest::bearer(cx) { token =>                    // 401 without a bearer token
+            guard token == app.token else { rest::invalid_token(cx); }
+            let body = rest::take<ProjectCreate>(cx);  // 415, or 400 with the reader's error
+            rest::json(cx, 201, app.projects.push(Project { id: app.projects.len + 1, name: body.name }));
+        };
+    } else {
+        rest::otherwise(cx, r);
+    }
+}
+
+thread_fn worker(cfg: http::Config) {
+    var projects: Project[>..] = [];
+    var app = App { projects: projects, token: "secret" };
+    let e = rest::serve(cfg) { cx => handle(cx, app) };
     if e.code != 0 { http::report(e); }
 }
 ```
 
 `rest::serve(cfg, fresh)` keeps per-request state as well: `cx.state` starts from `fresh`
 for each request. `rest::json` writes a value through its type's `format` overload, which
-the generator writes for each schema.
+the generator writes for each schema. Workers share nothing, so state that every worker
+must see lives on a thread of its own ([architecture](docs/architecture/README.md)).
+
+## Middleware
+
+Middleware is a block around the routes it applies to, inlined into the handler: a scope
+can have its own, and a public route none.
+
+| Call | Does |
+|---|---|
+| `rest::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` to the answer, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `rest::timed(cx, false)` skips the log. |
+| `rest::cors(cx, rest::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
+| `rest::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `rest::invalid_token(cx)` refuses one. `rest::bearer_token(cx)` returns it, for a generated router's security check. |
+| `rest::scope(r, "/v1")` | Whether the path starts with the prefix at a segment boundary; the routes inside match the rest. `rest::otherwise` answers 404, 405, and OPTIONS across scopes. |
+
+`timed` and `cors` go outside `rest::route`, so that the errors it answers get their
+fields; `bearer` and anything else that fails goes inside it. A request has one route:
+routes nested in routes don't inline ([architecture](docs/architecture/README.md#inlining)).
+An answer written later, when a waiting route resumes, gets neither middleware's fields.
 
 ## Extractors
 
@@ -132,6 +186,9 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 | 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
 | 400 | `invalid_parameter`, with `detail` | the [extractors](#extractors), `rest::fail_param`, and the generated router: a parameter missing, malformed, or outside its schema, as `id: integer`, `q: required`, or `page: minimum` |
 | 400 | `bad_path` | `rest::otherwise`: a path with a dot-segment or an escaped control byte |
+| 401 | `unauthenticated`, with `WWW-Authenticate: Bearer` | `rest::bearer`: no bearer token |
+| 401 | `invalid_token`, with `WWW-Authenticate: Bearer error="invalid_token"` | `rest::invalid_token(cx)` |
+| 403 | `origin_not_allowed` | `rest::cors`: an `Origin` it doesn't list |
 | 404 | `not_found` | `rest::otherwise`: no route's path matched |
 | 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
 | 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type |

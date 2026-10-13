@@ -1,0 +1,16 @@
+GET /health 200 ok
+GET /v1/projects 200 []
+POST /v1/projects 401 {"error":"unauthenticated"}
+POST /v1/projects 201 {"id":1,"name":"goose"}
+POST /v1/projects 201 {"id":2,"name":"gander"}
+POST /v1/projects 400 {"error":"invalid_body","detail":"unknown member","at":26}
+POST /v1/projects 415 {"error":"unsupported_media_type"}
+GET /v1/projects?q=go 200 [{"id":1,"name":"goose"}]
+GET /v1/projects?limit=1 200 [{"id":1,"name":"goose"}]
+GET /v1/projects?limit=0 400 {"error":"invalid_parameter","detail":"limit: minimum"}
+GET /v1/projects/2 200 {"id":2,"name":"gander"}
+GET /v1/projects/0 400 {"error":"invalid_parameter","detail":"id: minimum"}
+DELETE /v1/projects/1 204
+GET /v1/projects/1 404 {"error":"project_not_found"}
+PUT /v1/projects 405 {"error":"method_not_allowed"}
+GET /nope 404 {"error":"not_found"}

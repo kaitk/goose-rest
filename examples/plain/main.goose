@@ -1,0 +1,133 @@
+// A JSON API without a schema: projects kept in memory, behind the access
+// log and Server-Timing, CORS, and a bearer token for the writes. One worker,
+// since workers share nothing and the projects live in the worker.
+//
+//   goose build -o build/examples/plain examples/plain/main.goose
+//   build/examples/plain 8080
+//   curl -s localhost:8080/v1/projects
+//   curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
+//        -d '{"name": "goose"}' localhost:8080/v1/projects
+import std;
+import os;
+import json;
+import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
+import rest from "../../";
+
+struct Project { id: i64, name: u8[..256], deleted: bool = false }
+
+// The worker's projects, which the handlers get by reference.
+struct App { projects: Project[>..]&, token: const u8[:] }
+
+// A project's JSON.
+fn format(out: u8[>..]&, p: const Project&) {
+    out.append("{\"id\":");
+    format(out, p.id);
+    out.append(",\"name\":");
+    json::format_string(out, p.name);
+    out.push('}');
+}
+
+// The projects whose name holds q, as a JSON array.
+struct Listing { projects: const Project[:], q: const u8[:] }
+
+fn format(out: u8[>..]&, l: const Listing&) {
+    out.push('[');
+    var first = true;
+    for p in l.projects {
+        if p.deleted || find(p.name, l.q) < 0 { continue; }
+        if !first { out.push(','); }
+        first = false;
+        format(out, p);
+    }
+    out.push(']');
+}
+
+// What POST /v1/projects takes: {"name": "..."}, 1 to 64 code points.
+struct ProjectCreate { name: u8[..256] }
+
+fn read_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
+    var name = r.text[..0];
+    var has_name = false;
+    json::each_member(r) { key =>
+        if key == "name" { name = json::read_string(r, scratch); has_name = true; }
+        else { json::fail(r, "unknown member"); }
+    };
+    if !has_name { json::fail(r, "name: required"); }
+    let n = rest::code_points(name);
+    if has_name && (n < 1 || n > 64) { json::fail(r, "name: length"); }
+    if r.error.len > 0 { return ProjectCreate { name: "" }; }
+    return ProjectCreate { name: name };
+}
+
+// rest::take<ProjectCreate> reads the body with read_create.
+fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
+    rest::json_body(cx) { r, scratch => read_create(r, scratch) }
+}
+
+fn find_project(cx, app: App&, id: i64) -> Project& {
+    for &p in app.projects {
+        if p.id == id && !p.deleted { return p; }
+    }
+    rest::fail(cx, 404, "project_not_found");
+}
+
+fn handle(cx, app: App&) {
+    rest::timed(cx) {
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+            var r = http::router(cx.req);
+            if http::on(r, "GET", "/health") {
+                rest::text(cx, 200, "ok");
+            } else if rest::scope(r, "/v1") {
+                rest::route(cx) { projects(cx, app, r); };
+            } else {
+                rest::otherwise(cx, r);
+            }
+        };
+    };
+}
+
+// The routes under /v1, inside the route.
+fn projects(cx, app: App&, r: http::Router&) {
+    if http::on(r, "GET", "/projects") {
+        let q, has_q = rest::query(cx, "q");
+        rest::json(cx, 200, Listing { projects: app.projects, q: q });
+    } else if http::on(r, "POST", "/projects") {
+        rest::bearer(cx) { token =>
+            guard token == app.token else { rest::invalid_token(cx); }
+            let body = rest::take<ProjectCreate>(cx);
+            let p .= app.projects.push(Project { id: app.projects.len + 1, name: body.name });
+            rest::json(cx, 201, p);
+        };
+    } else if http::on(r, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, r, "id")));
+    } else if http::on(r, "DELETE", "/projects/:id") {
+        rest::bearer(cx) { token =>
+            guard token == app.token else { rest::invalid_token(cx); }
+            let p .= find_project(cx, app, rest::param_int(cx, r, "id"));
+            p.deleted = true;
+            http::start(cx.out, 204);
+            http::finish(cx.out, "", "");
+        };
+    } else {
+        rest::otherwise(cx, r);
+    }
+}
+
+thread_fn worker(cfg: http::Config) {
+    var projects: Project[>..] = [];
+    var app = App { projects: projects, token: "secret" };
+    let e = rest::serve(cfg) { cx => handle(cx, app) };
+    if e.code != 0 { http::report(e); }
+}
+
+fn main() {
+    let a = args();
+    var port: i64 = 8080;
+    if a.len > 1 {
+        let p, ok = parse_int(a[1]);
+        if ok { port = p; }
+    }
+    assert(http::stop_on_signals() == 0);
+    let cfg = http::Config { port: port as i32, workers: 1, .. };
+    thread_wait(thread_spawn(worker, cfg));
+}

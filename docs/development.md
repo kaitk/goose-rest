@@ -64,15 +64,21 @@ breaking changes, expect each move to need code changes here.
    main()"), so the tests' roots check it.
 2. `scripts/test-unit.sh`, which runs each `test/test_*.goose` through TinyCC. Each test
    asserts what it tests and exits nonzero on the first failed `assert`.
-3. The generator on each schema under `test/gen/`, whose output must match the golden
-   `_gen.goose` beside it byte for byte. A change to the generator regenerates them
-   ([generator.md](generator.md#tests)).
-4. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
+3. The generator on each schema under `test/gen/` and `examples/`, whose output must
+   match the golden `_gen.goose` beside it byte for byte. A change to the generator
+   regenerates them ([generator.md](generator.md#tests)).
+4. `scripts/test-examples.sh`, which builds each example under `examples/`, serves it
+   on `127.0.0.1` from port 18081 up, sends the requests its `requests.sh` lists with
+   `curl`, and compares the answers with its `expected.txt`. A port in use there fails
+   the run.
+5. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it. The compiler's own lines (`parsed ok`, `typechecked ok`, `bce`) go to standard
    error and aren't compared. TinyCC can't run threads, so a `main.goose` that calls
    `thread_spawn` (spike 06) is built with `goose build` into `build/spike` and run
    from there.
-5. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function.
+6. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function, and
+   `test/inline_route.goose`'s, whose middleware, route, and failing helpers must all be
+   inlined into its handler.
 
 A test can import a module of the package by name once its root declares the package:
 `test/test_generator.goose` declares `import rest from "../";` and then imports

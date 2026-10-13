@@ -122,11 +122,18 @@ fn with_cors(scratch: u8[>..]&, common: const u8[:], c: Cors, origin: const u8[:
 // WWW-Authenticate: Bearer. The block refuses a token with invalid_token.
 // It goes inside rest::route, as any code that fails does.
 inline fn bearer<F>(cx) {
+    F(bearer_token(cx));
+}
+
+// The request's bearer token, or a failure, 401 unauthenticated with
+// WWW-Authenticate: Bearer, as rest::bearer gives it. For a generated
+// router's security_<scheme> function.
+fn bearer_token(cx) -> const u8[:] {
     let scheme, token, found = http::authorization(cx.req);
     guard found && token.len > 0 && http::same_name(scheme, "bearer") else {
         fail_auth(cx, "unauthenticated", "Bearer");
     }
-    F(token);
+    return token;
 }
 
 // Fails the enclosing route with 401 invalid_token and WWW-Authenticate:
