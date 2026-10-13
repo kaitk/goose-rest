@@ -6,7 +6,7 @@
 // through TinyCC.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
+import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
 import rest from "../";
 import .gen.routes_gen;
 import .gen.app;

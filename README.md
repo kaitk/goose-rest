@@ -52,7 +52,7 @@ A program declares both packages in its root file, goose-http at the pin below a
 goose-rest at a pushed commit, each by its full hash:
 
 ```goose
-import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96bb3bcf8";
+import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
 import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 ```
 
@@ -215,7 +215,7 @@ The first answer wins: a route that answers and then fails keeps its answer.
 | What | Pin | Why |
 |---|---|---|
 | Goose compiler | `aardappel/goose` `a6249a4` (`master`, 2026-10-13) | The language and stdlib change often |
-| goose-http | `kaitk/goose-http` `cfb9c02` (`main`, 2026-10-13) | Its API is still changing (its task 027) |
+| goose-http | `kaitk/goose-http` `e27ab21` (`main`, 2026-10-13) | Its API is still changing (its task 027) |
 
 Move each pin in its own commit, with the spikes and tests rerun
 ([development.md](docs/development.md#move-the-pin)).
