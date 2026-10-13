@@ -71,6 +71,41 @@ item (200), `/api/me` without a user (401), an unknown path (404), a malformed p
 parameter (400), and tier M's item. Both share the HTTP layer, so the difference is the
 framework's. It compares Goose builds only.
 
+## macOS preview (2026-10-14)
+
+Not results: macOS has no `perf`, so these counts include the kernel's instructions and
+spread by about 30 per request between runs (goose-http's development.md, "macOS"). They
+show where to look on Linux. Apple M1 Pro, macOS 26.3.1 (Darwin 25.3.0), load average
+5-6; goose-rest `fe6cbf2`, Goose `0bdbd18`, both servers built with `goose build --cc
+gcc --standalone` (Apple clang 21); one worker, epoll loop. Each case: h2load 1.70.0
+`--h1 -n 2000000 -c 256 -m 16 -t 8` with count.sh's headers, the server under
+`/usr/bin/time -l`, instructions retired divided by the requests, the median of 3
+interleaved runs:
+
+| Case | goose-http alone | goose-rest |
+|---|---:|---:|
+| Tier A `GET /api/items/1`, 200 | 20,151 | 20,126 |
+| Tier A `GET /api/me` without a user, 401 | 20,362 | 20,657 |
+| Tier A `GET /nothing`, 404 | 18,704 | 19,045 |
+| Tier M `GET /api/items/1` without a token, 401 | | 24,871 |
+| Tier F `GET /` | 17,980 (bare) | 18,007 |
+| Tier F `GET /id/1?name=bun` | 18,667 (bare) | 18,940 |
+| Tier R, route 1, `GET /authorizations`: if chain, generated | | 19,038, 18,604 |
+| Tier R, route 201, `GET /user/keys/id201`: if chain, generated | | 61,284, 19,291 |
+
+- On a tier A item, goose-rest costs nothing measurable over goose-http alone.
+- Its 401 and 404 cost about 300 more, but answer with a JSON body where goose-http's
+  server sends none, so the two aren't the same answer.
+- Tier F's `/id` costs about 270 more through `rest::param` and `rest::query` than
+  through goose-http's router and query; look at it with perf.
+- The if chain pays about 210 instructions per route it passes, 42,000 more at route 201
+  of 203, where the generated router stays flat; it costs 430 less on the first route
+  too.
+- Tier M's stack adds about 4,200 to a 401. `sample` puts it in the inlined middleware
+  (Server-Timing's insertion and formatting, CORS), in field lookups
+  (`http::authorization`, `http::field_in`) for the bearer token and Origin, and in
+  reading the clock twice (`mach_absolute_time`).
+
 ## Acceptance criteria
 
 - [x] goose-rest answers errors in a shape the program chooses
