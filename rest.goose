@@ -11,6 +11,7 @@ import .check;
 import .runtime;
 import .extract;
 import .middleware;
+import .waiting;
 
 // The path a route matches: the request target without its query, as goose-http
 // reads it.

@@ -447,7 +447,9 @@ keyword, because the reader's error is a slice and the key is a slice of the req
 
 ### Waiting on another thread
 
-Checked by spike 06; the API is task 009's. Goose can't store a function to call later, so the
+Checked by spike 06; built by task 009 in `waiting.goose`, whose header and
+`examples/waiting/` show the API as built: `rest::ask`, `rest::woken`, `rest::answer`,
+and `rest::relay`. Goose can't store a function to call later, so the
 per-request state holds a fixed-mode enum of what each waiting route needs, and the app
 writes a case function per variant. The compiler dispatches on the tag and checks that
 every variant has its case (§8.2). The enum is fixed-mode because each request

@@ -25,7 +25,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Middleware, scopes, examples | CORS, a bearer check, Server-Timing and the access log, prefix scopes ([below](#middleware)); a JSON API with and without a schema |
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
 | 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
-| 🔴 | Waiting on another thread | Task 009 |
+| 🟢 | Waiting on another thread | `rest::ask`, resuming through the program's `Waiting` enum, replies of any size in pieces (`waiting.goose`, `examples/waiting/`) |
 | 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
 
 ## Layout
@@ -35,6 +35,7 @@ rest.goose        the package's entry, namespace rest
 runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error shape
 extract.goose     the extractors: parameters, headers, cookies, take, once
 middleware.goose  CORS, bearer, timed, and scope
+waiting.goose     ask another thread, and resume with its reply
 examples/         a JSON API without a schema and one with a schema
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)
@@ -64,6 +65,7 @@ requests each:
 |---|---|
 | [`examples/plain/`](examples/plain/main.goose) | Without a schema: routes in an `http::router` chain under a scope, extractors, a hand-written body reader, and the middleware |
 | [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose` |
+| [`examples/waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a mailbox message |
 
 ```sh
 goose build -o build/examples/plain examples/plain/main.goose

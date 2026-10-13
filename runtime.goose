@@ -10,28 +10,53 @@ import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9
 // application's per-request state, which goose-http keeps in the
 // connection's slot and starts from fresh for each request, and scratch
 // for what the extractors decode, which lasts until the handler returns.
+// When a route that asked another thread resumes (rest::woken), kind is
+// http::WAKE, and reply, tag, and more hold the reply (waiting.goose); req
+// is then empty. slot is the size of a reply message, Config.mail_size.
 struct Cx<S> {
     req: const http::Request&,
     body: const u8[:],
     out: http::Reply,
     state: S&,
     scratch: u8[>..]&,
+    kind: u8 = 0,
+    reply: const u8[:] = "",
+    tag: i32 = 0,
+    more: bool = false,
+    slot: i64 = 0,
 }
 
 // The per-request state of a program that keeps none.
 struct NoState { unused: bool = false }
 
 // Serves cfg with goose-http's loop, calling H(cx) for each request once its
-// body has come whole. A chunked body too long to come whole is answered 413
-// by goose-http.
+// body has come whole, and again when a route that asked another thread gets
+// its reply (waiting.goose). A chunked body too long to come whole is
+// answered 413 by goose-http.
 fn serve<S, H>(cfg: http::Config, fresh: S) -> http::Error {
     return http::serve(cfg, fresh) { ev, st, out =>
-        if http::whole_only(ev, out) {
-            var scratch: u8[>..] = [];
-            var cx = Cx<S> { req: ev.req, body: ev.data, out: out, state: st, scratch: scratch };
-            H(cx);
-        }
+        on_event(ev, st, out, cfg.mail_size) { cx => H(cx) };
     };
+}
+
+// What serve does with each of goose-http's events: H(cx) at REQUEST and at
+// the first message of a reply; the later pieces of a reply relay sends on
+// itself; and 504 when a reply doesn't come in time. A reply cut short by
+// its time limit leaves the response open, and goose-http closes the
+// connection.
+inline fn on_event<S, H>(ev: http::Event, st: S&, out: http::Reply, slot: i64) {
+    if ev.kind == http::WAKE && (ev.tag & REPLY_CONT) != 0 {
+        relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
+    } else if ev.kind == http::TIMEOUT {
+        if !out.stream.open { write_error(out, 504, "timeout", "", -1, ""); }
+    } else if ev.kind == http::WAKE || http::whole_only(ev, out) {
+        var scratch: u8[>..] = [];
+        let wake = ev.kind == http::WAKE;
+        var cx = Cx<S> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st,
+                         scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
+                         tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot };
+        H(cx);
+    }
 }
 
 fn serve<H>(cfg: http::Config) -> http::Error {
