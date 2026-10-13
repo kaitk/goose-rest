@@ -7,8 +7,8 @@ code, middleware is an inlined block, extractors are chosen by type, and errors 
 straight to the route. An optional generator writes types, JSON readers and writers,
 and a router from an OpenAPI document.
 
-Experimental: a proof of concept with no framework API yet, and the name is provisional.
-Nothing here is stable enough to build on.
+Experimental: a proof of concept with a first runtime core and no stable API, and the
+name is provisional. Nothing here is stable enough to build on.
 
 The design is in [`docs/architecture/README.md`](docs/architecture/README.md), and the
 Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
@@ -23,8 +23,9 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Language checks | Spikes 01–05 pass on `a6249a4`, three with workarounds the design takes |
 | 🟢 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest`, pass on `a6249a4` (task 002) |
 | 🟢 | Generator | Types, readers, and writers from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md), task 003) |
-| 🔴 | Runtime | Context, routes, errors, extractors, middleware (tasks 004–006) |
-| 🟡 | Generated router | Measured: the if chain costs about 6,000 instructions a request deep in 60 routes; task 008 proposed (task 007) |
+| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape ([below](#errors), task 004) |
+| 🔴 | Extractors, middleware | Tasks 005–006 |
+| 🟡 | Generated router | Next: the if chain costs about 6,000 instructions a request deep in 60 routes (tasks 007, 008) |
 | 🔴 | Waiting on another thread | Task 009 |
 | 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
 
@@ -32,7 +33,8 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 
 ```text
 rest.goose     the package's entry, namespace rest
-check.goose    the checks generated readers call: code points, string formats
+runtime.goose  Cx, serve, route, fail, json, text, otherwise, and the error shape
+check.goose    what generated code calls: code points, string formats, numbers
 gen/           goose-rest gen, the generator (gen/main.goose)
 test/          unit tests, test_*.goose, each a root file; test/gen/ golden files
 scripts/       test.sh runs every test; test-unit.sh the unit tests alone
@@ -54,6 +56,62 @@ import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 
 Build it with `goose build`: a server reaches `thread_spawn`, which `goose run` (TinyCC)
 can't run.
+
+A worker serves with `rest::serve`, which calls its block with a `rest::Cx` for each
+request whose body has come whole. A route runs inside `rest::route`, so that `rest::fail`
+answers from any depth below it:
+
+```goose
+thread_fn worker(cfg: http::Config) {
+    let e = rest::serve(cfg) { cx =>
+        var r = http::router(cx.req);
+        if http::on(r, "GET", "/projects/:id") {
+            rest::route(cx) {
+                let id, ok = parse_int(http::param(r, "id"));
+                guard ok else { rest::fail(cx, 400, "bad_id"); }
+                rest::json(cx, 200, find_project(cx, id));   // fails 404 itself
+            };
+        } else {
+            rest::otherwise(cx, r);           // 404, or 405 with Allow
+        }
+    };
+    if e.code != 0 { http::report(e); }
+}
+```
+
+`rest::serve(cfg, fresh)` keeps per-request state as well: `cx.state` starts from `fresh`
+for each request. `rest::json` writes a value through its type's `format` overload, which
+the generator writes for each schema.
+
+## Errors
+
+Every error goose-rest answers is JSON with one member, `error`, a code in snake_case:
+
+```json
+{"error":"project_not_found"}
+```
+
+| Status | Code | From |
+|---|---|---|
+| any | the code given | `rest::fail(cx, status, code)` |
+| 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
+| 400 | `bad_path` | `rest::otherwise`: a path with a dot-segment or an escaped control byte |
+| 404 | `not_found` | `rest::otherwise`: no route's path matched |
+| 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
+| 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
+
+A body a generated reader refuses names the field and the check that failed, and where
+in the body the reader stopped, counted in bytes:
+
+```json
+{"error":"invalid_body","detail":"name: maxLength","at":31}
+```
+
+`detail` is one of the reader's messages: `<field>: required`, `<field>: <keyword>` for a
+schema keyword such as `minLength`, `maximum`, or `enum`, `<field>: not UTF-8`, `unknown
+member`, or a syntax error from `json`, such as `expected a string`.
+
+The first answer wins: a route that answers and then fails keeps its answer.
 
 ## Pins
 

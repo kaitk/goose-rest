@@ -258,6 +258,9 @@ leaves through `return ... from rest::route`, so a helper several calls down can
 doesn't compile (spike 03). `Failure`'s code is an owned `u8[]` built with `str()`, and
 a field name the generator writes is a literal; a slice of the request can't travel
 with the return ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)).
+Decided (2026-10-13, task 004): the first answer wins. A failure after the handler began
+a response leaves that response, because `route` can't shrink the write buffer while a
+slice of the request is live (spec §5.1).
 
 ### Security
 
@@ -466,7 +469,7 @@ Nothing blocks the design; three checks need a workaround, which the design take
 |---|---|---|
 | Overload chosen by type parameter (01) | Works in one namespace. Across namespaces `from_request` isn't found: a generic body looks names up where it's defined (§11.1), and Goose has no argument-dependent lookup. | The app declares its extractors as `fn rest::from_request(cx: rest::Cx&, v: app::Session&)`, and the generator writes them so. `T` is given explicitly. |
 | Early exit from middleware blocks (02) | Works. A 401 skips the inner blocks and the handler, and a `return` in a block returns from the handler. A middleware's own `return` leaves only the middleware, so code after the middleware call still runs. | A middleware rejects with `rest::fail`, not `return`, so the whole route unwinds. |
-| `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Tested by hand on `a6249a4`; spike 03 still uses `u8[..32]`. |
+| `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Built so in `runtime.goose` (task 004); spike 03 still uses `u8[..32]`. |
 | Inlining to straight-line C (04) | Works. Nested middleware and `route` collapse into one C function, each early answer a `goto`. Passing a block on by name, `run(F)`, inlines nothing on that path ([findings](../goose-findings.md#passing-a-function-value-on-by-name-keeps-every-hof-around-it-out-of-line)). | Library HOFs never pass `F` on by name; they write `run() { F() }`. So `route` is goose-rest's own, not `exception::try`, which forwards its body by name. |
 | Filling `u8[]` fields from JSON (05) | Can't fill them key by key; collecting slices, then building once, costs no copy. | Readers collect, then build once ([above](#gooses-data-model-in-generated-code)). |
 | Resuming a waiting route (06) | Works, under `http::serve` too. The job crosses as a `to_bytes` image, `Waiting` lives in the per-request state, and a `WAKE` event dispatches to one case function per variant. A missing case fails to compile, with an error that doesn't name it ([findings](../goose-findings.md#a-case-function-call-missing-a-variant-doesnt-name-it)). | Replies larger than a slot come in pieces ([above](#waiting-on-another-thread)). |

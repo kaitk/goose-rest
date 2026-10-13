@@ -5,7 +5,9 @@
 # test/gen/ against its golden file, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
-# also keep main as its only Goose function: everything else inlined.
+# also keep main as its only Goose function: everything else inlined. And
+# test/inline_route.goose's -O2 C must keep none of its handler, middleware,
+# rest::route, or the functions that fail: only library leaves stay calls.
 #
 # GOOSE names the compiler (default: goose on PATH).
 set -eu
@@ -55,6 +57,15 @@ step "spike 04's C"
 fns=$(grep -E '^static .*_g[0-9]*\(' "$root/build/spike04.c" | grep -v ';' | sed 's/(.*//; s/.* //')
 if [ "$fns" != main_g ]; then
     echo "spike 04: expected only main_g, got:" $fns
+    exit 1
+fi
+
+step "inline_route's C"
+"$goose" -O2 -o "$root/build/inline_route.c" "$root/test/inline_route.goose"
+fns=$(grep -E '^static .*_g[0-9]*\(' "$root/build/inline_route.c" | grep -v ';' | sed 's/(.*//; s/.* //')
+kept=$(echo "$fns" | grep -E '^(handle|with_origin|with_user|find|load|format)_g|^rest_(route|attempt|fail|json)_g' || true)
+if [ -n "$kept" ] || ! echo "$fns" | grep -qx main_g; then
+    echo "inline_route: expected these inlined into main_g:" $kept
     exit 1
 fi
 
