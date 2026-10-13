@@ -297,3 +297,52 @@ Workaround: goose-rest's functions that take a block are `inline fn` (`route`,
 `attempt`, `cors`, `bearer`, `timed`, `json_body`), so the middleware, the route, and
 the code that fails all fold into the handler, which may stay one function of its own
 (`test/inline_route.goose`).
+
+## A second u8[>..] global makes a push through a struct's array field fail to check
+
+Found on `0bdbd18`, task 010. Status: open, reported as
+[aardappel/goose#34](https://github.com/aardappel/goose/issues/34) (2026-10-13)
+
+Whether a push of a value whose call grows another array checks depends on how many
+`u8[>..]` globals the program declares: with none or two it's refused, with one it
+compiles. `v` and `scratch` have different element types, so §5.1's "any array of its
+type" can't make them one array, and growth through `scratch` can't land inside `v`'s
+element. The stdlib's `os.goose` declares one such global, `argv_text`, so a program
+that imports `os` or goose-http compiles until it declares a `u8[>..]` global of its own,
+`reusable[]` or not. goose-rest's generated array readers push this way, from a block
+given a `Cx`, with `cx.scratch`. Expected: the push checks whatever globals exist.
+
+    import std;
+
+    struct Cx { scratch: u8[>..]& }
+
+    fn mk(scratch: u8[>..]&) -> u8[] { scratch.push('a'); return "x"; }
+
+    fn push_one(v: u8[][>..]&, scratch: u8[>..]&) { v.push(mk(scratch)); }
+
+    fn with_cx<H>() {
+        var scratch: u8[>..] = [];
+        var cx = Cx { scratch: scratch };
+        H(cx);
+    }
+
+    var first: u8[>..] = [];
+    var spill: u8[>..] = [];      // delete this line and it checks and runs
+
+    fn main() {
+        with_cx() { cx =>
+            var v: u8[][>..] = [];
+            push_one(v, cx.scratch);
+            print(v.len);
+        };
+    }
+
+    error: cannot call mk, which grows scratch: the element pushed into v is still
+    under construction, and the growth would land inside it (§1.3)
+
+It needs a pushed element that isn't fixed-size, a callee that grows `scratch`, the push
+in a function whose `v` is a parameter, and `scratch` read from a struct's reference
+field in a block. Pushing into a local `v` in the block checks.
+
+Workaround: `rest::serve` keeps its body spill as a `reusable[]` local, passed down as
+a pool reference, not as a global.

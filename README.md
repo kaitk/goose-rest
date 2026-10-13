@@ -155,12 +155,23 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
 | `rest::require(cx, "q", found)` | | `q: required` |
 | `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
+| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default) | 413 `payload_too_large` |
 
 `rest::take<T>` reads any type with an overload declared in the `rest` namespace, as
 `fn rest::from_request(cx, v: const app::Session?) -> app::Session`. `v` is always null,
 and its type picks the overload. The generator writes one for each schema object, which
 reads the JSON body: 415 unless the request says `application/json`, and 400
 `invalid_body` for a body the reader refuses.
+
+goose-http hands a body to the handler with its head when both fit its read buffer,
+8 KB by default. `rest::body` reads a longer one too: at its first call, the route leaves
+without an answer, `rest::serve` gathers the body up to the limit, and then calls the
+handler again with the body whole. The code before a route's first `rest::body`, or
+`rest::take` of a JSON type, therefore runs twice for such a body, and must not change
+state before it; an answer there, such as a 401, ends the request ungathered. A `Content-Length` over the limit is refused with 413 before
+the body is sent, and a chunked body once it passes the limit. The first call's limit
+holds for the request, so a route that takes a JSON body over 1 MB calls `rest::body`
+with its limit first.
 
 ```goose
 rest::route(cx) {
@@ -193,6 +204,7 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 | 403 | `origin_not_allowed` | `rest::cors`: an `Origin` it doesn't list |
 | 404 | `not_found` | `rest::otherwise`: no route's path matched |
 | 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
+| 413 | `payload_too_large` | `rest::body`, and `rest::take` of a schema type: a body over the limit |
 | 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
 

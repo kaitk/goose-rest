@@ -25,43 +25,165 @@ struct Cx<S> {
     tag: i32 = 0,
     more: bool = false,
     slot: i64 = 0,
+    // The connection's body gathering, under serve; null elsewhere.
+    gather: Gather? = null,
 }
 
 // The per-request state of a program that keeps none.
 struct NoState { unused: bool = false }
 
-// Serves cfg with goose-http's loop, calling H(cx) for each request once its
-// body has come whole, and again when a route that asked another thread gets
-// its reply (waiting.goose). A chunked body too long to come whole is
-// answered 413 by goose-http.
+// The most bytes of a body rest::body takes unless a route says otherwise.
+let BODY_LIMIT = 1048576;
+
+// A body that didn't come with its head, gathered for the route that asked
+// for it with rest::body: a run of the worker's spill from at, of cap bytes,
+// that holds the head rebuilt (head bytes) and then the body so far.
+struct Gather {
+    pending: bool = false,   // the body hasn't come whole
+    limit: i64 = 0,          // the first rest::body's limit, 0 before it
+    at: i64 = 0,
+    len: i64 = 0,
+    cap: i64 = 0,
+    head: i64 = 0,
+}
+
+// goose-http's state for each request: the program's, and the gathering.
+struct Slot<S> { app: S, body: Gather = Gather { .. } }
+
+// Serves cfg with goose-http's loop, calling H(cx) for each request, and again
+// when a route that asked another thread gets its reply (waiting.goose). A
+// body that doesn't come with its head is gathered when a route asks for it
+// (rest::body), and H runs again once it's whole. The worker's spill is a
+// local: a global u8 pool anywhere in a program breaks the generated array
+// readers (docs/goose-findings.md).
 fn serve<S, H>(cfg: http::Config, fresh: S) -> http::Error {
-    return http::serve(cfg, fresh) { ev, st, out =>
-        on_event(ev, st, out, cfg.mail_size) { cx => H(cx) };
+    reusable[] var spill: u8[>..] = [];
+    return http::serve(cfg, Slot<S> { app: fresh }) { ev, st, out =>
+        on_event(ev, st, out, cfg.mail_size, spill) { cx => H(cx) };
     };
 }
 
-// What serve does with each of goose-http's events: H(cx) at REQUEST and at
-// the first message of a reply; the later pieces of a reply relay sends on
-// itself; and 504 when a reply doesn't come in time. A reply cut short by
-// its time limit leaves the response open, and goose-http closes the
-// connection.
-inline fn on_event<S, H>(ev: http::Event, st: S&, out: http::Reply, slot: i64) {
+// serve on goose-http's epoll loop, http::serve_epoll, rather than its
+// io_uring loop.
+fn serve_epoll<S, H>(cfg: http::Config, fresh: S) -> http::Error {
+    reusable[] var spill: u8[>..] = [];
+    return http::serve_epoll(cfg, Slot<S> { app: fresh }) { ev, st, out =>
+        on_event(ev, st, out, cfg.mail_size, spill) { cx => H(cx) };
+    };
+}
+
+// What serve does with each of goose-http's events: H(cx) at REQUEST, at the
+// first message of a reply, and at the END of a gathered body; the later
+// pieces of a reply relay sends on itself; and 504 when a reply doesn't come
+// in time. A reply cut short by its time limit leaves the response open, and
+// goose-http closes the connection.
+inline fn on_event<S, H>(ev: http::Event, st: Slot<S>&, out: http::Reply, slot: i64, spill: u8[>..]&) {
     if ev.kind == http::WAKE && (ev.tag & REPLY_CONT) != 0 {
         relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
     } else if ev.kind == http::TIMEOUT {
-        if !out.stream.open { write_error(out, st, 504, "timeout", "", -1, ""); }
-    } else if ev.kind == http::WAKE || http::whole_only(ev, out) {
+        if !out.stream.open { write_error(out, st.app, 504, "timeout", "", -1, ""); }
+    } else if ev.kind == http::REQUEST || ev.kind == http::WAKE {
         var scratch: u8[>..] = [];
         let wake = ev.kind == http::WAKE;
-        var cx = Cx<S> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st,
+        st.body.pending = !wake && !ev.whole;
+        let mark = out.buf.len;
+        var cx = Cx<S> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.app,
                          scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
-                         tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot };
+                         tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot, gather: st.body };
         H(cx);
+        if st.body.pending && st.body.limit > 0 {
+            if out.buf.len == mark { gather_head(st.body, ev.req, spill); } else { st.body.limit = 0; }
+        }
+    } else if st.body.limit > 0 {
+        if ev.kind == http::BODY {
+            guard gather_piece(st.body, ev.data, spill) else {
+                release(st.body, spill);
+                out.keep_alive = false;
+                write_error(out, st.app, 413, "payload_too_large", "", -1, "");
+                return;
+            }
+        } else if ev.kind == http::END {
+            on_whole(st, out, slot, spill) { cx => H(cx) };
+        } else if ev.kind == http::CLOSED {
+            release(st.body, spill);
+        }
     }
+}
+
+// H(cx) for a gathered body, with the head parsed again from its copy.
+inline fn on_whole<S, H>(st: Slot<S>&, out: http::Reply, slot: i64, spill: u8[>..]&) {
+    let g = st.body;
+    let req, status = http::parse(spill[g.at..g.at + g.head], g.head, g.len);
+    st.body.pending = false;
+    var scratch: u8[>..] = [];
+    var cx = Cx<S> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.app,
+                     scratch: scratch, kind: http::REQUEST, slot: slot, gather: st.body };
+    H(cx);
+    release(st.body, spill);
+}
+
+// Starts g's run with the head rebuilt from req, whose bytes goose-http
+// reuses once its handler returns.
+fn gather_head(g: Gather&, req: const http::Request&, spill: u8[>..]&) {
+    var head: u8[>..] = [];
+    head.append(req.method);
+    head.push(' ');
+    head.append(req.target);
+    head.append(" HTTP/1.");
+    format(head, req.minor);
+    head.append("\r\n");
+    head.append(req.fields);
+    head.append("\r\n");
+    g.head = head.len;
+    gather_piece(g, head, spill);
+}
+
+// Appends data to g's run, growing it, unless the body would pass g's limit.
+fn gather_piece(g: Gather&, data: const u8[:], spill: u8[>..]&) -> bool {
+    let n = g.len + data.len;
+    guard n - g.head <= g.limit else { return false; }
+    if n > g.cap {
+        let cap = max(max(n, g.cap * 2), 16384);
+        let run = spill.realloc_slice(spill[g.at..g.at + g.cap], cap);
+        g.at = spill.index_of(run[0]);
+        g.cap = cap;
+    }
+    copy_into(spill[g.at + g.len..g.at + n], data);
+    g.len = n;
+    return true;
+}
+
+fn release(g: Gather&, spill: u8[>..]&) {
+    if g.cap > 0 { spill.free_slice(spill[g.at..g.at + g.cap]); }
+    g = Gather { .. };
+}
+
+// The request's body, of at most limit bytes: a longer one fails the route
+// with 413 payload_too_large. The first call's limit holds for the request.
+// A body that hasn't come with the head leaves the route without an answer:
+// serve gathers it and calls the handler again with it whole, so a route
+// runs twice up to its first rest::body.
+fn body<S>(cx: Cx<S>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
+    var g .= cx.gather;
+    guard g else {
+        if cx.body.len > limit { fail(cx, 413, "payload_too_large"); }
+        return cx.body;
+    }
+    if g.limit == 0 { g.limit = limit; }
+    if g.pending {
+        if !cx.req.chunked && cx.req.body > g.limit { fail(cx, 413, "payload_too_large"); }
+        return [Failure { status: 0, at: -1, code: "", detail: "", challenge: "" }] from attempt;
+    }
+    if cx.body.len > g.limit { fail(cx, 413, "payload_too_large"); }
+    return cx.body;
 }
 
 fn serve<H>(cfg: http::Config) -> http::Error {
     return serve(cfg, NoState { .. }) { cx => H(cx) };
+}
+
+fn serve_epoll<H>(cfg: http::Config) -> http::Error {
+    return serve_epoll(cfg, NoState { .. }) { cx => H(cx) };
 }
 
 // What fail answers with: challenge, when not empty, goes in a
@@ -84,8 +206,9 @@ inline fn route<F>(cx) {
     let mark = cx.out.buf.len;
     let failed = attempt() { F() };
     for f in failed {
-        if cx.out.buf.len == mark {
-            write_error(cx.out, cx.state,f.status, f.code, f.detail, f.at, "", f.challenge);
+        // Status 0 is rest::body leaving to gather the body, unanswered.
+        if cx.out.buf.len == mark && f.status != 0 {
+            write_error(cx.out, cx.state, f.status, f.code, f.detail, f.at, "", f.challenge);
         }
     }
 }
@@ -120,12 +243,12 @@ fn fail_param(cx, detail: const u8[:]) {
 }
 
 // The JSON body as R(r, scratch), a generated reader, reads it: 415 unless
-// the request says it's application/json, and 400 invalid_body for a body
-// R refused or one with more after its value. Generated from_request
-// overloads call it.
+// the request says it's application/json, 413 past rest::body's limit, and
+// 400 invalid_body for a body R refused or one with more after its value.
+// Generated from_request overloads call it.
 inline fn json_body<R>(cx) {
     guard http::has_type(cx.req, "application/json") else { fail(cx, 415, "unsupported_media_type"); }
-    var r = json::reader(cx.body);
+    var r = json::reader(body(cx));
     let v = R(&r, cx.scratch);   // a block given the local itself gets a copy of it
     if !json::finish(r) { fail_body(cx, r); }
     v
@@ -193,6 +316,13 @@ fn not_found(cx, method: const u8[:], path: const u8[:]) {
 fn json(cx, status: i32, v) {
     var body: u8[>..] = [];
     format(body, v);
+    http::start(cx.out, status);
+    http::finish(cx.out, "Content-Type: application/json\r\nContent-Length: ", body);
+}
+
+// Answers status with body, JSON the program wrote itself, such as a
+// record's prebuilt at startup.
+fn json_bytes(cx, status: i32, body: const u8[:]) {
     http::start(cx.out, status);
     http::finish(cx.out, "Content-Type: application/json\r\nContent-Length: ", body);
 }

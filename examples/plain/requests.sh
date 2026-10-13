@@ -9,6 +9,10 @@ req POST /v1/projects -H "$auth" -H "$json" -d '{"name": "gander"}'
 req POST /v1/projects -H "$auth" -H "$json" -d '{"name": ""}'
 req POST /v1/projects -H "Authorization: Bearer wrong" -H "$json" -d '{"name": "x"}'
 req POST /v1/projects -H "$auth" -d 'name=x'
+# Bodies past the read buffer, gathered before the route reads them.
+big=$(printf '{"name": "big"%20000s}' '')
+req POST /v1/projects -H "$auth" -H "$json" -d "$big"
+req POST /v1/projects -H "$auth" -H "$json" -H 'Transfer-Encoding: chunked' -d "$big"
 req GET '/v1/projects?q=go'
 req GET /v1/projects/2
 req GET /v1/projects/x
