@@ -40,15 +40,20 @@ pub const App = struct {
 pub const Router = http.Router(App);
 pub const Middleware = http.Middleware(App);
 
-// A route of a tier's table.
+// A route of a tier's table, with dusty's handler.
 pub const Route = struct {
     method: http.Method,
     path: []const u8,
-    handler: *const fn (*http.Request) anyerror!Resp,
+    handler: Router.Handler,
 };
 
+// A route whose handler returns a Resp.
+pub fn route(method: http.Method, path: []const u8, comptime handler: fn (*http.Request) anyerror!Resp) Route {
+    return .{ .method = method, .path = path, .handler = action(handler) };
+}
+
 // handler as dusty's action.
-pub fn action(comptime handler: *const fn (*http.Request) anyerror!Resp) Router.Handler {
+fn action(comptime handler: fn (*http.Request) anyerror!Resp) Router.Handler {
     return struct {
         fn run(_: *App, req: *http.Request, res: *http.Response) anyerror!void {
             try send(res, try handler(req));
@@ -99,8 +104,10 @@ fn notFoundOf(target: []const u8) Resp {
 }
 
 // The request's body whole, read by dusty up to its max_body_size; null for
-// one over it.
+// one over it. A declared length over it is refused before the read, which
+// would otherwise wait for bytes the peer may never send.
 pub fn bodyOf(req: *http.Request) !?[]const u8 {
+    if (req.content_length) |n| if (n > req.config.max_body_size) return null;
     const b = req.body() catch |e| switch (e) {
         error.BodyTooBig => return null,
         else => return e,
@@ -248,7 +255,8 @@ const Data = struct {
 
 pub var data: Data = .{};
 
-pub const Tier = enum { a, b, c, d };
+// goose-http's tiers A to D, and goose-rest's F, R, and M (micro.zig).
+pub const Tier = enum { a, b, c, d, f, r, m };
 
 // The tier, the worker count, and the port, from TIER, WORKERS, and the
 // first argument.
@@ -263,10 +271,11 @@ pub const Config = struct {
 pub fn init(a: Allocator, io: std.Io, env: *const std.process.Environ.Map, args: []const [:0]const u8, server: []const u8) Config {
     const dir = env.get("REST_DATA") orelse "build/rest";
     const name = env.get("TIER") orelse "a";
-    const tier = std.meta.stringToEnum(Tier, name) orelse fatal("TIER is a, b, c, or d", .{});
+    const tier = std.meta.stringToEnum(Tier, name) orelse fatal("TIER is a, b, c, d, f, r, or m", .{});
     data.template = std.mem.eql(u8, env.get("JSON") orelse "", "template");
     const records = switch (tier) {
-        .a => blk: {
+        .f, .r => 0,
+        .a, .m => blk: {
             data.items = readJson([]Item, a, io, dir, "arena-items.json");
             data.users = readJson([]User, a, io, dir, "arena-users.json");
             if (data.template) {
@@ -492,11 +501,12 @@ pub fn join(w: *std.Io.Writer, open: []const u8, parts: []const []u8, listed: []
     try w.writeAll(close);
 }
 
-// Tier A's routes. The token every request carries isn't read.
+// Tier A's routes, which tier M serves too. Tier A doesn't read the token
+// every request carries.
 pub const routes = [_]Route{
-    .{ .method = .get, .path = "/api/items/:id", .handler = getItem },
-    .{ .method = .post, .path = "/api/items/:id", .handler = postItem },
-    .{ .method = .get, .path = "/api/me", .handler = getMe },
+    route(.get, "/api/items/:id", getItem),
+    route(.post, "/api/items/:id", postItem),
+    route(.get, "/api/me", getMe),
 };
 
 // A record's response: its prebuilt JSON with servedAt spliced in, or the

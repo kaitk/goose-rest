@@ -56,10 +56,10 @@ fn hasType(ctype: ?[]const u8, want: []const u8) bool {
 // the not-found hook's 404, and heavy.Bearer a request without a token with
 // 401, before these run.
 pub const routes = [_]rest.Route{
-    .{ .method = .post, .path = "/imports", .handler = postImport },
-    .{ .method = .post, .path = "/attachments", .handler = postAttachment },
-    .{ .method = .post, .path = "/bookings/batch", .handler = postBatch },
-    .{ .method = .post, .path = "/forms", .handler = postForm },
+    rest.route(.post, "/imports", postImport),
+    rest.route(.post, "/attachments", postAttachment),
+    rest.route(.post, "/bookings/batch", postBatch),
+    rest.route(.post, "/forms", postForm),
 };
 
 const piece_size = 64 << 10;

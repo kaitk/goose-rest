@@ -371,12 +371,12 @@ pub const Bearer = struct {
 
 // Tier C's routes, under /api/v2.
 pub const routes = [_]rest.Route{
-    .{ .method = .get, .path = "/schedule/version", .handler = getVersion },
-    .{ .method = .get, .path = "/schedule/bookings", .handler = getBookings },
-    .{ .method = .get, .path = "/schedule/shifts", .handler = getShifts },
-    .{ .method = .get, .path = "/encounters/:id", .handler = getEncounter },
-    .{ .method = .get, .path = "/clients/:id/encounters", .handler = getClientEncounters },
-    .{ .method = .get, .path = "/clients/:id", .handler = getClient },
+    rest.route(.get, "/schedule/version", getVersion),
+    rest.route(.get, "/schedule/bookings", getBookings),
+    rest.route(.get, "/schedule/shifts", getShifts),
+    rest.route(.get, "/encounters/:id", getEncounter),
+    rest.route(.get, "/clients/:id/encounters", getClientEncounters),
+    rest.route(.get, "/clients/:id", getClient),
 };
 
 fn getVersion(req: *http.Request) !Resp {

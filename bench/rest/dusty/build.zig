@@ -31,5 +31,16 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("dusty", dusty_mod);
     exe.root_module.addImport("zio", zio_mod);
+
+    // Tier R's routes, embedded by a module of their own: @embedFile reaches
+    // only files inside the module that embeds them. A build from a copy
+    // outside the repository passes -Dgithub.
+    const github_txt = b.option([]const u8, "github", "tier R's github.txt") orelse
+        b.pathFromRoot("../tiers/github.txt");
+    const wf = b.addWriteFiles();
+    _ = wf.addCopyFile(.{ .cwd_relative = github_txt }, "github.txt");
+    const github_zig = wf.add("github.zig", "pub const text = @embedFile(\"github.txt\");\n");
+    exe.root_module.addImport("github", b.createModule(.{ .root_source_file = github_zig }));
+
     b.installArtifact(exe);
 }

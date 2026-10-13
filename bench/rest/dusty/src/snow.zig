@@ -415,13 +415,13 @@ fn sees(p: *const Person, m: Member, j: *const Project) bool {
 // (SameOrigin), GET /session, which answers null to no one, the sign-in, and
 // the organization's membership.
 pub const routes = [_]rest.Route{
-    .{ .method = .get, .path = "/session", .handler = getSession },
-    .{ .method = .get, .path = "/timer", .handler = getTimer },
-    .{ .method = .post, .path = "/timer/stop", .handler = postTimerStop },
-    .{ .method = .get, .path = "/organizations/:org/entries", .handler = getEntries },
-    .{ .method = .get, .path = "/organizations/:org/projects", .handler = getProjects },
-    .{ .method = .patch, .path = "/organizations/:org/entries/:id", .handler = patchEntry },
-    .{ .method = .post, .path = "/organizations/:org/timer/start", .handler = postTimerStart },
+    rest.route(.get, "/session", getSession),
+    rest.route(.get, "/timer", getTimer),
+    rest.route(.post, "/timer/stop", postTimerStop),
+    rest.route(.get, "/organizations/:org/entries", getEntries),
+    rest.route(.get, "/organizations/:org/projects", getProjects),
+    rest.route(.patch, "/organizations/:org/entries/:id", patchEntry),
+    rest.route(.post, "/organizations/:org/timer/start", postTimerStart),
 };
 
 pub const no_such_call = jsonStatus(404, "{\"error\":{\"message\":\"No such call.\"}}");

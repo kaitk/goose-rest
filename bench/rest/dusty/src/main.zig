@@ -11,9 +11,15 @@
 //   tier b   /api/v1     snow.routes, behind snow.SameOrigin
 //   tier c   /api/v2     heavy.routes, behind heavy.Bearer
 //   tier d   /api/v2 and /api/v3, writes.routes, both behind heavy.Bearer
+//   tier f   /           micro.f_routes
+//   tier r   /           micro.r_routes, github.txt's 203
+//   tier m   /           rest.routes, behind micro.Timing, dusty's Cors, and
+//                        micro.Bearer
 //
 // Stamp, the Server and Date fields, is global, so dusty runs it for a request
-// no route takes too; that request gets App.notFound's 404.
+// no route takes too; that request gets App.notFound's 404. Tier M's stack is
+// global for the same reason: a preflight has no route of its own, and an
+// error needs its Server-Timing.
 //
 //     REST_DATA=DIR TIER=a|b|c|d WORKERS=n [JSON=template] rest-dusty [port]
 
@@ -21,6 +27,7 @@ const std = @import("std");
 const zio = @import("zio");
 const http = @import("dusty");
 const rest = @import("rest.zig");
+const micro = @import("micro.zig");
 
 // The Date field, formatted once a second per thread. It's copied into the
 // request's arena: the response is sent after the handler returns, by which
@@ -76,13 +83,12 @@ const Stamp = struct {
 fn mount(router: *rest.Router, prefix: []const u8, middleware: []const rest.Middleware, comptime table: []const rest.Route) void {
     const g = router.group(prefix, middleware);
     inline for (table) |r| {
-        const a = rest.action(r.handler);
         switch (r.method) {
-            .get => g.get(r.path, a),
-            .post => g.post(r.path, a),
-            .patch => g.patch(r.path, a),
-            .put => g.put(r.path, a),
-            .delete => g.delete(r.path, a),
+            .get => g.get(r.path, r.handler),
+            .post => g.post(r.path, r.handler),
+            .patch => g.patch(r.path, r.handler),
+            .put => g.put(r.path, r.handler),
+            .delete => g.delete(r.path, r.handler),
             else => @compileError("no route method " ++ @tagName(r.method)),
         }
     }
@@ -110,12 +116,21 @@ pub fn main(init: std.process.Init) !void {
     const router = &server.router;
     // Set before any route is registered: a route takes the global
     // middleware as it is when it's registered.
-    const global = [_]rest.Middleware{try server.middleware(Stamp, .{})};
-    router.middlewares = &global;
+    const stamp = try server.middleware(Stamp, .{});
+    const global = [_]rest.Middleware{stamp};
+    const stack = [_]rest.Middleware{
+        stamp,
+        try server.middleware(micro.Timing, .{}),
+        try server.middleware(http.middleware.Cors, micro.cors),
+        try server.middleware(micro.Bearer, .{}),
+    };
+    router.middlewares = if (cfg.tier == .m) &stack else &global;
     const bearer = [_]rest.Middleware{try server.middleware(rest.heavy.Bearer, .{})};
     const same_origin = [_]rest.Middleware{try server.middleware(rest.snow.SameOrigin, .{})};
     switch (cfg.tier) {
-        .a => mount(router, "", &.{}, &rest.routes),
+        .a, .m => mount(router, "", &.{}, &rest.routes),
+        .f => mount(router, "", &.{}, &micro.f_routes),
+        .r => mount(router, "", &.{}, &micro.r_routes),
         .b => mount(router, "/api/v1", &same_origin, &rest.snow.routes),
         .c => mount(router, "/api/v2", &bearer, &rest.heavy.routes),
         .d => {
