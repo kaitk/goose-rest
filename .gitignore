@@ -1,0 +1,8 @@
+/build/
+*.o
+*.obj
+*.exe
+*.pdb
+node_modules/
+__pycache__/
+CLAUDE.local.md

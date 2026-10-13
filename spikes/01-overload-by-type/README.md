@@ -3,7 +3,7 @@
 Checks whether `take<T>(cx)`, which declares `var v = default<T>()` and calls
 `from_request(cx, v)`, resolves that call by `T` in each instantiation, and hands `v`
 to a trailing block: `take<Session>(cx) { s => ... }`. This is the extractor design in
-[the plan](../../docs/plan.md).
+[the architecture doc](../../docs/architecture/README.md).
 
 Goose commit: `a6249a4`.
 
