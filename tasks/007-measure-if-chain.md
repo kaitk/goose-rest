@@ -1,7 +1,6 @@
 # 007: Measure the if chain at 60 routes
 
-Status: in-progress (measured 2026-10-13; the decision on task 008 waits on the
-maintainer)
+Status: done (2026-10-13: task 008 goes ahead)
 
 Decides whether task 008 is worth doing. A hand-written if chain with prefix scopes, at
 60 routes shaped like a real API, against the same server with one route.
@@ -10,7 +9,7 @@ Decides whether task 008 is worth doing. A hand-written if chain with prefix sco
 
 - [x] Instructions per request for the first route, the last, a 404, and a 405, with
       `bench/count.sh`'s load (macOS can't run `count.sh` itself: below)
-- [ ] The numbers recorded here with how they were measured, and a decision on task 008
+- [x] The numbers recorded here with how they were measured, and a decision on task 008
 
 ## The servers
 
@@ -36,35 +35,41 @@ all nine routes of the last scope, after eight prefix checks.
 
 ## Results (2026-10-13)
 
-MacBook Pro, Apple M1 Pro, macOS 26.3.1 (Darwin 25.3.0), on battery (checked just
-after the runs), load average 8.1-12.0 from other work. Goose `a6249a4`, goose-http `04791ac`,
-the servers at `bf5c9c5`, built with `goose build --standalone` (Apple clang 21, `-O2`),
-serving with `http::serve_epoll` over kqueue, one worker. `bench/routes.sh`: h2load 1.70.0
-`--h1 -n 2000000 -c 256 -m 16 -t 8` with `count.sh`'s headers, on the same machine,
-nothing pinned; the server's instructions retired and cycles elapsed from
-`/usr/bin/time -l`, kernel included, divided by the requests. 3 rounds, interleaving the
-servers. Ranges over the rounds:
+MacBook Pro, Apple M1 Pro, macOS 26.3.1 (Darwin 25.3.0), on battery, load average
+6.6-6.8 from other work. Goose `a6249a4`, goose-http `cfb9c02`, the servers at `7131d0c`,
+built with `goose build --standalone` (Apple clang 21, `-O2`), serving with
+`http::serve_epoll` over kqueue, one worker. `bench/routes.sh`: h2load 1.70.0 `--h1 -n
+2000000 -c 256 -m 16 -t 8` with `count.sh`'s headers, on the same machine, nothing
+pinned; the server's instructions retired and cycles elapsed from `/usr/bin/time -l`,
+kernel included, divided by the requests. 3 rounds, interleaving the servers. Ranges
+over the rounds:
 
 | Case | 60 routes, insns/req | One route | Difference | 60 routes, cycles/req | One route |
 |---|---:|---:|---:|---:|---:|
-| First route | 18,199.6-18,350.1 | 18,293.6-18,305.8 | within the spread | 4,394.9-4,503.7 | 4,357.4-4,438.9 |
-| Last route | 25,917.0-25,918.9 | 19,900.9-19,908.8 | +6,010 to +6,016 | 5,800.8-5,886.9 | 4,667.0-4,676.8 |
-| 404 in a scope | 25,495.3-25,497.7 | 19,507.6-19,519.5 | +5,978 to +5,988 | 5,676.4-5,708.7 | 4,583.2-4,636.2 |
-| 404 outside | 18,349.3-18,359.9 | 18,195.6-18,204.1 | +146 to +159 | 4,408.9-4,461.5 | 4,377.5-4,406.3 |
-| 405 | 25,845.2-25,850.5 | 19,804.1-19,823.7 | +6,023 to +6,041 | 5,774.2-5,795.4 | 4,629.4-4,681.7 |
+| First route | 18,281.6-18,299.8 | 18,244.9-18,254.0 | +28 to +55 | 4,517.0-4,588.4 | 4,512.7-4,540.0 |
+| Last route | 25,856.2-25,859.2 | 19,805.5-19,848.0 | +6,008 to +6,053 | 6,057.9-6,122.0 | 4,826.9-4,906.6 |
+| 404 in a scope | 25,436.2-25,439.3 | 19,459.0-19,475.4 | +5,964 to +5,979 | 5,955.7-6,012.9 | 4,735.4-4,760.8 |
+| 404 outside | 18,293.6-18,298.2 | 18,148.8-18,159.7 | +138 to +149 | 4,525.9-4,626.8 | 4,515.1-4,541.3 |
+| 405 | 25,787.6-25,789.9 | 19,756.6-19,764.7 | +6,024 to +6,031 | 6,059.0-6,082.8 | 4,774.5-4,802.8 |
 
-At the last route the one worker served 510,569-518,862 requests a second against
-582,574-584,578 with one route, 11-12% fewer.
+At the last route the one worker served 493,399-499,162 requests a second against
+569,436-572,317 with one route, 12-14% fewer (one round of the one-route server, at
+472,621, left out).
+
+The same run at the earlier pin, goose-http `04791ac` (servers at `bf5c9c5`, load
+average 8.1-12.0), gave the same differences to within 45 instructions: +6,010 to
++6,016 at the last route, +5,978 to +5,988 for the 404 in a scope, +146 to +159
+outside, and +6,023 to +6,041 for the 405.
 
 The difference is the router's alone: both servers do the same kernel work for the same
-request, and the differences repeat to within 20 instructions. The scopes do their job
+request, and the differences repeat to within 45 instructions. The scopes do their job
 for paths outside them (about 150 instructions for eight prefix checks), and at the first
-route the chain costs nothing measurable. Inside the last scope, each `http::on` costs
+route the chain costs at most 55. Inside the last scope, each `http::on` costs
 about 600 instructions, so ten of them add a third to everything the server process ran
 per request, kernel included.
 
-Where the 600 go, from one more build (2 rounds, same load, last route only, not
-committed): a copy of `on` whose segment compare uses `==` when the path's segment has no
+Where the 600 go, from one more build at `04791ac` (2 rounds, same load, last route
+only, not committed): a copy of `on` whose segment compare uses `==` when the path's segment has no
 `%`, skipping goose-http's byte-at-a-time escape decoding, ran 24,781.0-24,781.1
 instructions per request against 25,916.0-25,918.3, saving 1,135 of the 6,010. The rest
 is the chain's shape: each `on` walks its pattern against the path from the first `/`, so
@@ -81,10 +86,10 @@ segment by segment, removes that.
   different machine and instruction set, so it compares with the 6,000 here only in
   order of magnitude.
 
-## Proposed decision on task 008
+## Decision on task 008
 
-Proposed (2026-10-13), not yet decided: do task 008. At 60 routes, the last route of a
-scope, a 404 inside a scope, and a 405 each cost about 6,000 instructions and 1,150
+Decided (2026-10-13): do task 008. At 60 routes, the last route of a
+scope, a 404 inside a scope, and a 405 each cost about 6,000 instructions and 1,200
 cycles a request more than one route, on the order of the whole HTTP layer's own work. A
 faster segment compare in goose-http would recover a fifth of it. The rest comes from
 re-scanning the path once per route, which a generated `dispatch`, matching the path
@@ -100,8 +105,8 @@ flat chain would match it.
 ## goose-http's task 027
 
 Task 027 may still change `http::router` and `http::on`, as its API isn't settled. None
-of its proposals touch them so far: `router.goose` on goose-http's `main` (`cfb9c02`)
-differs from the pin only in a comment. The differences above depend only on
+of its proposals touch them so far: `router.goose` at `cfb9c02` differs from `04791ac`
+only in a comment, and the differences held across that move. They depend only on
 `router.goose`, so they need rerunning only if 027 changes it. The absolute counts move
 with any change to the loops, so rerun `bench/routes.sh` when the pin moves, to keep the
 table at one pin; it takes about 5 minutes.

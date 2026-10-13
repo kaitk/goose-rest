@@ -117,6 +117,11 @@ a generated router can save. If the if chain costs little next to the rest of a 
 the generator writes the types and their readers and writers, and the routes stay a
 chain with prefix scopes.
 
+Decided (2026-10-13): the generator writes the router (task 008). At 60 routes in
+prefix scopes, the last route of a scope, a 404 inside one, and a 405 each cost about
+6,000 instructions a request more than one route, because each `http::on` scans the
+path again from its start (task 007). The if chain stays the API without a schema.
+
 ### The contract: OpenAPI, optionally written in TypeScript
 
 Decided (2026-10-13): the generator's input is a subset of OpenAPI 3.1, whose types are
