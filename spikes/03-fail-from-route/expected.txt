@@ -1,0 +1,4 @@
+42: 200 {"id":42,"name":"goose"}
+0: 404 {"error":"project_not_found"}
+13: 403 {"error":"forbidden"}
+7: 400 {"error":"/projects"}

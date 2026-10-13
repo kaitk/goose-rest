@@ -42,6 +42,7 @@ namespace, `fn rest::from_request(cx: rest::Cx&, v: app::Session&)`. They join t
 overload set of rest's built-in extractors (`rest::Query` here). Inside such a
 declaration, names resolve in `rest`, so the application's own names are qualified
 (`app::Session`, `app::user_of`). A generator can write these declarations.
+`cross/main.goose` prints `session 7`, `page 3`, and `query a=1`.
 
 ## T can't be inferred
 

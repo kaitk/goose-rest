@@ -1,0 +1,4 @@
+true 3
+7 [goose] [#ff0000]
+8 [duck] []
+9 [swan] []
