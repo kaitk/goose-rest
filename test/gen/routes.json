@@ -1,0 +1,156 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Task 007's 60 routes", "version": "1" },
+  "security": [{ "session": [] }],
+  "paths": {
+    "/health": { "get": { "operationId": "health", "security": [] } },
+    "/v1/auth/login": { "post": { "operationId": "login", "security": [] } },
+    "/v1/auth/logout": { "post": { "operationId": "logout" } },
+    "/v1/auth/refresh": { "post": { "operationId": "refresh", "security": [] } },
+    "/v1/auth/session": { "get": { "operationId": "getSession" } },
+    "/v1/users/me": { "get": { "operationId": "getMe" }, "patch": { "operationId": "updateMe" } },
+    "/v1/users/me/settings": { "get": { "operationId": "getSettings" }, "put": { "operationId": "putSettings" } },
+    "/v1/users/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getUser" }
+    },
+    "/v1/users/{id}/avatar": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getAvatar" },
+      "put": { "operationId": "putAvatar" }
+    },
+    "/v1/orgs": { "get": { "operationId": "listOrgs" }, "post": { "operationId": "createOrg" } },
+    "/v1/orgs/{org}": {
+      "parameters": [{ "name": "org", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": { "operationId": "getOrg" },
+      "patch": { "operationId": "updateOrg" },
+      "delete": { "operationId": "deleteOrg" }
+    },
+    "/v1/orgs/{org}/members": {
+      "parameters": [{ "name": "org", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": { "operationId": "listOrgMembers" },
+      "post": { "operationId": "addOrgMember" }
+    },
+    "/v1/orgs/{org}/members/{user}": {
+      "parameters": [
+        { "name": "org", "in": "path", "required": true, "schema": { "type": "string" } },
+        { "name": "user", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+      ],
+      "delete": { "operationId": "removeOrgMember" }
+    },
+    "/v1/projects": {
+      "get": { "operationId": "listProjects" },
+      "post": {
+        "operationId": "createProject",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectCreate" } } }
+        }
+      }
+    },
+    "/v1/projects/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getProject" },
+      "patch": { "operationId": "updateProject" },
+      "delete": { "operationId": "deleteProject" }
+    },
+    "/v1/projects/{id}/archive": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "post": { "operationId": "archiveProject" }
+    },
+    "/v1/projects/{id}/restore": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "post": { "operationId": "restoreProject" }
+    },
+    "/v1/projects/{id}/members": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "listProjectMembers" },
+      "post": { "operationId": "addProjectMember" }
+    },
+    "/v1/projects/{id}/members/{user}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+        { "name": "user", "in": "path", "required": true, "schema": { "type": "integer" } }
+      ],
+      "delete": { "operationId": "removeProjectMember" }
+    },
+    "/v1/tasks": { "get": { "operationId": "listTasks" }, "post": { "operationId": "createTask" } },
+    "/v1/tasks/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getTask" },
+      "patch": { "operationId": "updateTask" },
+      "delete": { "operationId": "deleteTask" }
+    },
+    "/v1/tasks/{id}/assign": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "post": { "operationId": "assignTask" }
+    },
+    "/v1/tasks/{id}/comments": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "listComments" },
+      "post": { "operationId": "addComment" }
+    },
+    "/v1/tasks/{id}/comments/{comment}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } },
+        { "name": "comment", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "patch": { "operationId": "updateComment" }
+    },
+    "/v1/files": { "get": { "operationId": "listFiles" }, "post": { "operationId": "uploadFile" } },
+    "/v1/files/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getFile" },
+      "delete": { "operationId": "deleteFile" }
+    },
+    "/v1/files/{id}/content": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getFileContent" },
+      "put": { "operationId": "putFileContent" }
+    },
+    "/v1/webhooks": { "get": { "operationId": "listWebhooks" }, "post": { "operationId": "createWebhook" } },
+    "/v1/webhooks/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getWebhook" },
+      "patch": { "operationId": "updateWebhook" },
+      "delete": { "operationId": "deleteWebhook" }
+    },
+    "/v1/webhooks/{id}/deliveries": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "listDeliveries" }
+    },
+    "/v1/reports/time": { "get": { "operationId": "timeReport" } },
+    "/v1/reports/time/{user}": {
+      "parameters": [{ "name": "user", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+      "get": { "operationId": "userTimeReport" }
+    },
+    "/v1/reports/budget": { "get": { "operationId": "budgetReport" } },
+    "/v1/reports/exports": { "get": { "operationId": "listExports" }, "post": { "operationId": "createExport" } },
+    "/v1/reports/exports/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "getExport" },
+      "delete": { "operationId": "deleteExport" }
+    },
+    "/v1/reports/exports/{id}/cancel": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "post": { "operationId": "cancelExport" }
+    },
+    "/v1/reports/exports/{id}/download": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": { "operationId": "downloadExport" }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": { "type": "apiKey", "in": "cookie", "name": "session" }
+    },
+    "schemas": {
+      "ProjectCreate": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 120 } }
+      }
+    }
+  }
+}

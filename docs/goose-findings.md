@@ -180,3 +180,50 @@ writes `null` for NaN and the infinities and std's text of the double otherwise.
 text reads back as the same double and is valid JSON, but isn't always the shortest
 form `json::format_number` writes. Declaring the table as `let DIGIT_PAIRS: u8[200] =
 "..."` would fix the stdlib.
+
+## A loop's checking doesn't settle when a block rebinds a reference that's stored
+
+Found on `a6249a4`, task 008. Status: open
+
+A loop that rebinds an optional reference with `.=` inside a block, then stores what it
+leads to, fails to check when the function holding the loop runs from another block:
+"this loop's checking does not settle (internal limit of 16 passes)". The error points
+at `json::each`'s own loop, not at the program's. Each of these makes it compile: rebind
+outside the block (`chosen .= json::member(list, "a")`), store something else, or call
+`load(root)` directly instead of from `json::each`. Expected: the program compiles, or
+an error names the rule it breaks.
+
+    import std;
+    import json;
+
+    struct P { name: const u8[:], n: i64 }
+
+    fn run(text: const u8[:]) -> i64 {
+        var doc: json::Node[>..] = [];
+        var decoded: u8[>..] = [];
+        var ps: P[>..] = [];
+
+        fn load(list: json::Node&) {
+            for i in 2 {
+                var chosen: json::Node? = null;
+                json::each(list) { p => if p.key == "a" { chosen .= p; } };
+                guard chosen else { continue; }
+                ps.push(P { name: chosen.key, n: i });
+            }
+        }
+
+        let root, err = json::parse(text, doc, decoded);
+        guard root else { return -1; }
+        json::each(root) { item => load(item); };
+        return ps.len;
+    }
+
+    fn main() { print(run("""{"x": {"a": 1, "b": 2}, "y": {"a": 3}}""")); }
+
+    stdlib/json.goose:746: error: this loop's checking does not settle (internal limit
+    of 16 passes)
+        while c {
+      in fn json::each<F = {block at h.goose:22:22}>(json::Node&) instantiated from h.goose:22
+
+Workaround: find the index inside the block and fetch the node after it, as the
+generator's `index_of_name` and `nth` do (`gen/gen.goose`).

@@ -95,10 +95,15 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 |---|---|---|
 | any | the code given | `rest::fail(cx, status, code)` |
 | 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
+| 400 | `invalid_parameter`, with `detail` | `rest::fail_param`, and the generated router: a path parameter that doesn't fit its schema, as `id: minimum` |
 | 400 | `bad_path` | `rest::otherwise`: a path with a dot-segment or an escaped control byte |
 | 404 | `not_found` | `rest::otherwise`: no route's path matched |
 | 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
+| 415 | `unsupported_media_type` | the generated router: a JSON body sent as another media type |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
+
+The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
+through `rest::no_route`, `rest::no_method`, and `rest::not_found`.
 
 A body a generated reader refuses names the field and the check that failed, and where
 in the body the reader stopped, counted in bytes:

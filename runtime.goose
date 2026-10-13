@@ -73,6 +73,86 @@ fn fail_body(cx, r: const json::Reader&) {
         from attempt;
 }
 
+// Leaves the enclosing route with 400 for a path parameter that doesn't fit
+// its schema: {"error": "invalid_parameter", "detail": detail}, as "id:
+// integer" or "id: minimum".
+fn fail_param(cx, detail: const u8[:]) {
+    return [Failure { status: 400, at: -1, code: str("invalid_parameter"), detail: str(detail) }] from attempt;
+}
+
+// seg as a decimal integer, or a failure, "<name>: integer", for anything
+// else: a sign other than a leading '-', another byte, or no digits.
+fn path_int(cx, seg: const u8[:], name: const u8[:]) -> i64 {
+    let neg = seg.len > 0 && seg[0] == '-';
+    var i = if neg { 1 } else { 0 };
+    guard i < seg.len else { fail_param(cx, str(name, ": integer")); }
+    var v: i64 = 0;
+    while i < seg.len {
+        let c = seg[i];
+        guard c >= '0' && c <= '9' else { fail_param(cx, str(name, ": integer")); }
+        let digit: i64 = c - '0';
+        guard v <= (9223372036854775807 - digit) / 10 else { fail_param(cx, str(name, ": integer")); }
+        v = v * 10 + digit;
+        i++;
+    }
+    return if neg { -v } else { v };
+}
+
+// The segment of path after its '/' at at, and where the segment ends: at
+// the next '/', or path.len. The generated routers walk a path with it.
+fn segment(path: const u8[:], at: i64) -> const u8[:], i64 {
+    var end = at + 1;
+    while end < path.len && path[end] != '/' { end++; }
+    return path[at + 1..end], end;
+}
+
+// Whether seg, still encoded, is the literal lit, as http::on compares them:
+// an escape of an unreserved byte matches the byte. plain says the path has
+// no '%', so that bytes compare as they are.
+fn segment_is(seg: const u8[:], lit: const u8[:], plain: bool) -> bool {
+    if plain { return seg == lit; }
+    return http::same_segment(lit, seg);
+}
+
+// Answers a request whose path matched with a method no route of the path
+// takes: OPTIONS with 204 and allow, any other method with 405 and allow.
+fn no_method(cx, allow: const u8[:]) {
+    if cx.req.method == "OPTIONS" {
+        http::start(cx.out, 204);
+        http::field(cx.out, "Allow", allow);
+        http::finish(cx.out, "", "");
+    } else {
+        write_error(cx.out, 405, "method_not_allowed", "", -1, allow);
+    }
+}
+
+// Answers a request whose path no route matched, as otherwise does: an
+// unknown method 501, a path with a dot-segment or an escaped control byte
+// 400, OPTIONS * 204, and anything else 404.
+fn no_route(cx, method: const u8[:], path: const u8[:]) {
+    if !http::known_method(method) {
+        write_error(cx.out, 501, "not_implemented", "", -1, "");
+    } else if !http::is_routable(path) {
+        write_error(cx.out, 400, "bad_path", "", -1, "");
+    } else if method == "OPTIONS" && path == "*" {
+        http::start(cx.out, 204);
+        http::finish(cx.out, "", "");
+    } else {
+        write_error(cx.out, 404, "not_found", "", -1, "");
+    }
+}
+
+// no_route for a request whose method is known and whose path is routable,
+// as the generated routers have checked by then: OPTIONS * 204, and 404.
+fn not_found(cx, method: const u8[:], path: const u8[:]) {
+    if method == "OPTIONS" && path == "*" {
+        http::start(cx.out, 204);
+        http::finish(cx.out, "", "");
+    } else {
+        write_error(cx.out, 404, "not_found", "", -1, "");
+    }
+}
+
 // Answers status with v as JSON, written by v's format overload, which Goose
 // finds in the namespace that declares v's type (spike 07). A string's
 // overload is std's, which writes its bytes unquoted: answer a string inside
@@ -111,8 +191,8 @@ fn otherwise(cx, r: const http::Router&) {
     }
 }
 
-// The error shape: {"error": code}, with "detail" and "at" when detail isn't
-// empty, and an Allow field when allow isn't.
+// The error shape: {"error": code}, with "detail" when detail isn't empty,
+// "at" when at isn't negative, and an Allow field when allow isn't empty.
 fn write_error(out: http::Reply, status: i32, code: const u8[:], detail: const u8[:], at: i64,
                allow: const u8[:]) {
     var body: u8[>..] = [];
@@ -121,6 +201,8 @@ fn write_error(out: http::Reply, status: i32, code: const u8[:], detail: const u
     if detail.len > 0 {
         body.append(",\"detail\":");
         json::format_string(body, detail);
+    }
+    if at >= 0 {
         body.append(",\"at\":");
         format(body, at);
     }

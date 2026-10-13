@@ -6,6 +6,10 @@
 # same bytes: routes1.goose has routes60's first route, routes1_last.goose
 # its last, and routes1_post.goose the POST route the 405 is a GET of.
 #
+# Task 008: gen60.goose serves the same routes through the router goose-rest
+# gen writes from test/gen/routes.json. It answers a 404 and a 405 in the
+# JSON error shape, a body of 21 to 30 bytes, where the others send none.
+#
 # goose-http's bench/count.sh's load on macOS, which has no perf: one worker,
 # h2load --h1 -n N -c 256 -m 16 -t 8 with count.sh's headers, and the server's
 # instructions retired and cycles elapsed from /usr/bin/time -l, the kernel's
@@ -39,17 +43,29 @@ for s in routes60 routes1 routes1_last routes1_post; do
     "$goose" build --standalone -o "$bin/$s" "$root/bench/routes/$s.goose" >"$tmp/build" 2>&1 ||
         { cat "$tmp/build" >&2; exit 1; }
 done
+# gen60 imports the generated router beside it, so it's built from a copy
+# next to one.
+mkdir -p "$bin/gen"
+cp "$root/bench/routes/gen60.goose" "$root/bench/routes/app.goose" "$bin/gen/"
+{ "$goose" "$root/gen/main.goose" -- gen "$root/test/gen/routes.json" -o "$bin/gen/routes_gen.goose" &&
+    "$goose" build --standalone -o "$bin/gen60" "$bin/gen/gen60.goose"; } >"$tmp/build" 2>&1 ||
+    { cat "$tmp/build" >&2; exit 1; }
 
 # case, server, target, the status class every response must have
 cases='first routes60 /health 2
+first gen60 /health 2
 first routes1 /health 2
 last routes60 /v1/reports/exports/42/download 2
+last gen60 /v1/reports/exports/42/download 2
 last routes1_last /v1/reports/exports/42/download 2
 404 routes60 /v1/reports/exports/42/nope 4
+404 gen60 /v1/reports/exports/42/nope 4
 404 routes1_last /v1/reports/exports/42/nope 4
 404-outside routes60 /v2/nothing 4
+404-outside gen60 /v2/nothing 4
 404-outside routes1 /v2/nothing 4
 405 routes60 /v1/reports/exports/42/cancel 4
+405 gen60 /v1/reports/exports/42/cancel 4
 405 routes1_post /v1/reports/exports/42/cancel 4'
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \

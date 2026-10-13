@@ -327,7 +327,9 @@ each schema change as a diff in review.
 The generator writes plain Goose, read and debugged like any other file, never edited.
 The types, readers, and writers are built (task 003); this is its output for
 `ProjectCreate`, shortened, and the [reference](../generator.md) has the rest. The
-router below them is proposed (task 008).
+router below them is a sketch; the one built (task 008) walks the path segment by
+segment and answers through `rest::no_method`, `rest::no_route`, and `rest::not_found`
+([reference](../generator.md#paths)).
 
 ```goose
 namespace api;

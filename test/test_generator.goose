@@ -14,7 +14,7 @@ fn doc(schemas: const u8[:]) -> u8[>..] {
 
 fn fails(text: const u8[:], want: const u8[:]) {
     var out: u8[>..] = [];
-    let err = gen::generate(text, "api", "api.json", out);
+    let err = gen::generate(text, "api", "app", "api.json", out);
     if err != want {
         print("want '", want, "'\ngot  '", err, "'\nfor ", text);
         assert(false);
@@ -112,10 +112,62 @@ fn test_names() {
         "#/components/schemas/A/required: names b, which isn't a property");
 }
 
+// A document with paths, a schema A, and a security scheme s.
+fn api(paths: const u8[:]) -> u8[>..] {
+    str("""{"openapi": "3.1.0", "paths": """, paths,
+        """, "components": {"schemas": {"A": {"type": "object", "properties": {}}, "N": {"type": "string"}}, "securitySchemes": {"s": {"type": "http"}}}}""")
+}
+
+let ID = """{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}""";
+
+fn test_paths() {
+    fails(api("""{"a": {"get": {"operationId": "a"}}}"""), "#/paths/a: a path must start with '/'");
+    fails(api("""{"/a/x{id}": {"get": {"operationId": "a"}}}"""),
+        "#/paths/~1a~1x{id}: a segment with '%', '{', '}', '\"', '\\' or a control character isn't supported");
+    fails(api("""{"/a/{id}/{id}": {"get": {"operationId": "a"}}}"""), "#/paths/~1a~1{id}~1{id}: {id} is repeated");
+    fails(api(str("""{"/a/{id}": {"parameters": [""", ID, """], "get": {"operationId": "a"}}, "/a/{key}": {"get": {"operationId": "b"}}}""")),
+        "#/paths/~1a~1{key}: matches the same requests as /a/{id}");
+    fails(api("""{"/a": {"servers": [], "get": {"operationId": "a"}}}"""), "#/paths/~1a/servers: not supported on a path item");
+    fails(api("""{"/a": {"summary": "x"}}"""), "#/paths/~1a: a path needs an operation");
+    fails(api("""{"/a": {"get": {}}}"""), "#/paths/~1a/get: an operation needs an operationId, its handler's name");
+    fails(api("""{"/a": {"get": {"operationId": "a", "callbacks": {}}}}"""), "#/paths/~1a/get/callbacks: not supported on an operation");
+    fails(api("""{"/a": {"get": {"operationId": "x"}}, "/b": {"get": {"operationId": "x"}}}"""),
+        "#/paths/~1b/get/operationId: another operation's handler is x");
+    fails(api("""{"/a": {"get": {"operationId": "get-a!"}}}"""),
+        "#/paths/~1a/get/operationId: a name of letters, digits, '_', '-', '.' and spaces is supported");
+    fails(api("""{"/a/{id}": {"get": {"operationId": "a"}}}"""), "#/paths/~1a~1{id}/get: no parameter declares {id}");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/in: only path parameters are supported, not query");
+    fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "schema": {"type": "integer"}}]}}}"""),
+        "#/paths/~1a~1{id}/get/parameters/0: a path parameter must have required: true");
+    fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "style": "label", "schema": {"type": "integer"}}]}}}"""),
+        "#/paths/~1a~1{id}/get/parameters/0/style: not supported on a parameter");
+    fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "number"}}]}}}"""),
+        "#/paths/~1a~1{id}/get/parameters/0/schema: a path parameter's schema is an integer or a string");
+    fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string", "maxLength": 3}}]}}}"""),
+        "#/paths/~1a~1{id}/get/parameters/0/schema/maxLength: not supported on a string parameter");
+    fails(api("""{"/a/{path}": {"get": {"operationId": "a", "parameters": [{"name": "path", "in": "path", "required": true, "schema": {"type": "string"}}]}}}"""),
+        "#/paths/~1a~1{path}/get/parameters/0/name: the name path is one the generated code uses");
+    fails(api("""{"/a": {"post": {"operationId": "a", "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/A"}}}}}}}"""),
+        "#/paths/~1a/post/requestBody: a request body must have required: true");
+    fails(api("""{"/a": {"post": {"operationId": "a", "requestBody": {"required": true, "content": {"text/plain": {"schema": {"type": "string"}}}}}}}"""),
+        "#/paths/~1a/post/requestBody/content/text~1plain: only application/json is supported");
+    fails(api("""{"/a": {"post": {"operationId": "a", "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "properties": {}}}}}}}}"""),
+        "#/paths/~1a/post/requestBody/content/application~1json/schema: a body is a $ref to an object component");
+    fails(api("""{"/a": {"post": {"operationId": "a", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/N"}}}}}}}"""),
+        "#/paths/~1a/post/requestBody/content/application~1json/schema/$ref: a body is a $ref to an object component");
+    fails(api("""{"/a": {"get": {"operationId": "a", "security": [{"s": []}, {}]}}}"""),
+        "#/paths/~1a/get/security: one security requirement is supported, not alternatives");
+    fails(api("""{"/a": {"get": {"operationId": "a", "security": [{"t": []}]}}}"""),
+        "#/paths/~1a/get/security/0/t: no such scheme in components.securitySchemes");
+    fails(api("""{"/a": {"get": {"operationId": "a", "security": [{"s": ["read"]}]}}}"""),
+        "#/paths/~1a/get/security/0/s: scopes aren't supported");
+}
+
 fn test_accepted() {
     var out: u8[>..] = [];
     let err = gen::generate(doc("""{"A": {"type": "object", "properties": {"type": {"type": "string"}, "HTTPServer": {"type": "boolean"}}}}"""),
-        "api", "api.json", out);
+        "api", "app", "api.json", out);
     if err.len > 0 { print(err); assert(false); }
     assert(find(out, "    has_type_: bool,\n    type_: u8[],\n") >= 0);
     assert(find(out, "    http_server: bool,\n") >= 0);
@@ -127,6 +179,7 @@ fn main() {
     test_types();
     test_refs();
     test_names();
+    test_paths();
     test_accepted();
     print("test_generator: ok");
 }

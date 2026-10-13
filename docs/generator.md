@@ -1,12 +1,10 @@
 # The generator
 
 `goose-rest gen` reads an OpenAPI 3.1 document and writes a Goose file with a struct, a
-JSON reader, and a JSON writer for each schema under `components.schemas`. The design
-and its reasons are in the [architecture doc](architecture/README.md#the-generator).
-This page is the reference: what the generator reads, what it writes, and what it
-refuses.
-
-It reads `components.schemas` only. Paths become routes in tasks 007 and 008.
+JSON reader, and a JSON writer for each schema under `components.schemas`, and a router,
+`dispatch`, from its `paths` ([Paths](#paths)). The design and its reasons are in the
+[architecture doc](architecture/README.md#the-generator). This page is the reference:
+what the generator reads, what it writes, and what it refuses.
 
 ## Run it
 
@@ -19,9 +17,9 @@ $GOOSE build -o build/goose-rest gen/main.goose
 build/goose-rest gen api.json -o api_gen.goose --namespace api
 ```
 
-`--namespace` names the generated file's namespace (default `api`). On an error, the
-generator writes nothing and exits with status 1, printing the construct's JSON
-pointer:
+`--namespace` names the generated file's namespace (default `api`), and `--handlers` the
+namespace whose functions the router calls (default `app`). On an error, the generator
+writes nothing and exits with status 1, printing the construct's JSON pointer:
 
 ```text
 goose-rest: api.json: #/components/schemas/A/properties/c/pattern: not supported on a string
@@ -30,8 +28,10 @@ goose-rest: api.json: #/components/schemas/A/properties/c/pattern: not supported
 A program imports the file by its module name, so name it `<name>_gen.goose`, not
 `<name>.gen.goose`: an import is identifiers separated by dots, and a dot in a file
 name reads as a directory (spec §11.1). The file imports `json`, and `rest` when a
-check or a `number` field needs it, so the program's root declares goose-rest and goose-http (README,
-"Use").
+check, a `number` field, or the router needs it, and `http` with a router, so the
+program's root declares goose-rest and goose-http (README, "Use"). It doesn't import the
+handlers' module: the root does, wherever the module lives, and the router's qualified
+calls find it.
 
 ## The subset
 
@@ -130,14 +130,99 @@ to know whether a comma is due. A `number` goes through `rest::format_number`, n
 `json::format_number`, which a server's worker thread can't call
 ([findings](goose-findings.md#a-thread-cant-read-a-string-literal-global-so-jsonformat_number-fails-in-a-thread)).
 
+## Paths
+
+A document with `paths` also gets `fn dispatch(cx, state)`, which answers a request
+through the handler its path and method name. A program calls it from `rest::serve`:
+
+```goose
+let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
+```
+
+### What it reads
+
+| OpenAPI | Goose |
+|---|---|
+| A path, `/projects/{id}` | matched segment by segment; a parameter takes a whole, non-empty segment |
+| An operation, `get`, `post`, ... | a call to `<handlers>::<operationId in snake_case>` inside `rest::route` |
+| A path parameter, `"type": "integer"` | an `i64` from `rest::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
+| A path parameter, `"type": "string"` | the segment, still encoded, as `http::param` gives it |
+| `requestBody` with `application/json` and a `$ref` to an object | the object, read with its reader; 415 for another media type |
+| `security: [{"<scheme>": []}]`, on the operation or the document | `<handlers>::security_<scheme>(cx, state)`, whose result the handler gets |
+
+A handler takes `cx`, `state`, then the security check's result if the operation names
+a scheme, its path parameters in the template's order, and its body. For
+`GET /projects/{id}` with `security: [{"session": []}]`:
+
+```goose
+fn get_project(cx, state, s, id: i64) { ... }    // in app, the handlers' namespace
+fn security_session(cx, state) -> Session { ... }
+```
+
+An operation's `security: []` overrides the document's. A path item's `parameters`
+apply to each of its operations, and an operation's own replace one of the same name.
+`summary`, `description`, `tags`, `deprecated`, `externalDocs`, `responses`, and a
+parameter's `description`, `deprecated`, and examples are read for nothing. The
+handler writes the response; `responses` isn't checked against it.
+
+### What it refuses
+
+Each of these is an error at its JSON pointer:
+
+- A path that doesn't start with `/`; a literal segment with `%`, `{`, or `}`;
+  a parameter named twice in one path; two paths that match the same requests, such as
+  `/a/{id}` and `/a/{key}`.
+- An operation without `operationId`, an `operationId` that isn't a Goose identifier in
+  snake_case, and two that make the same handler name.
+- A parameter `in` the query, a header, or a cookie (task 005); a path parameter without
+  `required: true`, or one the template doesn't name; a template parameter no
+  parameter declares; a parameter's `style`, `explode`, or `content`; a schema other
+  than an integer or a string, and on a string any keyword.
+- A parameter or handler named after one of `dispatch`'s locals (`cx`, `state`, `path`,
+  `m`, `plain`, `s_`, `r_`, `scratch_`, `body_`, and `s` or `e` followed by digits).
+- A request body that isn't `required: true`, isn't `application/json`, or isn't a
+  `$ref` to an object component.
+- More than one security requirement (alternatives), more than one scheme in one,
+  scopes, and a scheme `components.securitySchemes` doesn't declare.
+- Any other key on a path item, an operation, a parameter, or a request body, such as
+  `servers`, `callbacks`, or `$ref`.
+
+### How it matches
+
+`dispatch` answers as an if chain of `http::on` over the same routes in the same order
+would, with two differences: a parameter is typed, so `/users/me/avatar` for
+`/users/{id}/avatar` is a 400 where the chain calls the handler with `id` `me`, and
+where a concrete path and a template both match a path, the concrete one wins, as
+OpenAPI says, where the chain takes whichever comes first. `test/test_router.goose`
+checks the rest byte for byte against such a chain.
+
+1. An unknown method is 501, and a path with a dot-segment or an escaped control byte
+   400, as `rest::otherwise` answers them.
+2. A path without `%` is compared with the static paths by `match path.len`, then
+   bytes.
+3. Then the path is walked segment by segment. At each segment the literals come first,
+   in the document's order, then a parameter; a branch that doesn't answer falls
+   through to the next. A literal compares with `==`, or, in a path with `%`, as
+   `http::on` compares it: an escape of an unreserved byte matches the byte.
+4. A path that matched runs its method's operation, `GET`'s for `HEAD` too. Another
+   method gets 405, and `OPTIONS` 204, each with the path's `Allow`, a constant.
+5. A path nothing matched is 404, or 204 for `OPTIONS *`.
+
+Each answer is in the README's error shape. A path parameter that doesn't fit its
+schema is `400 {"error":"invalid_parameter","detail":"id: minimum"}`, after the
+security check.
+
 ## Tests
 
 `test/gen/` holds schemas and the files the generator writes from them, the golden
 files. `scripts/test.sh` regenerates each and compares it byte for byte.
 `test/test_gen.goose` round-trips valid and invalid JSON through `test/gen/api_gen.goose`,
-and `test/test_generator.goose` checks each error above. After changing the generator,
-regenerate the golden files and read the diff:
+`test/test_router.goose` runs `test/gen/routes_gen.goose` against an if chain of the same
+routes, with the handlers in `test/gen/app.goose`, and `test/test_generator.goose` checks
+each error above. After changing the generator, regenerate the golden files and read the
+diff:
 
 ```sh
 $GOOSE gen/main.goose -- gen test/gen/api.json -o test/gen/api_gen.goose
+$GOOSE gen/main.goose -- gen test/gen/routes.json -o test/gen/routes_gen.goose
 ```

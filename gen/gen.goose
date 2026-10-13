@@ -8,6 +8,7 @@ namespace gen;
 import std;
 import json;
 import .emit;
+import .router;
 
 // A value's kind, in Ty.kind.
 let K_BOOL = 1;
@@ -88,6 +89,48 @@ struct Named {
     en: i64 = -1,
 }
 
+// A segment of a path template: literal text, or a parameter, {name}.
+struct Seg { text: const u8[:], param: bool }
+
+// A path parameter of an operation, in its template's order: its name, the
+// Goose local it becomes, and its type, an integer with its bounds or a
+// string.
+struct PathParam {
+    name: const u8[:],
+    local: const u8[:],
+    int: bool,
+    int32: bool = false,
+    has_minimum: bool = false,
+    minimum: i64 = 0,
+    has_maximum: bool = false,
+    maximum: i64 = 0,
+}
+
+// An operation: its method as HTTP spells it, its handler's name, the
+// security scheme it names ("" for none), and the object its JSON body is
+// read as (-1 for none). Its parameters are params[first..first + count].
+struct Op {
+    method: const u8[:],
+    handler: const u8[:],
+    scheme: const u8[:],
+    body: i64 = -1,
+    first: i64 = 0,
+    count: i64 = 0,
+}
+
+// A path: its template, its segments segs[first_seg..first_seg + nsegs], its
+// operations ops[first_op..first_op + nops] in the document's order, and the
+// Allow they make.
+struct Route {
+    template: const u8[:],
+    first_seg: i64,
+    nsegs: i64,
+    first_op: i64 = 0,
+    nops: i64 = 0,
+    allow: const u8[:] = "",
+    is_static: bool = true,
+}
+
 // What a schema of each kind may say besides type, beyond the annotations.
 let ANNOTATIONS = ["description", "title", "examples", "example", "deprecated", "$comment"];
 let STRING_KEYWORDS = ["minLength", "maxLength", "format", "enum"];
@@ -106,6 +149,22 @@ let KEYWORDS = ["import", "namespace", "struct", "enum", "type", "fn", "thread_f
 // Names the generated readers use for their own parameters and temporaries,
 // which no field may take.
 let READER_NAMES = ["r", "scratch", "key", "s_", "e_", "ok_", "n_", "end_", "v_", "x_"];
+
+// The methods an operation may have, as a path item names them, and as HTTP
+// spells them.
+let METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
+let HTTP_METHODS = ["GET", "PUT", "POST", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"];
+
+// What a path item, an operation, a parameter, and a request body may say.
+let PATH_ITEM_KEYS = ["parameters", "summary", "description"];
+let OPERATION_KEYS = ["operationId", "parameters", "requestBody", "security", "responses", "summary",
+    "description", "tags", "deprecated", "externalDocs"];
+let PARAMETER_KEYS = ["name", "in", "required", "schema", "description", "deprecated", "example", "examples"];
+let BODY_KEYS = ["content", "required", "description"];
+
+// Names dispatch uses for its own parameters and locals, which no path
+// parameter may take, besides s and e followed by digits, its segments.
+let DISPATCH_NAMES = ["cx", "state", "path", "m", "plain", "s_", "r_", "scratch_", "body_"];
 
 fn is_one_of(s: const u8[:], set: const u8[:][:]) -> bool {
     for x in set { if x == s { return true; } }
@@ -185,9 +244,48 @@ fn format_token(out: u8[>..]&, key: const u8[:]) {
     }
 }
 
-// Reads the document and writes the source to out. Returns "" or the first
-// error, as "<JSON pointer>: <message>".
-fn generate(text: const u8[:], ns: const u8[:], source: const u8[:], out: u8[>..]&) -> u8[] {
+// The index of the member of list whose "name" is name, or -1.
+fn index_of_name(list: json::Node?, name: const u8[:]) -> i64 {
+    guard list else { return -1; }
+    var k = 0;
+    var found = -1;
+    json::each(list) { p =>
+        let n, ok = json::as_string(json::member(p, "name"));
+        if ok && n == name { found = k; }
+        k++;
+    };
+    return found;
+}
+
+// The element of list at n, which exists.
+fn nth(list: json::Node?, n: i64) -> json::Node& {
+    guard list else { abort("nth: no list"); }
+    var k = 0;
+    json::each(list) { p =>
+        if k == n { return p; }
+        k++;
+    };
+    abort("nth: no such element");
+}
+
+// The index of key in METHODS, or -1.
+fn method_index(key: const u8[:]) -> i64 {
+    for name, i in METHODS { if key == name { return i; } }
+    return -1;
+}
+
+// Whether s is s or e followed by digits: the name of a segment's local in
+// dispatch.
+fn is_segment_name(s: const u8[:]) -> bool {
+    guard s.len > 1 && (s[0] == 's' || s[0] == 'e') else { return false; }
+    for c in s[1..] { guard is_digit(c) else { return false; } }
+    return true;
+}
+
+// Reads the document and writes the source to out, dispatch calling the
+// handlers in the namespace handlers. Returns "" or the first error, as
+// "<JSON pointer>: <message>".
+fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: const u8[:], out: u8[>..]&) -> u8[] {
     var doc: json::Node[>..] = [];
     var decoded: u8[>..] = [];
     var strs: u8[>..] = [];              // the names and pointers the tables point into
@@ -196,6 +294,10 @@ fn generate(text: const u8[:], ns: const u8[:], source: const u8[:], out: u8[>..
     var enums: Enum[>..] = [];
     var fields: Field[>..] = [];
     var variants: (const u8[:])[>..] = [];
+    var routes: Route[>..] = [];
+    var segs: Seg[>..] = [];
+    var ops: Op[>..] = [];
+    var params: PathParam[>..] = [];
 
     fn fail(ptr: const u8[:], msg: const u8[:]) {
         return str(ptr, ": ", msg) from generate;
@@ -529,6 +631,263 @@ fn generate(text: const u8[:], ns: const u8[:], source: const u8[:], out: u8[>..
         }
     }
 
+    // name in snake_case in strs, as a Goose local or function name, which
+    // must not be a keyword or one of reserved.
+    fn local_name(name: const u8[:], ptr: const u8[:], reserved: const u8[:][:]) -> const u8[:] {
+        let at = strs.len;
+        guard format_snake(strs, name) else {
+            fail(ptr, "a name of letters, digits, '_', '-', '.' and spaces is supported");
+        }
+        let local = strs[at..];
+        guard is_ident(local) && !is_one_of(local, KEYWORDS) else {
+            fail(ptr, str("the name ", local, " isn't a Goose identifier"));
+        }
+        guard !is_one_of(local, reserved) && !is_segment_name(local) else {
+            fail(ptr, str("the name ", local, " is one the generated code uses"));
+        }
+        return local;
+    }
+
+    // The handler of the security scheme an operation requires: one
+    // requirement of one scheme without scopes, as security_<scheme>, or ""
+    // for none. node is the operation's list, or the document's.
+    fn scheme_of(node: json::Node?, ptr: const u8[:], schemes: json::Node?) -> const u8[:] {
+        guard node else { return ""; }
+        let count = match node.val { Arr a => a.count, _ => -1 };
+        guard count >= 0 else { fail(ptr, "must be an array of security requirements"); }
+        guard count <= 1 else { fail(ptr, "one security requirement is supported, not alternatives"); }
+        var start = 0;
+        var end = 0;
+        json::each(node) { req =>
+            let n = match req.val { Obj o => o.count, _ => -1 };
+            guard n == 1 else { fail(ptr1(ptr, "0"), "one scheme per requirement is supported"); }
+            json::each(req) { s =>
+                let sptr = ptr2(ptr, "0", s.key);
+                let scopes = match s.val { Arr a => a.count, _ => -1 };
+                guard scopes == 0 else { fail(sptr, "scopes aren't supported"); }
+                guard json::member(schemes, s.key) else { fail(sptr, "no such scheme in components.securitySchemes"); }
+                start = strs.len;
+                strs.append("security_");
+                guard format_snake(strs, s.key) && is_ident(strs[start..]) else {
+                    fail(sptr, "a scheme name of letters, digits, '_', '-', '.' and spaces is supported");
+                }
+                end = strs.len;
+            };
+        };
+        return strs[start..end];
+    }
+
+    // Checks a parameter object of the path whose segments start at
+    // first_seg: a required path parameter named in the template.
+    fn check_param(p: json::Node&, pptr: const u8[:], first_seg: i64, nsegs: i64) {
+        json::each(p) { k =>
+            guard is_one_of(k.key, PARAMETER_KEYS) else { fail(ptr1(pptr, k.key), "not supported on a parameter"); }
+        };
+        let where, ok = json::as_string(json::member(p, "in"));
+        guard ok else { fail(ptr1(pptr, "in"), "must be a string"); }
+        guard where == "path" else {
+            fail(ptr1(pptr, "in"), str("only path parameters are supported, not ", where));
+        }
+        let name, nok = json::as_string(json::member(p, "name"));
+        guard nok else { fail(ptr1(pptr, "name"), "must be a string"); }
+        var found = false;
+        for s in segs[first_seg..first_seg + nsegs] { if s.param && s.text == name { found = true; } }
+        guard found else { fail(ptr1(pptr, "name"), "names no parameter of the path"); }
+        let req, rok = json::as_bool(json::member(p, "required"));
+        guard rok && req else { fail(pptr, "a path parameter must have required: true"); }
+    }
+
+    // The type of the path parameter p, named name: an integer, with
+    // minimum, maximum and format, or a string.
+    fn param_of(p: json::Node&, pptr: const u8[:], name: const u8[:]) -> PathParam {
+        let schema = json::member(p, "schema");
+        guard schema else { fail(pptr, "a parameter needs a schema"); }
+        let sptr = ptr1(pptr, "schema");
+        let local = local_name(name, ptr1(pptr, "name"), DISPATCH_NAMES);
+        let t, ok = json::as_string(json::member(schema, "type"));
+        guard ok && (t == "integer" || t == "string") else {
+            fail(sptr, "a path parameter's schema is an integer or a string");
+        }
+        if t == "string" {
+            check_keys(schema, sptr, [], "a string parameter");
+            return PathParam { name: name, local: local, int: false };
+        }
+        check_keys(schema, sptr, ["minimum", "maximum", "format"], "an integer parameter");
+        var int32 = false;
+        let f = json::member(schema, "format");
+        if f {
+            let fs, fok = json::as_string(f);
+            guard fok && (fs == "int32" || fs == "int64") else { fail(ptr1(sptr, "format"), "only int32 and int64 are supported"); }
+            int32 = fs == "int32";
+        }
+        var pp = PathParam { name: name, local: local, int: true, int32: int32 };
+        let lo, has_lo = json::as_i64(bound(schema, sptr, "minimum", true));
+        let hi, has_hi = json::as_i64(bound(schema, sptr, "maximum", true));
+        pp.has_minimum = has_lo;
+        pp.minimum = lo;
+        pp.has_maximum = has_hi;
+        pp.maximum = hi;
+        return pp;
+    }
+
+    // The object component a request body is read as.
+    fn body_of(rb: json::Node&, bptr: const u8[:]) -> i64 {
+        json::each(rb) { k =>
+            guard is_one_of(k.key, BODY_KEYS) else { fail(ptr1(bptr, k.key), "not supported on a request body"); }
+        };
+        let req, rok = json::as_bool(json::member(rb, "required"));
+        guard rok && req else { fail(bptr, "a request body must have required: true"); }
+        let content = json::member(rb, "content");
+        guard content else { fail(bptr, "a request body needs content"); }
+        let cptr = ptr1(bptr, "content");
+        json::each(content) { c =>
+            guard c.key == "application/json" else { fail(ptr1(cptr, c.key), "only application/json is supported"); }
+        };
+        let media = json::member(content, "application/json");
+        guard media else { fail(cptr, "a request body needs application/json"); }
+        let mptr = ptr1(cptr, "application/json");
+        json::each(media) { k =>
+            guard k.key == "schema" else { fail(ptr1(mptr, k.key), "not supported on a media type"); }
+        };
+        let schema = json::member(media, "schema");
+        guard schema else { fail(mptr, "a media type needs a schema"); }
+        let sptr = ptr1(mptr, "schema");
+        guard json::member(schema, "$ref") else { fail(sptr, "a body is a $ref to an object component"); }
+        json::each(schema) { k =>
+            guard k.key == "$ref" || is_one_of(k.key, ANNOTATIONS) else { fail(ptr1(sptr, k.key), "not supported beside $ref"); }
+        };
+        let t = target(schema, sptr);
+        guard named[t].obj >= 0 else { fail(ptr1(sptr, "$ref"), "a body is a $ref to an object component"); }
+        return named[t].obj;
+    }
+
+    // The operation node, method of the path at routes' end: its handler,
+    // security, path parameters in the template's order, and body.
+    fn load_op(node: json::Node&, optr: const u8[:], method: const u8[:], shared: json::Node?, sptr: const u8[:],
+               default_sec: json::Node?, schemes: json::Node?) {
+        let route = routes[routes.len - 1];
+        json::each(node) { k =>
+            guard is_one_of(k.key, OPERATION_KEYS) else { fail(ptr1(optr, k.key), "not supported on an operation"); }
+        };
+        let id, idok = json::as_string(json::member(node, "operationId"));
+        guard idok else { fail(optr, "an operation needs an operationId, its handler's name"); }
+        let handler = local_name(id, ptr1(optr, "operationId"), []);
+        for o in ops {
+            guard o.handler != handler else { fail(ptr1(optr, "operationId"), str("another operation's handler is ", handler)); }
+        }
+        let sec = json::member(node, "security");
+        let scheme = if sec { scheme_of(sec, ptr1(optr, "security"), schemes) } else { scheme_of(default_sec, "#/security", schemes) };
+        let own = json::member(node, "parameters");
+        let pptr = ptr1(optr, "parameters");
+        // Each parameter is checked; the operation's override the path's.
+        var i = 0;
+        if shared { json::each(shared) { p => check_param(p, ptr1(sptr, str(i)), route.first_seg, route.nsegs); i++; }; }
+        i = 0;
+        if own { json::each(own) { p => check_param(p, ptr1(pptr, str(i)), route.first_seg, route.nsegs); i++; }; }
+        let first = params.len;
+        for s in segs[route.first_seg..route.first_seg + route.nsegs] {
+            if !s.param { continue; }
+            let at_own = index_of_name(own, s.text);
+            let at_shared = index_of_name(shared, s.text);
+            guard at_own >= 0 || at_shared >= 0 else { fail(optr, str("no parameter declares {", s.text, "}")); }
+            let cptr = if at_own >= 0 { ptr1(pptr, str(at_own)) } else { ptr1(sptr, str(at_shared)) };
+            let pp = if at_own >= 0 { param_of(nth(own, at_own), cptr, s.text) }
+                     else { param_of(nth(shared, at_shared), cptr, s.text) };
+            for q in params[first..] {
+                guard q.local != pp.local else { fail(cptr, str("two parameters make the name ", pp.local)); }
+            }
+            params.push(pp);
+        }
+        let rb = json::member(node, "requestBody");
+        let body = if rb { body_of(rb, ptr1(optr, "requestBody")) } else { -1 };
+        ops.push(Op { method: method, handler: handler, scheme: scheme, body: body, first: first,
+                      count: params.len - first });
+    }
+
+    // Each path's template, segments, and operations, checked against the
+    // subset; and the Allow its operations make.
+    fn load_paths(paths: json::Node&, default_sec: json::Node?, schemes: json::Node?) {
+        json::each(paths) { item =>
+            let template = item.key;
+            let iptr = ptr1("#/paths", template);
+            guard template.len > 0 && template[0] == '/' else { fail(iptr, "a path must start with '/'"); }
+            let first_seg = segs.len;
+            var is_static = true;
+            var start = 1;
+            loop {
+                var end = start;
+                while end < template.len && template[end] != '/' { end++; }
+                let s = template[start..end];
+                if s.len > 0 && s[0] == '{' {
+                    let name = s[1..s.len - 1];
+                    guard s.len > 2 && s[s.len - 1] == '}' && is_plain(name) && find(name, "{") < 0 && find(name, "}") < 0 else {
+                        fail(iptr, "a parameter takes a whole segment, as {name}");
+                    }
+                    for q in segs[first_seg..] {
+                        guard !(q.param && q.text == name) else { fail(iptr, str("{", name, "} is repeated")); }
+                    }
+                    segs.push(Seg { text: name, param: true });
+                    is_static = false;
+                } else {
+                    guard is_plain(s) && find(s, "%") < 0 && find(s, "{") < 0 && find(s, "}") < 0 else {
+                        fail(iptr, "a segment with '%', '{', '}', '\"', '\\' or a control character isn't supported");
+                    }
+                    segs.push(Seg { text: s, param: false });
+                }
+                if end == template.len { break; }
+                start = end + 1;
+            }
+            let nsegs = segs.len - first_seg;
+            for r in routes {
+                if r.nsegs != nsegs { continue; }
+                var same = true;
+                for k in nsegs {
+                    let a = segs[r.first_seg + k];
+                    let b = segs[first_seg + k];
+                    if a.param != b.param || !a.param && a.text != b.text { same = false; }
+                }
+                guard !same else { fail(iptr, str("matches the same requests as ", r.template)); }
+            }
+            json::each(item) { k =>
+                guard is_one_of(k.key, METHODS) || is_one_of(k.key, PATH_ITEM_KEYS) else {
+                    fail(ptr1(iptr, k.key), "not supported on a path item");
+                }
+            };
+            routes.push(Route { template: template, first_seg: first_seg, nsegs: nsegs, first_op: ops.len,
+                                is_static: is_static });
+            let shared = json::member(item, "parameters");
+            // The methods in the item's order, loaded outside the block that
+            // finds them, which the checker otherwise can't settle.
+            var order: i64[..8] = [];
+            json::each(item) { m =>
+                let i = method_index(m.key);
+                if i >= 0 { order.push(i); }
+            };
+            for i in order {
+                let m = json::member(item, METHODS[i]);
+                guard m else { continue; }
+                load_op(m, ptr1(iptr, METHODS[i]), HTTP_METHODS[i], shared, ptr1(iptr, "parameters"), default_sec, schemes);
+            }
+            let r .= routes[routes.len - 1];
+            r.nops = ops.len - r.first_op;
+            guard r.nops > 0 else { fail(iptr, "a path needs an operation"); }
+            // Allow, as http::on builds it: each method once, in the
+            // document's order, with HEAD after GET.
+            let at = strs.len;
+            for o in ops[r.first_op..] {
+                for mth in [o.method, if o.method == "GET" { "HEAD" } else { "" }] {
+                    if mth.len == 0 { continue; }
+                    var seen = false;
+                    each_split(strs[at..], ',') { if trim(it) == mth { seen = true; } };
+                    if seen { continue; }
+                    if strs.len > at { strs.append(", "); }
+                    strs.append(mth);
+                }
+            }
+            r.allow = strs[at..];
+        };
+    }
+
     let root, err = json::parse(text, doc, decoded);
     guard root else { return str(err); }
     let version, vok = json::as_string(json::member(root, "openapi"));
@@ -571,7 +930,13 @@ fn generate(text: const u8[:], ns: const u8[:], source: const u8[:], out: u8[>..
     var i = 0;
     while i < objs.len { load_obj(i); i++; }
     check_cycles();
+    let paths = json::member(root, "paths");
+    if paths {
+        match paths.val { Obj o => {}, _ => fail("#/paths", "must be an object") }
+        load_paths(paths, json::member(root, "security"), json::member(json::member(root, "components"), "securitySchemes"));
+    }
 
-    emit(out, ns, source, objs, enums, fields, variants);
+    emit(out, ns, if routes.len > 0 { handlers } else { "" }, source, objs, enums, fields, variants);
+    if routes.len > 0 { emit_router(out, handlers, routes, segs, ops, params, objs); }
     return "";
 }
