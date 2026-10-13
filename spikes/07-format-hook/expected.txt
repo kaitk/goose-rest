@@ -1,0 +1,5 @@
+200 {"id":42,"owner":{"id":7,"name":"ada"},"name":"goose"}
+200 {"id":3,"lead":{"id":9,"admin":true,"name":"say \"hi\""}}
+200 [{"id":1,"name":"a"}, {"id":2,"name":"b"}]
+200 app::Session { 1, 2 }
+404 {"error":"not_found"}
