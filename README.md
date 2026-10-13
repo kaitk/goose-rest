@@ -216,7 +216,7 @@ The first answer wins: a route that answers and then fails keeps its answer.
 
 | What | Pin | Why |
 |---|---|---|
-| Goose compiler | `aardappel/goose` `a6249a4` (`master`, 2026-10-13) | The language and stdlib change often |
+| Goose compiler | `aardappel/goose` `0bdbd18` (`master`, 2026-10-13) | The language and stdlib change often |
 | goose-http | `kaitk/goose-http` `e27ab21` (`main`, 2026-10-13) | Its API is still changing (its task 027) |
 
 Move each pin in its own commit, with the spikes and tests rerun

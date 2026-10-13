@@ -5,7 +5,7 @@ Checks that middleware written as `fn with_auth<F>(cx: Cx&) { guard ok else { an
 inner blocks and the body when it answers. Also checks that a plain `return` in the
 innermost block returns from the enclosing named function, as spec §7.6 says.
 
-Goose commit: `a6249a4`.
+Goose commit: `0bdbd18`, with the same output as on `a6249a4`.
 
 ```sh
 GOOSE=<build>/goose

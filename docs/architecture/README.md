@@ -508,7 +508,7 @@ nothing the route doesn't read.
 
 ## Spike results (2026-10-13)
 
-On Goose `a6249a4`, in `spikes/` (each spike's README has its command and evidence).
+On Goose `a6249a4`, and again on `0bdbd18` with the same results, in `spikes/` (each spike's README has its command and evidence).
 Nothing blocks the design; three checks need a workaround, which the design takes:
 
 | Check | Verdict | What the design does |

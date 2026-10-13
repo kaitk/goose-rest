@@ -9,7 +9,7 @@ The spikes have run on macOS (2026-10-13).
 
 | Tool | macOS (2026-10-13) | For |
 |---|---|---|
-| Goose compiler | `a6249a4`, the pin in `README.md` | everything |
+| Goose compiler | `0bdbd18`, the pin in `README.md` | everything |
 | OS | macOS 26.3.1, Apple M1 Pro | |
 | C compiler | Apple clang 21.0.0 (`clang-2100.0.123.102`) | `goose build`, and reading the generated C (spike 04) |
 
@@ -21,7 +21,7 @@ it, so the checkout can live anywhere; this page puts it next to this repository
 
 ```sh
 git clone -o upstream https://github.com/aardappel/goose.git ../goose
-git -C ../goose checkout a6249a4
+git -C ../goose checkout 0bdbd18
 cmake -S ../goose -B ../goose/build-macos -DCMAKE_BUILD_TYPE=Release
 cmake --build ../goose/build-macos -j
 export GOOSE=$PWD/../goose/build-macos/goose
