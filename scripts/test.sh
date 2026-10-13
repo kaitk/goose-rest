@@ -34,7 +34,7 @@ step "test-unit.sh"
 # committed source byte for byte. test_gen.goose, among the unit tests,
 # compiles one and round-trips JSON through it.
 mkdir -p "$root/build/gen"
-for f in "$root"/test/gen/*.json "$root"/examples/*/api.json; do
+for f in "$root"/test/gen/*.json "$root"/examples/*/api.json "$root"/bench/rest/goose-rest/github.json; do
     name=$(basename "$f" .json)
     dir=$(dirname "$f")
     step "gen ${f#"$root"/}"

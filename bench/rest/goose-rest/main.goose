@@ -50,6 +50,8 @@ import os;
 import json;
 import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
 import rest from "../../../";
+import .github_app;
+import .github_gen;
 
 struct Item {
     id: i64,
@@ -2657,6 +2659,96 @@ fn arena(cx, buf: u8[>..]&) {
     }
 }
 
+// Tier F, the bun-http-framework-benchmark's three routes (bench/rest/tiers).
+fn micro(cx) {
+    var r = http::router(cx.req);
+    if http::on(r, "GET", "/") {
+        rest::text(cx, 200, "Hi");
+    } else if http::on(r, "GET", "/id/:id") {
+        var b: u8[>..] = [];
+        b.append(rest::param(cx, r, "id"));
+        b.push(' ');
+        let name, has = rest::query(cx, "name");
+        b.append(name);
+        http::start(cx.out, 200);
+        http::field(cx.out, "x-powered-by", "benchmark");
+        http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", b);
+    } else if http::on(r, "POST", "/json") {
+        var out: u8[>..] = [];
+        guard echo(rest::body(cx), out) else { rest::fail(cx, 400, "invalid_body"); }
+        rest::json_bytes(cx, 200, out);
+    } else {
+        rest::otherwise(cx, r);
+    }
+}
+
+// Tier F on goose-http alone, the baseline: http::serve's handler, its
+// router and query, and http::respond.
+fn micro_bare(req: http::Request, body: const u8[:], out: http::Reply) {
+    var r = http::router(req);
+    if http::on(r, "GET", "/") {
+        http::respond(out, 200, "text/plain; charset=utf-8", "Hi");
+    } else if http::on(r, "GET", "/id/:id") {
+        var b: u8[>..] = [];
+        b.append(http::param(r, "id"));
+        b.push(' ');
+        let v, has = http::query_of(req.target, "name");
+        http::decode(v, b, true);
+        http::start(out, 200);
+        http::field(out, "x-powered-by", "benchmark");
+        http::finish(out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", b);
+    } else if http::on(r, "POST", "/json") {
+        var j: u8[>..] = [];
+        if echo(body, j) { http::respond(out, 200, "application/json", j); }
+        else { http::respond(out, 400, "application/json", "{\"error\":\"invalid_body\"}"); }
+    } else {
+        http::otherwise(r, out);
+    }
+}
+
+// POST /json: the body read into json's nodes and written back from them
+// into out; false for a body that isn't JSON.
+fn echo(body: const u8[:], out: u8[>..]&) -> bool {
+    var doc: json::Node[>..] = [];
+    var decoded: u8[>..] = [];
+    let root, err = json::parse(body, doc, decoded);
+    guard root else { return false; }
+    write_node(out, root);
+    return true;
+}
+
+recursive fn write_node(out: u8[>..]&, n: json::Node&) {
+    match n.val {
+        Null => out.append("null"),
+        Bool b => json::format_bool(out, b.v),
+        Int i => json::format_int(out, i.v),
+        Num x => rest::format_number(out, x.v),
+        Str s => json::format_string(out, s.s),
+        Arr a => {
+            out.push('[');
+            var first = true;
+            json::each(n) { c =>
+                if !first { out.push(','); }
+                first = false;
+                write_node(out, c);
+            };
+            out.push(']');
+        },
+        Obj o => {
+            out.push('{');
+            var first = true;
+            json::each(n) { c =>
+                if !first { out.push(','); }
+                first = false;
+                json::format_string(out, c.key);
+                out.push(':');
+                write_node(out, c);
+            };
+            out.push('}');
+        },
+    }
+}
+
 // Tier M's origin: the load sends it with every request.
 fn mw_origin() -> const u8[:] { "https://app.example" }
 
@@ -2687,6 +2779,26 @@ fn tier_b(cx) {
 fn tier_c(cx, writes: bool) {
     var buf: u8[>..] = [];
     rest::route(cx) { heavy(cx, buf, writes); };
+}
+
+fn tier_f(cx) { rest::route(cx) { micro(cx); }; }
+
+// Tier R through the if chain, in one route, or the generator's router,
+// which opens a route for each.
+fn tier_r(cx, generated: bool) {
+    if generated { api::dispatch(cx, cx.state); } else { rest::route(cx) { app::chain(cx, cx.state); }; }
+}
+
+thread_fn worker_f(cfg: http::Config, epoll: bool, bare: bool) {
+    if bare && epoll { stopped(http::serve_epoll(cfg) { req, body, out => micro_bare(req, body, out) }); }
+    else if bare { stopped(http::serve(cfg) { req, body, out => micro_bare(req, body, out) }); }
+    else if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_f(cx) }); }
+    else { stopped(rest::serve(cfg) { cx => tier_f(cx) }); }
+}
+
+thread_fn worker_r(cfg: http::Config, epoll: bool, generated: bool) {
+    if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_r(cx, generated) }); }
+    else { stopped(rest::serve(cfg) { cx => tier_r(cx, generated) }); }
 }
 
 thread_fn worker_a(cfg: http::Config, epoll: bool, stack: bool) {
@@ -2736,9 +2848,14 @@ fn main() {
     } else if tier == "c" || tier == "d" {
         load_heavy(dir);
         if template { prebuild_heavy(); }
-    } else {
-        abort("TIER is a, b, c, d, or m");
+    } else if tier != "f" && tier != "r" {
+        abort("TIER is a, b, c, d, f, m, or r");
     }
+    // Tier F on goose-http alone, and tier R through the generated router.
+    var choice: u8[>..] = [];
+    let bare = env("BARE", choice) && choice == "1";
+    choice.clear();
+    let generated = env("ROUTER", choice) && choice == "gen";
     let writes = tier == "d";
     var workers: u8[>..] = [];
     var n: i64 = 0;
@@ -2756,7 +2873,9 @@ fn main() {
           if epoll { ", epoll" } else { ", uring" }, if template { ", template" } else { ", serialize" });
     var ids: i64[>..] = [];
     for i in count {
-        ids.push(if tier == "b" { thread_spawn(worker_b, cfg, epoll) }
+        ids.push(if tier == "f" { thread_spawn(worker_f, cfg, epoll, bare) }
+                 else if tier == "r" { thread_spawn(worker_r, cfg, epoll, generated) }
+                 else if tier == "b" { thread_spawn(worker_b, cfg, epoll) }
                  else if tier == "c" || writes { thread_spawn(worker_c, cfg, epoll, writes) }
                  else { thread_spawn(worker_a, cfg, epoll, tier == "m") });
     }
