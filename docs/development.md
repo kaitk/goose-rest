@@ -66,7 +66,9 @@ breaking changes, expect each move to need code changes here.
    asserts what it tests and exits nonzero on the first failed `assert`.
 3. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it. The compiler's own lines (`parsed ok`, `typechecked ok`, `bce`) go to standard
-   error and aren't compared.
+   error and aren't compared. TinyCC can't run threads, so a `main.goose` that calls
+   `thread_spawn` (spike 06) is built with `goose build` into `build/spike` and run
+   from there.
 4. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function.
 
 ```sh
@@ -82,6 +84,12 @@ Each spike under `spikes/` is a root file that TinyCC runs in process:
 
 ```sh
 $GOOSE spikes/02-middleware-exit/main.goose
+```
+
+A spike that spawns a thread is built instead, as spike 06 is:
+
+```sh
+$GOOSE build -o build/spike06 spikes/06-resume-waiting/main.goose && build/spike06
 ```
 
 Its README gives the exact commands, including any `goose -O2 -o file.c` that reads the

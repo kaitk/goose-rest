@@ -371,7 +371,7 @@ of the message, since it is a slice of the request.
 
 ### Waiting on another thread
 
-The least settled part (task 002). Goose can't store a function to call later, so the
+Checked by spike 06; the API is task 009's. Goose can't store a function to call later, so the
 per-request state holds a fixed-mode enum of what each waiting route needs, and the app
 writes a case function per variant. The compiler dispatches on the tag and checks that
 every variant has its case (§8.2). The enum is fixed-mode because each request
@@ -394,8 +394,12 @@ fn resume(cx: rest::Cx&, app: App&, w: Waiting.Report, reply: const u8[:]) {
 
 The job crosses as a `to_bytes` image and is read back with `from_bytes`, which verifies
 it (§12). The mailbox carries bytes in fixed-size slots (256 bytes by default; a longer
-message returns `FULL`), so a reply larger than a slot, such as a report, needs bigger
-slots or chunks: open. A route that never waits keeps nothing on the connection.
+message returns `FULL`). Proposed (2026-10-13), from spike 06: a reply larger than a
+slot comes in pieces of at most a slot, and the route sends each as a chunk and calls
+`http::later` again until the last. The job carries the slot size, which an address
+doesn't, and the sender retries a piece that finds the box full. A program whose
+replies all fit raises `Config.mail_size` instead. A route that never waits keeps
+nothing on the connection.
 
 ### Main
 
@@ -436,9 +440,8 @@ Nothing blocks the design; three checks need a workaround, which the design take
 | `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Tested by hand on `a6249a4`; spike 03 still uses `u8[..32]`. |
 | Inlining to straight-line C (04) | Works. Nested middleware and `route` collapse into one C function, each early answer a `goto`. Passing a block on by name, `run(F)`, inlines nothing on that path ([findings](../goose-findings.md#passing-a-function-value-on-by-name-keeps-every-hof-around-it-out-of-line)). | Library HOFs never pass `F` on by name; they write `run() { F() }`. So `route` is goose-rest's own, not `exception::try`, which forwards its body by name. |
 | Filling `u8[]` fields from JSON (05) | Can't fill them key by key; collecting slices, then building once, costs no copy. | Readers collect, then build once ([above](#gooses-data-model-in-generated-code)). |
-
-Not yet run (task 002): resuming a waiting route through case functions, and the
-`format` hook found from a generic body in `rest`.
+| Resuming a waiting route (06) | Works, under `http::serve` too. The job crosses as a `to_bytes` image, `Waiting` lives in the per-request state, and `Wake` dispatches to one case function per variant. A missing case fails to compile, with an error that doesn't name it ([findings](../goose-findings.md#a-case-function-call-missing-a-variant-doesnt-name-it)). | Replies larger than a slot come in pieces ([above](#waiting-on-another-thread)). |
+| The `format` hook from `rest::json` (07) | Works with no workaround, for nested types and types in a third namespace, beside `rest`'s own `format`. A type with no overload renders as `app::Session { 1, 2 }`, not JSON, and compiles. | `rest::json` calls `format`. The generator writes an overload per schema type, strings through `json::format_string`. |
 
 ## Later uses
 

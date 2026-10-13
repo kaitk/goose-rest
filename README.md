@@ -21,7 +21,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 |---|---|---|
 | 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything (task 001) |
 | 🟢 | Language checks | Spikes 01–05 pass on `a6249a4`, three with workarounds the design takes |
-| 🟡 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest` (task 002) |
+| 🟢 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest`, pass on `a6249a4` (task 002) |
 | 🔴 | Generator | Types, readers, and writers from OpenAPI (task 003) |
 | 🔴 | Runtime | Context, routes, errors, extractors, middleware (tasks 004–006) |
 | 🔴 | Generated router | If measurement justifies it (tasks 007, 008) |

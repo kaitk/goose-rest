@@ -60,3 +60,29 @@ name the same way.
 Clang 21 at `-O2` inlined the five C functions anyway; gcc wasn't checked.
 
 Workaround: wrap a forwarded function value in a block.
+
+## A case-function call missing a variant doesn't name it
+
+Found on `a6249a4`, spike 06. Status: open
+
+A call dispatched to case functions (§8.2) that lack an overload for one variant fails
+to compile, as it should, but the error is the generic one for no matching overload: it
+lists the cases there are and doesn't name the one missing. §8.2 checks exhaustiveness
+"exactly like `match`", and a `match` without that arm says `match does not cover
+variant Waiting.None`. Expected: the same message for both.
+
+    enum Waiting { None, Report { org: i64 }, Export { org: i64 } }
+
+    fn resume(w: Waiting.Report) { print("report ", w.org); }
+    fn resume(w: Waiting.Export) { print("export ", w.org); }
+
+    fn main() {
+        let w: Waiting = Waiting.Report { org: 3 };
+        resume(w);
+    }
+
+    error: no matching overload for call to resume
+      candidate resume at missing_case.goose:5: argument 1: cannot pass Waiting as Waiting.Report
+      candidate resume at missing_case.goose:6: argument 1: cannot pass Waiting as Waiting.Export
+
+Workaround: none needed; compare the candidates with the enum's variants.
