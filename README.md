@@ -24,7 +24,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Spikes 06–07 | Resuming a waiting route, and the `format` hook from `rest`, pass on `a6249a4` (task 002) |
 | 🟢 | Generator | Types, readers, and writers from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md), task 003) |
 | 🔴 | Runtime | Context, routes, errors, extractors, middleware (tasks 004–006) |
-| 🔴 | Generated router | If measurement justifies it (tasks 007, 008) |
+| 🟡 | Generated router | Measured: the if chain costs about 6,000 instructions a request deep in 60 routes; task 008 proposed (task 007) |
 | 🔴 | Waiting on another thread | Task 009 |
 | 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
 
