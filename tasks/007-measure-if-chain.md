@@ -79,8 +79,10 @@ segment by segment, removes that.
 ### Not measured
 
 - `count.sh` itself: macOS has no `perf`, and Docker Desktop's VM exposes no counters.
-  `count.sh` also requests only `/plaintext`, and exits on a 4xx, since h2load counts one
-  as failed. A Linux run of these cases needs both changed in goose-http.
+  Since goose-http `bab61c6` (2026-10-13), `count.sh` takes the path as `TARGET` and the
+  expected status class as `STATUS`, so a Linux run of these cases copies the servers
+  into goose-http's `build/bench/` under names starting `goose` and runs, for example,
+  `TARGET=/v1/reports/exports/42/nope STATUS=4 bench/count.sh goose-routes60 goose-routes1_last`.
 - User instructions alone. On the benchmark desktop, a whole plaintext request costs
   goose-http about 1,825 user instructions (`count.sh`, goose-http's task 027): a
   different machine and instruction set, so it compares with the 6,000 here only in

@@ -1,20 +1,21 @@
 # 011: The TypeScript helper
 
-Status: todo (two questions below wait on the maintainer, 2026-10-13)
+Status: todo (decided 2026-10-13; the helper isn't built yet)
 
 Settle the open question in the architecture doc: a `.ts` file typed to the subset that
 writes `api.json`.
 
 ## Acceptance criteria
 
-- [ ] Decided whether it lives here or in its own repository, recorded with the reason
-- [ ] If kept: its types describe the subset exactly, and `tsc` rejects every construct
-      task 003's generator rejects, checked by a test of each
-- [ ] Decided whether it exports from valibot, with the lossy cases listed
+- [x] Decided whether it lives here or in its own repository, recorded with the reason
+- [ ] Its types describe the subset, and `tsc` rejects every keyword, type, format, and
+      shape outside it, checked by a test of each that names whether `tsc` or the
+      generator rejects it (reworded 2026-10-13, below)
+- [x] Decided whether it exports from valibot, with the lossy cases listed
 
 ## Where it lives
 
-Proposed (2026-10-13): here, in `ts/`, until the subset stops changing. The helper's
+Decided (2026-10-13): here, in `ts/`, until the subset stops changing. The helper's
 types are a second statement of `docs/generator.md`'s subset, and the subset still grows:
 `pattern` comes once Goose's `regex` has anchors. In this repository, the commit that
 teaches the generator a keyword also changes the types and their `tsc` test. In another
@@ -44,13 +45,13 @@ type, format, and shape outside the subset, but not all the values and names
 | A component name that isn't a Goose identifier, or two names equal after snake_case | Not in practice |
 | A negative or fractional `maxLength`, or `minLength` above `maxLength` | No |
 
-Proposed: reword the criterion to "`tsc` rejects every keyword, type, format, and shape
-outside the subset", and keep the generator as the check for the rest. Each test then
-names which of the two rejects its construct.
+Decided (2026-10-13): the criterion now reads "`tsc` rejects every keyword, type,
+format, and shape outside the subset", and the generator stays the check for the rest.
+Each test names which of the two rejects its construct.
 
 ## Exporting from valibot
 
-Proposed (2026-10-13): the helper doesn't export from valibot. valibot already has an
+Decided (2026-10-13): the helper doesn't export from valibot. valibot already has an
 exporter, `@valibot/to-json-schema` (`target: 'draft-2020-12'`; by default it throws on
 what it can't convert). An application can put its output under `components.schemas`,
 where the generator refuses whatever falls outside the subset. A wrapper in the helper

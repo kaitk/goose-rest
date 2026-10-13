@@ -145,7 +145,7 @@ so goose-rest itself needs no JavaScript toolchain. A schema format of goose-res
 (TypeSpec, or Goose struct declarations with annotations) was set aside: each would be
 another language beside OpenAPI.
 
-Open (2026-10-13): an optional TypeScript helper for writing that JSON. JSON is
+Decided (2026-10-13), not built yet: an optional TypeScript helper for writing that JSON. JSON is
 JavaScript notation, so a `.ts` file exporting the document as an object literal reads
 almost as the JSON does, and adds what JSON lacks: comments, shared fragments as
 constants, and functions for repeated shapes. Its main value is TypeScript types that
@@ -161,13 +161,16 @@ schemas for each input and output (`src/server/<domain>/<domain>.schemas.ts`), a
 conformance tests over HTTP that any backend must pass. Its Rust port keeps the
 TypeScript app as the source of the contract, and a Goose port would too. A contract
 exported from those schemas, or written beside them in the helper, keeps both backends
-on one definition. Still to settle (task 011):
+on one definition. Decided (2026-10-13, task 011):
 
-- Whether the helper lives in goose-rest's repository or in one of its own.
-- Whether it also exports from a schema library such as valibot. That export is lossy:
-  transforms such as `v.trim()` and custom checks have no JSON Schema form, and
-  valibot's `maxLength` counts UTF-16 units where JSON Schema counts code points. The
-  conformance tests would be the check that both backends validate alike.
+- The helper lives here, in `ts/`, until the subset settles: the commit that teaches the
+  generator a keyword changes the helper's types with it. Publishing it to npm would be
+  the reason to move it to a repository of its own.
+- It doesn't export from valibot. valibot's own exporter does that, and the generator
+  refuses what falls outside the subset. Where the export succeeds and the backends
+  still differ, as with transforms such as `v.trim()` and valibot's `maxLength`
+  counting UTF-16 units where JSON Schema counts code points, the conformance tests are
+  the check. Task 011 lists the lossy cases.
 
 ### Goose's data model in generated code
 
