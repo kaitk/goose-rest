@@ -61,3 +61,16 @@ can't run.
 
 Move each pin in its own commit, with the spikes and tests rerun
 ([development.md](docs/development.md#move-the-pin)).
+
+## Credits
+
+The runtime takes its model from [actix-web](https://github.com/actix/actix-web): an
+`App` of scopes and routes, extractors chosen by type, and middleware around a group of
+routes. Where Goose differs, the architecture doc says how and why.
+
+The generator takes its model from Elysia 2, the `kiana` branch of
+[Elysia](https://github.com/elysiajs/elysia), read at `c91f61f` (2026-10-11): one
+composed handler per route with only the hooks it has and the request parts it reads,
+validators inline, and a response writer that copies only declared fields. Goose's
+compiler does at build time what Elysia generates at run time or in its AOT build
+([architecture](docs/architecture/README.md#the-generator)).
