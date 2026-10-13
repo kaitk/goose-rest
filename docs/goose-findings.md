@@ -86,3 +86,39 @@ variant Waiting.None`. Expected: the same message for both.
       candidate resume at missing_case.goose:6: argument 1: cannot pass Waiting as Waiting.Export
 
 Workaround: none needed; compare the candidates with the enum's variants.
+
+## A block can't push a value whose call grows a parameter's array
+
+Found on `a6249a4`, task 003. Status: open
+
+Inside a block, `v.push(read(scratch))` is refused when `scratch` is a parameter of the
+enclosing function and `read` grows it. The same push outside a block compiles, and so
+does the block when `scratch` is a local of the function. `v` is a local declared while
+`scratch` is live, so the two can't share a stack (§1.2), and the growth can't land
+inside the element being built. Expected: the block compiles as the plain push does.
+
+    import std;
+
+    struct P { id: i64, name: u8[] }
+
+    fn read(scratch: u8[>..]&) -> P { scratch.push('x'); return P { id: 1, name: "a" }; }
+
+    fn each<F>(n: i64) { for i in n { F(); } }
+
+    fn many(scratch: u8[>..]&) -> P[>..] {
+        var v: P[>..] = [];
+        each(2) { v.push(read(scratch)); };     // refused
+        // v.push(read(scratch));               // compiles
+        return v;
+    }
+
+    fn main() { var s: u8[>..] = []; let v = many(s); print(v.len); }
+
+    error: cannot call read, which grows scratch: the element pushed into v is still
+    under construction, and the growth would land inside it (§1.3)
+
+Workaround: push through a named function that takes both arrays,
+`fn push_one(v: P[>..]&, scratch: u8[>..]&) { v.push(read(scratch)); }`, called from
+the block. Binding `let p = read(scratch)` first is refused too, since `p` isn't
+fixed-size and isn't copied implicitly (§4.1). The generated array readers push each
+element this way: `json::each_element` takes the element's reader as a block.
