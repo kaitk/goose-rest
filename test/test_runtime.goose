@@ -138,10 +138,50 @@ fn test_otherwise() {
     };
 }
 
+// A program's per-request state, whose error_body overload adds the status.
+struct Shaped { unused: bool = false }
+
+fn rest::error_body(body: u8[>..]&, st: const Shaped&, status: i32, code: const u8[:], detail: const u8[:],
+                    at: i64) {
+    body.append("{\"error\":");
+    json::format_string(body, code);
+    body.append(",\"status\":");
+    format(body, status);
+    body.push('}');
+}
+
+// answers, with Shaped as the per-request state.
+fn shaped<H>(text: const u8[:], want: const u8[:], more: const u8[:]) {
+    let req, status = http::parse(text);
+    assert(status == 200);
+    var out: u8[>..] = [];
+    var keep = true;
+    var st = http::Stream { .. };
+    var state = Shaped { .. };
+    var scratch: u8[>..] = [];
+    var cx = rest::Cx<Shaped> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "", keep_alive: keep,
+                 minor: 1, head: false, stream: st }, state: state, scratch: scratch };
+    H(cx);
+    same(out, str(want, more));
+}
+
+fn test_error_body() {
+    shaped(GET, "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: 42\r\n\r\n",
+                "{\"error\":\"project_not_found\",\"status\":404}") { cx =>
+        rest::route(cx) { rest::json(cx, 200, load(cx, 0)); };
+    };
+    shaped(GET, "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: 34\r\n\r\n",
+                "{\"error\":\"not_found\",\"status\":404}") { cx =>
+        var r = http::router(cx.req);
+        if http::on(r, "GET", "/q") { rest::text(cx, 200, "q"); } else { rest::otherwise(cx, r); }
+    };
+}
+
 fn main() {
     test_text_and_json();
     test_route();
     test_fail_body();
     test_otherwise();
+    test_error_body();
     print("test_runtime: ok");
 }

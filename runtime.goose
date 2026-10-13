@@ -1,5 +1,6 @@
 // The runtime: a request's context, routes that fail from any depth below
-// them, and answers in JSON, every error in one shape (README, "Errors").
+// them, and answers in JSON, every error in one shape, goose-rest's or the
+// program's (README, "Errors").
 namespace rest;
 
 import std;
@@ -48,7 +49,7 @@ inline fn on_event<S, H>(ev: http::Event, st: S&, out: http::Reply, slot: i64) {
     if ev.kind == http::WAKE && (ev.tag & REPLY_CONT) != 0 {
         relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
     } else if ev.kind == http::TIMEOUT {
-        if !out.stream.open { write_error(out, 504, "timeout", "", -1, ""); }
+        if !out.stream.open { write_error(out, st, 504, "timeout", "", -1, ""); }
     } else if ev.kind == http::WAKE || http::whole_only(ev, out) {
         var scratch: u8[>..] = [];
         let wake = ev.kind == http::WAKE;
@@ -84,7 +85,7 @@ inline fn route<F>(cx) {
     let failed = attempt() { F() };
     for f in failed {
         if cx.out.buf.len == mark {
-            write_error(cx.out, f.status, f.code, f.detail, f.at, "", f.challenge);
+            write_error(cx.out, cx.state,f.status, f.code, f.detail, f.at, "", f.challenge);
         }
     }
 }
@@ -154,7 +155,7 @@ fn no_method(cx, allow: const u8[:]) {
         http::field(cx.out, "Allow", allow);
         http::finish(cx.out, "", "");
     } else {
-        write_error(cx.out, 405, "method_not_allowed", "", -1, allow);
+        write_error(cx.out, cx.state,405, "method_not_allowed", "", -1, allow);
     }
 }
 
@@ -163,14 +164,14 @@ fn no_method(cx, allow: const u8[:]) {
 // 400, OPTIONS * 204, and anything else 404.
 fn no_route(cx, method: const u8[:], path: const u8[:]) {
     if !http::known_method(method) {
-        write_error(cx.out, 501, "not_implemented", "", -1, "");
+        write_error(cx.out, cx.state,501, "not_implemented", "", -1, "");
     } else if !http::is_routable(path) {
-        write_error(cx.out, 400, "bad_path", "", -1, "");
+        write_error(cx.out, cx.state,400, "bad_path", "", -1, "");
     } else if method == "OPTIONS" && path == "*" {
         http::start(cx.out, 204);
         http::finish(cx.out, "", "");
     } else {
-        write_error(cx.out, 404, "not_found", "", -1, "");
+        write_error(cx.out, cx.state,404, "not_found", "", -1, "");
     }
 }
 
@@ -181,7 +182,7 @@ fn not_found(cx, method: const u8[:], path: const u8[:]) {
         http::start(cx.out, 204);
         http::finish(cx.out, "", "");
     } else {
-        write_error(cx.out, 404, "not_found", "", -1, "");
+        write_error(cx.out, cx.state,404, "not_found", "", -1, "");
     }
 }
 
@@ -209,26 +210,39 @@ fn text(cx, status: i32, s: const u8[:]) {
 // 204 with that Allow, or for "*" without one.
 fn otherwise(cx, r: const http::Router&) {
     if !http::known_method(r.method) {
-        write_error(cx.out, 501, "not_implemented", "", -1, "");
+        write_error(cx.out, cx.state,501, "not_implemented", "", -1, "");
     } else if r.bad {
-        write_error(cx.out, 400, "bad_path", "", -1, "");
+        write_error(cx.out, cx.state,400, "bad_path", "", -1, "");
     } else if r.method == "OPTIONS" && (r.path == "*" || r.allow.len > 0) {
         http::start(cx.out, 204);
         if r.allow.len > 0 { http::field(cx.out, "Allow", r.allow); }
         http::finish(cx.out, "", "");
     } else if r.allow.len == 0 {
-        write_error(cx.out, 404, "not_found", "", -1, "");
+        write_error(cx.out, cx.state,404, "not_found", "", -1, "");
     } else {
-        write_error(cx.out, 405, "method_not_allowed", "", -1, r.allow);
+        write_error(cx.out, cx.state,405, "method_not_allowed", "", -1, r.allow);
     }
 }
 
-// The error shape: {"error": code}, with "detail" when detail isn't empty,
-// "at" when at isn't negative, an Allow field when allow isn't empty, and a
+// Answers an error with the body error_body writes for the type of st, the
+// per-request state, an Allow field when allow isn't empty, and a
 // WWW-Authenticate field when challenge isn't.
-fn write_error(out: http::Reply, status: i32, code: const u8[:], detail: const u8[:], at: i64,
+fn write_error(out: http::Reply, st, status: i32, code: const u8[:], detail: const u8[:], at: i64,
                allow: const u8[:], challenge: const u8[:] = "") {
     var body: u8[>..] = [];
+    error_body(body, st, status, code, detail, at);
+    http::start(out, status);
+    if allow.len > 0 { http::field(out, "Allow", allow); }
+    if challenge.len > 0 { http::field(out, "WWW-Authenticate", challenge); }
+    http::finish(out, "Content-Type: application/json\r\nContent-Length: ", body);
+}
+
+// The error shape: {"error": code}, with "detail" when detail isn't empty,
+// and "at" when at isn't negative. A program writes its own shape with an
+// overload for its per-request state's type, which wins over this generic
+// one: fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32,
+// code: const u8[:], detail: const u8[:], at: i64).
+fn error_body(body: u8[>..]&, st, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
     body.append("{\"error\":");
     json::format_string(body, code);
     if detail.len > 0 {
@@ -240,8 +254,4 @@ fn write_error(out: http::Reply, status: i32, code: const u8[:], detail: const u
         format(body, at);
     }
     body.push('}');
-    http::start(out, status);
-    if allow.len > 0 { http::field(out, "Allow", allow); }
-    if challenge.len > 0 { http::field(out, "WWW-Authenticate", challenge); }
-    http::finish(out, "Content-Type: application/json\r\nContent-Length: ", body);
 }

@@ -20,7 +20,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | | Part | Notes |
 |---|---|---|
 | 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything |
-| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape ([below](#errors)) |
+| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape a program can replace ([below](#errors)) |
 | 🟢 | Extractors | Path, query, header, and cookie parameters; `take<T>` for a JSON body or a program's own type; `once` ([below](#extractors)) |
 | 🟢 | Middleware, scopes, examples | CORS, a bearer check, Server-Timing and the access log, prefix scopes ([below](#middleware)); a JSON API with and without a schema |
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
@@ -211,6 +211,22 @@ schema keyword such as `minLength`, `maximum`, or `enum`, `<field>: not UTF-8`, 
 member`, or a syntax error from `json`, such as `expected a string`.
 
 The first answer wins: a route that answers and then fails keeps its answer.
+
+A program that needs another shape, such as an API whose errors also carry the status,
+writes every error's body itself with an overload for its per-request state's type. It
+gets the status, the code, and the detail and `at` the table names (empty and -1 where
+there are none); the status line and the fields stay goose-rest's:
+
+```goose
+fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const u8[:],
+                    detail: const u8[:], at: i64) {
+    body.append("{\"error\":");
+    json::format_string(body, code);
+    body.append(",\"status\":");
+    format(body, status);
+    body.push('}');
+}
+```
 
 ## Pins
 

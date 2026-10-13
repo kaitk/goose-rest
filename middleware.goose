@@ -76,7 +76,7 @@ inline fn cors<S, F>(cx: Cx<S>&, c: Cors) {   // a reference: the block sees the
     let common = cx.out.common;
     if has_origin {
         guard origin_in(c.origins, origin) else {
-            write_error(cx.out, 403, "origin_not_allowed", "", -1, "");
+            write_error(cx.out, cx.state,403, "origin_not_allowed", "", -1, "");
             return;
         }
         let method, preflight = http::field_of(cx.req, "access-control-request-method");
