@@ -41,7 +41,8 @@ check.goose       what generated code calls: code points, string formats, number
 gen/              goose-rest gen, the generator (gen/main.goose)
 test/             unit tests, test_*.goose, each a root file; test/gen/ golden files
 scripts/          test.sh runs every test; test-unit.sh the unit tests alone
-bench/            measurements: routes.sh counts the if chain's instructions (task 007)
+bench/            measurements: routes.sh counts the if chain's instructions (task 007);
+                  rest.sh runs the REST benchmark against goose-http and three frameworks (task 010)
 spikes/           language checks the design relies on, one folder each with a README
 docs/             architecture, generator reference, development setup, Goose findings
 tasks/            task tracking (tasks/README.md)

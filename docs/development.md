@@ -142,6 +142,37 @@ Traps met measuring task 007 (2026-10-13, h2load 1.70.0):
   the connection open: about 35,000 requests a second against 330,000. The kernel's
   share then buries a router's cost, so `bench/routes.sh` sends only GETs.
 
+## Run the REST benchmark
+
+Task 010's servers live under `bench/rest/`: `goose-rest/`, a fork of goose-http's
+task 021 server onto goose-rest; `axum/` and `actix-web/`, with `rust-app/` the records
+and JSON they share; `dusty/`, dusty with a route per path; and `tiers/`, goose-rest's
+own tiers F, R, and M, with their checker, loads, and summary. `bench/rest.sh` wraps
+goose-http's `bench/rest.sh`, which it finds in `GOOSE_HTTP` (`../goose-http`), checked
+out at the pin `rest.goose` imports. Its header lists the commands and settings.
+
+```sh
+bench/rest.sh build    # goose-http's servers and datasets, then this repository's
+bench/rest.sh check    # every server on every tier, against both checkers
+bench/rest.sh run      # tiers A to D through goose-http's script, then F, R, and M
+sudo bench/rest.sh count
+```
+
+`run` and `count` need Linux: `taskset`, `/proc`, and `perf`. `check` runs on macOS too,
+after `OWN=1 bench/rest.sh build`, which skips goose-http's build, given goose-http's
+datasets in its `build/rest` (`goose build` and run its `bench/rest/gen.goose` into
+it). What the setup met on macOS (2026-10-14):
+
+- dusty pins Zig 0.16.0, and Homebrew's `zig` is 0.17.0. ziglang.org's 0.16.0 tarball
+  for `aarch64-macos` works; set `ZIG` to its `zig`. zio 0.19.1 runs on kqueue.
+- Zig 0.16 fetches packages into `zig-pkg/` beside `build.zig.zon`, so `bench/rest.sh`
+  builds dusty from a copy in `CACHE`, and passes tier R's route list with `-Dgithub`.
+- `bench/rest/goose-rest/github_gen.goose` is generated from `github.json`, which
+  `bench/rest/tiers/github_goose.py` writes with `github_app.goose` from `github.txt`.
+  `scripts/test.sh` checks it as a golden file.
+- In zsh, `env $v` passes a variable holding `A=1 B=2` as one argument; `bench/rest.sh`
+  is `sh`, where it splits.
+
 ## Use the package from git
 
 A program outside the repository imports the package as a user's does, at a pushed

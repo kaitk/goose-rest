@@ -18,8 +18,10 @@ pins (dusty `ae164fa`, zio 0.19.1, Zig 0.16.0).
 - The servers: goose-http alone on both loops (`goose-epoll`, `goose-uring`), goose-rest
   on both (`goose-epoll-rest`, `goose-uring-rest`, the binary `rest-goose-rest`), Axum,
   actix-web, dusty with a route per path (`dusty-routes`), and goose-http's catch-all
-  dusty and hyper as anchors to goose-http's 2026-10-13 tables. The catch-all and routed
-  dusty differ only in routing, so the pair prices dusty's router.
+  dusty and hyper as anchors to goose-http's 2026-10-13 tables. The pair of dusty entries
+  prices dusty's router, its middleware, and its query and cookie readers, which the
+  routed one uses and the catch-all doesn't (`bench/rest/dusty/NOTES.md`); the records,
+  JSON, and body readers are the same.
 - Axum and actix-web run in their TechEmpower entries' configuration: runtime layout,
   allocator, and release profile, each recorded with the commit it follows. goose-http's
   xitca-web entry follows its TechEmpower flags the same way.
@@ -71,9 +73,10 @@ framework's. It compares Goose builds only.
 
 ## Acceptance criteria
 
-- [ ] goose-rest answers errors in a shape the program chooses
-- [ ] goose-rest gathers bodies larger than the read buffer up to a route's limit
-- [ ] goose-rest serves tiers A to D, and passes goose-http's `bench/rest/check.py`
+- [x] goose-rest answers errors in a shape the program chooses
+- [x] goose-rest gathers bodies larger than the read buffer up to a route's limit
+- [x] goose-rest serves tiers A to D, and passes goose-http's `bench/rest/check.py`
+      (macOS, 2026-10-14, both loops and both JSON ways)
 - [ ] Axum, actix-web, and dusty serve them through their routers, extractors, and
       middleware, built in release mode (`ReleaseFast` for dusty) in their fastest
       documented configuration, with the same worker count
