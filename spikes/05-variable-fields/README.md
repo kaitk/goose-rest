@@ -1,6 +1,6 @@
 # 05: Filling variable-size fields from JSON
 
-Checks task 023's open question. Can a reader fill a struct's `u8[]` fields one key at a
+Checks an open question in [the plan](../../docs/plan.md). Can a reader fill a struct's `u8[]` fields one key at a
 time, in whatever order the JSON gives them? Or does in-place construction (spec
 §4.2-4.3) force it to collect the values first and build the struct once?
 
