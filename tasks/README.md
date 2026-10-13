@@ -45,5 +45,5 @@ tasks by number ("task 001"), not by path, so a move breaks no reference.
 Task 001 makes the package. Tasks 002 and 003 can start at once: the spikes, and the
 generator, which doesn't depend on goose-http's API. Task 004 waits on goose-http's task
 027 breaking changes, and tasks 005 and 006 follow it. Task 007 measures the if chain
-and decides task 008. Task 009 follows spike 06 and task 004. Task 010 comes last. Task
+and decides task 008. Task 009 follows spike 06 and task 004. Task 010 benchmarks goose-rest against goose-http alone and three frameworks, and comes last. Task
 011 can be settled at any point.

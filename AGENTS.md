@@ -59,8 +59,9 @@ directory. What only one machine needs, such as where its Goose checkout is, goe
 - Every number comes with how it was measured: machine, kernel, command, worker and
   connection counts, and run count. A result without them doesn't go in a doc.
 - goose-rest is measured on goose-http's task 021 tiers, against goose-http alone and
-  against Axum and actix-web in their fastest documented configuration, built in
-  release mode, with the same worker count. Losses are recorded as plainly as wins.
+  against Axum, actix-web, and dusty (Zig) in their fastest documented configuration,
+  built in release mode, with the same worker count. Each framework serves through its
+  own router, extractors, and middleware, not one catch-all handler. Losses are recorded as plainly as wins.
 
 ## Code conventions
 

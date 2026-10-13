@@ -22,7 +22,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🔴 | Runtime | Context, routes, errors, extractors, middleware (tasks 004–006) |
 | 🔴 | Generated router | If measurement justifies it (tasks 007, 008) |
 | 🔴 | Waiting on another thread | Task 009 |
-| 🔴 | Benchmark | Against goose-http alone, Axum, and actix-web (task 010) |
+| 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
 
 ## Layout
 
