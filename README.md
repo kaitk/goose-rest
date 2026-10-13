@@ -25,7 +25,8 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Generator | Types, readers, and writers from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md), task 003) |
 | 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape ([below](#errors), task 004) |
 | 🔴 | Extractors, middleware | Tasks 005–006 |
-| 🟡 | Generated router | Next: the if chain costs about 6,000 instructions a request deep in 60 routes (tasks 007, 008) |
+| 🟢 | Generated router | `dispatch` from the paths, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths), tasks 007, 008) |
+| 🟡 | Generator | Query, header, and cookie parameters wait on extractors (task 005) |
 | 🔴 | Waiting on another thread | Task 009 |
 | 🔴 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty (task 010) |
 
