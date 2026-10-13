@@ -255,3 +255,42 @@ itself, as an untyped function parameter does.
 
 Workaround: pass the local as a reference, `R(&r, cx.scratch)`, which is shorter than
 goose-http's struct holding a reference.
+
+## A function called once isn't inlined past a size
+
+Found on `a6249a4`, task 006. Status: open, reported as
+[aardappel/goose#33](https://github.com/aardappel/goose/issues/33) (2026-10-13)
+
+A function with one call site stays a call once its body passes a size, at `-O1` and
+`-O2`, though `docs/implementation.md` says the inliner inlines "if K is used once, or
+its post-optimization node count is below NC, ...". With 15 of the statements below,
+`handle` is inlined into `main`; with 16, the C keeps `handle_g` and calls it. Nothing
+nests deeper than one `if`, so it isn't the nesting limit. Called from inside a loop,
+whose size allowance is four times larger, it's inlined again. Expected: a callee used
+once is inlined whatever its size, as the notes say, or the notes state the limit.
+
+    import std;
+    import os;
+
+    fn handle(buf: u8[>..]&, id: i64) {
+        if id == 0 { buf.append(str("v", id, "0")); }
+        if id == 1 { buf.append(str("v", id, "1")); }
+        // ... the same for 2 to 14
+        if id == 15 { buf.append(str("v", id, "15")); }
+    }
+
+    fn main() {
+        var b: u8[>..] = [];
+        handle(b, args().len - 1);
+        print(b);
+    }
+
+goose-rest meets it in a handler behind middleware: a block-taking function such as
+`rest::cors`, given the handler's routes as its block, passes the size at once. It then
+stays a call that reaches the handler's locals through pointers, and the handler stays
+a call around it. `inline fn` makes each one inline.
+
+Workaround: goose-rest's functions that take a block are `inline fn` (`route`,
+`attempt`, `cors`, `bearer`, `timed`, `json_body`), so the middleware, the route, and
+the code that fails all fold into the handler, which may stay one function of its own
+(`test/inline_route.goose`).

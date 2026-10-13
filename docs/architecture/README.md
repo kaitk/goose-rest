@@ -208,30 +208,55 @@ The framework alone, as an Actix program would use it:
 ```goose
 namespace app;
 
-fn handle(cx: rest::Cx&, app: App&) {
+fn handle(cx, app: App&) {
     rest::timed(cx) {                         // Server-Timing and the access log
-        rest::cors(cx, ALLOWED_ORIGINS) {     // answers a preflight itself
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {   // answers a preflight itself
             var r = http::router(cx.req);
             if http::on(r, "GET", "/health") {
                 rest::text(cx, 200, "ok");
-            } else if http::on(r, "GET", "/projects/:id") {
+            } else if rest::scope(r, "/v1") {
                 rest::route(cx) {
-                    let s = security_session(cx, app);
-                    let id = rest::param_int(cx, r, "id");   // 400 unless an integer
-                    get_project(cx, app, s, id)
-                };
-            } else if http::on(r, "POST", "/projects") {
-                rest::route(cx) {
-                    let s = security_session(cx, app);
-                    create_project(cx, app, s, rest::take<ProjectCreate>(cx))
+                    let s = security_session(cx, app);       // fails 401 for the whole scope
+                    if http::on(r, "GET", "/projects/:id") {
+                        get_project(cx, app, s, rest::param_int(cx, r, "id"));   // 400 unless an integer
+                    } else if http::on(r, "POST", "/projects") {
+                        create_project(cx, app, s, rest::take<ProjectCreate>(cx));
+                    } else {
+                        rest::otherwise(cx, r);              // 404, or 405 with Allow
+                    }
                 };
             } else {
-                http::otherwise(r, cx.out);           // 404, or 405 with Allow
+                rest::otherwise(cx, r);
             }
-        }
-    }
+        };
+    };
 }
 ```
+
+Built (task 006): `timed` and `cors` add their fields to every answer inside them, the
+route's errors included, so they go outside `rest::route`, and answer what they refuse
+themselves. Checks that fail, `rest::bearer` and the program's own, go inside it.
+`rest::scope` narrows the router to a prefix, and `rest::otherwise` answers 404, 405,
+and OPTIONS across scopes from the routes it passed.
+
+### Inlining
+
+Decided (2026-10-13, task 006), from `test/inline_route.goose`'s C. A handler behind
+middleware compiles to one C function, the handler, with the middleware, the route,
+and the code that fails inlined into it, and each early answer a jump. Three rules keep
+it so:
+
+- **One route per request.** A function that fails returns from the innermost
+  `attempt`, so a route nested in a route keeps both out of line. Middleware doesn't
+  open routes of its own.
+- **Functions that fail stay small.** A function that fails and stays a call needs its
+  route's frame, which keeps the route, everything around it, and the handler out of
+  line. The extractors fail in a few statements and do their work in leaves that
+  return whether it succeeded (`int_of` and `decimal`).
+- **Block-taking functions are `inline fn`.** Given a handler's routes as its block, a
+  function such as `cors` passes the inliner's size limit at once, and stays a call
+  although it's called once ([findings](../goose-findings.md#a-function-called-once-isnt-inlined-past-a-size)).
+  So `route`, `attempt`, `cors`, `bearer`, `timed`, and `json_body` are `inline fn`.
 
 `ProjectCreate` has a reader the program declares as
 `fn rest::from_request(cx, v: const app::ProjectCreate?) -> app::ProjectCreate` (spike

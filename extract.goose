@@ -22,36 +22,56 @@ fn take<T>(cx) -> T {
     return from_request(cx, none);
 }
 
+// The functions here that fail are kept small, and their work is in leaves
+// that return whether it succeeded. A function that fails and stays a call
+// needs its route's frame, which keeps the route, the middleware around it,
+// and the handler out of line (docs/architecture/README.md, "Inlining").
+
 // s with its escapes decoded, and with '+' as a space when plus is set: s
 // itself when it has neither, or else decoded onto cx.scratch, which the
 // result then points into. A '%' without two hex digits fails the route
 // with "<name>: encoding".
 fn decoded(cx, s: const u8[:], plus: bool, name: const u8[:]) -> const u8[:] {
+    let v, ok = unescaped(s, plus, cx.scratch);
+    guard ok else { fail_param(cx, str(name, ": encoding")); }
+    return v;
+}
+
+// s decoded as decoded does, onto scratch where it has escapes, and false for
+// a bad escape.
+fn unescaped(s: const u8[:], plus: bool, scratch: u8[>..]&) -> const u8[:], bool {
     var plain = true;
     for c in s { if c == '%' || plus && c == '+' { plain = false; } }
-    if plain { return s; }
-    let at = cx.scratch.len;
-    guard http::decode(s, cx.scratch, plus) else { fail_param(cx, str(name, ": encoding")); }
-    return cx.scratch[at..];
+    if plain { return s, true; }
+    let at = scratch.len;
+    let ok = http::decode(s, scratch, plus);
+    return scratch[at..], ok;
 }
 
 // s as a decimal integer, or a failure, "<name>: integer", for anything
 // else: a sign other than a leading '-', another byte, no digits, or a value
 // past i64.
 fn int_of(cx, s: const u8[:], name: const u8[:]) -> i64 {
+    let v, ok = decimal(s);
+    guard ok else { fail_param(cx, str(name, ": integer")); }
+    return v;
+}
+
+// s as int_of reads it, and whether it is one.
+fn decimal(s: const u8[:]) -> i64, bool {
     let neg = s.len > 0 && s[0] == '-';
     var i = if neg { 1 } else { 0 };
-    guard i < s.len else { fail_param(cx, str(name, ": integer")); }
+    guard i < s.len else { return 0, false; }
     var v: i64 = 0;
     while i < s.len {
         let c = s[i];
-        guard c >= '0' && c <= '9' else { fail_param(cx, str(name, ": integer")); }
+        guard c >= '0' && c <= '9' else { return 0, false; }
         let digit: i64 = c - '0';
-        guard v <= (9223372036854775807 - digit) / 10 else { fail_param(cx, str(name, ": integer")); }
+        guard v <= (9223372036854775807 - digit) / 10 else { return 0, false; }
         v = v * 10 + digit;
         i++;
     }
-    return if neg { -v } else { v };
+    return if neg { -v } else { v }, true;
 }
 
 // s as JSON's true or false, or a failure, "<name>: boolean".

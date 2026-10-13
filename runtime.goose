@@ -38,12 +38,13 @@ fn serve<H>(cfg: http::Config) -> http::Error {
     return serve(cfg, NoState { .. }) { cx => H(cx) };
 }
 
-// What fail answers with. Its text is owned: a long-distance return can't
+// What fail answers with: challenge, when not empty, goes in a
+// WWW-Authenticate field. Its text is owned: a long-distance return can't
 // carry a slice of the request (docs/goose-findings.md).
-struct Failure { status: i32, at: i64, code: u8[], detail: u8[] }
+struct Failure { status: i32, at: i64, code: u8[], detail: u8[], challenge: u8[] }
 
 // An empty array when F returned, and the failure when it called fail.
-fn attempt<F>() -> Failure[] {
+inline fn attempt<F>() -> Failure[] {
     F();
     return [];
 }
@@ -53,18 +54,26 @@ fn attempt<F>() -> Failure[] {
 // response leaves that response as it is. route can't take it back, since
 // shrinking the write buffer is refused while a slice of the request is live
 // (spec §5.1: a parameter's slices may point into any array of their type).
-fn route<F>(cx) {
+inline fn route<F>(cx) {
     let mark = cx.out.buf.len;
     let failed = attempt() { F() };
     for f in failed {
-        if cx.out.buf.len == mark { write_error(cx.out, f.status, f.code, f.detail, f.at, ""); }
+        if cx.out.buf.len == mark {
+            write_error(cx.out, f.status, f.code, f.detail, f.at, "", f.challenge);
+        }
     }
 }
 
 // Leaves the enclosing route, which answers status with {"error": code}.
 // Every caller runs inside rest::route, or the program doesn't compile.
 fn fail(cx, status: i32, code: const u8[:]) {
-    return [Failure { status: status, at: -1, code: str(code), detail: "" }] from attempt;
+    return [Failure { status: status, at: -1, code: str(code), detail: "", challenge: "" }] from attempt;
+}
+
+// Leaves the enclosing route with 401 {"error": code} and a WWW-Authenticate
+// field of challenge, as "Bearer" (RFC 9110 §11.6.1).
+fn fail_auth(cx, code: const u8[:], challenge: const u8[:]) {
+    return [Failure { status: 401, at: -1, code: str(code), detail: "", challenge: str(challenge) }] from attempt;
 }
 
 // Leaves the enclosing route with 400 for a body r couldn't read:
@@ -72,7 +81,7 @@ fn fail(cx, status: i32, code: const u8[:]) {
 // A generated reader's errors name the field and the check, as "name:
 // maxLength" or "unknown member".
 fn fail_body(cx, r: const json::Reader&) {
-    return [Failure { status: 400, at: r.error_at, code: str("invalid_body"), detail: str(r.error) }]
+    return [Failure { status: 400, at: r.error_at, code: str("invalid_body"), detail: str(r.error), challenge: "" }]
         from attempt;
 }
 
@@ -80,14 +89,15 @@ fn fail_body(cx, r: const json::Reader&) {
 // its schema: {"error": "invalid_parameter", "detail": detail}, as "id:
 // integer" or "id: minimum".
 fn fail_param(cx, detail: const u8[:]) {
-    return [Failure { status: 400, at: -1, code: str("invalid_parameter"), detail: str(detail) }] from attempt;
+    return [Failure { status: 400, at: -1, code: str("invalid_parameter"), detail: str(detail), challenge: "" }]
+        from attempt;
 }
 
 // The JSON body as R(r, scratch), a generated reader, reads it: 415 unless
 // the request says it's application/json, and 400 invalid_body for a body
 // R refused or one with more after its value. Generated from_request
 // overloads call it.
-fn json_body<R>(cx) {
+inline fn json_body<R>(cx) {
     guard http::has_type(cx.req, "application/json") else { fail(cx, 415, "unsupported_media_type"); }
     var r = json::reader(cx.body);
     let v = R(&r, cx.scratch);   // a block given the local itself gets a copy of it
@@ -189,9 +199,10 @@ fn otherwise(cx, r: const http::Router&) {
 }
 
 // The error shape: {"error": code}, with "detail" when detail isn't empty,
-// "at" when at isn't negative, and an Allow field when allow isn't empty.
+// "at" when at isn't negative, an Allow field when allow isn't empty, and a
+// WWW-Authenticate field when challenge isn't.
 fn write_error(out: http::Reply, status: i32, code: const u8[:], detail: const u8[:], at: i64,
-               allow: const u8[:]) {
+               allow: const u8[:], challenge: const u8[:] = "") {
     var body: u8[>..] = [];
     body.append("{\"error\":");
     json::format_string(body, code);
@@ -206,5 +217,6 @@ fn write_error(out: http::Reply, status: i32, code: const u8[:], detail: const u
     body.push('}');
     http::start(out, status);
     if allow.len > 0 { http::field(out, "Allow", allow); }
+    if challenge.len > 0 { http::field(out, "WWW-Authenticate", challenge); }
     http::finish(out, "Content-Type: application/json\r\nContent-Length: ", body);
 }

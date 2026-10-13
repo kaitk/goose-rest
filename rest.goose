@@ -10,6 +10,7 @@ import http from "github.com/kaitk/goose-http@cfb9c02bd8cd1d841eaf9d140ff0dbd96b
 import .check;
 import .runtime;
 import .extract;
+import .middleware;
 
 // The path a route matches: the request target without its query, as goose-http
 // reads it.
