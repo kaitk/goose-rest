@@ -11,12 +11,13 @@ import rest;
 import api_gen;
 
 // Where the hardware is, and the token the writes need. Flat, so it crosses
-// to the worker thread.
+// to the worker thread. 1 KB a path, since the tests put the fake sysfs under
+// the checkout, whose path can be long.
 struct Board {
-    thermal: u8[..128] = "/sys/class/thermal/thermal_zone0",
-    led: u8[..128] = "",
-    uptime: u8[..128] = "/proc/uptime",
-    token: u8[..128] = "secret",
+    thermal: u8[..1024] = "/sys/class/thermal/thermal_zone0",
+    led: u8[..1024] = "",
+    uptime: u8[..1024] = "/proc/uptime",
+    token: u8[..1024] = "secret",
 }
 
 // The worker's state, dispatch's state: the settings by reference, so that

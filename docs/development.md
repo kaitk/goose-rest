@@ -76,7 +76,10 @@ breaking changes, expect each move to need code changes here.
    tutorial program under `docs/tutorial/`, serves it on `127.0.0.1` from port 18081
    up, sends the requests its `requests.sh` lists with `curl`, and compares the answers
    with its `expected.txt`. A port in use there fails the run. Then each tutorial
-   program's `test.goose`, through TinyCC.
+   program's `test.goose`, through TinyCC. `examples/device` reads its fake sysfs from
+   `build/examples/` and takes paths of up to 1 KB, so a checkout deeper than that fails
+   its run as "no answer on port", with "THERMAL is too long" in
+   `build/examples/device.log`.
 5. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it. The compiler's own lines (`parsed ok`, `typechecked ok`, `bce`) go to standard
    error and aren't compared. TinyCC can't run threads, so a `main.goose` that calls

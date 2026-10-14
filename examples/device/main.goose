@@ -39,10 +39,10 @@ thread_fn worker(cfg: http::Config, b: app::Board) {
 }
 
 // The environment variable name into to, which it must fit.
-fn setting(name: const u8[:], to: u8[..128]&) {
+fn setting(name: const u8[:], to: u8[..1024]&) {
     var v: u8[>..] = [];
     guard env(name, v) else { return; }
-    guard v.len <= 128 else { write_stderr(str(name, " is too long\n")); exit(2); }
+    guard v.len <= 1024 else { write_stderr(str(name, " is too long\n")); exit(2); }
     to.clear();
     to.append(v);
 }
