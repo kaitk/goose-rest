@@ -508,17 +508,20 @@ The router calls the handlers by name, with their types, so the schema and the h
 can't drift apart unnoticed. Delete `get_project`, and the build stops:
 
 ```text
-api_gen.goose:258: error: unknown function: app::get_project
+api_gen.goose:259: error: unknown function: app::get_project
                                             app::get_project(cx, state, id);
-  in fn rest::attempt<F = {block at api_gen.goose:255:57}>() instantiated from .../runtime.goose:206
-  in fn rest::route<F = {block at api_gen.goose:255:57}>(rest::Cx<rest::NoState>) instantiated from api_gen.goose:255
-  in fn api::dispatch(rest::Cx<rest::NoState>, app::App&) instantiated from main.goose:32
+  in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:206
+  in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState>) instantiated from api_gen.goose:256
+  in fn api::dispatch(rest::Cx<rest::NoState>, app::App&, const u8[:]) instantiated from main.goose:32
   ...
 ```
 
 Declare its `id` as a string instead, and it stops with
 `argument 3: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
-`api_gen.goose` names the call, and the operation is the one around it.
+`api_gen.goose` names the call, and the operation is the one around it. The chain goes
+on for 15 more frames, through `rest::serve` and goose-http's event loop, because Goose
+lists every generic function between the error and `main`
+([Goose findings](goose-findings.md#an-error-inside-a-generic-function-lists-every-frame-up-to-main)).
 
 The workflow, then, is: change `api.json`, regenerate `api_gen.goose`, and let the
 compiler list the handlers to add or change. This repository commits both files, so

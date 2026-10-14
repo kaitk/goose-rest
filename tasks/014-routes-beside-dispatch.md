@@ -1,6 +1,6 @@
 # 014: Hand-written routes beside dispatch, and testing without sockets
 
-Status: in-progress
+Status: done (2026-10-14)
 
 Requested 2026-10-14. Three changes from writing the tutorial, each its own commit.
 
@@ -37,8 +37,9 @@ goose-http's call chain.
 - [x] `test/test_router.goose` and `docs/tutorial/06-schema/test.goose` use it, and
       tutorial section 12 is written around it
 - [x] A test request without `Host` works: `rest::serve_one` adds `Host: localhost`
-- [ ] The missing-handler error is shorter, or its noise is recorded in
-      `docs/goose-findings.md` with a minimal program
+- [x] The missing-handler error is shorter, or its noise is recorded in
+      `docs/goose-findings.md` with a minimal program: Goose lists every generic frame up
+      to `main`, which no change to the generated code shortens
 
 ## Allow across both routers
 

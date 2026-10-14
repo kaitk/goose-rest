@@ -89,6 +89,50 @@ docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works to
 
 ## Feature requests
 
+### An error inside a generic function lists every frame up to main
+
+Found on `46356c2`, task 014. Status: open
+
+An error in a specialized function is followed by the whole chain of instantiations
+that led to it, one line per frame, up to `main`. A frame instantiated through a block
+parameter lists where that block's own caller was instantiated too, so the chain runs
+through every generic function between the call and `main`. Expected: a shorter chain by
+default, such as the first few frames and the last, with an option for all of them.
+
+    import std;
+
+    fn handler_call(x) { missing_handler(x); }
+    fn route<F>(x) { F(x); }
+    fn dispatch(x) { route(x) { y => handler_call(y) }; }
+    fn loop3<H>(x) { H(x); }
+    fn loop2<H>(x) { loop3(x) { y => H(y) }; }
+    fn loop1<H>(x) { loop2(x) { y => H(y) }; }
+    fn serve<H>(x) { loop1(x) { y => H(y) }; }
+
+    fn main() {
+        serve(1) { x => dispatch(x) };
+    }
+
+    main.goose:3: error: unknown function: missing_handler
+      in fn handler_call(literal i64) instantiated from main.goose:5
+      in fn route<F = {block at main.goose:5:27}>(literal i64) instantiated from main.goose:5
+      in fn dispatch(literal i64) instantiated from main.goose:12
+      in fn loop3<H = {block at main.goose:7:27}>(literal i64) instantiated from main.goose:7
+      in fn loop2<H = {block at main.goose:8:27}>(literal i64) instantiated from main.goose:8
+      in fn loop1<H = {block at main.goose:9:27}>(literal i64) instantiated from main.goose:9
+      in fn serve<H = {block at main.goose:12:14}>(literal i64) instantiated from main.goose:12
+      in fn main() instantiated from main.goose:11
+
+goose-rest meets it when a handler the schema names is missing: the generated
+`dispatch` is generic in `cx` and `state`, and runs inside `rest::serve`'s block, which
+runs inside goose-http's event loop, so the error lists 18 frames, 8 of them in
+goose-http's loop (`http::answer`, `http::pump`, `http::mail_take`, and so on). The
+generated code can't shorten it: a named function that calls the handler would be
+generic in `cx` too, and get the same chain.
+
+Workaround: read the first lines. The error's line in `api_gen.goose` names the call,
+and the first frames name the operation (tutorial section 6).
+
 ### A function called once isn't inlined past a size
 
 Found on `a6249a4`, task 006. Status: open, reported as
