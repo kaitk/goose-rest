@@ -12,7 +12,9 @@
 #
 # Task 015: hand60.goose serves the same routes written by hand on goose-rest,
 # through rest::serve_epoll, and answers as gen60 does. The query case reads
-# GET /v1/projects's three query parameters, which routes60 ignores.
+# GET /v1/projects's three query parameters, which routes60 ignores. genr60.goose
+# is gen60 behind rest::routes and one hand-written route, as a program serves
+# a route its schema can't describe.
 #
 # goose-http's bench/count.sh's load on macOS, which has no perf: one worker,
 # h2load --h1 -n N -c 256 -m 16 -t 8 with count.sh's headers, and the server's
@@ -48,37 +50,44 @@ for s in routes60 routes1 routes1_last routes1_post hand60; do
     "$goose" build --standalone -o "$bin/$s" "$root/bench/routes/$s.goose" >"$tmp/build" 2>&1 ||
         { cat "$tmp/build" >&2; exit 1; }
 done
-# gen60 imports the generated router beside it, so it's built from a copy
-# next to one.
+# gen60 and genr60 import the generated router beside them, so they're built
+# from copies next to one.
 mkdir -p "$bin/gen"
-cp "$root/bench/routes/gen60.goose" "$root/bench/routes/app.goose" "$bin/gen/"
+cp "$root/bench/routes/gen60.goose" "$root/bench/routes/genr60.goose" "$root/bench/routes/app.goose" "$bin/gen/"
 { "$goose" "$root/gen/main.goose" -- gen "$root/test/gen/routes.json" -o "$bin/gen/routes_gen.goose" &&
-    "$goose" build --standalone -o "$bin/gen60" "$bin/gen/gen60.goose"; } >"$tmp/build" 2>&1 ||
+    "$goose" build --standalone -o "$bin/gen60" "$bin/gen/gen60.goose" &&
+    "$goose" build --standalone -o "$bin/genr60" "$bin/gen/genr60.goose"; } >"$tmp/build" 2>&1 ||
     { cat "$tmp/build" >&2; exit 1; }
 
 # case, server, target, the status class every response must have
 cases='first routes60 /health 2
 first gen60 /health 2
+first genr60 /health 2
 first hand60 /health 2
 first routes1 /health 2
 last routes60 /v1/reports/exports/42/download 2
 last gen60 /v1/reports/exports/42/download 2
+last genr60 /v1/reports/exports/42/download 2
 last hand60 /v1/reports/exports/42/download 2
 last routes1_last /v1/reports/exports/42/download 2
 404 routes60 /v1/reports/exports/42/nope 4
 404 gen60 /v1/reports/exports/42/nope 4
+404 genr60 /v1/reports/exports/42/nope 4
 404 hand60 /v1/reports/exports/42/nope 4
 404 routes1_last /v1/reports/exports/42/nope 4
 404-outside routes60 /v2/nothing 4
 404-outside gen60 /v2/nothing 4
+404-outside genr60 /v2/nothing 4
 404-outside hand60 /v2/nothing 4
 404-outside routes1 /v2/nothing 4
 405 routes60 /v1/reports/exports/42/cancel 4
 405 gen60 /v1/reports/exports/42/cancel 4
+405 genr60 /v1/reports/exports/42/cancel 4
 405 hand60 /v1/reports/exports/42/cancel 4
 405 routes1_post /v1/reports/exports/42/cancel 4
 query routes60 /v1/projects?page=2&archived=false&q=go 2
 query gen60 /v1/projects?page=2&archived=false&q=go 2
+query genr60 /v1/projects?page=2&archived=false&q=go 2
 query hand60 /v1/projects?page=2&archived=false&q=go 2'
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
