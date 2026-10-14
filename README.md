@@ -19,7 +19,7 @@ Start with the [tutorial](docs/tutorial.md); the [docs](#docs) table lists the r
 | | Part | Notes |
 |---|---|---|
 | 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything |
-| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape a program can replace ([reference](docs/reference.md#errors)) |
+| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape a program can replace ([reference](docs/reference.md#errors)); `serve_one` to test without sockets ([reference](docs/reference.md#testing)) |
 | 🟢 | Extractors | Path, query, header, and cookie parameters; `take<T>` for a JSON body or a program's own type; `once` ([reference](docs/reference.md#extractors)) |
 | 🟢 | Middleware, scopes, examples | CORS, a bearer check, Server-Timing and the access log, prefix scopes ([reference](docs/reference.md#middleware)); a JSON API with and without a schema |
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
