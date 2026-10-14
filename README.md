@@ -66,8 +66,8 @@ requests each:
 
 | Example | What it shows |
 |---|---|
-| [`examples/plain/`](examples/plain/main.goose) | Without a schema: routes in an `http::router` chain under a scope, extractors, a hand-written body reader, and the middleware |
-| [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose` |
+| [`examples/plain/`](examples/plain/main.goose) | Without a schema: routes in an `http::router` chain under a scope, extractors, a hand-written body reader, the middleware, and a 4 MB upload route beside the 1 MB default |
+| [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose`; `createProject` takes 2 MB by `x-body-limit` |
 | [`examples/waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a mailbox message |
 
 ```sh

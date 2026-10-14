@@ -64,6 +64,18 @@ fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
     rest::json_body(cx) { r, scratch => read_create(r, scratch) }
 }
 
+// The longest logo PUT /v1/projects/:id/logo takes. Other routes keep
+// rest::body's 1 MB, and http::Config's max_body is raised to this, the most
+// any route takes.
+let LOGO_LIMIT: i64 = 4 * 1024 * 1024;
+
+// What a logo upload answers: its size. The example keeps no files.
+struct Logo { id: i64, bytes: i64 }
+
+fn format(out: u8[>..]&, l: const Logo&) {
+    format(out, "{\"id\":", l.id, ",\"bytes\":", l.bytes, "}");
+}
+
 fn find_project(cx, app: App&, id: i64) -> Project& {
     for &p in app.projects {
         if p.id == id && !p.deleted { return p; }
@@ -100,6 +112,15 @@ fn projects(cx, app: App&, r: http::Router&) {
         };
     } else if http::on(r, "GET", "/projects/:id") {
         rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, r, "id")));
+    } else if http::on(r, "PUT", "/projects/:id/logo") {
+        // A body past the read buffer runs this block twice, so nothing
+        // before rest::body changes state.
+        rest::bearer(cx) { token =>
+            guard token == app.token else { rest::invalid_token(cx); }
+            let p = find_project(cx, app, rest::param_int(cx, r, "id"));
+            let logo = rest::body(cx, LOGO_LIMIT);
+            rest::json(cx, 200, Logo { id: p.id, bytes: logo.len });
+        };
     } else if http::on(r, "DELETE", "/projects/:id") {
         rest::bearer(cx) { token =>
             guard token == app.token else { rest::invalid_token(cx); }
@@ -128,6 +149,6 @@ fn main() {
         if ok { port = p; }
     }
     assert(http::stop_on_signals() == 0);
-    let cfg = http::Config { port: port as i32, workers: 1, .. };
+    let cfg = http::Config { port: port as i32, workers: 1, max_body: LOGO_LIMIT, .. };
     thread_wait(thread_spawn(worker, cfg));
 }

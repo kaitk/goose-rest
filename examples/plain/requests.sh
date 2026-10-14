@@ -15,6 +15,15 @@ req POST /v1/projects -H "$auth" -H "$json" -d "$big"
 req POST /v1/projects -H "$auth" -H "$json" -H 'Transfer-Encoding: chunked' -d "$big"
 req GET '/v1/projects?q=go'
 req GET /v1/projects/2
+# A logo within its route's 4 MB, and past it; a project body past its 1 MB,
+# which rest::body refuses, under the server's 4 MB.
+printf '%3000000s' '' >"$out/logo"
+printf '%5000000s' '' >"$out/huge-logo"
+printf '{"name": "big"%2000000s}' '' >"$out/big-project.json"
+req PUT /v1/projects/2/logo -H "$auth" --data-binary @"$out/logo"
+req PUT /v1/projects/2/logo -H "$auth" --data-binary @"$out/huge-logo"
+req PUT /v1/projects/9/logo -H "$auth" --data-binary @"$out/logo"
+req POST /v1/projects -H "$auth" -H "$json" --data-binary @"$out/big-project.json"
 req GET /v1/projects/x
 req DELETE /v1/projects/1 -H "$auth"
 req GET /v1/projects/1
