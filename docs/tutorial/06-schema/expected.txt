@@ -17,4 +17,5 @@ PUT /uploads/logo.png 200 {"name":"logo.png","bytes":1500000}
 PUT /uploads/logo.png 413
 PUT /uploads/logo.png 401 {"error":"unauthenticated"}
 GET /uploads/logo.png 405 {"error":"method_not_allowed"}
+OPTIONS /uploads/logo.png 204
 GET /nope 404 {"error":"not_found"}

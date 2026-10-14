@@ -329,8 +329,9 @@ let MAX_BODY: i64 = 1 * 1024 * 1024;
 
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
-// a path; and as rest::otherwise does for a path no route takes.
-fn dispatch(cx, state) {
+// a path; and as rest::otherwise does for a path no route takes. allow is the Allow of
+// the program's routes before dispatch, http::Router's, which the Allow lists first.
+fn dispatch(cx, state, allow: const u8[:] = "") {
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -345,7 +346,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -357,7 +358,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -369,7 +370,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -390,7 +391,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, PUT");
+                    rest::no_method(cx, "GET, HEAD, PUT", allow);
                     return;
                 }
                 if path == "/v1/firmware" {
@@ -403,7 +404,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "PUT");
+                    rest::no_method(cx, "PUT", allow);
                     return;
                 }
             },
@@ -422,7 +423,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -434,7 +435,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -449,7 +450,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -470,7 +471,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, PUT");
+                            rest::no_method(cx, "GET, HEAD, PUT", allow);
                             return;
                         }
                     }
@@ -485,7 +486,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "PUT");
+                            rest::no_method(cx, "PUT", allow);
                             return;
                         }
                     }
@@ -493,5 +494,5 @@ fn dispatch(cx, state) {
             }
         }
     }
-    rest::not_found(cx, m, path);
+    rest::not_found(cx, m, path, allow);
 }

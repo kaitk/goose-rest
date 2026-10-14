@@ -197,8 +197,9 @@ to know whether a comma is due.
 
 ## Paths
 
-A document with `paths` also gets `fn dispatch(cx, state)`, which answers a request
-through the handler its path and method name. A program calls it from `rest::serve`:
+A document with `paths` also gets `fn dispatch(cx, state, allow = "")`, which answers a
+request through the handler its path and method name. A program calls it from
+`rest::serve`:
 
 ```goose
 let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
@@ -280,7 +281,7 @@ Each of these is an error at its JSON pointer:
 - A header parameter named `Accept`, `Content-Type`, or `Authorization`, which OpenAPI
   says to ignore.
 - A path parameter or handler named after one of `dispatch`'s locals (`cx`, `state`,
-  `path`, `m`, `plain`, `s_`, `q_`, `body_`, and `s` or `e` followed by digits); another
+  `allow`, `path`, `m`, `plain`, `s_`, `q_`, `body_`, and `s` or `e` followed by digits); another
   parameter named `cx`, `v`, or `n_`; two parameters whose fields, `has_` fields, or
   locals come out the same; a parameters struct named as another type.
 - A request body that isn't `required: true`, isn't `application/json`, or isn't a
@@ -308,8 +309,25 @@ checks the rest byte for byte against such a chain.
    through to the next. A literal compares with `==`, or, in a path with `%`, as
    `http::on` compares it: an escape of an unreserved byte matches the byte.
 4. A path that matched runs its method's operation, `GET`'s for `HEAD` too. Another
-   method gets 405, and `OPTIONS` 204, each with the path's `Allow`, a constant.
-5. A path nothing matched is 404, or 204 for `OPTIONS *`.
+   method gets 405, and `OPTIONS` 204, each with the path's `Allow`, a constant, after
+   the methods in `allow` (below).
+5. A path nothing matched is 404, or 204 for `OPTIONS *`. Where `allow` isn't empty,
+   it gets 405, or `OPTIONS` 204, with `allow` alone.
+
+`dispatch` takes a third, optional argument, `allow`: the `Allow` that the program's
+own routes before it collected, `r.allow` of its `http::Router`. With it, a path matched
+by a hand-written route, a generated one, or both answers another method as one router
+would, listing the hand-written routes' methods first
+([tutorial](tutorial.md#7-generated-and-hand-written-routes)):
+
+```goose
+var r = http::router(cx.req);
+if http::on(r, "PUT", "/uploads/:name") {
+    rest::route(cx) { upload(cx, state, r); };
+} else {
+    api::dispatch(cx, state, r.allow);
+}
+```
 
 Each answer is in goose-rest's error shape ([reference](reference.md#errors)). A route checks the security scheme first,
 then the path parameters, the other parameters, and the body, and answers the first

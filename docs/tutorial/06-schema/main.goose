@@ -1,6 +1,6 @@
 // docs/tutorial.md, sections 6, 7, and 9: an API from api.json, whose
 // router and types goose-rest gen writes into api_gen.goose, with the
-// handlers in app.goose, and a hand-written scope beside it.
+// handlers in app.goose, and a hand-written route before it.
 //
 //   build/goose-rest gen docs/tutorial/06-schema/api.json -o docs/tutorial/06-schema/api_gen.goose
 //   goose build -o build/projects docs/tutorial/06-schema/main.goose
@@ -26,22 +26,18 @@ fn format(out: u8[>..]&, u: const Upload&) {
 
 fn handle(cx, state: app::App&) {
     var r = http::router(cx.req);
-    if rest::scope(r, "/uploads") {
-        rest::route(cx) { uploads(cx, state, r); };
+    if http::on(r, "PUT", "/uploads/:name") {
+        rest::route(cx) { upload(cx, state, r); };
     } else {
-        api::dispatch(cx, state);
+        api::dispatch(cx, state, r.allow);
     }
 }
 
-// Uploads of any bytes, which a schema can't describe: its bodies are JSON.
-fn uploads(cx, state: app::App&, r: http::Router&) {
-    if http::on(r, "PUT", "/:name") {
-        app::security_token(cx, state);
-        let data = rest::body(cx, UPLOAD_LIMIT);
-        rest::json(cx, 200, Upload { name: rest::param(cx, r, "name"), bytes: data.len });
-    } else {
-        rest::otherwise(cx, r);
-    }
+// An upload of any bytes, which a schema can't describe: its bodies are JSON.
+fn upload(cx, state: app::App&, r: const http::Router&) {
+    app::security_token(cx, state);
+    let data = rest::body(cx, UPLOAD_LIMIT);
+    rest::json(cx, 200, Upload { name: rest::param(cx, r, "name"), bytes: data.len });
 }
 
 thread_fn worker(cfg: http::Config) {

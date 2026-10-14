@@ -537,39 +537,34 @@ template that also matches ([generator reference](generator.md#how-it-matches)).
 
 `dispatch` answers every request it's given, with 404 for a path the schema doesn't
 have. A route the schema can't describe, such as one whose body isn't JSON, goes
-before it, in a scope of its own. From
+before it, and `dispatch` gets the router's `Allow`. From
 [`tutorial/06-schema/main.goose`](tutorial/06-schema/main.goose):
 
 ```goose
 fn handle(cx, state: app::App&) {
     var r = http::router(cx.req);
-    if rest::scope(r, "/uploads") {
-        rest::route(cx) { uploads(cx, state, r); };
+    if http::on(r, "PUT", "/uploads/:name") {
+        rest::route(cx) { upload(cx, state, r); };
     } else {
-        api::dispatch(cx, state);
+        api::dispatch(cx, state, r.allow);
     }
 }
 
-// Uploads of any bytes, which a schema can't describe: its bodies are JSON.
-fn uploads(cx, state: app::App&, r: http::Router&) {
-    if http::on(r, "PUT", "/:name") {
-        app::security_token(cx, state);
-        let data = rest::body(cx, UPLOAD_LIMIT);
-        rest::json(cx, 200, Upload { name: rest::param(cx, r, "name"), bytes: data.len });
-    } else {
-        rest::otherwise(cx, r);
-    }
+// An upload of any bytes, which a schema can't describe: its bodies are JSON.
+fn upload(cx, state: app::App&, r: const http::Router&) {
+    app::security_token(cx, state);
+    let data = rest::body(cx, UPLOAD_LIMIT);
+    rest::json(cx, 200, Upload { name: rest::param(cx, r, "name"), bytes: data.len });
 }
 ```
 
-The scope ends in its own `rest::otherwise`, so `GET /uploads/logo.png` gets 405, as it
-would from the router. The hand-written route calls `app::security_token` itself, the
-same check the generated routes make.
-
-Use a scope rather than a lone `http::on` before `dispatch`. `dispatch` doesn't see the
-`Allow` that `http::on` collects, so with a lone `PUT /uploads/:name` route, a `GET` of
-the same path falls through to `dispatch` and gets 404, not 405. A scope also shadows
-any schema path under its prefix, so keep the two apart.
+`http::on` adds the methods of the routes whose path matched to `r.allow`, and
+`dispatch` answers with them: `GET /uploads/logo.png` gets 405 with `Allow: PUT`, and
+`OPTIONS` 204 with it, as from one router. Where hand-written routes and the schema share
+a path, the `Allow` lists the hand-written routes' methods, then the schema's, and a
+hand-written route with a schema operation's method wins over it, since it comes first.
+The hand-written route calls `app::security_token` itself, the same check the generated
+routes make.
 
 ---
 
@@ -659,12 +654,12 @@ again with the body whole.
 
 So the code before a route's first `rest::body` or `rest::take` runs twice for a long
 body, and must not change state. A check there is fine: an answer there, such as a 401,
-ends the request without reading the body. `uploads` in
+ends the request without reading the body. `upload` in
 [section 7](#7-generated-and-hand-written-routes) checks the token, then reads the body:
 
 ```goose
-        app::security_token(cx, state);
-        let data = rest::body(cx, UPLOAD_LIMIT);
+    app::security_token(cx, state);
+    let data = rest::body(cx, UPLOAD_LIMIT);
 ```
 
 Three limits apply, and the smallest wins:

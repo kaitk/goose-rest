@@ -180,7 +180,7 @@ let BODY_KEYS = ["content", "required", "description", "x-body-limit"];
 
 // Names dispatch uses for its own parameters and locals, which no path
 // parameter may take, besides s and e followed by digits, its segments.
-let DISPATCH_NAMES = ["cx", "state", "path", "m", "plain", "s_", "q_", "body_"];
+let DISPATCH_NAMES = ["cx", "state", "allow", "path", "m", "plain", "s_", "q_", "body_"];
 
 // Names a parameters struct's from_request uses for its own, which no query,
 // header, or cookie parameter may take.

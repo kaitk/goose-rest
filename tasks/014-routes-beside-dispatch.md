@@ -25,12 +25,12 @@ goose-http's call chain.
 ## Acceptance criteria
 
 - [x] `docs/architecture/README.md` records whether generated files are committed
-- [ ] A test reproduces the 404 for another method of a hand-written route's path
-- [ ] A path matched by hand-written or generated routes answers 405, and OPTIONS 204,
+- [x] A test reproduces the 404 for another method of a hand-written route's path
+- [x] A path matched by hand-written or generated routes answers 405, and OPTIONS 204,
       with an `Allow` listing both
-- [ ] `bench/routes.sh` shows no slowdown of the generated router, recorded here with how
+- [x] `bench/routes.sh` shows no slowdown of the generated router, recorded here with how
       it was measured
-- [ ] Tutorial section 7 and `docs/generator.md` describe the fix
+- [x] Tutorial section 7 and `docs/generator.md` describe the fix
 - [ ] A helper answers a request's bytes through a block, gathering a long body as
       `rest::serve` does
 - [ ] `test/test_router.goose` and `docs/tutorial/06-schema/test.goose` use it, and
@@ -38,3 +38,34 @@ goose-http's call chain.
 - [ ] A test request without `Host` works, or fails with an error that says why
 - [ ] The missing-handler error is shorter, or its noise is recorded in
       `docs/goose-findings.md` with a minimal program
+
+## Allow across both routers
+
+`dispatch` takes an optional `allow`, the program's `http::Router`'s `r.allow`, and
+passes it to `rest::no_method` and `rest::not_found`, which answer 405 or OPTIONS' 204
+with it ahead of the generated path's methods it lacks. Passing the `Allow` rather than
+the router keeps `dispatch` free of `http::Router`: a program without hand-written
+routes calls it as before, and the generated routes pay one argument, read only on
+their 405, 404, and OPTIONS answers.
+
+Measured as in task 008, `bench/routes.sh`, the fix's `gen60` against the same servers
+with it stashed (goose-rest `35cc5e3`), one after the other: MacBook Pro, Apple M1 Pro,
+macOS 26.3.1 (Darwin 25.3.0), load average 5.8-8.9 from other work. Goose `46356c2`,
+goose-http `e27ab21`, built with `goose build --standalone` (Apple clang 21, `-O2`),
+serving with `http::serve_epoll` over kqueue, one worker. h2load 1.70.0 `--h1 -n 2000000
+-c 256 -m 16 -t 8` with `count.sh`'s headers, on the same machine, nothing pinned; the
+server's instructions retired from `/usr/bin/time -l`, kernel included, divided by the
+requests. 3 rounds each, interleaving the servers. `gen60`'s instructions per request,
+ranges over the rounds:
+
+| Case | Before | After |
+|---|---:|---:|
+| First route | 18,208.6-18,219.5 | 18,182.1-18,220.8 |
+| Last route | 19,847.7-19,887.1 | 19,871.6-19,884.5 |
+| 404 in a scope | 19,673.3-19,685.6 | 19,663.1-19,684.1 |
+| 404 outside | 18,534.6-18,543.6 | 18,531.9-18,541.7 |
+| 405 | 19,988.9-20,012.3 | 20,013.5-20,027.0 |
+
+The ranges overlap except the 405's, which costs 1 to 38 instructions more, 0.2% at
+most: its check of the empty `allow`. `routes1_post`, which serves the same 405 without
+the change, moved by at most 11 between the two runs.

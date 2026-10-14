@@ -20,12 +20,14 @@ req GET /v1/projects/2
 req GET /v1/projects/0
 req GET /v1/projects/7
 req DELETE /v1/projects/1
-# The hand-written scope: an upload within its 2 MB, one past the server's
-# max_body, and one without a token.
+# The hand-written route: an upload within its 2 MB, one past the server's
+# max_body, and one without a token; then its path with other methods, which
+# dispatch answers with the route's Allow.
 printf '%1500000s' '' >"$out/upload"
 printf '%3000000s' '' >"$out/huge-upload"
 req PUT /uploads/logo.png -H "$auth" --data-binary @"$out/upload"
 req PUT /uploads/logo.png -H "$auth" --data-binary @"$out/huge-upload"
 req PUT /uploads/logo.png --data-binary @"$out/upload"
 req GET /uploads/logo.png
+req OPTIONS /uploads/logo.png
 req GET /nope

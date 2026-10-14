@@ -224,10 +224,57 @@ fn test_body() {
          "{\"error\":\"invalid_body\",\"detail\":\"unknown member\",\"at\":22}", "unknown member");
 }
 
+// Hand-written routes before dispatch, one on a path of its own and one on a
+// path the schema has, which dispatch answers with their Allow.
+fn beside(cx, state: rest::NoState&) {
+    var r = http::router(cx.req);
+    if http::on(r, "PUT", "/uploads/:name") {
+        rest::route(cx) { t(cx, str("upload ", rest::param(cx, r, "name"))); };
+    } else if http::on(r, "POST", "/v1/files/:id/content") {
+        t(cx, "post_file_content");
+    } else {
+        api::dispatch(cx, state, r.allow);
+    }
+}
+
+fn answer_beside(text: const u8[:]) -> u8[>..] {
+    var out: u8[>..] = [];
+    let req, status = http::parse(text);
+    assert(status == 200);
+    var keep = true;
+    var st = http::Stream { .. };
+    var state = rest::NoState { .. };
+    var scratch: u8[>..] = [];
+    var cx = rest::Cx<rest::NoState> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
+                                       keep_alive: keep, minor: 1, head: req.method == "HEAD", stream: st },
+                                       state: state, scratch: scratch };
+    beside(cx, state);
+    return out;
+}
+
+fn test_beside_dispatch() {
+    let not_allowed = "HTTP/1.1 405 Method Not Allowed\r\nAllow: ";
+    let json = "\r\nContent-Type: application/json\r\nContent-Length: 30\r\n\r\n{\"error\":\"method_not_allowed\"}";
+    same(body_of(answer_beside(request("PUT", "/uploads/logo.png"))), "upload logo.png", "PUT");
+    same(answer_beside(request("GET", "/uploads/logo.png")), str(not_allowed, "PUT", json), "GET");
+    same(answer_beside(request("OPTIONS", "/uploads/logo.png")), "HTTP/1.1 204 No Content\r\nAllow: PUT\r\n\r\n",
+         "OPTIONS");
+    same(body_of(answer_beside(request("POST", "/v1/files/7/content"))), "post_file_content", "POST");
+    same(body_of(answer_beside(request("GET", "/v1/files/7/content"))), "get_file_content 7", "generated GET");
+    same(answer_beside(request("DELETE", "/v1/files/7/content")), str(not_allowed, "POST, GET, HEAD, PUT", json),
+         "DELETE");
+    same(answer_beside(request("OPTIONS", "/v1/files/7/content")),
+         "HTTP/1.1 204 No Content\r\nAllow: POST, GET, HEAD, PUT\r\n\r\n", "OPTIONS of both");
+    // Without hand-written routes on the path, dispatch answers alone.
+    same(answer_beside(request("DELETE", "/health")), str(not_allowed, "GET, HEAD", json), "generated only");
+    same(status_of(answer_beside(request("GET", "/uploads"))), "HTTP/1.1 404 Not Found", "404");
+}
+
 fn main() {
     test_same_as_chain();
     test_security_and_parameters();
     test_query_header_cookie();
     test_body();
+    test_beside_dispatch();
     print("test_router: ok");
 }

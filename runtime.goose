@@ -270,8 +270,27 @@ fn segment_is(seg: const u8[:], lit: const u8[:], plain: bool) -> bool {
 }
 
 // Answers a request whose path matched with a method no route of the path
-// takes: OPTIONS with 204 and allow, any other method with 405 and allow.
-fn no_method(cx, allow: const u8[:]) {
+// takes: OPTIONS with 204 and an Allow, any other method with 405 and that
+// Allow. The Allow is theirs, of the program's routes before dispatch, then
+// those of mine, the generated path's, that theirs lacks.
+fn no_method(cx, mine: const u8[:], theirs: const u8[:] = "") {
+    guard theirs.len > 0 else { allowed(cx, mine); return; }
+    var both: u8[>..] = [];
+    both.append(theirs);
+    var at = 0;
+    while at < mine.len {
+        var end = at;
+        while end < mine.len && mine[end] != ',' { end++; }
+        if !has_method(theirs, mine[at..end]) {
+            both.append(", ");
+            both.append(mine[at..end]);
+        }
+        at = end + 2;
+    }
+    allowed(cx, both);
+}
+
+fn allowed(cx, allow: const u8[:]) {
     if cx.req.method == "OPTIONS" {
         http::start(cx.out, 204);
         http::field(cx.out, "Allow", allow);
@@ -279,6 +298,18 @@ fn no_method(cx, allow: const u8[:]) {
     } else {
         write_error(cx.out, cx.state,405, "method_not_allowed", "", -1, allow);
     }
+}
+
+// Whether allow, methods with ", " between, lists method.
+fn has_method(allow: const u8[:], method: const u8[:]) -> bool {
+    var at = 0;
+    while at < allow.len {
+        var end = at;
+        while end < allow.len && allow[end] != ',' { end++; }
+        if allow[at..end] == method { return true; }
+        at = end + 2;
+    }
+    return false;
 }
 
 // Answers a request whose path no route matched, as otherwise does: an
@@ -298,9 +329,13 @@ fn no_route(cx, method: const u8[:], path: const u8[:]) {
 }
 
 // no_route for a request whose method is known and whose path is routable,
-// as the generated routers have checked by then: OPTIONS * 204, and 404.
-fn not_found(cx, method: const u8[:], path: const u8[:]) {
-    if method == "OPTIONS" && path == "*" {
+// as the generated routers have checked by then: OPTIONS * 204, and 404. A
+// path that only the program's routes before dispatch matched, which gave
+// their Allow, gets no_method's answer with it.
+fn not_found(cx, method: const u8[:], path: const u8[:], theirs: const u8[:] = "") {
+    if theirs.len > 0 {
+        no_method(cx, theirs);
+    } else if method == "OPTIONS" && path == "*" {
         http::start(cx.out, 204);
         http::finish(cx.out, "", "");
     } else {

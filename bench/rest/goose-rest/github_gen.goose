@@ -12,8 +12,9 @@ let MAX_BODY: i64 = 1 * 1024 * 1024;
 
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
-// a path; and as rest::otherwise does for a path no route takes.
-fn dispatch(cx, state) {
+// a path; and as rest::otherwise does for a path no route takes. allow is the Allow of
+// the program's routes before dispatch, http::Router's, which the Allow lists first.
+fn dispatch(cx, state, allow: const u8[:] = "") {
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -28,7 +29,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/user" {
@@ -38,7 +39,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -50,7 +51,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/gists" {
@@ -66,7 +67,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST");
+                    rest::no_method(cx, "GET, HEAD, POST", allow);
                     return;
                 }
                 if path == "/users" {
@@ -76,7 +77,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -88,7 +89,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/issues" {
@@ -98,7 +99,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/emojis" {
@@ -108,7 +109,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -120,7 +121,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "POST");
+                    rest::no_method(cx, "POST", allow);
                     return;
                 }
             },
@@ -132,7 +133,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/user/keys" {
@@ -148,7 +149,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST");
+                    rest::no_method(cx, "GET, HEAD, POST", allow);
                     return;
                 }
             },
@@ -160,7 +161,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/user/teams" {
@@ -170,7 +171,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/user/repos" {
@@ -186,7 +187,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST");
+                    rest::no_method(cx, "GET, HEAD, POST", allow);
                     return;
                 }
             },
@@ -198,7 +199,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/search/code" {
@@ -208,7 +209,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/user/emails" {
@@ -230,7 +231,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST, DELETE");
+                    rest::no_method(cx, "GET, HEAD, POST, DELETE", allow);
                     return;
                 }
             },
@@ -242,7 +243,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/markdown/raw" {
@@ -252,7 +253,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "POST");
+                    rest::no_method(cx, "POST", allow);
                     return;
                 }
                 if path == "/repositories" {
@@ -262,7 +263,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/search/users" {
@@ -272,7 +273,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -290,7 +291,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, PUT");
+                    rest::no_method(cx, "GET, HEAD, PUT", allow);
                     return;
                 }
                 if path == "/search/issues" {
@@ -300,7 +301,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -318,7 +319,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST");
+                    rest::no_method(cx, "GET, HEAD, POST", allow);
                     return;
                 }
                 if path == "/user/followers" {
@@ -328,7 +329,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/user/following" {
@@ -338,7 +339,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -350,7 +351,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -362,7 +363,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if path == "/search/repositories" {
@@ -372,7 +373,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             },
@@ -397,7 +398,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST");
+                    rest::no_method(cx, "GET, HEAD, POST", allow);
                     return;
                 }
                 if e1 < path.len {
@@ -418,7 +419,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, DELETE");
+                            rest::no_method(cx, "GET, HEAD, DELETE", allow);
                             return;
                         }
                     }
@@ -439,7 +440,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "DELETE");
+                                    rest::no_method(cx, "DELETE", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -462,7 +463,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -480,7 +481,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -508,7 +509,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -523,7 +524,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -545,7 +546,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT");
+                                            rest::no_method(cx, "GET, HEAD, PUT", allow);
                                             return;
                                         }
                                     }
@@ -559,7 +560,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -573,7 +574,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -603,7 +604,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -620,7 +621,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "POST");
+                                                    rest::no_method(cx, "POST", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -636,7 +637,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -652,7 +653,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "POST");
+                                                    rest::no_method(cx, "POST", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -668,7 +669,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -692,7 +693,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, POST");
+                                                    rest::no_method(cx, "GET, HEAD, POST", allow);
                                                     return;
                                                 }
                                             }
@@ -706,7 +707,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "POST");
+                                                    rest::no_method(cx, "POST", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -722,7 +723,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -738,7 +739,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "POST");
+                                                    rest::no_method(cx, "POST", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -754,7 +755,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -780,7 +781,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -796,7 +797,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -821,7 +822,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD, POST");
+                                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                                             return;
                                                         }
                                                     }
@@ -836,7 +837,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -878,7 +879,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD, POST, PUT, DELETE");
+                                                            rest::no_method(cx, "GET, HEAD, POST, PUT, DELETE", allow);
                                                             return;
                                                         }
                                                         if e6 < path.len {
@@ -895,7 +896,7 @@ fn dispatch(cx, state) {
                                                                         };
                                                                         return;
                                                                     }
-                                                                    rest::no_method(cx, "DELETE");
+                                                                    rest::no_method(cx, "DELETE", allow);
                                                                     return;
                                                                 }
                                                             }
@@ -915,7 +916,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -931,7 +932,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -955,7 +956,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -980,7 +981,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                             }
@@ -1004,7 +1005,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1029,7 +1030,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -1045,7 +1046,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -1071,7 +1072,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1087,7 +1088,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -1103,7 +1104,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -1118,7 +1119,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -1142,7 +1143,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD, PUT");
+                                                            rest::no_method(cx, "GET, HEAD, PUT", allow);
                                                             return;
                                                         }
                                                     }
@@ -1166,7 +1167,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD, PUT");
+                                                            rest::no_method(cx, "GET, HEAD, PUT", allow);
                                                             return;
                                                         }
                                                     }
@@ -1184,7 +1185,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -1198,7 +1199,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -1212,7 +1213,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -1226,7 +1227,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -1240,7 +1241,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1256,7 +1257,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -1272,7 +1273,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1306,7 +1307,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                                     return;
                                                 }
                                             }
@@ -1322,7 +1323,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1347,7 +1348,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                             }
@@ -1363,7 +1364,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1379,7 +1380,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -1404,7 +1405,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD, POST");
+                                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                                             return;
                                                         }
                                                     }
@@ -1422,7 +1423,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -1444,7 +1445,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1469,7 +1470,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                             }
@@ -1485,7 +1486,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1510,7 +1511,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                             }
@@ -1534,7 +1535,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                     }
@@ -1556,7 +1557,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1581,7 +1582,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -1597,7 +1598,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "POST");
+                                                            rest::no_method(cx, "POST", allow);
                                                             return;
                                                         }
                                                     }
@@ -1615,7 +1616,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "POST");
+                                            rest::no_method(cx, "POST", allow);
                                             return;
                                         }
                                     }
@@ -1637,7 +1638,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, POST");
+                                            rest::no_method(cx, "GET, HEAD, POST", allow);
                                             return;
                                         }
                                         if e4 < path.len {
@@ -1662,7 +1663,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                                     return;
                                                 }
                                                 if e5 < path.len {
@@ -1678,7 +1679,7 @@ fn dispatch(cx, state) {
                                                                 };
                                                                 return;
                                                             }
-                                                            rest::no_method(cx, "GET, HEAD");
+                                                            rest::no_method(cx, "GET, HEAD", allow);
                                                             return;
                                                         }
                                                     }
@@ -1699,7 +1700,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -1713,7 +1714,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -1727,7 +1728,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -1741,7 +1742,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -1755,7 +1756,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -1784,7 +1785,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, POST");
+                                                    rest::no_method(cx, "GET, HEAD, POST", allow);
                                                     return;
                                                 }
                                             }
@@ -1815,7 +1816,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -1837,7 +1838,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -1851,7 +1852,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -1864,7 +1865,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -1877,7 +1878,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -1900,7 +1901,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -1915,7 +1916,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -1946,7 +1947,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -1968,7 +1969,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD, POST");
+                                    rest::no_method(cx, "GET, HEAD, POST", allow);
                                     return;
                                 }
                             }
@@ -1988,7 +1989,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD, POST");
+                                    rest::no_method(cx, "GET, HEAD, POST", allow);
                                     return;
                                 }
                             }
@@ -2004,7 +2005,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if e1 < path.len {
@@ -2018,7 +2019,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2032,7 +2033,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -2046,7 +2047,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -2061,7 +2062,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -2075,7 +2076,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -2092,7 +2093,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD");
+                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                     return;
                                                 }
                                             }
@@ -2109,7 +2110,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2122,7 +2123,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2135,7 +2136,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2148,7 +2149,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2161,7 +2162,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2174,7 +2175,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2187,7 +2188,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -2202,7 +2203,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -2217,7 +2218,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2233,7 +2234,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -2251,7 +2252,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, PUT");
+                    rest::no_method(cx, "GET, HEAD, PUT", allow);
                     return;
                 }
                 if e1 < path.len {
@@ -2268,7 +2269,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -2296,7 +2297,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -2314,7 +2315,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
                 if e1 < path.len {
@@ -2327,7 +2328,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2361,7 +2362,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -2377,7 +2378,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2411,7 +2412,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -2427,7 +2428,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2439,7 +2440,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2451,7 +2452,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2469,7 +2470,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, POST");
+                            rest::no_method(cx, "GET, HEAD, POST", allow);
                             return;
                         }
                     }
@@ -2493,7 +2494,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, POST, DELETE");
+                            rest::no_method(cx, "GET, HEAD, POST, DELETE", allow);
                             return;
                         }
                     }
@@ -2505,7 +2506,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2517,7 +2518,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2545,7 +2546,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                    rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                     return;
                                 }
                             }
@@ -2565,7 +2566,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, POST");
+                            rest::no_method(cx, "GET, HEAD, POST", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2586,7 +2587,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD, DELETE");
+                                    rest::no_method(cx, "GET, HEAD, DELETE", allow);
                                     return;
                                 }
                             }
@@ -2608,7 +2609,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, POST");
+                    rest::no_method(cx, "GET, HEAD, POST", allow);
                     return;
                 }
                 if e1 < path.len {
@@ -2629,7 +2630,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, DELETE");
+                            rest::no_method(cx, "GET, HEAD, DELETE", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2657,7 +2658,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "PUT, DELETE, GET, HEAD");
+                                    rest::no_method(cx, "PUT, DELETE, GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2670,7 +2671,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "POST");
+                                    rest::no_method(cx, "POST", allow);
                                     return;
                                 }
                             }
@@ -2686,7 +2687,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -2698,7 +2699,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -2713,7 +2714,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2727,7 +2728,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                             }
@@ -2743,7 +2744,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "POST");
+                    rest::no_method(cx, "POST", allow);
                     return;
                 }
                 if e1 < path.len {
@@ -2756,7 +2757,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "POST");
+                            rest::no_method(cx, "POST", allow);
                             return;
                         }
                     }
@@ -2770,7 +2771,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -2782,7 +2783,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -2805,7 +2806,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, DELETE");
+                            rest::no_method(cx, "GET, HEAD, DELETE", allow);
                             return;
                         }
                         if e2 < path.len {
@@ -2819,7 +2820,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -2850,7 +2851,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                            rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                             return;
                                         }
                                     }
@@ -2865,7 +2866,7 @@ fn dispatch(cx, state) {
                                         };
                                         return;
                                     }
-                                    rest::no_method(cx, "GET, HEAD");
+                                    rest::no_method(cx, "GET, HEAD", allow);
                                     return;
                                 }
                                 if e3 < path.len {
@@ -2902,7 +2903,7 @@ fn dispatch(cx, state) {
                                                         };
                                                         return;
                                                     }
-                                                    rest::no_method(cx, "GET, HEAD, PUT, DELETE");
+                                                    rest::no_method(cx, "GET, HEAD, PUT, DELETE", allow);
                                                     return;
                                                 }
                                             }
@@ -2922,7 +2923,7 @@ fn dispatch(cx, state) {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD");
+                    rest::no_method(cx, "GET, HEAD", allow);
                     return;
                 }
             }
@@ -2937,7 +2938,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2949,7 +2950,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2961,7 +2962,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -2973,7 +2974,7 @@ fn dispatch(cx, state) {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD");
+                            rest::no_method(cx, "GET, HEAD", allow);
                             return;
                         }
                     }
@@ -3009,7 +3010,7 @@ fn dispatch(cx, state) {
                                                                         };
                                                                         return;
                                                                     }
-                                                                    rest::no_method(cx, "GET, HEAD");
+                                                                    rest::no_method(cx, "GET, HEAD", allow);
                                                                     return;
                                                                 }
                                                             }
@@ -3038,7 +3039,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -3061,7 +3062,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -3079,7 +3080,7 @@ fn dispatch(cx, state) {
                                                 };
                                                 return;
                                             }
-                                            rest::no_method(cx, "GET, HEAD");
+                                            rest::no_method(cx, "GET, HEAD", allow);
                                             return;
                                         }
                                     }
@@ -3091,5 +3092,5 @@ fn dispatch(cx, state) {
             }
         }
     }
-    rest::not_found(cx, m, path);
+    rest::not_found(cx, m, path, allow);
 }
