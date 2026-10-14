@@ -7,7 +7,8 @@
 //   enum Waiting { None, Report { org: i64 } }
 //   struct St { waiting: Waiting = Waiting.None }
 //
-//   rest::serve(cfg, St { .. }) { cx =>
+//   var app = rest::NoState { .. };
+//   rest::serve(cfg, app, St { .. }) { cx =>
 //       if rest::woken(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }
 //   };
 //
@@ -59,8 +60,10 @@ fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {
 // Replies data, with tag, to the route that asked a, in pieces of at most
 // the size a carries. A piece that finds the box full is sent again after a
 // millisecond: the worker's box is shared by all its waiting routes.
-// Returns false when the route has gone, as when its connection closed, or
-// when a piece is longer than the box's slots.
+// Returns false when the worker's box has closed, as when it stopped, when
+// a piece is longer than its slots, or when the exchange's key is stale,
+// as after its client closes or its wait times out. A send already in
+// flight may still be accepted and dropped by the worker.
 fn answer(a, data: const u8[:], tag: i32 = 0) -> bool {
     let piece = max(a.piece, 1);
     var at = 0;

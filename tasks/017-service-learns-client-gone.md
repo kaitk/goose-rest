@@ -18,7 +18,7 @@ a stopped worker, or a piece longer than a slot.
 
 ## The change
 
-**Now, in goose-rest alone:** correct `rest::answer`'s doc:
+**At goose-http `bc75f2a`, in goose-rest alone:** correct `rest::answer`'s doc:
 
 ```goose
 // ... Returns false when the worker's box has closed, as when it stopped, or
@@ -59,9 +59,18 @@ if tag == EXPORT {
 `rest::answer`'s retry on `FULL` then ends too, where today it retries every millisecond
 for as long as the worker's box stays full, for a client that may be gone.
 
+## HTTP support available (2026-10-14)
+
+The task 015 merge imports goose-http `v0.3.1` (`faead67`), as requested
+(2026-10-14). Its task 027 adds live keys (`0c7b0e4`) and keeps them live through
+WAKE while a handler rearms a reply in pieces (`8ab362c`). `rest::answer` already
+stops on `STALE`, so its doc now names a stale exchange as well as a closed box and
+an oversized piece. A send already in flight can still be accepted and dropped.
+`rest::wanted`, the example's work-skipping checks, and their tests remain to build.
+
 ## Acceptance criteria
 
-- [ ] `rest::answer`'s doc says what it returns false for
+- [x] `rest::answer`'s doc says what it returns false for
 - [ ] goose-http's task 027 has the request, after asking the maintainer, and its
       answer is recorded here
 - [ ] With it: a test where the client closes before the service answers, and the
