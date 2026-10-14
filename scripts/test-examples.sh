@@ -7,34 +7,42 @@
 # setup.sh, where it has one, is sourced before the example starts, to set
 # its environment.
 #
-# GOOSE names the compiler (default: goose on PATH). The examples listen on
+# GOOSE names the compiler (default: goose on PATH). BIN is where the
+# examples are built and their output goes (default: build/examples), and
+# PREBUILT=1 runs the ones already there, as scripts/test-aarch64.sh does on
+# a machine without the compiler. RSS=1 prints each example's peak RSS on
+# Linux, once it answers and after its requests. The examples listen on
 # 127.0.0.1, from port 18081 up.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 goose=${GOOSE:-goose}
-out="$root/build/examples"
+out=${BIN:-$root/build/examples}
 mkdir -p "$out"
+
+peak() { sed -n 's/^VmHWM:[[:space:]]*//p' "/proc/$pid/status"; }
 
 port=18081
 for dir in "$root"/examples/*/; do
     name=$(basename "$dir")
     echo
     echo "== example $name"
-    "$goose" build -o "$out/$name" "$dir/main.goose"
+    [ -n "${PREBUILT:-}" ] || "$goose" build -o "$out/$name" "$dir/main.goose"
     [ ! -f "$dir/setup.sh" ] || . "$dir/setup.sh"
     "$out/$name" "$port" 2>"$out/$name.log" &
     pid=$!
     tries=0
     until curl -s -o /dev/null "http://127.0.0.1:$port/health"; do
         tries=$((tries + 1))
-        if [ "$tries" -gt 50 ]; then
+        if [ "$tries" -gt 100 ]; then
             echo "example $name: no answer on port $port"
             kill "$pid" 2>/dev/null || true
             exit 1
         fi
         sleep 0.1
     done
+    rss=
+    [ -z "${RSS:-}" ] || [ ! -r "/proc/$pid/status" ] || rss=$(peak)
     req() {
         method=$1
         path=$2
@@ -45,6 +53,7 @@ for dir in "$root"/examples/*/; do
     }
     status=0
     . "$dir/requests.sh" >"$out/$name.out" || status=$?
+    [ -z "$rss" ] || echo "$name: peak RSS $rss at start, $(peak) after the requests"
     kill "$pid"
     wait "$pid" 2>/dev/null || true
     [ "$status" -eq 0 ] || { echo "example $name: a request failed"; exit 1; }

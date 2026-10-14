@@ -124,6 +124,43 @@ later for that. The files are `.mts`, not `.ts`: without a `package.json` that s
 Node warns before it rereads one as a module. The tests passed with TypeScript 7.0.2,
 under Node 24.14.1 and under Bun 1.4.2, which print the same JSON (2026-10-14).
 
+## Run the examples on arm64
+
+`scripts/test-aarch64.sh` cross-builds every example for aarch64 Linux in an amd64
+`ubuntu:26.04` container, with Ubuntu's `gcc-aarch64-linux-gnu` and arm64 liburing,
+then runs `scripts/test-examples.sh` on the builds in an arm64 `ubuntu:26.04` container
+and prints each example's peak RSS (task 013). It follows goose-http's script of the
+same name, and goose-http's
+[docs/embedded.md](https://github.com/kaitk/goose-http/blob/main/docs/embedded.md)
+covers cross compilers, Yocto SDKs, and the checks to run on a board.
+
+```sh
+GOOSE_SRC=../goose GOOSE_HTTP=../goose-http scripts/test-aarch64.sh
+```
+
+The cross-build needs a Linux build of the Goose compiler that runs in that amd64
+container. With `GOOSE` unset, the script makes one: it copies `GOOSE_SRC`'s HEAD with
+`git archive` into `build/goose-linux`, builds it there with CMake in the container,
+and records the commit in `build/goose-linux/COMMIT`. It rebuilds only when that commit
+changes, and leaves the checkout itself untouched. With `GOOSE_HTTP` set, it also
+cross-builds goose-http's `examples/device` from a copy of that checkout's HEAD under
+`build/aarch64/goose-http`, and prints its peak RSS on one worker, for comparison.
+
+`scripts/test-examples.sh` takes the switches the script needs: `BIN`, where the
+examples are; `PREBUILT=1`, to run them without building; and `RSS=1`, to print each
+example's peak RSS (VmHWM) once it answers and after its requests.
+
+What the setup met (2026-10-14, Docker Desktop 29.8.2 on an Apple M1 Pro):
+
+- On an arm64 host, the arm64 container runs natively in Docker Desktop's VM, and the
+  amd64 one under Rosetta. On an x86-64 host it's the reverse: the checks run under
+  qemu, whose own memory adds to each RSS.
+- The compiler fetches goose-http with git into `build/aarch64/goose-home`, and git
+  refuses the mounted directory ("detected dubious ownership"). The script sets
+  `safe.directory` through `GIT_CONFIG_*` variables.
+- Docker's seccomp profile blocks `io_uring_setup`, so `rest::serve` runs on goose-http's
+  emulated ring over epoll there.
+
 ## Run the spikes
 
 Each spike under `spikes/` is a root file that TinyCC runs in process:
