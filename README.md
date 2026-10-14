@@ -262,6 +262,18 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 }
 ```
 
+## On a board
+
+A program cross-builds for an embedded Linux board as goose-http's does, with
+`goose build --cc` and the board's C cross compiler: goose-http's
+[docs/embedded.md](https://github.com/kaitk/goose-http/blob/main/docs/embedded.md)
+covers distribution cross compilers, Yocto SDKs, what the board needs, and the checks
+to run on it. `scripts/test-aarch64.sh` cross-builds every example for aarch64 and runs
+their checks in an arm64 container, printing each one's peak RSS
+([development.md](docs/development.md#run-the-examples-on-arm64)). There,
+`examples/device` peaked at 4,728 kB on one worker (task 013). None has run on a board
+yet.
+
 ## Pins
 
 | What | Pin | Why |
