@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 28rem; margin: 2rem auto; padding: 0 1rem; }
+  .temp { font-size: 3rem; font-variant-numeric: tabular-nums; }
+  label { display: block; margin: .6rem 0; }
+  input { width: 100%; box-sizing: border-box; }
+  .muted { opacity: .6; font-size: .9rem; }
+</style>
+</head>
+<body>
+<h1 id="name">Device</h1>
+<div class="temp" id="temp">–</div>
+<div class="muted" id="uptime"></div>
+<form id="settings">
+  <label>Name <input name="name" maxlength="32" required></label>
+  <label>LED brightness <input name="brightness" type="range" min="0" max="255"></label>
+  <label>Sample interval, ms <input name="interval_ms" type="number" min="100" max="60000"></label>
+  <label>Token <input name="token" type="password" required></label>
+  <button>Save</button> <span class="muted" id="saved"></span>
+</form>
+<script>
+const $ = id => document.getElementById(id);
+const form = $('settings');
+async function status() {
+  const s = await (await fetch('/v1/status')).json();
+  $('name').textContent = s.name;
+  $('temp').textContent = s.temp_mc === null ? 'no sensor' : (s.temp_mc / 1000).toFixed(1) + ' °C';
+  $('uptime').textContent = s.uptime_s === null ? '' : 'up ' + Math.floor(s.uptime_s / 60) + ' min';
+}
+async function load() {
+  const s = await (await fetch('/v1/settings')).json();
+  for (const k of ['name', 'brightness', 'interval_ms']) form.elements[k].value = s[k];
+  setTimeout(tick, s.interval_ms);
+}
+async function tick() {
+  await status();
+  setTimeout(tick, Number(form.elements.interval_ms.value) || 1000);
+}
+form.onsubmit = async e => {
+  e.preventDefault();
+  const f = form.elements;
+  const r = await fetch('/v1/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + f.token.value },
+    body: JSON.stringify({ name: f.name.value, brightness: Number(f.brightness.value),
+                           interval_ms: Number(f.interval_ms.value) }),
+  });
+  const body = await r.json();
+  $('saved').textContent = r.ok ? 'saved' : body.error + (body.detail ? ': ' + body.detail : '');
+  status();
+};
+status();
+load();
+</script>
+</body>
+</html>

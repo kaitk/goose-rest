@@ -1,0 +1,74 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "goose-rest's device example", "version": "1" },
+  "paths": {
+    "/": { "get": { "operationId": "page" } },
+    "/health": { "get": { "operationId": "health" } },
+    "/v1/status": { "get": { "operationId": "getStatus" } },
+    "/v1/settings": {
+      "get": { "operationId": "getSettings" },
+      "put": {
+        "operationId": "putSettings",
+        "security": [{ "token": [] }],
+        "requestBody": {
+          "required": true,
+          "x-body-limit": 1024,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Settings" } } }
+        }
+      }
+    },
+    "/v1/firmware": {
+      "put": {
+        "operationId": "putFirmware",
+        "security": [{ "token": [] }],
+        "requestBody": {
+          "required": true,
+          "x-body-limit": 262144,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FirmwareUpload" } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "token": { "type": "http", "scheme": "bearer" } },
+    "schemas": {
+      "Status": {
+        "type": "object",
+        "required": ["name", "temp_mc", "uptime_s"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 32 },
+          "temp_mc": { "type": ["integer", "null"], "description": "The SoC's temperature in millidegrees Celsius" },
+          "uptime_s": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      },
+      "Settings": {
+        "type": "object",
+        "required": ["name", "brightness", "interval_ms"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "brightness": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The LED's brightness" },
+          "interval_ms": { "type": "integer", "minimum": 100, "maximum": 60000, "description": "How often to sample" }
+        }
+      },
+      "FirmwareUpload": {
+        "type": "object",
+        "required": ["version", "image"],
+        "additionalProperties": false,
+        "properties": {
+          "version": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "image": { "type": "string", "minLength": 4, "description": "The image, in base64" }
+        }
+      },
+      "Firmware": {
+        "type": "object",
+        "required": ["version", "bytes", "crc32"],
+        "properties": {
+          "version": { "type": "string", "maxLength": 32 },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "crc32": { "type": "string", "minLength": 8, "maxLength": 8 }
+        }
+      }
+    }
+  }
+}

@@ -37,7 +37,7 @@ runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error s
 extract.goose     the extractors: parameters, headers, cookies, take, once
 middleware.goose  CORS, bearer, timed, and scope
 waiting.goose     ask another thread, and resume with its reply
-examples/         a JSON API without a schema and one with a schema
+examples/         JSON APIs with and without a schema, waiting on a thread, and a device
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
@@ -61,14 +61,14 @@ import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 ```
 
 Build it with `goose build`: a server reaches `thread_spawn`, which `goose run` (TinyCC)
-can't run. Two examples serve a small projects API, and `scripts/test.sh` builds and
-requests each:
+can't run. `scripts/test.sh` builds each example and requests each of its routes:
 
 | Example | What it shows |
 |---|---|
 | [`examples/plain/`](examples/plain/main.goose) | Without a schema: routes in an `http::router` chain under a scope, extractors, a hand-written body reader, the middleware, and a 4 MB upload route beside the 1 MB default |
 | [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose`; `createProject` takes 2 MB by `x-body-limit` |
 | [`examples/waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a mailbox message |
+| [`examples/device/`](examples/device/) | A board's API from `api.json`: temperature and uptime from sysfs and `/proc`, bounded settings that set an LED through sysfs, a 256 KB firmware upload, a bearer token on writes, CORS, and a page; one worker and small limits |
 
 ```sh
 goose build -o build/examples/plain examples/plain/main.goose

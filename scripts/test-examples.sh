@@ -3,7 +3,9 @@
 # requests its requests.sh lists, one per route at least, and compares each
 # answer's status and body with the expected.txt beside it. A request is a
 # line `req METHOD PATH [curl options]`; its answer is the line
-# `METHOD PATH STATUS BODY`, without BODY for an empty one.
+# `METHOD PATH STATUS BODY`, without BODY for an empty one. An example's
+# setup.sh, where it has one, is sourced before the example starts, to set
+# its environment.
 #
 # GOOSE names the compiler (default: goose on PATH). The examples listen on
 # 127.0.0.1, from port 18081 up.
@@ -20,6 +22,7 @@ for dir in "$root"/examples/*/; do
     echo
     echo "== example $name"
     "$goose" build -o "$out/$name" "$dir/main.goose"
+    [ ! -f "$dir/setup.sh" ] || . "$dir/setup.sh"
     "$out/$name" "$port" 2>"$out/$name.log" &
     pid=$!
     tries=0

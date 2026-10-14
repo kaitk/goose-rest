@@ -1,0 +1,23 @@
+GET /health 200 ok
+GET / 200 text/html; charset=utf-8
+GET /v1/status 200 {"name":"device","temp_mc":47250,"uptime_s":3725}
+GET /v1/settings 200 {"name":"device","brightness":0,"interval_ms":1000}
+PUT /v1/settings 401 {"error":"unauthenticated"}
+PUT /v1/settings 401 {"error":"invalid_token"}
+PUT /v1/settings 200 {"name":"porch","brightness":128,"interval_ms":500}
+LED brightness 128
+PUT /v1/settings 400 {"error":"invalid_body","detail":"brightness: maximum","at":56}
+PUT /v1/settings 400 {"error":"invalid_body","detail":"interval_ms: minimum","at":54}
+PUT /v1/settings 400 {"error":"invalid_body","detail":"name: maxLength","at":91}
+PUT /v1/settings 400 {"error":"invalid_body","detail":"unknown member","at":64}
+PUT /v1/settings 413 {"error":"payload_too_large"}
+GET /v1/settings 200 {"name":"porch","brightness":128,"interval_ms":500}
+GET /v1/status 200 {"name":"porch","temp_mc":47250,"uptime_s":3725}
+PUT /v1/firmware 200 {"version":"1.2.0","bytes":190000,"crc32":"a13142ca"}
+PUT /v1/firmware 400 {"error":"image_not_base64"}
+PUT /v1/firmware 413 {"error":"payload_too_large"}
+PUT /v1/firmware 401 {"error":"unauthenticated"}
+POST /v1/firmware 405 {"error":"method_not_allowed"}
+OPTIONS /v1/settings 204
+GET /v1/status 403 {"error":"origin_not_allowed"}
+GET /nope 404 {"error":"not_found"}
