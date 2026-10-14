@@ -66,6 +66,8 @@ fn test_text_and_json() {
                  "{\"id\":7,\"name\":\"goose \\\"one\\\"\"}") { cx =>
         rest::json(cx, 201, Project { id: 7, name: "goose \"one\"" });
     };
+    answers(GET, "HTTP/1.1 204 No Content\r\n\r\n") { cx => rest::empty(cx, 204); };
+    answers(GET, "HTTP/1.1 202 Accepted\r\nContent-Length: 0\r\n\r\n") { cx => rest::empty(cx, 202); };
 }
 
 fn test_route() {

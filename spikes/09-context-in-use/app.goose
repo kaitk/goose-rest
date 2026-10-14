@@ -74,6 +74,5 @@ fn get_project(cx, name: const u8[:], id: i64) { rest::json(cx, 200, visible(cx)
 
 fn delete_project(cx, name: const u8[:], id: i64) {
     cx.app.live[index_of(cx, owned(cx, id).id)] = false;
-    http::start(cx.out, 204);
-    http::finish(cx.out, "", "");
+    rest::empty(cx, 204);
 }

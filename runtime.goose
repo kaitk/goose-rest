@@ -421,6 +421,13 @@ fn text(cx, status: i32, s: const u8[:]) {
     http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", s);
 }
 
+// Answers status without a body: 204 and 304 without Content-Length, and any
+// other status with Content-Length: 0.
+fn empty(cx, status: i32) {
+    http::start(cx.out, status);
+    http::finish(cx.out, http::NO_TYPE, "");
+}
+
 // Answers a request no route took, as http::otherwise does, with each error in
 // the JSON shape: an unknown method 501 not_implemented, a path the router
 // refused 400 bad_path, a path no route matched 404 not_found, and another

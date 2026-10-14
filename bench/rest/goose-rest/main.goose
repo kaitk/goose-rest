@@ -2652,8 +2652,7 @@ fn arena(cx, buf: u8[>..]&) {
             let i = index_of(rest::param(cx, "id"), items.len);
             guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
             guard valid_write(rest::body(cx)) else { rest::fail(cx, 422, "invalid_item"); }
-            http::start(cx.out, 204);
-            http::finish(cx.out, "", "");
+            rest::empty(cx, 204);
         } else {
             rest::otherwise(cx);
         }

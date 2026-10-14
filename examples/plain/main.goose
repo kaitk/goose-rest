@@ -127,8 +127,7 @@ fn projects(cx) {
             guard token == cx.app.token else { rest::invalid_token(cx); }
             let p .= find_project(cx, rest::param_int(cx, "id"));
             p.deleted = true;
-            http::start(cx.out, 204);
-            http::finish(cx.out, "", "");
+            rest::empty(cx, 204);
         };
     } else {
         rest::otherwise(cx);

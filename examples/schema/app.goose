@@ -57,6 +57,5 @@ fn get_project(cx, id: i64) {
 
 fn delete_project(cx, s: bool, id: i64) {
     cx.app.live[index_of(cx, id)] = false;
-    http::start(cx.out, 204);
-    http::finish(cx.out, "", "");
+    rest::empty(cx, 204);
 }
