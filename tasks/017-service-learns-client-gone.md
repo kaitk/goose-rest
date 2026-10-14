@@ -71,7 +71,7 @@ an oversized piece. A send already in flight can still be accepted and dropped.
 ## Acceptance criteria
 
 - [x] `rest::answer`'s doc says what it returns false for
-- [ ] goose-http's task 027 has the request, after asking the maintainer, and its
+- [x] goose-http's task 027 has the request, after asking the maintainer, and its
       answer is recorded here
 - [ ] With it: a test where the client closes before the service answers, and the
       service's send returns `STALE`; `rest::wanted`, and `examples/waiting`'s database

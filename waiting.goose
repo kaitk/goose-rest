@@ -63,7 +63,8 @@ fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {
 // millisecond: the worker's box is shared by all its waiting routes.
 // Returns false when the worker's box has closed, as when it stopped, when
 // a piece is longer than its slots, or when the exchange's key is stale,
-// as after its client closes or its wait times out. A send already in
+// as after its client closes or its wait times out; a send checks the key
+// before a slot, so the retry on a full box ends then too. A send already in
 // flight may still be accepted and dropped by the worker.
 fn answer(a, data: const u8[:], tag: i32 = 0) -> bool {
     let piece = max(a.piece, 1);
