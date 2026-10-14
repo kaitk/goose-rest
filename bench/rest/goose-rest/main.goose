@@ -48,7 +48,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 import rest from "../../../";
 import .github_app;
 import .github_gen;

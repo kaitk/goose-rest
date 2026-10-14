@@ -5,7 +5,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 
 // The value of T the request holds, as T's from_request overload reads it.
 // The generator writes one for each schema object, which reads the JSON

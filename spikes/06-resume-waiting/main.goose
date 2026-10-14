@@ -7,7 +7,7 @@
 // request to handle, takes the worker's box, and calls handle with WAKE for
 // the exchange a message is addressed to, as the loops' delivered does.
 import std;
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 import app;
 
 // A request, through to its whole response, which it prints without CRs.

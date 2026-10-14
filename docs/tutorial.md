@@ -84,11 +84,11 @@ The rest of goose-rest follows from these two facts:
 
 ## 2. Running something
 
-A program's root file declares both packages, goose-http at goose-rest's pin and
-goose-rest at a pushed commit, each by its full commit hash:
+A program's root file declares both packages, goose-http at goose-rest's release tag
+and goose-rest at a pushed commit by its full hash:
 
 ```text
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 ```
 

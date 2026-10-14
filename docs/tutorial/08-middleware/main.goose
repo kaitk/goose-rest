@@ -2,7 +2,7 @@
 // one scope, and a middleware of the program's own.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 import rest from "../../../";
 
 // Runs F with the request's X-Tenant, or fails with 400 tenant_required.

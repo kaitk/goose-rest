@@ -7,7 +7,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 
 // Server-Timing as rest::timed writes it before its value, and the spaces it
 // leaves for the value.

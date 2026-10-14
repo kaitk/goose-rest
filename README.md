@@ -53,11 +53,11 @@ tasks/            task tracking (tasks/README.md)
 
 ## Quick start
 
-A program declares both packages in its root file, goose-http at the pin below and
-goose-rest at a pushed commit, each by its full hash:
+A program declares both packages in its root file, goose-http at the release tag below
+and goose-rest at a pushed commit by its full hash:
 
 ```goose
-import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
+import http from "github.com/kaitk/goose-http@v0.3.1";
 import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 ```
 
@@ -97,7 +97,7 @@ route to a schema, middleware, large bodies, state, tests, and a board.
 | What | Pin | Why |
 |---|---|---|
 | Goose compiler | `aardappel/goose` `46356c2` (`master`, 2026-10-14) | The language and stdlib change often |
-| goose-http | `kaitk/goose-http` `bc75f2a` (`main`, 2026-10-14) | Its API is still changing (its task 027) |
+| goose-http | `kaitk/goose-http` `v0.3.1`, commit `faead67` (2026-10-14) | Includes live mailbox keys and the fix that keeps them live through WAKE |
 
 Move each pin in its own commit, with the spikes and tests rerun
 ([development.md](docs/development.md#move-the-pin)).
