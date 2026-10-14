@@ -356,11 +356,13 @@ makes in review and the build needs no generator, or generate it in its build.
     "get":  { "operationId": "list_projects", "security": [{"session": []}],
               "parameters": [{"name": "archived", "in": "query", "schema": {"type": "boolean"}}] },
     "post": { "operationId": "create_project", "security": [{"session": []}],
-              "requestBody": {"$ref": "#/components/schemas/ProjectCreate"} }
+              "requestBody": { "required": true, "content": { "application/json":
+                { "schema": {"$ref": "#/components/schemas/ProjectCreate"} } } } }
   },
   "/projects/{id}": {
     "get":  { "operationId": "get_project", "security": [{"session": []}],
-              "parameters": [{"name": "id", "in": "path", "schema": {"type": "integer"}}] }
+              "parameters": [{"name": "id", "in": "path", "required": true,
+                              "schema": {"type": "integer"}}] }
   },
   "/health": { "get": { "operationId": "health" } }
 },
@@ -373,10 +375,8 @@ makes in review and the build needs no generator, or generate it in its build.
 
 The generator writes plain Goose, read and debugged like any other file, never edited.
 The types, readers, and writers are built (task 003); this is its output for
-`ProjectCreate`, shortened, and the [reference](../generator.md) has the rest. The
-router below them is a sketch; the one built (task 008) walks the path segment by
-segment and answers through `rest::no_method`, `rest::no_route`, and `rest::not_found`
-([reference](../generator.md#paths)).
+`ProjectCreate` and the router (task 008), shortened, and the
+[reference](../generator.md) has the rest.
 
 ```goose
 namespace api;
@@ -422,24 +422,59 @@ fn format(out: u8[>..]&, v: const ProjectCreate&) {
     out.push('}');
 }
 
-fn dispatch(cx: rest::Cx&, app: app::App&) {
-    let path = cx.path;
-    match path.len {                          // static paths: length, then bytes
-        7 => if path == "/health" {
-            if cx.is("GET") { return rest::route(cx) { app::health(cx, app) }; }
-            return rest::not_allowed(cx, "GET, HEAD");   // Allow is a constant
-        },
-        9 => if path == "/projects" { ... },
-        _ => {},
+// Generic in cx and state, so it serves any rest::Cx and the program's state.
+// allow is the Allow of the program's own routes before dispatch.
+fn dispatch(cx, state, allow: const u8[:] = "") {
+    let path = http::path_of(cx.req.target);
+    let m = cx.req.method;
+    guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
+    let plain = find(path, "%") < 0;
+    if plain {
+        match path.len {                      // static paths: length, then bytes
+            7 => {
+                if path == "/health" {
+                    if m == "GET" || m == "HEAD" {
+                        rest::route(cx) {
+                            app::health(cx, state);
+                        };
+                        return;
+                    }
+                    rest::no_method(cx, "GET, HEAD", allow);   // Allow is a constant
+                    return;
+                }
+            },
+            9 => { ... },                     // /projects
+            _ => {},
+        }
     }
-    if rest::under(path, "/projects/") {      // paths with parameters: by segment
-        return rest::route(cx) {
-            let id = rest::segment_int(cx, 10);           // 400 unless an integer
-            let s = app::security_session(cx, app);       // only where the operation names it
-            app::get_project(cx, app, s, id)
-        };
+    if path.len > 0 && path[0] == '/' {       // then by segment, literals before parameters
+        let e0 = 0;
+        if e0 < path.len {
+            let s1, e1 = rest::segment(path, e0);
+            if rest::segment_is(s1, "projects", plain) {
+                ...
+                if e1 < path.len {
+                    let s2, e2 = rest::segment(path, e1);
+                    if s2.len > 0 {
+                        if e2 == path.len {
+                            if m == "GET" || m == "HEAD" {
+                                rest::route(cx) {
+                                    let s_ = app::security_session(cx, state);  // only where named
+                                    let id = rest::path_int(cx, s2, "id");      // 400 unless an integer
+                                    app::get_project(cx, state, s_, id);
+                                };
+                                return;
+                            }
+                            rest::no_method(cx, "GET, HEAD", allow);
+                            return;
+                        }
+                    }
+                }
+            }
+            ...
+        }
     }
-    rest::not_found(cx);
+    rest::not_found(cx, m, path, allow);
 }
 ```
 
