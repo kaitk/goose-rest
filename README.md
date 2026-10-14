@@ -139,6 +139,22 @@ fields; `bearer` and anything else that fails goes inside it. A request has one 
 routes nested in routes don't inline ([architecture](docs/architecture/README.md#inlining)).
 An answer written later, when a waiting route resumes, gets neither middleware's fields.
 
+Declare your own middleware that takes a block as `inline fn`, as goose-rest's own are:
+
+```goose
+inline fn tenant<F>(cx) {
+    let id, has = rest::header(cx, "X-Tenant");
+    guard has else { rest::fail(cx, 400, "tenant_required"); }
+    F(id);
+}
+```
+
+Goose's `-O2` inlines a function called once only up to a size, and a handler's routes
+pass it as soon as they're the block. A plain `fn` then stays a C function that reaches
+the handler's locals through pointers, and every middleware around it stays out of line
+too. `inline fn` folds it into the handler ([findings](docs/goose-findings.md#a-function-called-once-isnt-inlined-past-a-size),
+aardappel/goose#33).
+
 ## Extractors
 
 Each extractor reads one part of the request, and fails the route with 400 when that
