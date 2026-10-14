@@ -1,7 +1,8 @@
 # 015: Win back the plan's API where Goose and goose-http now allow it
 
-Status: in-progress (asked for 2026-10-14). The inventory is done; the
-recommendations wait on the maintainer before anything public changes.
+Status: in-progress (asked for 2026-10-14). The inventory is done, and the
+recommendations are built on a local prototype branch and measured; they wait on the
+maintainer before anything public changes.
 
 The plan (`docs/plan.md` in `923c4fb`) wrote handlers and the generated router in calls
 that read as the route means. The built API drifted from them, call by call, as each
@@ -212,9 +213,88 @@ goose-http `cb57a0b` (read 2026-10-14). Spike 08 checked what the docs didn't se
 
 ## Recommendations
 
-Proposed (2026-10-14), against goose-http `cb57a0b`, for the maintainer to choose from
-before anything public changes. Nothing here waits on goose-http: each change it would
-help with has a version that needs nothing from it.
+Measured on a prototype (2026-10-14), for the maintainer to choose from before anything
+public changes. Each change is a commit of the local branch `task-015-prototype`, not
+pushed, on top of `main` at `8e22333`:
+
+| Commit | Change |
+|---|---|
+| `ba18e82` | The goose-http pin moved to `bc75f2a`, with no code change |
+| `b2710be` | `scripts/move-http-pin.sh`, which moves the pin in every file |
+| `f8afe62` | `gen60` served through `rest::serve_epoll`, as a program serves it |
+| `cb890b6` | A, the router as an optional field of the context |
+| `859ff3b` | B, the worker's state in the context |
+| `7ae83b0` | Spike 09, A and B in a fuller program |
+| `9277673` | A with the router's type in the context, `Cx<S, A, R>` |
+| `06e51f1` | `genr60`, `gen60` behind `rest::routes` and one hand-written route |
+| `033f722` | C, `rest::empty` |
+| `8b5cee7` | D, middleware's cost |
+
+A side branch, `task-015-r1` (`d5e05cd`, on `8b5cee7`), makes `rest::routes` open the
+route, for measuring only.
+
+How it was measured: MacBook Pro, Apple M1 Pro, macOS 26.3.1 (Darwin 25.3.0), Goose
+`46356c2`, goose-http `bc75f2a`, each server built with `goose build --standalone`,
+one worker on `serve_epoll` over kqueue. `bench/routes.sh`: h2load 1.70.0 `--h1 -n
+2000000 -c 256 -m 16 -t 8`. `bench/stack.sh`: wrk 4.2.0 `-t 8 -c 256 -d 10`, each
+connection pipelined 16 deep. Both on the same machine, nothing pinned, 3 rounds
+interleaving the cells, and the server's instructions retired from `/usr/bin/time -l`,
+kernel included, per request; `bench/stack.sh` less the server started and stopped
+without load. Load average 3.3-15.0 from other work, each run's in its output's
+header. A change is the difference of two runs' means of 3 rounds; one whose rounds'
+ranges overlap is called within the noise.
+
+### The baseline, at goose-http `bc75f2a`
+
+At `b2710be`, load average 5.2-9.5. Instructions per request, ranges over 3 rounds:
+
+| Case | `routes60` | `gen60` | `hand60` | One route |
+|---|---:|---:|---:|---:|
+| First route | 18,343.2-18,354.9 | 18,244.3-18,256.3 | 18,417.0-18,422.1 | 18,295.2-18,311.3 |
+| Last route | 25,910.4-25,911.0 | 19,912.7-19,919.9 | 24,050.8-24,059.1 | 19,903.0-19,913.6 |
+| 404 in a scope | 25,491.9-25,497.4 | 19,707.3-19,725.8 | 23,795.4-23,797.2 | 19,511.2-19,521.6 |
+| 404 outside | 18,350.0-18,352.8 | 18,570.1-18,589.5 | 18,745.7-18,753.3 | 18,200.2-18,221.3 |
+| 405 | 25,843.1-25,845.1 | 20,057.9-20,065.1 | 24,196.5-24,199.1 | 19,816.4-19,823.7 |
+| Query | 19,031.8-19,044.8 | 20,111.5-20,115.4 | 20,933.0-20,944.9 | |
+
+| Case | Tier | Instructions per request | req/s |
+|---|---|---:|---:|
+| `POST /json` | F | 26,268.3-26,268.5 | 511,806-515,752 |
+| `GET /api/items/42` | A | 20,741.5-20,752.0 | 564,192-567,682 |
+| The same, inside the stack | M | 32,638.7-32,888.7 | 416,145-425,190 |
+| `POST /api/items/7` | A | 21,426.0-21,436.9 | 557,658-566,421 |
+| The same, inside the stack | M | 30,219.7-30,734.1 | 436,357-437,294 |
+
+Against the tables above, at `cb57a0b` under a heavier load, `gen60` and `hand60` move
+by 0 to 50 and every `bench/stack.sh` cell stays within its old range: the pin move
+costs nothing measurable.
+
+`gen60` built its context in its own `http::serve_epoll` handler. Served through
+`rest::serve_epoll` (`f8afe62`), as every program is, it costs 40-75 more, the runtime's
+event handling; the changes below compare `gen60` on that path.
+
+### What each change costs
+
+| Change | `gen60` | `hand60` | `bench/stack.sh` |
+|---|---|---|---|
+| A, optional router | -8 to +35 | +35 to +86 | F, A: -17 to -41; M within the noise |
+| B, after A | -10 to +9, within the noise | -8 to -1 | F, A: +2 to +12 |
+| A typed, after B | -25 to -53 | -42 to -77 | F: -8; A: +25 GET, +49 POST; M within the noise |
+| C and D, after A typed | -20 to +0 | -18 to +16 | M: -4,419 GET, -746 POST; F, A: +17 to +29 |
+| `routes` opens the route | -3 to +15; `genr60` +28 to +39 | +11 to +73 | A: +54 GET, +160 POST; F: -28 |
+
+goose-http alone, `routes60` and the one-route servers, moved by -19 to +16 between
+runs, the drift each change sits in. From `f8afe62` to `8b5cee7`, all of A typed, B, C,
+and D together, `gen60` costs 23-41 less on every case. From the baseline, `hand60` costs
+10-20 more (the query case 44 less) against goose-http alone's -4 to -12, and the stack
+costs 4,216 less on tier M's GET and 640 less on its POST, with tiers F and A 15-36
+more.
+
+`test/inline_route.goose`'s `-O2` C still folds every middleware, `rest::routes`,
+`rest::route`, and the calls that fail into one function, `handle`, at each commit, with
+`routes` opening the route too. `genr60`'s C keeps `api::dispatch` a function of its
+own with and without that, and neither leaves `rest::route` or `rest::attempt` out of
+line.
 
 ### What a program would read
 
@@ -253,7 +333,7 @@ fn projects(cx, app: App&, r: http::Router&) {
 }
 ```
 
-With A to C below:
+With A, B, and C, as `8b5cee7` has it:
 
 ```goose
 fn handle(cx) {
@@ -263,7 +343,7 @@ fn handle(cx) {
                 if rest::on(cx, "GET", "/health") {
                     rest::text(cx, 200, "ok");
                 } else if rest::scope(cx, "/v1") {
-                    projects(cx);
+                    rest::route(cx) { projects(cx); };
                 } else {
                     rest::otherwise(cx);
                 }
@@ -288,54 +368,109 @@ fn projects(cx) {
 }
 ```
 
-And a schema's handlers, today and then:
+And a schema's handlers, today and then, from `docs/tutorial/06-schema`:
 
 ```goose
-fn get_project(cx, state: App&, id: i64) { ... state.projects ... }
-fn security_token(cx, state: App&) -> const u8[:] { ... }
-let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
+fn get_project(cx, state: App&, id: i64) {
+    guard id <= state.projects.len else { rest::fail(cx, 404, "project_not_found"); }
+    rest::json(cx, 200, state.projects[id - 1]);
+}
+let e = rest::serve(cfg) { cx => rest::timed(cx) { handle(cx, state); }; };
+api::dispatch(cx, state, r.allow);   // in handle, after the hand-written routes
 
-fn get_project(cx, id: i64) { ... cx.app.projects ... }
-fn security_token(cx) -> const u8[:] { ... }
-let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
+fn get_project(cx, id: i64) {
+    guard id <= cx.app.projects.len else { rest::fail(cx, 404, "project_not_found"); }
+    rest::json(cx, 200, cx.app.projects[id - 1]);
+}
+let e = rest::serve(cfg, app) { cx => rest::timed(cx) { handle(cx); }; };
+api::dispatch(cx);                   // in handle's rest::routes block
 ```
 
-### Undo now
+Spike 09 (`spikes/09-context-in-use/` on the branch) tries A and B on a fuller program:
+hand-written routes before the generated `dispatch` on a path the schema has too, a
+route that asks a database thread and resumes, a helper three calls down that needs the
+router, the worker's state, and the request's, a scope with a middleware of its own, and
+`rest::once` used by both a security check and a handler. Each works and reads better;
+its README has the details.
 
-- **A. The router in the context (rows 6, 4).** `rest::routes(cx) { cx => ... }` builds
-  the router and gives its block a context that holds it; `rest::on`, `rest::scope`,
-  `rest::param`, `rest::param_int`, and `rest::otherwise` take `cx` alone. `http::on`
-  and `http::router` stay goose-http's, for a program that wants them. The generated
-  `dispatch` reads the `Allow` of hand-written routes before it from the context, so
-  `api::dispatch(cx, state, r.allow)` becomes `api::dispatch(cx)`. Cost: a program
-  of hand-written routes builds the router it builds now, plus a copy of the context and
-  a null check per call; one served by the generated router builds none, and pays one
-  more null field in the context. Both measured with `hand60` and `gen60` before it
-  lands. Breaking: every hand-written route.
-- **B. The worker's state in the context (item 7).** `rest::serve(cfg, app) { cx => ...
-  }` and `cx.app`, beside the per-request `cx.state`: `Cx<S, A>`. Handlers, security
-  checks, and the helpers they call lose a parameter, and `dispatch` takes `cx` alone.
-  Cost: one reference more in the context. Breaking: every handler and every `serve`.
-  A handler's type for the state then comes from the alias, `type Cx = rest::Cx<St,
-  App>;` and `cx: Cx&`, or from nothing, where today it's written `state: App&`.
-- **C. `rest::empty(cx, status)` (item 11)**, for 204 and other answers without a body.
-  Additive, no cost.
-- **D. Middleware's cost (item 12).** `timed` writes a fixed-width `Server-Timing`
-  placeholder with the CORS fields, through `out.common`, and fills it in place, so no
-  bytes move: `app;dur=0.042` padded with spaces, which a field value's trailing
-  whitespace allows (RFC 9110 §5.5). `cors` looks for `Access-Control-Request-Method` only
-  on an OPTIONS, and appends its fields rather than formatting them. `bearer` is measured
-  again with `http::bearer`. Expected: `timed` under 1,000 a request whatever the
-  response's size, from 5,200 on tier M's GET. No API change; every answer's bytes the
-  same but `Server-Timing`'s padding.
-- **E. goose-rest's copies of goose-http's `main` (item 13)**: `http::JSON` and
-  `http::TEXT`, `http::bearer`, and `http::mail_slot_size` in place of the slot size in
-  each job. Internal; measured as the others. `http::gather` in place of
-  `runtime.goose`'s own gathering is the largest, about 70 lines, on the path of a body
-  past the read buffer, which neither `bench/routes.sh` nor `bench/stack.sh` sends; it
-  needs `test/test_serve_one.goose` and a tier D run on Linux, so it's the last of E.
-- **F. Document the alias (row 1)**: the tutorial shows `type Cx = rest::Cx<St, App>;`
-  for a function that wants its context typed. No code change.
+### Per change
+
+- **A. The router in the context (rows 6, 4): take it changed, with the router's type in
+  the context.** `rest::routes(cx) { cx => ... }` builds the router and gives its block a
+  context that holds it; `rest::on`, `rest::scope`, `rest::param`, `rest::param_int`, and
+  `rest::otherwise` take `cx` alone, and the generated `dispatch` reads the hand-written
+  routes' `Allow` from it, `api::dispatch(cx)`. `http::router` and `http::on` stay
+  goose-http's, and `rest::otherwise(cx, r)` and `rest::param(cx, r, name)` stay for a
+  program that builds its own router.
+
+  As first built (`cb890b6`), the router was an optional field, null outside
+  `rest::routes`. That cost `hand60` 35-86 a request, the copy of the context `routes`
+  makes, and spike 09 found three calls that today's API refuses to compile and it
+  answered at run time: `rest::on` outside `rest::routes` (404 for every route), any
+  route call at a WAKE (`rest::param` read `""`), and a helper reading `rest::param`
+  called from a generated handler under `dispatch` alone (400). With the router's type a
+  parameter of the context (`9277673`), `Cx<S, A, R>`, an `http::Router` inside
+  `rest::routes` and a `rest::NoRouter` elsewhere, each of the three fails to compile
+  ("cannot pass rest::Cx<St, App, rest::NoRouter> as rest::Cx<S, A, http::Router>&"),
+  the null checks go, and `gen60` ends 23-41 a request cheaper than before A; `hand60`
+  pays 10-20 more than at the baseline, a seventh of what the first version cost. The
+  copy stays: Goose refuses to store a reference to `routes`' local router in the
+  caller's context, which would outlive it (§9.2), so `routes` builds a context of its
+  own. One risk stays silent, in both versions: inside `rest::routes`, a generated
+  handler calling a helper that reads `rest::param` gets the parameters of the last
+  hand-written route whose path matched. A generated handler gets its path parameters as
+  arguments, which it should pass on.
+
+  `genr60`, `gen60` behind `rest::routes` and one hand-written route, costs 415-830 more
+  than `gen60`. That's the router and the route, not A: written in today's API, with
+  `http::router`, `http::on`, and `dispatch(cx, state, r.allow)`, at `f8afe62`, it costs
+  433-872 more than `gen60` (load average 6.9-8.8), and A's typed version is 48-76 a
+  request cheaper than it, where `gen60` is 14-34 cheaper.
+
+  The price: a typed context names three types, `rest::Cx<St, App, http::Router>` inside
+  `rest::routes`, and errors name them all; and `rest::routes(cx) { cx => ... }` is one
+  more level of nesting in `handle`. Breaking: every hand-written route.
+- **B. The worker's state in the context (item 7): take it.** `rest::serve(cfg, app) {
+  cx => ... }` and `cx.app`, beside the per-request `cx.state`. Handlers, security
+  checks, resume functions, and the helpers they call lose a parameter, and `dispatch`
+  takes `cx` alone. Measured at no cost: `bench/routes.sh` -10 to +9, within the noise,
+  `bench/stack.sh` +2 to +12. Nothing turns silent: today's `rest::serve(cfg, St { .. })`
+  no longer compiles, since the worker's state is a reference and a temporary can't be
+  one, and a field the app lacks fails as `state.field` does today. Reads worse in one
+  case: a program with per-request state and no worker's state passes a placeholder,
+  `var none = rest::NoState { .. }; rest::serve(cfg, none, St { .. })` (tutorial 04, bench
+  tiers B and C). Breaking: every handler, every `serve` and `serve_one`, and every
+  context a test builds by hand.
+- **C. `rest::empty(cx, status)` (item 11): take it.** `http::start` then
+  `http::finish(cx.out, http::NO_TYPE, "")`: 204 and 304 without `Content-Length`, any
+  other status with `Content-Length: 0`. Replaces two goose-http calls in
+  `examples/plain`, `examples/schema`, and bench tier A. Additive; no measurable cost.
+- **D. Middleware's cost (item 12): take it.** `timed` writes `Server-Timing:
+  app;dur=` and 12 spaces into `cx.out.common` before its block runs, and fills the
+  spaces in place once the block has answered, so no byte of the answer moves; `cors`
+  looks for `Access-Control-Request-Method` only on an OPTIONS and appends its fields;
+  `bearer_token` reads the token with `http::bearer`. Tier M's GET costs 4,419 less, its
+  POST 746 less: the stack now costs 7,800 a GET over tier A, from 12,100, and 8,400 a
+  POST, from 9,000. Visible changes: `Server-Timing`'s value is padded with spaces,
+  which a field value may end in (RFC 9110 §5.5), and comes after the common fields
+  rather than right after the status line; `timed` takes `cx` by reference, as `cors`
+  does; and `http::bearer` refuses a token that isn't a token68 (RFC 6750 §2.1) as
+  `unauthenticated`, where the program used to get it.
+- **E. goose-rest's copies of goose-http's `main` (item 13): take it, not yet built.**
+  `http::NO_TYPE`, `http::JSON`, and `http::TEXT` for the raw field strings, and
+  `http::mail_slot_size` in each job; `http::bearer` came in with D. goose-http's own
+  `http::insert_field` now rotates a field into place, but D needs none. `http::gather`
+  in place of `runtime.goose`'s gathering is the largest, on the path of a body past the
+  read buffer, which neither benchmark sends; it needs `test/test_serve_one.goose` and a
+  tier D run on Linux.
+- **F. Document the alias (row 1): take it, with A's types.** The tutorial shows `type
+  Cx = rest::Cx<St, App, http::Router>;` for a function that wants its route's context
+  typed.
+- **`rest::routes` opening the route (item 8): drop it.** Measured on `task-015-r1`, it
+  costs every request in a routes block and saves one line: `hand60` 11-73 more,
+  `genr60` 28-39, tier A 54 on its GET and 160 on its POST. It doesn't push `dispatch`'s
+  routes out of line, as feared: `genr60`'s C is the same with and without it. A program
+  opens `rest::route` around the code that fails, as today.
 
 ### Keep
 
@@ -352,14 +487,18 @@ let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 
 ### For the maintainer to decide
 
-- **Whether `rest::routes` also opens the route** (item 8). Then a hand-written program
-  never writes `rest::route`: the routes block is where a failure ends, inside `timed`
-  and `cors`, as `rest::route` is now. The cost falls on a program that puts the
-  generated `dispatch` inside `routes`, behind hand-written routes: `dispatch` opens
-  routes of its own, and a route nested in a route stays out of line. Without it,
-  `rest::route` stays where it is today, around the code that fails.
+- **A's two versions.** The router's type in the context (recommended): compile errors
+  for a route outside `rest::routes`, and the cheaper of the two. Or the optional router:
+  one context type, `rest::Cx<St, App>`, and those mistakes answered at run time.
 - **B's names.** `cx.app` for the worker's state and `cx.state` for the request's, as
-  above, or other names.
+  built, or other names.
+- **B's placeholder.** A program with per-request state and no worker's state passes
+  `rest::NoState` by reference as its app. A named overload, such as
+  `rest::serve_fresh(cfg, St { .. })`, would spare it, at one more name.
+- **Merging the prototype.** Its commits pass `scripts/test.sh` each, but leave
+  `docs/reference.md`, `docs/generator.md`, and the architecture doc describing today's
+  calls. Taking the recommendations means updating those, dropping the optional router's
+  commit or squashing it into the typed one, and keeping `genr60` in `bench/routes.sh`.
 
 
 - [x] Each row above, and any drift found beside them, has its reason and whether it
