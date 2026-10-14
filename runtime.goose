@@ -53,9 +53,8 @@ struct Slot<S> { app: S, body: Gather = Gather { .. } }
 // Serves cfg with goose-http's loop, calling H(cx) for each request, and again
 // when a route that asked another thread gets its reply (waiting.goose). A
 // body that doesn't come with its head is gathered when a route asks for it
-// (rest::body), and H runs again once it's whole. The worker's spill is a
-// local: a global u8 pool anywhere in a program breaks the generated array
-// readers (docs/goose-findings.md).
+// (rest::body), and H runs again once it's whole. Each worker calls serve,
+// so the spill, a local of this call, is that worker's own.
 fn serve<S, H>(cfg: http::Config, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     return http::serve(cfg, Slot<S> { app: fresh }) { ev, st, out =>
