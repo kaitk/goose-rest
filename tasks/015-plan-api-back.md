@@ -210,14 +210,164 @@ goose-http `cb57a0b` (read 2026-10-14). Spike 08 checked what the docs didn't se
 15. **`rest::take<T>(cx)` with `T` explicit.** The plan's own. A Goose limit:
     `let v: T = rest::take(cx)` can't infer `T` (spike 08). Still holds.
 
-## Acceptance criteria
+## Recommendations
+
+Proposed (2026-10-14), against goose-http `cb57a0b`, for the maintainer to choose from
+before anything public changes. Nothing here waits on goose-http: each change it would
+help with has a version that needs nothing from it.
+
+### What a program would read
+
+`examples/plain`'s routes today:
+
+```goose
+fn handle(cx, app: App&) {
+    rest::timed(cx) {
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+            var r = http::router(cx.req);
+            if http::on(r, "GET", "/health") {
+                rest::text(cx, 200, "ok");
+            } else if rest::scope(r, "/v1") {
+                rest::route(cx) { projects(cx, app, r); };
+            } else {
+                rest::otherwise(cx, r);
+            }
+        };
+    };
+}
+
+fn projects(cx, app: App&, r: http::Router&) {
+    if http::on(r, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, r, "id")));
+    } else if http::on(r, "DELETE", "/projects/:id") {
+        rest::bearer(cx) { token =>
+            guard token == app.token else { rest::invalid_token(cx); }
+            let p .= find_project(cx, app, rest::param_int(cx, r, "id"));
+            p.deleted = true;
+            http::start(cx.out, 204);
+            http::finish(cx.out, "", "");
+        };
+    } else {
+        rest::otherwise(cx, r);
+    }
+}
+```
+
+With A to C below:
+
+```goose
+fn handle(cx) {
+    rest::timed(cx) {
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+            rest::routes(cx) { cx =>
+                if rest::on(cx, "GET", "/health") {
+                    rest::text(cx, 200, "ok");
+                } else if rest::scope(cx, "/v1") {
+                    projects(cx);
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
+        };
+    };
+}
+
+fn projects(cx) {
+    if rest::on(cx, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id")));
+    } else if rest::on(cx, "DELETE", "/projects/:id") {
+        rest::bearer(cx) { token =>
+            guard token == cx.app.token else { rest::invalid_token(cx); }
+            let p .= find_project(cx, rest::param_int(cx, "id"));
+            p.deleted = true;
+            rest::empty(cx, 204);
+        };
+    } else {
+        rest::otherwise(cx);
+    }
+}
+```
+
+And a schema's handlers, today and then:
+
+```goose
+fn get_project(cx, state: App&, id: i64) { ... state.projects ... }
+fn security_token(cx, state: App&) -> const u8[:] { ... }
+let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
+
+fn get_project(cx, id: i64) { ... cx.app.projects ... }
+fn security_token(cx) -> const u8[:] { ... }
+let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
+```
+
+### Undo now
+
+- **A. The router in the context (rows 6, 4).** `rest::routes(cx) { cx => ... }` builds
+  the router and gives its block a context that holds it; `rest::on`, `rest::scope`,
+  `rest::param`, `rest::param_int`, and `rest::otherwise` take `cx` alone. `http::on`
+  and `http::router` stay goose-http's, for a program that wants them. The generated
+  `dispatch` reads the `Allow` of hand-written routes before it from the context, so
+  `api::dispatch(cx, state, r.allow)` becomes `api::dispatch(cx)`. Cost: a program
+  of hand-written routes builds the router it builds now, plus a copy of the context and
+  a null check per call; one served by the generated router builds none, and pays one
+  more null field in the context. Both measured with `hand60` and `gen60` before it
+  lands. Breaking: every hand-written route.
+- **B. The worker's state in the context (item 7).** `rest::serve(cfg, app) { cx => ...
+  }` and `cx.app`, beside the per-request `cx.state`: `Cx<S, A>`. Handlers, security
+  checks, and the helpers they call lose a parameter, and `dispatch` takes `cx` alone.
+  Cost: one reference more in the context. Breaking: every handler and every `serve`.
+  A handler's type for the state then comes from the alias, `type Cx = rest::Cx<St,
+  App>;` and `cx: Cx&`, or from nothing, where today it's written `state: App&`.
+- **C. `rest::empty(cx, status)` (item 11)**, for 204 and other answers without a body.
+  Additive, no cost.
+- **D. Middleware's cost (item 12).** `timed` writes a fixed-width `Server-Timing`
+  placeholder with the CORS fields, through `out.common`, and fills it in place, so no
+  bytes move: `app;dur=0.042` padded with spaces, which a field value's trailing
+  whitespace allows (RFC 9110 §5.5). `cors` looks for `Access-Control-Request-Method` only
+  on an OPTIONS, and appends its fields rather than formatting them. `bearer` is measured
+  again with `http::bearer`. Expected: `timed` under 1,000 a request whatever the
+  response's size, from 5,200 on tier M's GET. No API change; every answer's bytes the
+  same but `Server-Timing`'s padding.
+- **E. goose-rest's copies of goose-http's `main` (item 13)**: `http::JSON` and
+  `http::TEXT`, `http::bearer`, and `http::mail_slot_size` in place of the slot size in
+  each job. Internal; measured as the others. `http::gather` in place of
+  `runtime.goose`'s own gathering is the largest, about 70 lines, on the path of a body
+  past the read buffer, which neither `bench/routes.sh` nor `bench/stack.sh` sends; it
+  needs `test/test_serve_one.goose` and a tier D run on Linux, so it's the last of E.
+- **F. Document the alias (row 1)**: the tutorial shows `type Cx = rest::Cx<St, App>;`
+  for a function that wants its context typed. No code change.
+
+### Keep
+
+- **Rows 2, 3, and 5**, in generated code only: the locals cost nothing and read as
+  well, row 3 is a Goose limit, and the segment walk is what makes escapes and typed
+  parameters right.
+- **Row 4's names**, `no_method` and `not_found`, in generated code only; A removes their
+  `allow` argument from the program's side.
+- **`rest::Cors` (item 9)**: a real API sets more than its origins.
+- **No `cx.now` (item 10)**: a program that needs the time reads the clock where it does.
+- **`rest::take<T>` (item 15)** and **`rest::` on every call (item 14)**: Goose limits,
+  recorded in `docs/goose-findings.md`. UFCS on the receiver's namespace would make every
+  call shorter at no cost, and is the one Goose change this API would use most.
+
+### For the maintainer to decide
+
+- **Whether `rest::routes` also opens the route** (item 8). Then a hand-written program
+  never writes `rest::route`: the routes block is where a failure ends, inside `timed`
+  and `cors`, as `rest::route` is now. The cost falls on a program that puts the
+  generated `dispatch` inside `routes`, behind hand-written routes: `dispatch` opens
+  routes of its own, and a route nested in a route stays out of line. Without it,
+  `rest::route` stays where it is today, around the code that fails.
+- **B's names.** `cx.app` for the worker's state and `cx.state` for the request's, as
+  above, or other names.
+
 
 - [x] Each row above, and any drift found beside them, has its reason and whether it
       still holds at the current Goose and goose-http pins, checked by a spike where the
       answer isn't in the docs
 - [x] goose-http's task 027 changes and its rough-edges list are read for what they make
       possible here, and each that would help is named in this file
-- [ ] A recommendation per drift: undo it, undo it after a goose-http change (proposed
+- [x] A recommendation per drift: undo it, undo it after a goose-http change (proposed
       to its task 027, after asking first), or keep it, with the reason
 - [ ] The drifts undone are built, with the tutorial, reference, examples, and
       generated code updated, and `bench/routes.sh` measured before and after, recorded
