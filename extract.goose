@@ -1,7 +1,7 @@
 // Extractors: the typed parts of a request. Each one that finds a part
 // missing or malformed fails the enclosing route with 400
-// {"error":"invalid_parameter","detail":"<name>: <check>"} (README,
-// "Errors"), so every caller runs inside rest::route.
+// {"error":"invalid_parameter","detail":"<name>: <check>"}
+// (docs/reference.md, "Errors"), so every caller runs inside rest::route.
 namespace rest;
 
 import std;

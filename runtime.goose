@@ -1,6 +1,6 @@
 // The runtime: a request's context, routes that fail from any depth below
 // them, and answers in JSON, every error in one shape, goose-rest's or the
-// program's (README, "Errors").
+// program's (docs/reference.md, "Errors").
 namespace rest;
 
 import std;

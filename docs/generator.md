@@ -29,7 +29,7 @@ A program imports the file by its module name, so name it `<name>_gen.goose`, no
 `<name>.gen.goose`: an import is identifiers separated by dots, and a dot in a file
 name reads as a directory (spec §11.1). The file imports `json`, and `rest` when a
 check or the router needs it, and `http` with a router, so the
-program's root declares goose-rest and goose-http (README, "Use"). It doesn't import the
+program's root declares goose-rest and goose-http ([README](../README.md#quick-start)). It doesn't import the
 handlers' module: the root does, wherever the module lives, and the router's qualified
 calls find it.
 
@@ -166,7 +166,7 @@ For a schema `Project`, the file has:
 - `fn rest::from_request(cx, v: const api::Project?) -> api::Project`, the extractor
   `rest::take<api::Project>(cx)` calls: it reads the JSON body with the reader, and
   fails with 415 for another media type and 400 `invalid_body` for a body the reader
-  refuses (README, "Extractors").
+  refuses ([reference](reference.md#extractors)).
 
 For an enum `Status`: `enum Status`, `fn status_of(s) -> Status, bool`, and `fn
 format(out, v: Status)`.
@@ -311,7 +311,7 @@ checks the rest byte for byte against such a chain.
    method gets 405, and `OPTIONS` 204, each with the path's `Allow`, a constant.
 5. A path nothing matched is 404, or 204 for `OPTIONS *`.
 
-Each answer is in the README's error shape. A route checks the security scheme first,
+Each answer is in goose-rest's error shape ([reference](reference.md#errors)). A route checks the security scheme first,
 then the path parameters, the other parameters, and the body, and answers the first
 failure: a path parameter that doesn't fit its schema is `400
 {"error":"invalid_parameter","detail":"id: minimum"}`.

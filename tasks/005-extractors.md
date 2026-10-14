@@ -16,7 +16,7 @@ Typed access to the request, each failure answered by `rest::fail`.
 
 ## What was built
 
-`extract.goose`, listed in the README's "Extractors":
+`extract.goose`, listed in `docs/reference.md`'s "Extractors":
 
 - `param`, `param_int`, `query`, `query_int`, `query_bool`, `header`, `cookie`,
   `int_of`, `bool_of`, and `require`. A failure is 400 `invalid_parameter` with

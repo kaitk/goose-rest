@@ -237,7 +237,7 @@ it). What the setup met on macOS (2026-10-14):
 ## Use the package from git
 
 A program outside the repository imports the package as a user's does, at a pushed
-commit, by its full hash, next to goose-http at the pin (README, "Use"). The compiler
+commit, by its full hash, next to goose-http at the pin ([README](../README.md#quick-start)). The compiler
 fetches it into `~/.goose/pkg/github.com/kaitk/goose-rest/<12-hex hash>/`. Check it
 with `goose build` and a program whose `main` spawns a `thread_fn` that calls
 `http::serve`: `goose run` refuses it ("JIT mode does not support threads yet"), as

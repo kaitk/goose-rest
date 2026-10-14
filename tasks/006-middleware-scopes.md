@@ -16,7 +16,7 @@ The middleware every API needs, as blocks, and prefix scopes over `http::router`
 
 ## What was built
 
-`middleware.goose`, listed in the README's "Middleware":
+`middleware.goose`, listed in `docs/reference.md`'s "Middleware":
 
 - `cors` puts its fields in `cx.out.common`, which `http::start` writes into every
   answer, for as long as its block runs. So the route's errors and a handler's own
