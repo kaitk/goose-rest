@@ -65,6 +65,12 @@ node contract.mts > api.json    # Node 22.18 or later, or bun
 
 With Bun instead of Node, `bunx -p typescript tsc` runs the check.
 
+`api()` keeps the document's literal types, so `tsc` also rejects a `$ref` to a missing
+component, a `required` name that isn't a property, and a path parameter its template
+doesn't name. The generator still checks what types can't: cycles, names that aren't
+Goose identifiers or that collide, and number values such as a negative `maxLength`.
+Task 011 lists which of the two rejects each construct, and `ts/test/` checks each.
+
 ## Export it from Python or Rust
 
 A team that keeps its models in pydantic (2.x) exports them as the document's
@@ -85,12 +91,6 @@ beside it what the generator writes from it. `Field(ge=, le=, min_length=, max_l
 `None`, and `pattern` are refused, each with its pointer. FastAPI writes a whole
 document the same way, with paths. Rust's schemars writes optional values in the same
 `anyOf` shape.
-
-`api()` keeps the document's literal types, so `tsc` also rejects a `$ref` to a missing
-component, a `required` name that isn't a property, and a path parameter its template
-doesn't name. The generator still checks what types can't: cycles, names that aren't
-Goose identifiers or that collide, and number values such as a negative `maxLength`.
-Task 011 lists which of the two rejects each construct, and `ts/test/` checks each.
 
 ## The subset
 
