@@ -33,7 +33,7 @@ struct Cx<S> {
 struct NoState { unused: bool = false }
 
 // The most bytes of a body rest::body takes unless a route says otherwise.
-let BODY_LIMIT = 1048576;
+let BODY_LIMIT = 1024 * 1024;
 
 // A body that didn't come with its head, gathered for the route that asked
 // for it with rest::body: a run of the worker's spill from at, of cap bytes,

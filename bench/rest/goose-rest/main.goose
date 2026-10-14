@@ -2048,9 +2048,9 @@ fn heavy(cx, buf: u8[>..]&, writes: bool) {
 // as they arrive; the batch and the form are joined first, as the JSON reader
 // takes only a whole text.
 
-let IMPORT_LIMIT: i64 = 16777216;
-let BATCH_LIMIT: i64 = 1048576;
-let FORM_LIMIT: i64 = 65536;
+let IMPORT_LIMIT: i64 = 16 * 1024 * 1024;
+let BATCH_LIMIT: i64 = 1024 * 1024;
+let FORM_LIMIT: i64 = 64 * 1024;
 let MAX_TEXT = 1024;    // a multipart text field's value
 let MAX_TEXTS = 8;
 
