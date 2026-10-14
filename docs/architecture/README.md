@@ -238,6 +238,13 @@ which checks token68. These changes reduce the measured middleware cost without
 changing how blocks compose. [Task 015](../../tasks/015-plan-api-back.md) records
 the measurements and their setup.
 
+Decided (2026-10-14, task 015 E): response fields use `http::NO_TYPE`, `http::JSON`,
+and `http::TEXT`, and each job's reply size comes from `http::mail_slot_size`.
+These replace copies of HTTP's constants and a slot size threaded through the
+context. `http::TEXT` writes `text/plain` without a charset parameter.
+Reusing `http::gather` is deferred: it changes the path for a body larger
+than the read buffer and needs the body tests and a tier D run on Linux.
+
 ### Without a schema
 
 The framework alone, as an Actix program would use it:

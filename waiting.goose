@@ -13,8 +13,8 @@
 //   };
 //
 // The job crosses in a rest::Ask, with the address the reply goes to and
-// the size of a reply message, which a sender can't learn from the address
-// (goose-http's task 028). The thread replies with rest::answer, in pieces
+// the size of a reply message, read with http::mail_slot_size. The thread
+// replies with rest::answer, in pieces
 // of at most that size, and rest::relay sends them on as they come. A route
 // that never asks keeps nothing on the connection beyond its state.
 namespace rest;
@@ -40,7 +40,8 @@ struct Ask<J> { reply: http::MailAddress = http::MailAddress { .. }, piece: i64 
 fn ask<J>(cx, to: http::MailAddress, tag: i32, job: J, w, ms: i64 = 5000) {
     cx.state.waiting = w;
     let reply = http::later(cx.out, ms);
-    guard http::mail_send_value(to, tag, Ask<J> { reply: reply, piece: cx.slot, job: job }) == http::SENT else {
+    let piece = http::mail_slot_size(reply);
+    guard http::mail_send_value(to, tag, Ask<J> { reply: reply, piece: piece, job: job }) == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
         fail(cx, 503, "unavailable");

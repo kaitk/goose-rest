@@ -92,7 +92,10 @@ thread_fn database(box: http::Box) {
         http::mail_take(box) { key, tag, bytes =>
             if tag == REPORT {
                 let a, ok = rest::asked<ReportJob>(bytes);
-                if ok { rest::answer_value(a, ReportReply { tasks: a.job.id * 3 }); }
+                if ok {
+                    assert(a.piece == SLOT_SIZE);
+                    rest::answer_value(a, ReportReply { tasks: a.job.id * 3 });
+                }
             } else if tag == STOP {
                 running = false;
             }
@@ -113,7 +116,7 @@ fn exchange<H>(box: http::Box, key: u64, a: app::App&, label: const u8[:], text:
     reusable[] var spill: u8[>..] = [];
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: r.minor, head: false, stream: stream };
     rest::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply,
-                   SLOT_SIZE, spill) { cx => H(cx) };
+                   spill) { cx => H(cx) };
     var wakes = 0;
     while stream.waiting {
         assert(http::mail_wait(box, 5000));
@@ -122,7 +125,7 @@ fn exchange<H>(box: http::Box, key: u64, a: app::App&, label: const u8[:], text:
                 stream.waiting = false;
                 wakes++;
                 rest::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
-                                             tag: tag }, st, a, reply, SLOT_SIZE, spill) { cx => H(cx) };
+                                             tag: tag }, st, a, reply, spill) { cx => H(cx) };
             }
         };
     }

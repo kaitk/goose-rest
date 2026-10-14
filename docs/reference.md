@@ -35,7 +35,8 @@ The generated `api::dispatch(cx)` works with either context and reads the preced
 routes' `Allow` inside the block. Generated handlers receive path parameters as
 arguments; pass those to helpers rather than read the last hand-written match.
 
-`rest::json`, `rest::json_bytes`, and `rest::text` answer a body. `rest::empty(cx,
+`rest::json` and `rest::json_bytes` answer `application/json`; `rest::text` answers
+`text/plain` through `http::TEXT`, with no charset parameter. `rest::empty(cx,
 status)` answers none: 204 and 304 omit `Content-Length`, and other statuses write
 `Content-Length: 0`.
 

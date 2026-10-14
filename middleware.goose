@@ -89,7 +89,7 @@ fn answer_preflight(out: http::Reply, c: Cors, origin: const u8[:]) {
         http::field(out, "Access-Control-Max-Age", age);
     }
     http::field(out, "Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers");
-    http::finish(out, "", "");
+    http::finish(out, http::NO_TYPE, "");
 }
 
 // common with the CORS fields of an allowed origin after it, onto scratch,

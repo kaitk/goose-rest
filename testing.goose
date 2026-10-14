@@ -35,17 +35,17 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: req.minor,
                               head: req.method == "HEAD", stream: stream };
     on_event(http::Event { kind: http::REQUEST, req: req, data: if whole { body } else { "" }, whole: whole,
-                           trailers: "" }, st, app, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
+                           trailers: "" }, st, app, reply, spill) { cx => route(cx) { H(cx); }; };
     if !whole {
         var at = 0;
         while at < body.len {
             let end = min(at + cfg.max_head, body.len);
             on_event(http::Event { kind: http::BODY, req: req, data: body[at..end], whole: false, trailers: "" },
-                     st, app, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
+                     st, app, reply, spill) { cx => route(cx) { H(cx); }; };
             at = end;
         }
         on_event(http::Event { kind: http::END, req: req, data: "", whole: false, trailers: "" },
-                 st, app, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
+                 st, app, reply, spill) { cx => route(cx) { H(cx); }; };
     }
     if out.len == 0 { http::refuse(out, 500, ""); }
     return out;

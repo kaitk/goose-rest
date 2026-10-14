@@ -14,7 +14,7 @@ import http from "github.com/kaitk/goose-http@v0.3.1";
 // what the extractors decode, which lasts until the handler returns. When a
 // route that asked another thread resumes (rest::woken), kind is
 // http::WAKE, and reply, tag, and more hold the reply (waiting.goose); req
-// is then empty. slot is the size of a reply message, Config.mail_size.
+// is then empty.
 // router is the http::Router of rest::routes' block, R, and a NoRouter
 // elsewhere, so that rest::on and the calls that read a matched route take
 // only the context routes gives its block, or the program doesn't compile.
@@ -29,7 +29,6 @@ struct Cx<S, A, R> {
     reply: const u8[:] = "",
     tag: i32 = 0,
     more: bool = false,
-    slot: i64 = 0,
     // The connection's body gathering, under serve; null elsewhere.
     gather: Gather? = null,
     router: R&,
@@ -50,7 +49,7 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     var r = http::router(cx.req);
     var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
-                       kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, slot: cx.slot, gather: cx.gather,
+                       kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, gather: cx.gather,
                        router: r };
     F(&c);   // a block given the local itself gets a copy of it
 }
@@ -89,7 +88,7 @@ struct Slot<S> { state: S, body: Gather = Gather { .. } }
 fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        on_event(ev, st, app, out, cfg.mail_size, spill) { cx => H(cx) };
+        on_event(ev, st, app, out, spill) { cx => H(cx) };
     };
 }
 
@@ -98,7 +97,7 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
 fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        on_event(ev, st, app, out, cfg.mail_size, spill) { cx => H(cx) };
+        on_event(ev, st, app, out, spill) { cx => H(cx) };
     };
 }
 
@@ -127,7 +126,7 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 // pieces of a reply relay sends on itself; and 504 when a reply doesn't come
 // in time. A reply cut short by its time limit leaves the response open, and
 // goose-http closes the connection.
-inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, slot: i64, spill: u8[>..]&) {
+inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&) {
     if ev.kind == http::WAKE && (ev.tag & REPLY_CONT) != 0 {
         relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
     } else if ev.kind == http::TIMEOUT {
@@ -140,7 +139,7 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         var none = NoRouter { .. };
         var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.state,
                                       app: app, scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
-                                      tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot,
+                                      tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0,
                                       gather: st.body, router: none };
         H(cx);
         if st.body.pending && st.body.limit > 0 {
@@ -155,7 +154,7 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
                 return;
             }
         } else if ev.kind == http::END {
-            on_whole(st, app, out, slot, spill) { cx => H(cx) };
+            on_whole(st, app, out, spill) { cx => H(cx) };
         } else if ev.kind == http::CLOSED {
             release(st.body, spill);
         }
@@ -163,14 +162,14 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
 }
 
 // H(cx) for a gathered body, with the head parsed again from its copy.
-inline fn on_whole<S, A, H>(st: Slot<S>&, app: A&, out: http::Reply, slot: i64, spill: u8[>..]&) {
+inline fn on_whole<S, A, H>(st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&) {
     let g = st.body;
     let req, status = http::parse(spill[g.at..g.at + g.head], g.head, g.len);
     st.body.pending = false;
     var scratch: u8[>..] = [];
     var none = NoRouter { .. };
     var cx = Cx<S, A, NoRouter> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.state,
-                                  app: app, scratch: scratch, kind: http::REQUEST, slot: slot, gather: st.body,
+                                  app: app, scratch: scratch, kind: http::REQUEST, gather: st.body,
                                   router: none };
     H(cx);
     release(st.body, spill);
@@ -347,7 +346,7 @@ fn allowed(cx, allow: const u8[:]) {
     if cx.req.method == "OPTIONS" {
         http::start(cx.out, 204);
         http::field(cx.out, "Allow", allow);
-        http::finish(cx.out, "", "");
+        http::finish(cx.out, http::NO_TYPE, "");
     } else {
         write_error(cx.out, cx.state,405, "method_not_allowed", "", -1, allow);
     }
@@ -375,7 +374,7 @@ fn no_route(cx, method: const u8[:], path: const u8[:]) {
         write_error(cx.out, cx.state,400, "bad_path", "", -1, "");
     } else if method == "OPTIONS" && path == "*" {
         http::start(cx.out, 204);
-        http::finish(cx.out, "", "");
+        http::finish(cx.out, http::NO_TYPE, "");
     } else {
         write_error(cx.out, cx.state,404, "not_found", "", -1, "");
     }
@@ -391,7 +390,7 @@ fn not_found(cx, method: const u8[:], path: const u8[:]) {
         allowed(cx, theirs);
     } else if method == "OPTIONS" && path == "*" {
         http::start(cx.out, 204);
-        http::finish(cx.out, "", "");
+        http::finish(cx.out, http::NO_TYPE, "");
     } else {
         write_error(cx.out, cx.state,404, "not_found", "", -1, "");
     }
@@ -405,20 +404,20 @@ fn json(cx, status: i32, v) {
     var body: u8[>..] = [];
     format(body, v);
     http::start(cx.out, status);
-    http::finish(cx.out, "Content-Type: application/json\r\nContent-Length: ", body);
+    http::finish(cx.out, http::JSON, body);
 }
 
 // Answers status with body, JSON the program wrote itself, such as a
 // record's prebuilt at startup.
 fn json_bytes(cx, status: i32, body: const u8[:]) {
     http::start(cx.out, status);
-    http::finish(cx.out, "Content-Type: application/json\r\nContent-Length: ", body);
+    http::finish(cx.out, http::JSON, body);
 }
 
 // Answers status with s as UTF-8 text.
 fn text(cx, status: i32, s: const u8[:]) {
     http::start(cx.out, status);
-    http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", s);
+    http::finish(cx.out, http::TEXT, s);
 }
 
 // Answers status without a body: 204 and 304 without Content-Length, and any
@@ -444,7 +443,7 @@ fn otherwise(cx, r: const http::Router&) {
     } else if r.method == "OPTIONS" && (r.path == "*" || r.allow.len > 0) {
         http::start(cx.out, 204);
         if r.allow.len > 0 { http::field(cx.out, "Allow", r.allow); }
-        http::finish(cx.out, "", "");
+        http::finish(cx.out, http::NO_TYPE, "");
     } else if r.allow.len == 0 {
         write_error(cx.out, cx.state,404, "not_found", "", -1, "");
     } else {
@@ -462,7 +461,7 @@ fn write_error(out: http::Reply, st, status: i32, code: const u8[:], detail: con
     http::start(out, status);
     if allow.len > 0 { http::field(out, "Allow", allow); }
     if challenge.len > 0 { http::field(out, "WWW-Authenticate", challenge); }
-    http::finish(out, "Content-Type: application/json\r\nContent-Length: ", body);
+    http::finish(out, http::JSON, body);
 }
 
 // The error shape: {"error": code}, with "detail" when detail isn't empty,

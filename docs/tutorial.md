@@ -216,7 +216,7 @@ A route answers once, with one of these:
 |---|---|
 | `rest::json(cx, status, v)` | `v` as JSON, written by `v`'s `format` overload |
 | `rest::json_bytes(cx, status, body)` | JSON the program wrote itself |
-| `rest::text(cx, status, s)` | `s` as `text/plain; charset=utf-8` |
+| `rest::text(cx, status, s)` | `s` as `text/plain`, using `http::TEXT` |
 | `rest::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
 | `rest::fail(cx, status, code)` | `{"error": code}`, from anywhere inside `rest::route` |
 | `http::start`, `http::field`, `http::finish` | anything else, such as a page |

@@ -59,7 +59,7 @@ fn load(cx, id: i64) -> Project {
 let GET = "GET /p HTTP/1.1\r\nHost: x\r\n\r\n";
 
 fn test_text_and_json() {
-    answers(GET, "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 2\r\n\r\nok") { cx =>
+    answers(GET, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok") { cx =>
         rest::text(cx, 200, "ok");
     };
     answers(GET, "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nContent-Length: 31\r\n\r\n",
@@ -89,7 +89,7 @@ fn test_route() {
         rest::route(cx) { rest::fail(cx, 409, "taken"); };
     };
     // The first answer wins: a failure after one leaves it as it is.
-    answers(GET, "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 5\r\n\r\n",
+    answers(GET, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n",
                  "first") { cx =>
         rest::route(cx) {
             rest::text(cx, 200, "first");

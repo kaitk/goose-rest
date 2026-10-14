@@ -37,7 +37,7 @@ fn request(method: const u8[:], target: const u8[:], fields: const u8[:] = "") -
     str(method, " ", target, " HTTP/1.1\r\nHost: x\r\n", fields, "\r\n")
 }
 
-let OK = "Content-Type: text/plain; charset=utf-8\r\nContent-Length: 2\r\n\r\nok";
+let OK = "Content-Type: text/plain\r\nContent-Length: 2\r\n\r\nok";
 
 // A handler behind CORS: /missing fails 404 inside it.
 fn with_cors(text: const u8[:]) -> u8[>..] {
