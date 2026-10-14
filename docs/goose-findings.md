@@ -5,27 +5,15 @@ Goose compiler and stdlib gaps found here, in the format of goose-http's
 was last checked on. A gap fixed upstream leaves this file with the pin move that
 takes the fix.
 
-## A long-distance return can't carry a slice a caller passed in
+The entries come in two parts: [bugs](#bugs), where Goose does something wrong or other
+than its spec says, then [feature requests](#feature-requests), for what it lacks. Each
+part runs from the least work a fix is expected to take to the most, so the cheap fixes
+come first. The order is an estimate from reading the compiler. Place a new entry where
+its expected work puts it.
 
-Found on `a6249a4`, spike 03. Status: open; still fails on `46356c2`
+## Bugs
 
-`return E from f` refuses an `E` that holds a slice passed into the returning function,
-even when the slice came from outside `f`'s call and so outlives it. The stdlib's
-`exception` section documents the limit ("references carried by a long-distance return
-must point to globals or static data"), but §7.9 doesn't: it says only that `E`'s
-destination follows §7.3. Expected: a slice rooted outside `f`'s call may travel with
-the return, as it may in an ordinary return from `f`, or the spec states the limit.
-
-    fn route(path: const u8[:]) -> const u8[:] { check(path); return ""; }
-    fn check(path: const u8[:]) { return path from route; }
-    fn main() { var p: u8[>..] = []; p.append("/x"); print(route(p)); }
-
-    error: a long-distance return may only carry references to globals or static data
-
-Workaround: carry owned bytes, `u8[]` built with `str(path)`, as `exception::throw`'s
-docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works too.
-
-## A case-function call missing a variant doesn't name it
+### A case-function call missing a variant doesn't name it
 
 Found on `a6249a4`, spike 06. Status: open; unchanged on `46356c2`
 
@@ -51,31 +39,7 @@ variant Waiting.None`. Expected: the same message for both.
 
 Workaround: none needed; compare the candidates with the enum's variants.
 
-## The regex module has no anchors, so JSON Schema's pattern can't be checked
-
-Found on `a6249a4`, task 003. Status: open; still refused on `46356c2`
-
-`regex::compile` refuses `^`, `$`, `\A` and `\z`, as `stdlib.md` documents. JSON
-Schema's `pattern` is an ECMA-262 regex that matches anywhere in the string, so schemas
-anchor it to mean the whole string, `"^#[0-9a-f]{6}$"`. Without anchors, neither form
-can be checked: an unanchored search finds the pattern anywhere, and comparing the
-first match's span with the string's is wrong under leftmost-first matching (`a|ab` on
-`ab` matches `a`). Expected: `^` and `$`, or a full-match function.
-
-    import std;
-    import regex;
-
-    fn main() {
-        var err: u8[>..] = [];
-        let re = regex::compile("^#[0-9a-f]{6}$", err);
-        print(err);
-    }
-
-    regex: anchors are not supported at offset 0 in ^#[0-9a-f]{6}$
-
-Workaround: none. The generator refuses `pattern` (docs/generator.md).
-
-## A block given a local struct gets a copy of it
+### A block given a local struct gets a copy of it
 
 Found on `a6249a4`, task 005. Status: open; still prints 0 on `46356c2`. Recorded in
 goose-http's findings ("A block given a local struct writes to a copy of it", found on
@@ -103,7 +67,29 @@ untyped function parameter does.
 Workaround: pass the local as a reference, `R(&r, cx.scratch)`, which is shorter than
 goose-http's struct holding a reference.
 
-## A function called once isn't inlined past a size
+### A long-distance return can't carry a slice a caller passed in
+
+Found on `a6249a4`, spike 03. Status: open; still fails on `46356c2`
+
+`return E from f` refuses an `E` that holds a slice passed into the returning function,
+even when the slice came from outside `f`'s call and so outlives it. The stdlib's
+`exception` section documents the limit ("references carried by a long-distance return
+must point to globals or static data"), but §7.9 doesn't: it says only that `E`'s
+destination follows §7.3. Expected: a slice rooted outside `f`'s call may travel with
+the return, as it may in an ordinary return from `f`, or the spec states the limit.
+
+    fn route(path: const u8[:]) -> const u8[:] { check(path); return ""; }
+    fn check(path: const u8[:]) { return path from route; }
+    fn main() { var p: u8[>..] = []; p.append("/x"); print(route(p)); }
+
+    error: a long-distance return may only carry references to globals or static data
+
+Workaround: carry owned bytes, `u8[]` built with `str(path)`, as `exception::throw`'s
+docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works too.
+
+## Feature requests
+
+### A function called once isn't inlined past a size
 
 Found on `a6249a4`, task 006. Status: open, reported as
 [aardappel/goose#33](https://github.com/aardappel/goose/issues/33) (2026-10-13); still
@@ -141,3 +127,27 @@ Workaround: goose-rest's functions that take a block are `inline fn` (`route`,
 `attempt`, `cors`, `bearer`, `timed`, `json_body`), so the middleware, the route, and
 the code that fails all fold into the handler, which may stay one function of its own
 (`test/inline_route.goose`).
+
+### The regex module has no anchors, so JSON Schema's pattern can't be checked
+
+Found on `a6249a4`, task 003. Status: open; still refused on `46356c2`
+
+`regex::compile` refuses `^`, `$`, `\A` and `\z`, as `stdlib.md` documents. JSON
+Schema's `pattern` is an ECMA-262 regex that matches anywhere in the string, so schemas
+anchor it to mean the whole string, `"^#[0-9a-f]{6}$"`. Without anchors, neither form
+can be checked: an unanchored search finds the pattern anywhere, and comparing the
+first match's span with the string's is wrong under leftmost-first matching (`a|ab` on
+`ab` matches `a`). Expected: `^` and `$`, or a full-match function.
+
+    import std;
+    import regex;
+
+    fn main() {
+        var err: u8[>..] = [];
+        let re = regex::compile("^#[0-9a-f]{6}$", err);
+        print(err);
+    }
+
+    regex: anchors are not supported at offset 0 in ^#[0-9a-f]{6}$
+
+Workaround: none. The generator refuses `pattern` (docs/generator.md).
