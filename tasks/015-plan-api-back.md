@@ -457,7 +457,7 @@ its README has the details.
   does; and `http::bearer` refuses a token that isn't a token68 (RFC 6750 §2.1) as
   `unauthenticated`, where the program used to get it.
 - **E. goose-rest's copies of goose-http's `main` (item 13): take it, built (2026-10-14).**
-  `http::NO_TYPE`, `http::JSON`, and `http::TEXT` for the raw field strings, and
+  `http::NO_TYPE` and `http::JSON` for the raw field strings, and
   `http::mail_slot_size` in each job; `http::bearer` came in with D. goose-http's own
   `http::insert_field` now rotates a field into place, but D needs none. `http::gather`
   in place of `runtime.goose`'s gathering is the largest, on the path of a body past the
@@ -510,12 +510,13 @@ service that learns the client has gone (task 017).
 A is one typed-router commit; B, spike 09, `genr60`, C, and D remain separate.
 The remaining tutorial programs and their quotes use the context API, including
 F's typed alias. The reference, generator reference, architecture, and README match
-it. E uses HTTP's field constants and `mail_slot_size`; `http::TEXT` writes
-`text/plain` without a charset parameter. `http::gather` is left for a later task.
+it. E uses HTTP's field constants and `mail_slot_size`, except `http::TEXT`, which
+names no charset: `rest::text` keeps `text/plain; charset=utf-8` (review,
+2026-10-14). `http::gather` is left for a later task.
 No benchmark was rerun or measurement changed.
 
 The requested HTTP release is `v0.3.1` (`faead67`), including the fix that keeps a
-reply key live through WAKE. Task 017 was not on main, so this branch lands its
+reply key live through WAKE. Task 017 had no code on main, so this branch lands its
 answer-doc correction and leaves `rest::wanted` and the example's work-skipping
 checks to that task. Goose is `bc3c1f1`, a logo-only move with the spikes rerun.
 

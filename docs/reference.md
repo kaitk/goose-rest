@@ -36,7 +36,7 @@ routes' `Allow` inside the block. Generated handlers receive path parameters as
 arguments; pass those to helpers rather than read the last hand-written match.
 
 `rest::json` and `rest::json_bytes` answer `application/json`; `rest::text` answers
-`text/plain` through `http::TEXT`, with no charset parameter. `rest::empty(cx,
+`text/plain; charset=utf-8`. `rest::empty(cx,
 status)` answers none: 204 and 304 omit `Content-Length`, and other statuses write
 `Content-Length: 0`.
 

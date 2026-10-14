@@ -57,10 +57,10 @@ fn test_requests() {
         return rest::serve_one(text) { cx => rest::text(cx, 200, "hello"); };
     }
     same(hello("GET / HTTP/1.1\r\n\r\n"),
-         "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello", "no Host");
+         "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 5\r\n\r\nhello", "no Host");
     same(body_of(hello("GET / HTTP/1.1\r\nhost: x\r\n\r\n")), "hello", "own Host");
     same(hello("HEAD / HTTP/1.1\r\n\r\n"),
-         "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n", "HEAD");
+         "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 5\r\n\r\n", "HEAD");
     same(status_of(hello("GET /\r\n\r\n")), "HTTP/1.1 400 Bad Request", "refused");
     // The block runs inside rest::route, so it may fail.
     same(rest::serve_one("GET / HTTP/1.1\r\n\r\n") { cx => rest::fail(cx, 403, "forbidden"); },

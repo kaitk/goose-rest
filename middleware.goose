@@ -61,7 +61,7 @@ inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the bl
     let common = cx.out.common;
     if has_origin {
         guard origin_in(c.origins, origin) else {
-            write_error(cx.out, cx.state,403, "origin_not_allowed", "", -1, "");
+            write_error(cx.out, cx.state, 403, "origin_not_allowed", "", -1, "");
             return;
         }
         if cx.req.method == "OPTIONS" {

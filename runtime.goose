@@ -348,7 +348,7 @@ fn allowed(cx, allow: const u8[:]) {
         http::field(cx.out, "Allow", allow);
         http::finish(cx.out, http::NO_TYPE, "");
     } else {
-        write_error(cx.out, cx.state,405, "method_not_allowed", "", -1, allow);
+        write_error(cx.out, cx.state, 405, "method_not_allowed", "", -1, allow);
     }
 }
 
@@ -369,14 +369,14 @@ fn has_method(allow: const u8[:], method: const u8[:]) -> bool {
 // 400, OPTIONS * 204, and anything else 404.
 fn no_route(cx, method: const u8[:], path: const u8[:]) {
     if !http::known_method(method) {
-        write_error(cx.out, cx.state,501, "not_implemented", "", -1, "");
+        write_error(cx.out, cx.state, 501, "not_implemented", "", -1, "");
     } else if !http::is_routable(path) {
-        write_error(cx.out, cx.state,400, "bad_path", "", -1, "");
+        write_error(cx.out, cx.state, 400, "bad_path", "", -1, "");
     } else if method == "OPTIONS" && path == "*" {
         http::start(cx.out, 204);
         http::finish(cx.out, http::NO_TYPE, "");
     } else {
-        write_error(cx.out, cx.state,404, "not_found", "", -1, "");
+        write_error(cx.out, cx.state, 404, "not_found", "", -1, "");
     }
 }
 
@@ -392,7 +392,7 @@ fn not_found(cx, method: const u8[:], path: const u8[:]) {
         http::start(cx.out, 204);
         http::finish(cx.out, http::NO_TYPE, "");
     } else {
-        write_error(cx.out, cx.state,404, "not_found", "", -1, "");
+        write_error(cx.out, cx.state, 404, "not_found", "", -1, "");
     }
 }
 
@@ -414,10 +414,14 @@ fn json_bytes(cx, status: i32, body: const u8[:]) {
     http::finish(cx.out, http::JSON, body);
 }
 
+// finish's fields for rest::text. http::TEXT names no charset, which leaves a
+// client to guess one for anything past ASCII.
+const TEXT_UTF8: u8[57] = "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ";
+
 // Answers status with s as UTF-8 text.
 fn text(cx, status: i32, s: const u8[:]) {
     http::start(cx.out, status);
-    http::finish(cx.out, http::TEXT, s);
+    http::finish(cx.out, TEXT_UTF8, s);
 }
 
 // Answers status without a body: 204 and 304 without Content-Length, and any
@@ -437,17 +441,17 @@ fn otherwise<S, A>(cx: Cx<S, A, http::Router>&) { otherwise(cx, cx.router); }
 
 fn otherwise(cx, r: const http::Router&) {
     if !http::known_method(r.method) {
-        write_error(cx.out, cx.state,501, "not_implemented", "", -1, "");
+        write_error(cx.out, cx.state, 501, "not_implemented", "", -1, "");
     } else if r.bad {
-        write_error(cx.out, cx.state,400, "bad_path", "", -1, "");
+        write_error(cx.out, cx.state, 400, "bad_path", "", -1, "");
     } else if r.method == "OPTIONS" && (r.path == "*" || r.allow.len > 0) {
         http::start(cx.out, 204);
         if r.allow.len > 0 { http::field(cx.out, "Allow", r.allow); }
         http::finish(cx.out, http::NO_TYPE, "");
     } else if r.allow.len == 0 {
-        write_error(cx.out, cx.state,404, "not_found", "", -1, "");
+        write_error(cx.out, cx.state, 404, "not_found", "", -1, "");
     } else {
-        write_error(cx.out, cx.state,405, "method_not_allowed", "", -1, r.allow);
+        write_error(cx.out, cx.state, 405, "method_not_allowed", "", -1, r.allow);
     }
 }
 
