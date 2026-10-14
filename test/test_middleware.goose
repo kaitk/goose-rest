@@ -107,7 +107,11 @@ fn test_timed() {
     let head = "HTTP/1.1 200 OK\r\nServer-Timing: app;dur=";
     same(out[..head.len], head);
     let rest_at = find(out, "\r\nContent-Type");
-    let dur = out[head.len..rest_at];
+    // The value, padded with spaces to a fixed width.
+    assert(rest_at - head.len == 12);
+    let padded = out[head.len..rest_at];
+    let dur = padded[..find(padded, " ")];
+    for c in padded[dur.len..] { assert(c == ' '); }
     let dot = find(dur, ".");
     assert(dot >= 1 && dur.len == dot + 4);
     for c, i in dur { assert(i == dot || c >= '0' && c <= '9'); }

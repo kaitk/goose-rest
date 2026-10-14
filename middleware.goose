@@ -9,36 +9,21 @@ namespace rest;
 import std;
 import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
 
-// Inserts the field name: value after the status line of the response begun
-// at mark in out's buffer, so that a middleware can add a field once its
-// block has answered. Nothing when the block wrote no response, as when it
-// waits, or for a field http::is_field refuses.
-fn insert_field(out: http::Reply, mark: i64, name: const u8[:], value: const u8[:]) {
-    guard out.buf.len > mark && http::is_field(name, value) else { return; }
+// Server-Timing as rest::timed writes it before its value, and the spaces it
+// leaves for the value.
+let TIMING = "Server-Timing: app;dur=";
+let TIMING_WIDTH = 12;
+
+// Writes ms into the Server-Timing placeholder of the response begun at mark
+// in out's buffer, which follows its status line and the before bytes of
+// common before timed's. Nothing for a response written without
+// http::start, which has no placeholder there.
+fn fill_timing(out: http::Reply, mark: i64, before: i64, ms: const u8[:]) {
     let eol = find(out.buf[mark..], "\r\n");
     guard eol >= 0 else { return; }
-    let at = mark + eol + 2;
-    let n = name.len + value.len + 4;
-    let old = out.buf.len;
-    // Grown by appending: resize may shrink, which is refused while a slice
-    // of the request is live (spec §5.1).
-    out.buf.append(name);
-    out.buf.append(": ");
-    out.buf.append(value);
-    out.buf.append("\r\n");
-    var i = old;
-    while i > at {
-        i--;
-        out.buf[i + n] = out.buf[i];
-    }
-    var k = at;
-    for c in name { out.buf[k] = c; k++; }
-    out.buf[k] = ':';
-    out.buf[k + 1] = ' ';
-    k += 2;
-    for c in value { out.buf[k] = c; k++; }
-    out.buf[k] = '\r';
-    out.buf[k + 1] = '\n';
+    let at = mark + eol + 2 + before + TIMING.len;
+    guard at + TIMING_WIDTH <= out.buf.len && out.buf[at - TIMING.len..at] == TIMING else { return; }
+    for c, i in ms[..min(ms.len, TIMING_WIDTH)] { out.buf[at + i] = c; }
 }
 
 // Cross-origin resource sharing (the Fetch standard's CORS protocol), for
@@ -79,10 +64,12 @@ inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the bl
             write_error(cx.out, cx.state,403, "origin_not_allowed", "", -1, "");
             return;
         }
-        let method, preflight = http::field_of(cx.req, "access-control-request-method");
-        if preflight && cx.req.method == "OPTIONS" {
-            answer_preflight(cx.out, c, origin);
-            return;
+        if cx.req.method == "OPTIONS" {
+            let method, preflight = http::field_of(cx.req, "access-control-request-method");
+            if preflight {
+                answer_preflight(cx.out, c, origin);
+                return;
+            }
         }
         cx.out.common = with_cors(cx.scratch, common, c, origin);
     }
@@ -110,9 +97,15 @@ fn answer_preflight(out: http::Reply, c: Cors, origin: const u8[:]) {
 fn with_cors(scratch: u8[>..]&, common: const u8[:], c: Cors, origin: const u8[:]) -> const u8[:] {
     let at = scratch.len;
     scratch.append(common);
-    format(scratch, "Access-Control-Allow-Origin: ", origin, "\r\n");
+    scratch.append("Access-Control-Allow-Origin: ");
+    scratch.append(origin);
+    scratch.append("\r\n");
     if c.credentials { scratch.append("Access-Control-Allow-Credentials: true\r\n"); }
-    if c.expose.len > 0 { format(scratch, "Access-Control-Expose-Headers: ", c.expose, "\r\n"); }
+    if c.expose.len > 0 {
+        scratch.append("Access-Control-Expose-Headers: ");
+        scratch.append(c.expose);
+        scratch.append("\r\n");
+    }
     scratch.append("Vary: Origin\r\n");
     return scratch[at..];
 }
@@ -129,10 +122,8 @@ inline fn bearer<F>(cx) {
 // WWW-Authenticate: Bearer, as rest::bearer gives it. For a generated
 // router's security_<scheme> function.
 fn bearer_token(cx) -> const u8[:] {
-    let scheme, token, found = http::authorization(cx.req);
-    guard found && token.len > 0 && http::same_name(scheme, "bearer") else {
-        fail_auth(cx, "unauthenticated", "Bearer");
-    }
+    let token, found = http::bearer(cx.req);
+    guard found else { fail_auth(cx, "unauthenticated", "Bearer"); }
     return token;
 }
 
@@ -142,15 +133,26 @@ fn invalid_token(cx) {
     fail_auth(cx, "invalid_token", "Bearer error=\"invalid_token\"");
 }
 
-// Runs F, then adds Server-Timing to its answer with the milliseconds F
-// took, as "app;dur=0.042", and, when log is set, writes an access log line
-// to standard error: method, target, status, the response's bytes, and the
+// Runs F, with Server-Timing in its answer, the milliseconds F took, as
+// "app;dur=0.042", and, when log is set, writes an access log line to
+// standard error: method, target, status, the response's bytes, and the
 // milliseconds, as "GET /v1/projects?page=2 200 87 0.042". A request whose
-// answer F didn't write, as one that waits, gets neither.
-inline fn timed<F>(cx, log: bool = true) {
+// answer F didn't write, as one that waits, gets neither. The field goes in
+// cx.out.common, which http::start writes after the status line, with
+// TIMING_WIDTH spaces for its value, and timed fills them in once F has
+// answered, so that no byte of the answer moves. The spaces the value
+// doesn't take are whitespace a field value may end in (RFC 9110 §5.5).
+inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a reference, as cors's
     let begun = clock_ns();
     let mark = cx.out.buf.len;
+    let common = cx.out.common;
+    let at = cx.scratch.len;
+    cx.scratch.append(common);
+    cx.scratch.append(TIMING);
+    cx.scratch.append("            \r\n");
+    cx.out.common = cx.scratch[at..];
     F();
+    cx.out.common = common;
     guard cx.out.buf.len > mark else { return; }
     let us = (clock_ns() - begun) / 1000;
     var ms: u8[..32] = [];
@@ -159,9 +161,7 @@ inline fn timed<F>(cx, log: bool = true) {
     if frac < 100 { ms.push('0'); }
     if frac < 10 { ms.push('0'); }
     format(ms, frac);
-    var value: u8[..48] = [];
-    format(value, "app;dur=", ms);
-    insert_field(cx.out, mark, "Server-Timing", value);
+    fill_timing(cx.out, mark, common.len, ms);
     if log {
         write_stderr(str(cx.req.method, " ", cx.req.target, " ", cx.out.stream.status, " ", cx.out.buf.len - mark,
                          " ", ms, "\n"));
