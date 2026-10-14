@@ -5,7 +5,7 @@ Checks whether three nested middleware blocks (`rest::with_cors`, `with_auth`,
 spike 03) compile to one function, with no function pointers and no call frame per
 layer.
 
-Goose commit: `0bdbd18`, with the same output as on `a6249a4`. C compiler: Apple clang 21, arm64.
+Goose commit: `46356c2`, with the same output as on `a6249a4`. C compiler: Apple clang 21, arm64.
 
 ```sh
 GOOSE=<build>/goose
@@ -56,3 +56,6 @@ With the forwarding form, clang `-O2` still inlined the five static functions in
 `handler_g`: one frame, no calls but `gs_memeq_long` and `gs_fmt_i64`. So the cost
 depends on the C compiler, and gcc (goose-http's choice) was not checked here. The
 stdlib's `exception::try` forwards its body the same way (`handler<E>(Body)`).
+
+Since Goose `b6377db` ("Inline calls that pass a function value by name"), both forms
+inline all five: on `46356c2`, `forward.goose`'s `-O2` C keeps only `main_g`.

@@ -44,8 +44,6 @@ directory. What only one machine needs, such as where its Goose checkout is, goe
   generics.
 - The package and the generator are Goose with no C. Sockets and syscalls are
   goose-http's; a gap there is fixed in goose-http, not worked around here.
-- A library HOF never passes its function value on by name; it calls it from a block,
-  `run() { F() }`, or nothing around it inlines (`docs/goose-findings.md`).
 
 ## Generated code
 

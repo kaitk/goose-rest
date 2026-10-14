@@ -245,7 +245,7 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 
 | What | Pin | Why |
 |---|---|---|
-| Goose compiler | `aardappel/goose` `0bdbd18` (`master`, 2026-10-13) | The language and stdlib change often |
+| Goose compiler | `aardappel/goose` `46356c2` (`master`, 2026-10-14) | The language and stdlib change often |
 | goose-http | `kaitk/goose-http` `e27ab21` (`main`, 2026-10-13) | Its API is still changing (its task 027) |
 
 Move each pin in its own commit, with the spikes and tests rerun

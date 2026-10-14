@@ -46,5 +46,4 @@ writer's 201 (macOS, 2026-10-13).
   point into any `u8` array (spec §5.1). So the first answer wins, which the README
   states.
 - A thread can't call `json::format_number`, and the generated writers did
-  ([findings](../docs/goose-findings.md#a-thread-cant-read-a-string-literal-global-so-jsonformat_number-fails-in-a-thread)).
-  They now call `rest::format_number`.
+  (aardappel/goose#31, fixed in `861b7a9`). They now call `rest::format_number`.
