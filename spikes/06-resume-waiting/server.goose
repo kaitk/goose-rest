@@ -1,7 +1,7 @@
 // Spike 06's handler served by goose-http's loop, for curl: one worker and
 // the database thread, on port 8080. Ctrl+C stops it.
 import std;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 import app;
 
 thread_fn worker(cfg: http::Config) {
@@ -12,9 +12,9 @@ thread_fn worker(cfg: http::Config) {
 fn main() {
     let cfg = http::Config { port: 8080, workers: 1, mail_slots: app::SLOTS, mail_size: app::SLOT_SIZE,
                              max_waiting: 64, .. };
-    assert(http::stop_on_signals() == 0);
+    http::exit_on_error(http::stop_on_signals());
     let box, e = http::mail_open(16, 256);
-    assert(e == 0);
+    http::exit_on_error(e);
     app::db = http::address(box, 0);
     let db = thread_spawn(app::database, box);
     let id = thread_spawn(worker, cfg);

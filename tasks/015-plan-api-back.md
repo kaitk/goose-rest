@@ -98,6 +98,33 @@ The stack costs about 12,100 instructions per request on the GET and 9,000 on th
 and a quarter of the GET's throughput. That's more than a 60-route chain costs, so
 middleware is worth a look within this task.
 
+### The goose-http pin moved to `cb57a0b`
+
+goose-http's `main` at `cb57a0b` (2026-10-14) holds task 027's p2 to p6 and review items
+1, 2, 4, and 6 to 11. Here, `http::stop_on_signals` and `http::mail_open` now return an
+`http::Error`, so each `main` calls `http::exit_on_error`. A mailbox message longer than a
+slot now returns `TOO_LONG` rather than `FULL`, so `rest::answer` gives up on one, where
+it retried it forever.
+
+Measured as the baseline above, at `faa6b69` with the pin moved against those tables, on
+a machine far busier than then: load average 13-31. `bench/routes.sh`, the mean of 3
+rounds' instructions per request:
+
+| Case | goose-http alone | `gen60` | `hand60` |
+|---|---:|---:|---:|
+| First route | +32.9, +54.9 | +32.7 | +5.6 |
+| Last route | +20.7, +60.1 | +23.7 | +3.1 |
+| 404 in a scope | +48.8, +68.6 | +40.2 | +5.2 |
+| 404 outside | +51.7, +45.2 | +31.3 | +8.5 |
+| 405 | -42.0, +56.9 | +46.1 | +3.3 |
+| Query | +57.9 | +38.1 | +11.5 |
+
+goose-http alone is `routes60`, then the one-route server. Every cell but `routes60`'s
+405, whose rounds spread over 270, sits above its old range: goose-http's request path
+costs 45-70 instructions more on kqueue, 0.3%, and `gen60` pays most of that. `hand60`
+moves by 3-12. `bench/stack.sh`'s cells stay within their old ranges, from -33 to +110
+of 20,700-33,000.
+
 ## Acceptance criteria
 
 - [ ] Each row above, and any drift found beside them, has its reason and whether it

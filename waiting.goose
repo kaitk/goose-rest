@@ -19,7 +19,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 
 // A reply message's tag: the sender's tag in REPLY_TAG's bits; REPLY_MORE
 // when more of the reply follows; REPLY_CONT on every piece after the first.
@@ -59,7 +59,8 @@ fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {
 // Replies data, with tag, to the route that asked a, in pieces of at most
 // the size a carries. A piece that finds the box full is sent again after a
 // millisecond: the worker's box is shared by all its waiting routes.
-// Returns false when the route has gone, as when its connection closed.
+// Returns false when the route has gone, as when its connection closed, or
+// when a piece is longer than the box's slots.
 fn answer(a, data: const u8[:], tag: i32 = 0) -> bool {
     let piece = max(a.piece, 1);
     var at = 0;
@@ -68,11 +69,9 @@ fn answer(a, data: const u8[:], tag: i32 = 0) -> bool {
         let end = min(at + piece, data.len);
         let more = end < data.len;
         loop {
-            // FULL also means a message longer than a slot, which a piece
-            // isn't; goose-http's task 028 would tell them apart.
             let sent = http::mail_send(a.reply, if more { t | REPLY_MORE } else { t }, data[at..end]);
             if sent == http::SENT { break; }
-            if sent == http::STALE { return false; }
+            if sent == http::STALE || sent == http::TOO_LONG { return false; }
             sleep_ms(1);
         }
         guard more else { return true; }

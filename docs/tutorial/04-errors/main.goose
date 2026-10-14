@@ -3,7 +3,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 import rest from "../../../";
 
 // The per-request state. This program keeps nothing in it: its type picks
@@ -48,7 +48,7 @@ fn main() {
         let p, ok = parse_int(a[1]);
         if ok { port = p; }
     }
-    assert(http::stop_on_signals() == 0);
+    http::exit_on_error(http::stop_on_signals());
     let cfg = http::Config { port: port as i32, .. };
     var ids: i64[>..] = [];
     for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg)); }

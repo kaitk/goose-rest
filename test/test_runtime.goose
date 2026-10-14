@@ -4,7 +4,7 @@
 // scripts/test-unit.sh runs this through TinyCC.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 import rest from "../";
 import .gen.api_gen;
 

@@ -7,7 +7,7 @@
 // request to handle, takes the worker's box, and calls handle with WAKE for
 // the exchange a message is addressed to, as the loops' delivered does.
 import std;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 import app;
 
 // A request, through to its whole response, which it prints without CRs.
@@ -40,7 +40,8 @@ fn exchange(box: http::Box, key: u64, text: const u8[:]) {
 fn main() {
     let worker, e1 = http::mail_open(app::SLOTS, app::SLOT_SIZE);
     let box, e2 = http::mail_open(16, 256);
-    assert(e1 == 0 && e2 == 0);
+    http::exit_on_error(e1);
+    http::exit_on_error(e2);
     app::db = http::address(box, 0);
     let id = thread_spawn(app::database, box);
     exchange(worker, 1, "GET /report?org=3&from=1&to=10 HTTP/1.1\r\nHost: x\r\n\r\n");

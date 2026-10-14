@@ -6,9 +6,11 @@ image. It keeps what it needs in a fixed-mode `Waiting` enum in the per-request 
 and resumes at `WAKE` through one case function per variant. Also checks that a missing
 case fails to compile, and what a reply larger than a mailbox slot needs.
 
-Goose commit: `46356c2`, with the same output as on `a6249a4`. goose-http: `e27ab21`, where `http::Event` is a struct whose
-`kind` the handler tests; it was an enum at `04791ac`, where the spike first passed with
-the same output (2026-10-13).
+Goose commit: `46356c2`, with the same output as on `a6249a4`. goose-http: `cb57a0b`, where
+the whole 192-byte reply returns `TOO_LONG` rather than `FULL` (2026-10-14), and otherwise
+the same output as at `e27ab21`. There `http::Event` is a struct whose `kind` the handler
+tests; it was an enum at `04791ac`, where the spike first passed with the same output
+(2026-10-13).
 
 - `app.goose`: the handler, `/report` and `/export`, the `Waiting` enum, the `resume`
   case functions, and the database thread.
@@ -48,7 +50,7 @@ Content-Type: application/json
 Content-Length: 48
 
 {"org":3,"from":1,"to":10,"days":10,"total":165}
-database: 192 bytes whole: FULL; in 3 pieces of at most 64
+database: 192 bytes whole: TOO_LONG; in 3 pieces of at most 64
 -- /export: 3 wake(s), state Export { 7, 3, 192 }
 HTTP/1.1 200 OK
 Transfer-Encoding: chunked
@@ -96,7 +98,7 @@ Waiting.None` ([findings](../../docs/goose-findings.md#a-case-function-call-miss
 ## A reply larger than a slot
 
 A box's slots are fixed when it opens: `Config.mail_slots` of `Config.mail_size` bytes
-each, 256 by default. A longer message returns `FULL` and isn't sent. There is no shared
+each, 256 by default. A longer message returns `TOO_LONG` and isn't sent. There is no shared
 memory to pass a reference through instead. Two ways work:
 
 - **Bigger slots.** Raise `Config.mail_size` to the largest reply. Each worker's box
@@ -111,9 +113,11 @@ memory to pass a reference through instead. Two ways work:
 
 Pieces need two things from the sender:
 
-- **The slot size.** `FULL` means either a message longer than a slot or no free slot,
-  and an `http::MailAddress` doesn't carry the slot size. So the job carries it
-  (`ExportJob.piece`, from the worker's `Config.mail_size`).
+- **The slot size.** At `e27ab21`, `FULL` meant either a message longer than a slot or
+  no free slot, and nothing gave a sender an address's slot size, so the job carries it
+  (`ExportJob.piece`, from the worker's `Config.mail_size`). From `cb57a0b`, a message
+  longer than a slot returns `TOO_LONG`, and `http::mail_slot_size(address)` gives the
+  size.
 - **Backpressure.** The worker's box is shared by all its waiting exchanges, so a
   reply in many pieces fills it. The sender retries a `FULL` piece after 1 ms
   (`sleep_ms`); a database thread serving many workers would rather keep the rest and

@@ -48,7 +48,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 import rest from "../../../";
 import .github_app;
 import .github_gen;
@@ -2866,8 +2866,7 @@ fn main() {
     var loop_name: u8[>..] = [];
     let epoll = env("LOOP", loop_name) && loop_name == "epoll";
     let cfg = http::Config { port: port, workers: n, max_body: if writes { IMPORT_LIMIT } else { http::MAX_BODY }, .. };
-    let s = http::stop_on_signals();
-    guard s == 0 else { stopped(http::Error { call: "sigaction", code: -s }); }
+    stopped(http::stop_on_signals());
     let count = http::worker_count(cfg);
     print("rest: tier ", tier, ", ", items.len + entries.len + bookings.len + visits.len, " records, ", count, " workers on port ", port,
           if epoll { ", epoll" } else { ", uring" }, if template { ", template" } else { ", serialize" });

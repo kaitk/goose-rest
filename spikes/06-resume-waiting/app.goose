@@ -141,7 +141,7 @@ fn export_rows(j: ExportJob) {
     for i in j.rows { format(text, j.org, ",", i, ",", i * i, "\n"); }
     let whole = http::mail_send(j.reply, LAST, text);
     let n = (text.len + j.piece - 1) / j.piece;
-    print("database: ", text.len, " bytes whole: ", if whole == http::FULL { "FULL" } else { "sent" },
+    print("database: ", text.len, " bytes whole: ", if whole == http::TOO_LONG { "TOO_LONG" } else { "sent" },
           "; in ", n, " pieces of at most ", j.piece);
     var at = 0;
     while at < text.len {

@@ -9,7 +9,7 @@
 //   curl -s 'localhost:8080/v1/export?org=7&rows=50'
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 import rest from "../../";
 
 // A job's tag.
@@ -135,9 +135,9 @@ fn main() {
         let p, ok = parse_int(a[1]);
         if ok { port = p; }
     }
-    assert(http::stop_on_signals() == 0);
+    http::exit_on_error(http::stop_on_signals());
     let box, e = http::mail_open(64, 256);
-    assert(e == 0);
+    http::exit_on_error(e);
     let db = http::address(box, 0);
     let dbt = thread_spawn(database, box);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 4, mail_size: 64, max_waiting: 256, .. };

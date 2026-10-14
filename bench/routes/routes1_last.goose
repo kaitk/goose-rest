@@ -5,7 +5,7 @@
 //
 //   routes1_last http [port]   (WORKERS 1)
 import std;
-import http from "github.com/kaitk/goose-http@e27ab215c8101a231a375cdfada182d3c9b388d7";
+import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
 
 fn handle(req: const http::Request&, out: http::Reply) {
     var r = http::router(req);
@@ -41,8 +41,7 @@ fn main() {
         guard ok && n > 0 else { write_stderr("WORKERS must be a positive number\n"); exit(2); }
         cfg.workers = n;
     }
-    let s = http::stop_on_signals();
-    guard s == 0 else { http::report(http::Error { call: "sigaction", code: -s }); exit(1); }
+    http::exit_on_error(http::stop_on_signals());
     var ids: i64[>..] = [];
     for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg)); }
     for id in ids { thread_wait(id); }
