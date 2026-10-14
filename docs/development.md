@@ -3,13 +3,13 @@
 goose-rest is Goose with no C of its own. It runs on goose-http, whose shim is the only
 C in a program, so it builds and runs wherever goose-http does: Linux, macOS, and
 Windows ([goose-http's development.md](https://github.com/kaitk/goose-http/blob/main/docs/development.md)).
-The spikes have run on macOS (2026-10-13).
+The spikes have run on macOS (2026-10-13) and WSL2 Linux (2026-10-14).
 
 ## Toolchain
 
 | Tool | macOS (2026-10-13) | For |
 |---|---|---|
-| Goose compiler | `46356c2`, the pin in `README.md` | everything |
+| Goose compiler | `bc3c1f1`, the pin in `README.md` | everything |
 | OS | macOS 26.3.1, Apple M1 Pro | |
 | C compiler | Apple clang 21.0.0 (`clang-2100.0.123.102`) | `goose build`, and reading the generated C (spike 04) |
 | Node or Bun, TypeScript (optional) | Node 24.14.1, Bun 1.4.2, TypeScript 7.0.2 through npx or bunx (2026-10-14) | the TypeScript helper's tests |
@@ -22,7 +22,7 @@ it, so the checkout can live anywhere; this page puts it next to this repository
 
 ```sh
 git clone -o upstream https://github.com/aardappel/goose.git ../goose
-git -C ../goose checkout 46356c2
+git -C ../goose checkout bc3c1f1
 cmake -S ../goose -B ../goose/build-macos -DCMAKE_BUILD_TYPE=Release
 cmake --build ../goose/build-macos -j
 export GOOSE=$PWD/../goose/build-macos/goose
@@ -137,6 +137,36 @@ later for that. The files are `.mts`, not `.ts`: without a `package.json` that s
 `"type": "module"`, `tsc` reads a `.ts` file as CommonJS, where `import` is an error, and
 Node warns before it rereads one as a module. The tests passed with TypeScript 7.0.2,
 under Node 24.14.1 and under Bun 1.4.2, which print the same JSON (2026-10-14).
+
+### Run from Windows through WSL
+
+Validated (2026-10-14): WSL2 Ubuntu 26.04.1, Clang 21.1.8, Node 24.14.1, and
+TypeScript 7.0.2. Select the Ubuntu distribution explicitly from PowerShell:
+
+```powershell
+wsl -d Ubuntu -e bash -lc 'cd <repository-path-in-WSL> && GOOSE_CC=clang GOOSE=<compiler-path> TSC="npx -y -p typescript tsc" scripts/test.sh'
+```
+
+Keep the actual paths in git-ignored `CLAUDE.local.md`. Put Linux Node and npx first
+on WSL's `PATH`: Windows npx accepts neither the Linux paths passed by the suite nor
+its Linux TypeScript package. Ubuntu's Node 22.22.1 was built without TypeScript
+support, despite its version; Node 24.14.1's Linux distribution runs the `.mts` files.
+Git Bash's converted paths also differ from the exact generator diagnostics the
+suite checks, so run this suite in WSL.
+
+A pin can be built without changing the sibling compiler checkout. Archive the
+fetched commit into an ignored directory and build there:
+
+```sh
+mkdir -p build/goose-current
+git -C ../goose archive upstream/master | tar -x -C build/goose-current
+cmake -S build/goose-current -B build/goose-current/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/goose-current/build
+GOOSE=$PWD/build/goose-current/build/goose TSC="npx -y -p typescript tsc" scripts/test.sh
+```
+
+The move from `46356c2` to `bc3c1f1` adds only a logo; compiler and stdlib sources
+are unchanged. The full suite and each spike were rerun from that archived build.
 
 ## Run the examples on arm64
 

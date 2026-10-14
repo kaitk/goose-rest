@@ -5,7 +5,7 @@ Checks whether `take<T>(cx)`, which declares `var v = default<T>()` and calls
 to a trailing block: `take<Session>(cx) { s => ... }`. This is the extractor design in
 [the architecture doc](../../docs/architecture/README.md).
 
-Goose commit: `46356c2`, with the same output as on `a6249a4`.
+Goose commit: `bc3c1f1`, with the same output as on `a6249a4`.
 
 ```sh
 GOOSE=<build>/goose

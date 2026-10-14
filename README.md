@@ -105,7 +105,7 @@ argument. The [reference](docs/reference.md#context-and-routes) covers
 
 | What | Pin | Why |
 |---|---|---|
-| Goose compiler | `aardappel/goose` `46356c2` (`master`, 2026-10-14) | The language and stdlib change often |
+| Goose compiler | `aardappel/goose` `bc3c1f1` (`master`, 2026-10-14) | The language and stdlib change often; this move adds only a logo |
 | goose-http | `kaitk/goose-http` `v0.3.1`, commit `faead67` (2026-10-14) | Includes live mailbox keys and the fix that keeps them live through WAKE |
 
 Move each pin in its own commit, with the spikes and tests rerun

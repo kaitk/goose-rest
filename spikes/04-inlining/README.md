@@ -5,7 +5,7 @@ Checks whether three nested middleware blocks (`rest::with_cors`, `with_auth`,
 spike 03) compile to one function, with no function pointers and no call frame per
 layer.
 
-Goose commit: `46356c2`, with the same output as on `a6249a4`. C compiler: Apple clang 21, arm64.
+Goose commit: `bc3c1f1`, with the same output as on `a6249a4`. C compiler: Clang 21.1.8, x86-64 Linux.
 
 ```sh
 GOOSE=<build>/goose
