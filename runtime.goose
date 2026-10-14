@@ -203,7 +203,7 @@ inline fn attempt<F>() -> Failure[] {
 // (spec §5.1: a parameter's slices may point into any array of their type).
 inline fn route<F>(cx) {
     let mark = cx.out.buf.len;
-    let failed = attempt() { F() };
+    let failed = attempt(F);
     for f in failed {
         // Status 0 is rest::body leaving to gather the body, unanswered.
         if cx.out.buf.len == mark && f.status != 0 {
