@@ -4,6 +4,41 @@ goose-rest's middleware, extractors, errors, and test helper: what each call doe
 it gives, and what it answers when it fails. The [tutorial](tutorial.md) introduces them
 in order, and the [generator reference](generator.md) covers what `goose-rest gen` writes.
 
+## Context and routes
+
+`rest::serve(cfg, app) { cx => handle(cx) };` serves requests with the worker's state
+by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each request's
+`cx.state` from `fresh`. A program with no state can call `rest::serve(cfg)`.
+With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
+`fresh`. `rest::serve_epoll` has the same forms.
+
+The context is `rest::Cx<S, A, R>`: the request's state, the worker's state, and the
+router type. Its `req`, `body`, `out`, and `scratch` carry the request and response.
+It has `rest::NoRouter` outside a `rest::routes` block, including when a waiting route
+resumes. The block receives a context with an `http::Router`:
+
+```goose
+rest::routes(cx) { cx =>
+    if rest::on(cx, "GET", "/projects/:id") {
+        rest::route(cx) { show(cx, rest::param_int(cx, "id")); };
+    } else {
+        rest::otherwise(cx);
+    }
+};
+```
+
+`routes` builds the router and passes its context by reference; it doesn't open a
+`rest::route`. `on`, `scope`, `param`, `param_int`, and `otherwise` require that
+router's context, so calls outside the block fail to compile. A typed route helper
+can name `type Cx = rest::Cx<St, App, http::Router>;` and take `cx: Cx&`.
+The generated `api::dispatch(cx)` works with either context and reads the preceding
+routes' `Allow` inside the block. Generated handlers receive path parameters as
+arguments; pass those to helpers rather than read the last hand-written match.
+
+`rest::json`, `rest::json_bytes`, and `rest::text` answer a body. `rest::empty(cx,
+status)` answers none: 204 and 304 omit `Content-Length`, and other statuses write
+`Content-Length: 0`.
+
 ## Middleware
 
 Middleware is a block around the routes it applies to, inlined into the handler: a scope
@@ -11,15 +46,20 @@ can have its own, and a public route none.
 
 | Call | Does |
 |---|---|
-| `rest::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` to the answer, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `rest::timed(cx, false)` skips the log. |
+| `rest::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` with a 12-byte duration field padded with trailing spaces, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `rest::timed(cx, false)` skips the log. |
 | `rest::cors(cx, rest::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
 | `rest::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `rest::invalid_token(cx)` refuses one. `rest::bearer_token(cx)` returns it, for a generated router's security check. |
-| `rest::scope(r, "/v1")` | Whether the path starts with the prefix at a segment boundary; the routes inside match the rest. `rest::otherwise` answers 404, 405, and OPTIONS across scopes. |
+| `rest::scope(cx, "/v1")` | Whether the path starts with the prefix at a segment boundary; `rest::on` calls inside match the rest. `rest::otherwise(cx)` answers 404, 405, and OPTIONS across scopes. |
 
 `timed` and `cors` go outside `rest::route`, so that the errors it answers get their
 fields; `bearer` and anything else that fails goes inside it. A request has one route:
 routes nested in routes don't inline ([architecture](architecture/README.md#inlining)).
 An answer written later, when a waiting route resumes, gets neither middleware's fields.
+
+`timed` reserves its duration field in `cx.out.common` before the block and fills it
+after the response is written, so the body doesn't move. Both `timed` and `cors` take
+the context by reference. CORS looks for a preflight's request-method field only on
+OPTIONS. `bearer_token` uses `http::bearer` and requires a token68 bearer token.
 
 Declare your own middleware that takes a block as `inline fn`, as goose-rest's own are:
 
@@ -46,8 +86,8 @@ returns. Otherwise the extractor returns the request's own bytes.
 
 | Call | Gives | Fails with `detail` |
 |---|---|---|
-| `rest::param(cx, r, "name")` | the path parameter, decoded | |
-| `rest::param_int(cx, r, "id")` | the path parameter as an `i64` | `id: integer` |
+| `rest::param(cx, "name")` | the path parameter, decoded | |
+| `rest::param_int(cx, "id")` | the path parameter as an `i64` | `id: integer` |
 | `rest::query(cx, "q")` | the query parameter, decoded with `+` as a space, and whether it's there | |
 | `rest::query_int(cx, "page")`, `rest::query_bool(cx, "all")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `page: integer`, `all: boolean` |
 | `rest::header(cx, "X-Request-Id")`, `rest::cookie(cx, "sid")` | the value, and whether it's there | |
@@ -55,6 +95,9 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::require(cx, "q", found)` | | `q: required` |
 | `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
 | `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default) | 413 `payload_too_large` |
+
+A program that builds its own `http::Router` can still pass it explicitly to
+`rest::param(cx, r, name)`, `rest::param_int(cx, r, name)`, and `rest::otherwise(cx, r)`.
 
 `rest::take<T>` reads any type with an overload declared in the `rest` namespace, as
 `fn rest::from_request(cx, v: const app::Session?) -> app::Session`. `v` is always null,
@@ -147,7 +190,8 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 | Call | Answers |
 |---|---|
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
-| `rest::serve_one(text, fresh, cfg) { cx => ... }` | The same, with `fresh` as the per-request state and `cfg`'s limits; `cfg` is optional |
+| `rest::serve_one(text, app) { cx => ... }` | The same, with the worker's state by reference in `cx.app` |
+| `rest::serve_one(text, app, fresh, cfg) { cx => ... }` | The same, with `fresh` as the per-request state and `cfg`'s limits; `cfg` is optional |
 
 A body that doesn't fit in `cfg.max_head` with its head is gathered as the server gathers
 it, so the block runs again once it's whole. A request goose-http refuses gets its

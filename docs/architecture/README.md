@@ -23,9 +23,9 @@ From the spec at `a6249a4` (2026-10-12), each checked by a spike
   can't be stored, returned, or put in data, and there are no runtime function
   pointers (spec §7.6). Actix's `App::new().route("/x", web::get().to(h))` is a data
   structure of boxed handlers and can't exist. The application is code: routes stay an
-  if chain or a `match`, as `http::router` is now.
+  if chain of `rest::on` calls in `rest::routes`, or a generated `match`.
 - **Middleware is a block.** A trailing block is inlined, and a `return` in it returns
-  from the enclosing handler (§7.6, §7.9). `rest::cors(cx, ORIGINS) { ... }` can answer
+  from the enclosing handler (§7.6, §7.9). `rest::cors(cx, rest::Cors { .. }) { ... }` can answer
   a preflight and not run the block, with no boxing, no dynamic dispatch, and no layer
   stack. This is cheaper than Actix's `Transform` and Tower's `Layer`, and is the
   framework's main idea.
@@ -48,9 +48,9 @@ From the spec at `a6249a4` (2026-10-12), each checked by a spike
 | Actix | goose-rest | Why |
 |---|---|---|
 | `HttpServer::new(\|\| App::new())` builds an `App` per worker thread | Each worker's `thread_fn` builds its own state and calls `rest::serve` | The same model. Goose enforces it: workers share nothing. |
-| `web::Data<T>`, `app_data` | `App`, a struct of references to the worker's locals, passed to handlers by name | A struct holds at most one resizable, as its last field (§3.4); references avoid that limit (Appendix A.6). |
-| `App::route`, `web::scope`, `web::resource`, guards | An if chain over `http::router`, with prefix scopes; guards are `if` conditions | No handler table. |
-| `FromRequest` extractors as handler arguments | `let v = rest::take<T>(cx);`, or a direct call such as `rest::param_int(cx, r, "id")` | `T` is given explicitly; Goose can't infer it from a block's parameter (spike 01). |
+| `web::Data<T>`, `app_data` | `App`, a struct of references to the worker's locals, in `cx.app` | A struct holds at most one resizable, as its last field (§3.4); references avoid that limit (Appendix A.6). |
+| `App::route`, `web::scope`, `web::resource`, guards | `rest::on` inside `rest::routes`, with `rest::scope(cx, prefix)`; guards are `if` conditions | No handler table. |
+| `FromRequest` extractors as handler arguments | `let v = rest::take<T>(cx);`, or `rest::param_int(cx, "id")` | `T` is explicit; Goose can't infer it from the result (spike 08). |
 | Middleware: `wrap`, `from_fn`, `Transform` | Blocks around the dispatch or a route, inlined into it | No boxing and no call per layer (spike 04). |
 | `ResponseError`, `Result<impl Responder, E>`, `?` | `rest::fail(cx, status, code)` returns from `rest::route` from any depth | `return ... from` replaces threading a `Result` up (spike 03). |
 | `Responder`, `web::Json<T>` | `rest::json(cx, status, v)`, which calls `format(out, v)` | The `format` hook is Goose's one type-directed lookup (§3.7, §11.1). |
@@ -204,7 +204,39 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
 
 ## Usage
 
-Proposed (2026-10-13). How a program uses goose-rest. Every name is provisional.
+The API below follows task 015's decisions (2026-10-14). The examples are sketches;
+the [tutorial](../tutorial.md) quotes programs the test suite builds and requests.
+
+Decided (2026-10-14, task 015 A and F): the context is `Cx<S, A, R>`, with the
+request's state, the worker's state, and the router's type. `rest::routes` supplies
+`http::Router`; outside its block, including a WAKE, the context has `rest::NoRouter`.
+Calls that match a route or read its parameters therefore fail to compile without a
+router. A generated-only server builds none. `routes` builds a local context because
+its router cannot outlive its block (§9.2). A typed route helper names
+`type Cx = rest::Cx<St, App, http::Router>;`.
+
+Decided (2026-10-14, task 015 B): `rest::serve(cfg, app[, fresh])` puts the worker's
+state by reference in `cx.app` and starts `cx.state` from `fresh`. This removes a
+state argument from handlers, security checks, resume functions, and `dispatch`,
+with no measured cost. With request state alone, the program passes a `rest::NoState`
+placeholder by reference. `rest::serve_one(text[, app[, fresh]])` has the same state
+forms, with an optional `http::Config` after `fresh`.
+
+Decided (2026-10-14, task 015): `rest::routes` does not open `rest::route`. Opening a
+route for every request costs more to save one line. The program opens one around
+the code that can fail; generated dispatch opens each of its own routes.
+
+Decided (2026-10-14, task 015 C): `rest::empty(cx, status)` answers without a body.
+It makes a 204 one call and preserves HTTP's framing: 204 and 304 have no
+`Content-Length`, and other statuses have `Content-Length: 0`.
+
+Decided (2026-10-14, task 015 D): `timed` reserves 12 bytes for the duration in
+`Server-Timing: app;dur=` before its block, then fills them in place. Trailing spaces
+are valid field whitespace, and no response bytes move. CORS checks for a preflight
+only on OPTIONS and appends its common fields. `bearer_token` uses `http::bearer`,
+which checks token68. These changes reduce the measured middleware cost without
+changing how blocks compose. [Task 015](../../tasks/015-plan-api-back.md) records
+the measurements and their setup.
 
 ### Without a schema
 
@@ -213,26 +245,27 @@ The framework alone, as an Actix program would use it:
 ```goose
 namespace app;
 
-fn handle(cx, app: App&) {
-    rest::timed(cx) {                         // Server-Timing and the access log
-        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {   // answers a preflight itself
-            var r = http::router(cx.req);
-            if http::on(r, "GET", "/health") {
-                rest::text(cx, 200, "ok");
-            } else if rest::scope(r, "/v1") {
-                rest::route(cx) {
-                    let s = security_session(cx, app);       // fails 401 for the whole scope
-                    if http::on(r, "GET", "/projects/:id") {
-                        get_project(cx, app, s, rest::param_int(cx, r, "id"));   // 400 unless an integer
-                    } else if http::on(r, "POST", "/projects") {
-                        create_project(cx, app, s, rest::take<ProjectCreate>(cx));
-                    } else {
-                        rest::otherwise(cx, r);              // 404, or 405 with Allow
-                    }
-                };
-            } else {
-                rest::otherwise(cx, r);
-            }
+fn handle(cx) {
+    rest::timed(cx) {
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+            rest::routes(cx) { cx =>
+                if rest::on(cx, "GET", "/health") {
+                    rest::text(cx, 200, "ok");
+                } else if rest::scope(cx, "/v1") {
+                    rest::route(cx) {
+                        let s = security_session(cx);
+                        if rest::on(cx, "GET", "/projects/:id") {
+                            get_project(cx, s, rest::param_int(cx, "id"));
+                        } else if rest::on(cx, "POST", "/projects") {
+                            create_project(cx, s, rest::take<ProjectCreate>(cx));
+                        } else {
+                            rest::otherwise(cx);
+                        }
+                    };
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
         };
     };
 }
@@ -279,14 +312,14 @@ findings).
 ```goose
 namespace app;
 
-fn get_project(cx: rest::Cx&, app: App&, s: Session, id: i64) {
-    let p = find_project(app, s.org, id);
+fn get_project(cx, s: Session, id: i64) {
+    let p = find_project(cx.app, s.org, id);
     guard p.id != 0 else { rest::fail(cx, 404, "project_not_found"); }
     rest::json(cx, 200, p);                   // calls format(out, p)
 }
 
-fn create_project(cx: rest::Cx&, app: App&, s: Session, body: const ProjectCreate&) {
-    rest::json(cx, 201, insert_project(app, s.org, body));
+fn create_project(cx, s: Session, body: const ProjectCreate&) {
+    rest::json(cx, 201, insert_project(cx.app, s.org, body));
 }
 ```
 
@@ -309,16 +342,16 @@ extractor, run on first call and kept in the per-request state for the request.
 ```goose
 struct Session { user: i64, org: i64, expires: i64 }
 
-fn security_session(cx: rest::Cx&, app: App&) -> Session {
-    let raw = http::cookie(cx.req, "session");
+fn security_session(cx) -> Session {
+    let raw, has = rest::cookie(cx, "session");
     guard raw.len > 0 else { rest::fail(cx, 401, "unauthenticated"); }
-    let s = app.sessions.find(raw);           // a per-worker cache, then the database
-    guard s.user != 0 && s.expires > cx.now else { rest::fail(cx, 401, "unauthenticated"); }
+    let s = cx.app.sessions.find(raw);        // a per-worker cache, then the database
+    guard s.user != 0 && s.expires > clock_ns() else { rest::fail(cx, 401, "unauthenticated"); }
     return s;
 }
 
-fn profile(cx: rest::Cx&, app: App&, s: Session) -> const Profile& {
-    return rest::once(cx.state.profile) { load_profile(app, s.user) };
+fn profile(cx, s: Session) -> const Profile& {
+    return rest::once(cx.state.profile) { load_profile(cx.app, s.user) };
 }
 ```
 
@@ -326,8 +359,7 @@ fn profile(cx: rest::Cx&, app: App&, s: Session) -> const Profile& {
 005).
 
 `cx.state` is `goose-http`'s per-request state `S`: fixed-size, kept in a `reusable`
-pool slot (§5.4), and reset per request (`http.goose:596`). Application state can't
-live there; it is `App`.
+pool slot (§5.4), and reset per request. The worker's application state is `cx.app`.
 
 ### With a schema
 
@@ -422,9 +454,8 @@ fn format(out: u8[>..]&, v: const ProjectCreate&) {
     out.push('}');
 }
 
-// Generic in cx and state, so it serves any rest::Cx and the program's state.
-// allow is the Allow of the program's own routes before dispatch.
-fn dispatch(cx, state, allow: const u8[:] = "") {
+fn dispatch(cx) {
+    let allow = rest::allow_before(cx);
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -435,7 +466,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::health(cx, state);
+                            app::health(cx);
                         };
                         return;
                     }
@@ -459,9 +490,9 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    let s_ = app::security_session(cx, state);  // only where named
+                                    let s_ = app::security_session(cx);         // only where named
                                     let id = rest::path_int(cx, s2, "id");      // 400 unless an integer
-                                    app::get_project(cx, state, s_, id);
+                                    app::get_project(cx, s_, id);
                                 };
                                 return;
                             }
@@ -501,26 +532,28 @@ every variant has its case (§8.2). The enum is fixed-mode because each request
 overwrites the slot (§3.5).
 
 ```goose
+let REPORT: i32 = 1;
 enum Waiting { None, Report { org: i64, from: i64, to: i64 } }
+struct St { waiting: Waiting = Waiting.None }
 
 // On the worker: sends the job to the database thread and returns.
-fn report(cx: rest::Cx&, app: App&, s: Session, q: api::ReportParams) {
-    rest::ask(cx, app.db, ReportJob { org: s.org, from: q.from, to: q.to },
+fn report(cx, s: Session, q: api::ReportParams) {
+    rest::ask(cx, cx.app.db, REPORT, ReportJob { org: s.org, from: q.from, to: q.to },
               Waiting.Report { org: s.org, from: q.from, to: q.to });
 }
 
 // When the answer arrives in the worker's mailbox.
-fn resume(cx: rest::Cx&, app: App&, w: Waiting.Report, reply: const u8[:]) {
-    rest::json_bytes(cx, 200, reply);         // the database thread wrote the JSON
+fn resume(w: Waiting.Report, cx) {
+    rest::relay(cx, 200, "application/json"); // the database thread wrote the JSON
 }
 ```
 
 The job crosses as a `to_bytes` image and is read back with `from_bytes`, which verifies
 it (§12). The mailbox carries bytes in fixed-size slots (256 bytes by default; a longer
-message returns `FULL`). Proposed (2026-10-13), from spike 06: a reply larger than a
-slot comes in pieces of at most a slot, and the route sends each as a chunk and calls
-`http::later` again until the last. The job carries the slot size, which an address
-doesn't, and the sender retries a piece that finds the box full. A program whose
+message returns `TOO_LONG`). A reply larger than a slot comes in pieces of at most a
+slot; `rest::relay` sends each as a chunk and calls `http::later` again until the last.
+The job carries the slot size, and the sender retries a piece that finds the box full.
+A program whose
 replies all fit raises `Config.mail_size` instead. A route that never waits keeps
 nothing on the connection.
 
@@ -533,8 +566,8 @@ import app;
 
 thread_fn worker(cfg: http::Config, db: http::MailAddress) {
     var sessions = app::sessions();           // per worker: caches, prepared statements
-    var state = app::App { sessions: sessions, db: db };
-    let e = rest::serve(cfg) { cx => app::handle(cx, state) };
+    var app = app::App { sessions: sessions, db: db };
+    let e = rest::serve(cfg, app, app::St { .. }) { cx => app::handle(cx) };
     http::report(e);
 }
 
@@ -559,7 +592,7 @@ Nothing blocks the design; three checks need a workaround, which the design take
 
 | Check | Verdict | What the design does |
 |---|---|---|
-| Overload chosen by type parameter (01) | Works in one namespace. Across namespaces `from_request` isn't found: a generic body looks names up where it's defined (§11.1), and Goose has no argument-dependent lookup. | The app declares its extractors as `fn rest::from_request(cx: rest::Cx&, v: app::Session&)`, and the generator writes them so. `T` is given explicitly. |
+| Overload chosen by type parameter (01) | Works in one namespace. Across namespaces `from_request` isn't found: a generic body looks names up where it's defined (§11.1), and Goose has no argument-dependent lookup. | The app declares `fn rest::from_request(cx, v: const app::Session?) -> app::Session`, and the generator writes the same form. `T` is given explicitly. |
 | Early exit from middleware blocks (02) | Works. A 401 skips the inner blocks and the handler, and a `return` in a block returns from the handler. A middleware's own `return` leaves only the middleware, so code after the middleware call still runs. | A middleware rejects with `rest::fail`, not `return`, so the whole route unwinds. |
 | `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Built so in `runtime.goose` (task 004); spike 03 still uses `u8[..32]`. |
 | Inlining to straight-line C (04) | Works. Nested middleware and `route` collapse into one C function, each early answer a `goto`. Passing a block on by name, `run(F)`, inlined nothing on that path until Goose `b6377db`. | Library HOFs wrote `run() { F() }` until then; `rest::route` passes `F` on by name again. `route` is goose-rest's own, not `exception::try`: it answers the failure, and it's `inline fn` ([findings](../goose-findings.md#a-function-called-once-isnt-inlined-past-a-size)). |

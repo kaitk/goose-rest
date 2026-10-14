@@ -197,12 +197,12 @@ to know whether a comma is due.
 
 ## Paths
 
-A document with `paths` also gets `fn dispatch(cx, state, allow = "")`, which answers a
+A document with `paths` also gets `fn dispatch(cx)`, which answers a
 request through the handler its path and method name. A program calls it from
 `rest::serve`:
 
 ```goose
-let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
+let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 ```
 
 ### What it reads
@@ -216,20 +216,24 @@ let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
 | Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
 | `requestBody` with `application/json` and a `$ref` to an object | the object, from `rest::take`; 415 for another media type |
 | `"x-body-limit": n` on a `requestBody`, a positive byte count | `rest::body(cx, n)` before `rest::take`, so the route takes a body of up to `n` bytes, not 1 MB; 413 past it |
-| `security: [{"<scheme>": []}]`, on the operation or the document | `<handlers>::security_<scheme>(cx, state)`, whose result the handler gets |
+| `security: [{"<scheme>": []}]`, on the operation or the document | `<handlers>::security_<scheme>(cx)`, whose result the handler gets |
 
 The router's namespace also gets `MAX_BODY`, the largest `x-body-limit` or 1 MB, for
 `http::Config { max_body: api::MAX_BODY, .. }`. goose-http refuses a body past it with a
 413 of its own, without a body, before the route runs.
 
-A handler takes `cx`, `state`, then the security check's result if the operation names
+A handler takes `cx`, then the security check's result if the operation names
 a scheme, its path parameters in the template's order, its parameters struct, and its
 body. For `GET /projects/{id}` with `security: [{"session": []}]`:
 
 ```goose
-fn get_project(cx, state, s, id: i64) { ... }    // in app, the handlers' namespace
-fn security_session(cx, state) -> Session { ... }
+fn get_project(cx, s, id: i64) { ... }    // in app, the handlers' namespace
+fn security_session(cx) -> Session { ... }
 ```
+
+Handlers and security checks reach the worker's state through `cx.app` and the
+request's through `cx.state`. `rest::serve(cfg, app, fresh)` supplies both, and
+`rest::serve(cfg, app)` uses `rest::NoState` for the request.
 
 An operation's `security: []` overrides the document's. A path item's `parameters`
 apply to each of its operations, and an operation's own replace one of the same name
@@ -256,7 +260,7 @@ string `q`:
 ```goose
 struct ListProjectsParams { has_page: bool, page: i64, q: const u8[:] }
 
-fn list_projects(cx, state, s, q) { ... q.page ... }    // in app
+fn list_projects(cx, s, q) { ... q.page ... }    // in app
 ```
 `summary`, `description`, `tags`, `deprecated`, `externalDocs`, `responses`, and a
 parameter's `description`, `deprecated`, and examples are read for nothing. The
@@ -314,20 +318,26 @@ checks the rest byte for byte against such a chain.
 5. A path nothing matched is 404, or 204 for `OPTIONS *`. Where `allow` isn't empty,
    it gets 405, or `OPTIONS` 204, with `allow` alone.
 
-`dispatch` takes a third, optional argument, `allow`: the `Allow` that the program's
-own routes before it collected, `r.allow` of its `http::Router`. With it, a path matched
-by a hand-written route, a generated one, or both answers another method as one router
-would, listing the hand-written routes' methods first
+`dispatch` reads `allow` from `rest::allow_before(cx)`: the `Allow` collected by
+hand-written routes in the surrounding `rest::routes` block, or an empty string with
+`rest::NoRouter`. A path matched by a hand-written route, a generated one, or both
+answers another method as one router would, listing the hand-written routes' methods first
 ([tutorial](tutorial.md#7-generated-and-hand-written-routes)):
 
 ```goose
-var r = http::router(cx.req);
-if http::on(r, "PUT", "/uploads/:name") {
-    rest::route(cx) { upload(cx, state, r); };
-} else {
-    api::dispatch(cx, state, r.allow);
-}
+rest::routes(cx) { cx =>
+    if rest::on(cx, "PUT", "/uploads/:name") {
+        rest::route(cx) { upload(cx, rest::param(cx, "name")); };
+    } else {
+        api::dispatch(cx);
+    }
+};
 ```
+
+`rest::scope(cx, prefix)` narrows the path for hand-written matching. `dispatch`
+matches the full request path from the schema. A generated handler gets each path
+parameter as an argument; a helper that calls `rest::param` inside a routes block
+reads the last hand-written match instead.
 
 Each answer is in goose-rest's error shape ([reference](reference.md#errors)). A route checks the security scheme first,
 then the path parameters, the other parameters, and the body, and answers the first

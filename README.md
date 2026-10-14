@@ -19,7 +19,7 @@ Start with the [tutorial](docs/tutorial.md); the [docs](#docs) table lists the r
 | | Part | Notes |
 |---|---|---|
 | 🟢 | Package | `rest.goose` imports goose-http at its pin; `scripts/test.sh` runs everything |
-| 🟢 | Runtime core | `Cx`, `serve`, `route`, `fail`, `json`, `text`, `otherwise`, one error shape a program can replace ([reference](docs/reference.md#errors)); `serve_one` to test without sockets ([reference](docs/reference.md#testing)) |
+| 🟢 | Runtime core | `Cx<S, A, R>`, `serve`, `routes`, `on`, `route`, `fail`, `json`, `text`, `empty`, `otherwise`, one error shape a program can replace ([reference](docs/reference.md#errors)); `serve_one` to test without sockets ([reference](docs/reference.md#testing)) |
 | 🟢 | Extractors | Path, query, header, and cookie parameters; `take<T>` for a JSON body or a program's own type; `once` ([reference](docs/reference.md#extractors)) |
 | 🟢 | Middleware, scopes, examples | CORS, a bearer check, Server-Timing and the access log, prefix scopes ([reference](docs/reference.md#middleware)); a JSON API with and without a schema |
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
@@ -66,7 +66,7 @@ can't run. `scripts/test.sh` builds each example and requests each of its routes
 
 | Example | What it shows |
 |---|---|
-| [`examples/plain/`](examples/plain/main.goose) | Without a schema: routes in an `http::router` chain under a scope, extractors, a hand-written body reader, the middleware, and a 4 MB upload route beside the 1 MB default |
+| [`examples/plain/`](examples/plain/main.goose) | Without a schema: `rest::on` routes in `rest::routes`, prefix scopes, extractors, a hand-written body reader, middleware, and a 4 MB upload route beside the 1 MB default |
 | [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose`; `createProject` takes 2 MB by `x-body-limit` |
 | [`examples/waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a mailbox message |
 | [`examples/device/`](examples/device/) | A board's API from `api.json`: temperature and uptime from sysfs and `/proc`, bounded settings that set an LED through sysfs, a 256 KB firmware upload, a bearer token on writes, CORS, and a page; one worker and small limits |
@@ -80,6 +80,15 @@ curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
 
 [goose-rest, by example](docs/tutorial.md) builds a projects API step by step, from one
 route to a schema, middleware, large bodies, state, tests, and a board.
+
+`rest::serve(cfg, app)` puts the worker's state in `cx.app`; an optional `fresh`
+argument starts each request's `cx.state`. Hand-written routes use
+`rest::routes(cx) { cx => ... };`, `rest::on(cx, method, path)`, and
+`rest::scope(cx, prefix)`. Parameters and fallback answers take the context:
+`rest::param(cx, name)` and `rest::otherwise(cx)`. A schema's router is
+`api::dispatch(cx)`, and its handlers and security checks take `cx` without a state
+argument. The [reference](docs/reference.md#context-and-routes) covers
+`Cx<S, A, R>`, `rest::NoRouter`, `rest::empty`, and fixed-width Server-Timing.
 
 ## Docs
 
