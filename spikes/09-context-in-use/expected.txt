@@ -1,0 +1,11 @@
+-- health: HTTP/1.1 200 OK ok
+-- generated GET, helper reads :id: HTTP/1.1 200 OK {"id":1,"name":"goose","owner":"ada"}
+-- generated GET, another's project: HTTP/1.1 403 Forbidden {"error":"not_owner"}
+-- hand-written PUT before dispatch: HTTP/1.1 200 OK {"id":1,"name":"swan","owner":"ada"}
+-- 405 across both: HTTP/1.1 405 Method Not Allowed (Allow: PUT, GET, HEAD, DELETE) {"error":"method_not_allowed"}
+-- asks the database, resumes, 1 wake: HTTP/1.1 200 OK gander has 6 tasks
+-- scope with its own middleware: HTTP/1.1 202 Accepted reindexing; audits 1
+-- the same, refused: HTTP/1.1 403 Forbidden {"error":"admin_only"}
+-- rest::once across check and handler: HTTP/1.1 200 OK ada sees 2 projects; lookups 7
+-- generated DELETE: HTTP/1.1 204 No Content 
+audits 1, lookups 8

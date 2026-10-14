@@ -1,0 +1,35 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Spike 09", "version": "1" },
+  "paths": {
+    "/v1/projects": {
+      "get": { "operationId": "listProjects", "security": [{ "token": [] }] }
+    },
+    "/v1/projects/{id}": {
+      "get": {
+        "operationId": "getProject",
+        "security": [{ "token": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }]
+      },
+      "delete": {
+        "operationId": "deleteProject",
+        "security": [{ "token": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "token": { "type": "http", "scheme": "bearer" } },
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "required": ["id", "name", "owner"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "owner": { "type": "string", "maxLength": 16 }
+        }
+      }
+    }
+  }
+}
