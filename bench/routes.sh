@@ -10,6 +10,10 @@
 # gen writes from test/gen/routes.json. It answers a 404 and a 405 in the
 # JSON error shape, a body of 21 to 30 bytes, where the others send none.
 #
+# Task 015: hand60.goose serves the same routes written by hand on goose-rest,
+# through rest::serve_epoll, and answers as gen60 does. The query case reads
+# GET /v1/projects's three query parameters, which routes60 ignores.
+#
 # goose-http's bench/count.sh's load on macOS, which has no perf: one worker,
 # h2load --h1 -n N -c 256 -m 16 -t 8 with count.sh's headers, and the server's
 # instructions retired and cycles elapsed from /usr/bin/time -l, the kernel's
@@ -19,9 +23,10 @@
 # so each run checks the status class instead.
 # The rounds interleave the servers.
 #
-#   bench/routes.sh   (RUNS 3, N 2000000, PORT 29281)
+#   bench/routes.sh   (RUNS 3, N 2000000, PORT 29281, SERVERS all)
 #
-# GOOSE names the compiler (default: goose on PATH). Prints one line per run.
+# GOOSE names the compiler (default: goose on PATH). SERVERS, such as
+# "gen60 hand60", runs only those servers' cases. Prints one line per run.
 set -eu
 export LC_ALL=C
 
@@ -39,7 +44,7 @@ trap '[ -z "$tpid" ] || pkill -TERM -P "$tpid" 2>/dev/null; rm -rf "$tmp"' EXIT
 [ "$(uname -s)" = Darwin ] || { echo "bench/routes.sh: macOS only" >&2; exit 2; }
 
 mkdir -p "$bin"
-for s in routes60 routes1 routes1_last routes1_post; do
+for s in routes60 routes1 routes1_last routes1_post hand60; do
     "$goose" build --standalone -o "$bin/$s" "$root/bench/routes/$s.goose" >"$tmp/build" 2>&1 ||
         { cat "$tmp/build" >&2; exit 1; }
 done
@@ -54,19 +59,27 @@ cp "$root/bench/routes/gen60.goose" "$root/bench/routes/app.goose" "$bin/gen/"
 # case, server, target, the status class every response must have
 cases='first routes60 /health 2
 first gen60 /health 2
+first hand60 /health 2
 first routes1 /health 2
 last routes60 /v1/reports/exports/42/download 2
 last gen60 /v1/reports/exports/42/download 2
+last hand60 /v1/reports/exports/42/download 2
 last routes1_last /v1/reports/exports/42/download 2
 404 routes60 /v1/reports/exports/42/nope 4
 404 gen60 /v1/reports/exports/42/nope 4
+404 hand60 /v1/reports/exports/42/nope 4
 404 routes1_last /v1/reports/exports/42/nope 4
 404-outside routes60 /v2/nothing 4
 404-outside gen60 /v2/nothing 4
+404-outside hand60 /v2/nothing 4
 404-outside routes1 /v2/nothing 4
 405 routes60 /v1/reports/exports/42/cancel 4
 405 gen60 /v1/reports/exports/42/cancel 4
-405 routes1_post /v1/reports/exports/42/cancel 4'
+405 hand60 /v1/reports/exports/42/cancel 4
+405 routes1_post /v1/reports/exports/42/cancel 4
+query routes60 /v1/projects?page=2&archived=false&q=go 2
+query gen60 /v1/projects?page=2&archived=false&q=go 2
+query hand60 /v1/projects?page=2&archived=false&q=go 2'
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
     "macOS $(sw_vers -productVersion), Darwin $(uname -r), $(h2load --version | head -1)," \
@@ -74,6 +87,7 @@ echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
 printf 'case\tserver\trun\tinstructions/req\tcycles/req\treq/s\n'
 for run in $(seq "$runs"); do
     while read -r name server target class; do
+        case " ${SERVERS:-$server} " in *" $server "*) ;; *) continue ;; esac
         WORKERS=1 /usr/bin/time -l "$bin/$server" http "$port" >/dev/null 2>"$tmp/time" &
         tpid=$!
         until nc -z 127.0.0.1 "$port" 2>/dev/null; do sleep 0.1; done

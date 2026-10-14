@@ -198,6 +198,14 @@ exposes no hardware counters, so `perf` can't run there either.
 GOOSE=$PWD/../goose-upstream/build-macos/goose bench/routes.sh
 ```
 
+A full run takes about 5 minutes. To check a change to goose-rest's request path
+quickly, run only its servers, once, at a tenth of the requests, in about 20 s, and
+then do a full run for the numbers you record:
+
+```sh
+GOOSE=$PWD/../goose-upstream/build-macos/goose SERVERS="gen60 hand60" RUNS=1 N=200000 bench/routes.sh
+```
+
 Traps met measuring task 007 (2026-10-13, h2load 1.70.0):
 
 - h2load counts a 4xx response as "failed", not "succeeded", and `count.sh` exits unless
