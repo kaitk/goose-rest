@@ -7,7 +7,8 @@
 #   bench/rest.sh build   goose-http's bench/rest.sh build, then this
 #                         repository's servers into goose-http's build/rest:
 #                         rest-goose-rest, rest-axum, rest-actix-web, and
-#                         rest-dusty-routes
+#                         rest-dusty-routes; with ONLY=goose, goose-http's
+#                         ONLY=goose build and rest-goose-rest alone
 #   bench/rest.sh check   each server on each tier it serves, against
 #                         goose-http's bench/rest/check.py and
 #                         bench/rest/tiers/check.py, unpinned: runs on macOS
@@ -72,6 +73,10 @@ build)
     cmp -s "$bin/github_gen.goose" "$root/bench/rest/goose-rest/github_gen.goose" ||
         { echo "bench/rest.sh: github_gen.goose is stale; regenerate it (scripts/test.sh)"; exit 1; }
     "$goose" build --cc gcc --standalone -o "$bin/rest-goose-rest" "$root/bench/rest/goose-rest/main.goose"
+    if [ "${ONLY:-}" = goose ]; then
+        ls -l "$bin"
+        exit 0
+    fi
     for name in axum actix-web; do
         (cd "$cache" && RUSTFLAGS="-C target-cpu=native" cargo build --release --locked \
             --manifest-path "$root/bench/rest/$name/Cargo.toml" --target-dir "$cache/target-rest-$name")
