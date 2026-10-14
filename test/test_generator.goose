@@ -57,6 +57,26 @@ fn test_types() {
         "#/components/schemas/A/properties/c/minimum: must be an integer on an integer");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "string", "maxLength": -1}}}}"""),
         "#/components/schemas/A/properties/c/maxLength: must be a non-negative integer");
+    fails(doc("""{"A": {"type": "string", "minLength": 5, "maxLength": 4}}"""),
+        "#/components/schemas/A: minLength and maxLength leave no value between them");
+    fails(doc("""{"A": {"type": "string", "format": "uuid", "maxLength": 35}}"""),
+        "#/components/schemas/A: format uuid and maxLength leave no value between them");
+    fails(doc("""{"A": {"type": "string", "format": "date", "minLength": 11}}"""),
+        "#/components/schemas/A: minLength and format date leave no value between them");
+    fails(doc("""{"A": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 2}}"""),
+        "#/components/schemas/A: minItems and maxItems leave no value between them");
+    fails(doc("""{"A": {"type": "integer", "minimum": 2, "maximum": 1}}"""),
+        "#/components/schemas/A: minimum and maximum leave no value between them");
+    fails(doc("""{"A": {"type": "integer", "exclusiveMinimum": 1, "exclusiveMaximum": 2}}"""),
+        "#/components/schemas/A: exclusiveMinimum and exclusiveMaximum leave no value between them");
+    fails(doc("""{"A": {"type": "integer", "format": "int32", "minimum": 2147483648}}"""),
+        "#/components/schemas/A: minimum and format int32 leave no value between them");
+    fails(doc("""{"A": {"type": "integer", "exclusiveMaximum": -9223372036854775808}}"""),
+        "#/components/schemas/A: exclusiveMaximum leaves no value below it");
+    fails(doc("""{"A": {"type": "number", "minimum": 1.5, "exclusiveMaximum": 1.5}}"""),
+        "#/components/schemas/A: minimum and exclusiveMaximum leave no value between them");
+    fails(doc("""{"A": {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a", "a"]}}"""),
+        "#/components/schemas/A/required: names a twice");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}}}}}"""),
         "#/components/schemas/A/properties/c/items/type: an array of arrays isn't supported");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "array"}}}}"""),
@@ -150,6 +170,10 @@ fn test_paths() {
         "#/paths/~1a/get/parameters/0/name: OpenAPI ignores a header parameter named Authorization");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "q", "in": "query", "schema": {"type": "integer"}}]}}}"""),
         "#/paths/~1a/get/parameters/1: a repeated parameter");
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string", "minLength": 2, "maxLength": 1}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/schema: minLength and maxLength leave no value between them");
+    fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer", "minimum": 1, "maximum": 0}}]}}}"""),
+        "#/paths/~1a~1{id}/get/parameters/0/schema: minimum and maximum leave no value between them");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "q", "in": "header", "schema": {"type": "integer"}}]}}}"""),
         "#/paths/~1a/get/parameters: two parameters make the name q");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "has_q", "in": "cookie", "schema": {"type": "string"}}]}}}"""),

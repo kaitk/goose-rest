@@ -413,6 +413,64 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         return n;
     }
 
+    // Fails when a lower count above an upper one leaves no value; -1 is
+    // no bound.
+    fn counts_meet(ptr: const u8[:], lo: i64, lo_key: const u8[:], hi: i64, hi_key: const u8[:]) {
+        guard lo < 0 || hi < 0 || lo <= hi else { fail(ptr, str(lo_key, " and ", hi_key, " leave no value between them")); }
+    }
+
+    // Fails when an integer's bounds, and int32's range, leave no value.
+    fn ints_meet(ptr: const u8[:], min: json::Node?, xmin: json::Node?, max: json::Node?, xmax: json::Node?, int32: bool) {
+        var lo: i64 = 0;
+        var lo_key: const u8[:] = "";
+        var hi: i64 = 0;
+        var hi_key: const u8[:] = "";
+        if int32 {
+            lo = -2147483648;
+            hi = 2147483647;
+            lo_key = "format int32";
+            hi_key = "format int32";
+        }
+        let a, a_ok = json::as_i64(min);
+        if a_ok && (lo_key.len == 0 || a > lo) { lo = a; lo_key = "minimum"; }
+        let b, b_ok = json::as_i64(xmin);
+        if b_ok {
+            guard b < 9223372036854775807 else { fail(ptr, "exclusiveMinimum leaves no value above it"); }
+            if lo_key.len == 0 || b + 1 > lo { lo = b + 1; lo_key = "exclusiveMinimum"; }
+        }
+        let c, c_ok = json::as_i64(max);
+        if c_ok && (hi_key.len == 0 || c < hi) { hi = c; hi_key = "maximum"; }
+        let d, d_ok = json::as_i64(xmax);
+        if d_ok {
+            guard d > -9223372036854775807 - 1 else { fail(ptr, "exclusiveMaximum leaves no value below it"); }
+            if hi_key.len == 0 || d - 1 < hi { hi = d - 1; hi_key = "exclusiveMaximum"; }
+        }
+        guard lo_key.len == 0 || hi_key.len == 0 || lo <= hi else {
+            fail(ptr, str(lo_key, " and ", hi_key, " leave no value between them"));
+        }
+    }
+
+    // Fails when a number's bounds leave no value.
+    fn numbers_meet(ptr: const u8[:], min: json::Node?, xmin: json::Node?, max: json::Node?, xmax: json::Node?) {
+        var lo: f64 = 0.0;
+        var lo_open = false;
+        var lo_key: const u8[:] = "";
+        var hi: f64 = 0.0;
+        var hi_open = false;
+        var hi_key: const u8[:] = "";
+        let a, a_ok = json::as_f64(min);
+        if a_ok { lo = a; lo_key = "minimum"; }
+        let b, b_ok = json::as_f64(xmin);
+        if b_ok && (lo_key.len == 0 || b >= lo) { lo = b; lo_open = true; lo_key = "exclusiveMinimum"; }
+        let c, c_ok = json::as_f64(max);
+        if c_ok { hi = c; hi_key = "maximum"; }
+        let d, d_ok = json::as_f64(xmax);
+        if d_ok && (hi_key.len == 0 || d <= hi) { hi = d; hi_open = true; hi_key = "exclusiveMaximum"; }
+        guard lo_key.len == 0 || hi_key.len == 0 || lo < hi || (lo == hi && !lo_open && !hi_open) else {
+            fail(ptr, str(lo_key, " and ", hi_key, " leave no value between them"));
+        }
+    }
+
     // The component a $ref names, as an index into named.
     fn target(node: json::Node&, ptr: const u8[:]) -> i64 {
         let rptr = ptr1(ptr, "$ref");
@@ -495,6 +553,8 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
                         else { "only float and double are supported" });
                 }
             }
+            if int { ints_meet(ptr, ty.minimum, ty.exclusive_minimum, ty.maximum, ty.exclusive_maximum, ty.int32); }
+            else { numbers_meet(ptr, ty.minimum, ty.exclusive_minimum, ty.maximum, ty.exclusive_maximum); }
         } else if tname == "string" {
             check_keys(node, ptr, STRING_KEYWORDS, "a string");
             let values = json::member(node, "enum");
@@ -515,7 +575,16 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
                 ty.format = if !ok { -1 } else if fs == "date" { F_DATE } else if fs == "date-time" { F_DATE_TIME }
                     else if fs == "uuid" { F_UUID } else if fs == "email" { F_EMAIL } else { -1 };
                 guard ty.format > 0 else { fail(ptr1(ptr, "format"), "only date, date-time, uuid and email are supported"); }
+                // The lengths each format's check accepts, in code points.
+                let flo = if ty.format == F_DATE { 10 } else if ty.format == F_DATE_TIME { 20 }
+                    else if ty.format == F_UUID { 36 } else { 5 };
+                let fhi = if ty.format == F_DATE { 10 } else if ty.format == F_DATE_TIME { -1 }
+                    else if ty.format == F_UUID { 36 } else { 254 };
+                let fkey = str("format ", fs);
+                counts_meet(ptr, flo, fkey, ty.max_len, "maxLength");
+                counts_meet(ptr, ty.min_len, "minLength", fhi, fkey);
             }
+            counts_meet(ptr, ty.min_len, "minLength", ty.max_len, "maxLength");
         } else if tname == "object" {
             check_keys(node, ptr, OBJECT_KEYWORDS, "an object");
             ty.kind = K_OBJ;
@@ -526,6 +595,7 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             ty.kind = K_ARR;
             ty.min_items = count_of(node, ptr, "minItems");
             ty.max_items = count_of(node, ptr, "maxItems");
+            counts_meet(ptr, ty.min_items, "minItems", ty.max_items, "maxItems");
         } else {
             fail(tptr, str("unknown type ", tname));
         }
@@ -585,7 +655,13 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
                 let rk, ok = json::as_string(r);
                 guard ok else { fail(rptr, "must be an array of property names"); }
                 var found = false;
-                for &f in fields[first..] { if f.key == rk { f.required = true; found = true; } }
+                for &f in fields[first..] {
+                    if f.key == rk {
+                        guard !f.required else { fail(rptr, str("names ", rk, " twice")); }
+                        f.required = true;
+                        found = true;
+                    }
+                }
                 guard found else { fail(rptr, str("names ", rk, ", which isn't a property")); }
             };
         }
@@ -757,6 +833,7 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             else { check_keys(schema, sptr, ["minLength", "maxLength"], "a string parameter"); }
             pp.min_len = count_of(schema, sptr, "minLength");
             pp.max_len = count_of(schema, sptr, "maxLength");
+            counts_meet(sptr, pp.min_len, "minLength", pp.max_len, "maxLength");
             return pp;
         }
         check_keys(schema, sptr, ["minimum", "maximum", "format"], "an integer parameter");
@@ -766,8 +843,11 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             guard fok && (fs == "int32" || fs == "int64") else { fail(ptr1(sptr, "format"), "only int32 and int64 are supported"); }
             pp.int32 = fs == "int32";
         }
-        pp.minimum, pp.has_minimum = json::as_i64(bound(schema, sptr, "minimum", true));
-        pp.maximum, pp.has_maximum = json::as_i64(bound(schema, sptr, "maximum", true));
+        let min = bound(schema, sptr, "minimum", true);
+        let max = bound(schema, sptr, "maximum", true);
+        ints_meet(sptr, min, null, max, null, pp.int32);
+        pp.minimum, pp.has_minimum = json::as_i64(min);
+        pp.maximum, pp.has_maximum = json::as_i64(max);
         return pp;
     }
 

@@ -100,6 +100,26 @@ refused(
   "#/components/schemas/A/minimum: must be an integer on an integer",
   api({ ...d, components: { schemas: { A: { type: "integer", minimum: 1.5 } } } }),
 );
+refused(
+  "#/components/schemas/A: minLength and maxLength leave no value between them",
+  api({ ...d, components: { schemas: { A: { type: "string", minLength: 5, maxLength: 4 } } } }),
+);
+refused(
+  "#/components/schemas/A: format uuid and maxLength leave no value between them",
+  api({ ...d, components: { schemas: { A: { type: "string", format: "uuid", maxLength: 35 } } } }),
+);
+refused(
+  "#/components/schemas/A: minItems and maxItems leave no value between them",
+  api({ ...d, components: { schemas: { A: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 2 } } } }),
+);
+refused(
+  "#/components/schemas/A: exclusiveMinimum and exclusiveMaximum leave no value between them",
+  api({ ...d, components: { schemas: { A: { type: "integer", exclusiveMinimum: 1, exclusiveMaximum: 2 } } } }),
+);
+refused(
+  "#/components/schemas/A/required: names a twice",
+  api({ ...d, components: { schemas: { A: { type: "object", properties: { a: { type: "string" } }, required: ["a", "a"] } } } }),
+);
 
 // Paths and operations.
 const c = { schemas: { A: { type: "object", properties: {} } } } as const;

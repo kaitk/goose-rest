@@ -44,7 +44,7 @@ type, format, and shape outside the subset, but not all the values and names
 | A cycle of `$ref`s, or an object that holds itself | No |
 | A component name that isn't a Goose identifier, or two names equal after snake_case | Not in practice |
 | A negative or fractional `maxLength`, or a fractional bound on an integer | No |
-| `minLength` above `maxLength` | No, and the generator accepts it too (2026-10-14) |
+| Bounds that leave no value, such as `minLength` above `maxLength` or `maxLength: 35` on a `uuid`, and a name `required` twice | No; the generator refuses them (2026-10-14) |
 
 Decided (2026-10-13): the criterion now reads "`tsc` rejects every keyword, type,
 format, and shape outside the subset", and the generator stays the check for the rest.

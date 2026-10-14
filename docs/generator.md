@@ -107,6 +107,11 @@ Any schema may carry `description`, `title`, `examples`, `example`, `deprecated`
   slices across the call (architecture doc).
 - An array of arrays, a nullable array element, an object without `properties`, and
   enum values that aren't strings.
+- Bounds that leave no value, in a schema or a parameter's: `minLength` above `maxLength`, `minItems` above `maxItems`,
+  a lower `minimum` or `exclusiveMinimum` that meets or passes the upper bound (for
+  `int32`, the type's range counts as a bound), and a length a format can't have, such as
+  `maxLength: 35` on a `uuid` (36 characters), a `date` (10), a `date-time` (20 or more),
+  or an `email` (5 to 254). A `required` that names a property twice.
 - `pattern`, until Goose's `regex` has anchors
   ([findings](goose-findings.md#the-regex-module-has-no-anchors-so-json-schemas-pattern-cant-be-checked)).
 
