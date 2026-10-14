@@ -12,6 +12,13 @@ let SPACES = "                                                                  
 
 fn indent(level: i64) -> const u8[:] { SPACES[..min(4 * level, SPACES.len)] }
 
+// A byte count as Goose, in whole MB or KB where it is one: 4 * 1024 * 1024.
+fn size(n: i64) -> u8[>..] {
+    if n % (1024 * 1024) == 0 { return str(n / (1024 * 1024), " * 1024 * 1024"); }
+    if n % 1024 == 0 { return str(n / 1024, " * 1024"); }
+    return str(n);
+}
+
 // What the router's emitters read, and where they write.
 struct Tables {
     out: u8[>..]&,
@@ -112,6 +119,7 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
             int_checks(t, p, p.local, "", in2);
         }
         if o.count_q > 0 { format(t.out, in2, "let q_ = rest::take<", o.params_type, ">(cx);\n"); }
+        if o.body_limit > 0 { format(t.out, in2, "rest::body(cx, ", size(o.body_limit), ");\n"); }
         if o.body >= 0 { format(t.out, in2, "let body_ = rest::take<", t.objs[o.body].name, ">(cx);\n"); }
         format(t.out, in2, t.handlers, "::", o.handler, "(cx, state");
         if o.scheme.len > 0 { t.out.append(", s_"); }
@@ -185,6 +193,11 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     var t = Tables { out: out, ns: ns, handlers: handlers, routes: routes, segs: segs, ops: ops, params: params,
                      objs: objs };
     for o in ops { if o.count_q > 0 { emit_params(t, o); } }
+    // goose-http's MAX_BODY and rest's BODY_LIMIT, a route's default.
+    var max_body: i64 = 1024 * 1024;
+    for o in ops { max_body = max(max_body, o.body_limit); }
+    out.append("\n// The longest body a route takes, for http::Config's max_body.\n");
+    format(out, "let MAX_BODY: i64 = ", size(max_body), ";\n");
     format(out, "\n// Answers a request through the handler in ", handlers, " that its path and method\n");
     out.append("// name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
     out.append("// a path; and as rest::otherwise does for a path no route takes.\n");

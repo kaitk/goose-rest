@@ -174,6 +174,8 @@ fn test_paths() {
         "#/paths/~1a/get/parameters/0/schema: minLength and maxLength leave no value between them");
     fails(api("""{"/a/{id}": {"get": {"operationId": "a", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer", "minimum": 1, "maximum": 0}}]}}}"""),
         "#/paths/~1a~1{id}/get/parameters/0/schema: minimum and maximum leave no value between them");
+    fails(api("""{"/a": {"post": {"operationId": "a", "requestBody": {"required": true, "x-body-limit": 0, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/A"}}}}}}}"""),
+        "#/paths/~1a/post/requestBody/x-body-limit: must be a positive integer");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "q", "in": "header", "schema": {"type": "integer"}}]}}}"""),
         "#/paths/~1a/get/parameters: two parameters make the name q");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}, {"name": "has_q", "in": "cookie", "schema": {"type": "string"}}]}}}"""),

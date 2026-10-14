@@ -34,6 +34,6 @@ fn main() {
         if ok { port = p; }
     }
     assert(http::stop_on_signals() == 0);
-    let cfg = http::Config { port: port as i32, workers: 1, .. };
+    let cfg = http::Config { port: port as i32, workers: 1, max_body: api::MAX_BODY, .. };
     thread_wait(thread_spawn(worker, cfg));
 }

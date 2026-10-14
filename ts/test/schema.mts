@@ -20,6 +20,7 @@ const doc = api({
         "security": [{ "token": [] }],
         "requestBody": {
           "required": true,
+          "x-body-limit": 2097152,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectCreate" } } }
         }
       }

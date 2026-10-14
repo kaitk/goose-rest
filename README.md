@@ -190,7 +190,10 @@ handler again with the body whole. The code before a route's first `rest::body`,
 state before it; an answer there, such as a 401, ends the request ungathered. A `Content-Length` over the limit is refused with 413 before
 the body is sent, and a chunked body once it passes the limit. The first call's limit
 holds for the request, so a route that takes a JSON body over 1 MB calls `rest::body`
-with its limit first.
+with its limit first; a generated route does so for its `x-body-limit`
+([generator](docs/generator.md)). `http::Config`'s `max_body`, 1 MB by default, caps
+every route, so a program with a larger limit raises it too: to `api::MAX_BODY` with a
+schema.
 
 ```goose
 rest::route(cx) {

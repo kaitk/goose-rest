@@ -191,7 +191,12 @@ let e = rest::serve(cfg) { cx => api::dispatch(cx, state) };
 | A path parameter, `"type": "string"` | the segment, decoded, from `rest::path_str` |
 | Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
 | `requestBody` with `application/json` and a `$ref` to an object | the object, from `rest::take`; 415 for another media type |
+| `"x-body-limit": n` on a `requestBody`, a positive byte count | `rest::body(cx, n)` before `rest::take`, so the route takes a body of up to `n` bytes, not 1 MB; 413 past it |
 | `security: [{"<scheme>": []}]`, on the operation or the document | `<handlers>::security_<scheme>(cx, state)`, whose result the handler gets |
+
+The router's namespace also gets `MAX_BODY`, the largest `x-body-limit` or 1 MB, for
+`http::Config { max_body: api::MAX_BODY, .. }`. goose-http refuses a body past it with a
+413 of its own, without a body, before the route runs.
 
 A handler takes `cx`, `state`, then the security check's result if the operation names
 a scheme, its path parameters in the template's order, its parameters struct, and its

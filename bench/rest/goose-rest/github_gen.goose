@@ -7,6 +7,9 @@ import json;
 import http;
 import rest;
 
+// The longest body a route takes, for http::Config's max_body.
+let MAX_BODY: i64 = 1 * 1024 * 1024;
+
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes.

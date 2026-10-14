@@ -126,6 +126,7 @@ struct Op {
     handler: const u8[:],
     scheme: const u8[:],
     body: i64 = -1,
+    body_limit: i64 = -1,
     first: i64 = 0,
     count: i64 = 0,
     first_q: i64 = 0,
@@ -175,7 +176,7 @@ let PATH_ITEM_KEYS = ["parameters", "summary", "description"];
 let OPERATION_KEYS = ["operationId", "parameters", "requestBody", "security", "responses", "summary",
     "description", "tags", "deprecated", "externalDocs"];
 let PARAMETER_KEYS = ["name", "in", "required", "schema", "description", "deprecated", "example", "examples"];
-let BODY_KEYS = ["content", "required", "description"];
+let BODY_KEYS = ["content", "required", "description", "x-body-limit"];
 
 // Names dispatch uses for its own parameters and locals, which no path
 // parameter may take, besides s and e followed by digits, its segments.
@@ -979,7 +980,10 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         }
         let rb = json::member(node, "requestBody");
         let body = if rb { body_of(rb, ptr1(optr, "requestBody")) } else { -1 };
-        ops.push(Op { method: method, handler: handler, scheme: scheme, body: body, first: first, count: count,
+        let body_limit = if rb { count_of(rb, ptr1(optr, "requestBody"), "x-body-limit") } else { -1 };
+        guard body_limit != 0 else { fail(ptr2(optr, "requestBody", "x-body-limit"), "must be a positive integer"); }
+        ops.push(Op { method: method, handler: handler, scheme: scheme, body: body, body_limit: body_limit,
+                      first: first, count: count,
                       first_q: first_q, count_q: params.len - first_q, params_type: params_type });
     }
 

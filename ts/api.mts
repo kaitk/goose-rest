@@ -91,6 +91,8 @@ export type Parameter = PathParameter | OtherParameter;
 export type RequestBody = {
   required: true;
   description?: string;
+  // The longest body the route takes, in bytes; 1 MB without it.
+  "x-body-limit"?: number;
   content: { "application/json": { schema: Ref } };
 };
 // One requirement of one scheme, without scopes, or none.
@@ -377,6 +379,7 @@ type CheckBody<B, C> = Keys<
   {
     required: true;
     description?: string;
+    "x-body-limit"?: number;
     content: B extends { content: infer X }
       ? Keys<
           X,

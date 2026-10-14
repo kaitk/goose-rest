@@ -55,6 +55,7 @@ const doc = api({
         "operationId": "createProject",
         "requestBody": {
           "required": true,
+          "x-body-limit": 4194304,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectCreate" } } }
         }
       }

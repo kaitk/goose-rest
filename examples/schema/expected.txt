@@ -14,3 +14,5 @@ DELETE /v1/projects/1 204
 GET /v1/projects/1 404 {"error":"project_not_found"}
 PUT /v1/projects 405 {"error":"method_not_allowed"}
 GET /nope 404 {"error":"not_found"}
+POST /v1/projects 201 {"id":3,"name":"big"}
+POST /v1/projects 413

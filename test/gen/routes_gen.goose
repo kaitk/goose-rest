@@ -122,6 +122,9 @@ fn rest::from_request(cx, v: const api::CreateExportParams?) -> api::CreateExpor
     return api::CreateExportParams { has_x_trace: has_x_trace, x_trace: x_trace };
 }
 
+// The longest body a route takes, for http::Config's max_body.
+let MAX_BODY: i64 = 4 * 1024 * 1024;
+
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes.
@@ -233,6 +236,7 @@ fn dispatch(cx, state) {
                     if m == "POST" {
                         rest::route(cx) {
                             let s_ = app::security_session(cx, state);
+                            rest::body(cx, 4 * 1024 * 1024);
                             let body_ = rest::take<ProjectCreate>(cx);
                             app::create_project(cx, state, s_, body_);
                         };
@@ -650,6 +654,7 @@ fn dispatch(cx, state) {
                             if m == "POST" {
                                 rest::route(cx) {
                                     let s_ = app::security_session(cx, state);
+                                    rest::body(cx, 4 * 1024 * 1024);
                                     let body_ = rest::take<ProjectCreate>(cx);
                                     app::create_project(cx, state, s_, body_);
                                 };
