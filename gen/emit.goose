@@ -291,9 +291,9 @@ fn emit_obj(out: u8[>..]&, ns: const u8[:], o: Obj, objs, enums, fields, variant
         out.append("[>..] = [];\n    json::each_element(r) {\n");
         let what = str(f.key, "[]");
         if it.kind == K_OBJ {
-            format(out, "        push_");
+            format(out, "        v_.push(read_");
             format_snake_name(out, objs[it.ref].name);
-            out.append("(v_, r, scratch);\n");
+            out.append("(r, scratch));\n");
         } else if it.kind == K_ENUM {
             out.append("        let s_ = json::read_string(r, scratch);\n        let e_, ok_ = ");
             format_snake_name(out, enums[it.ref].name);
@@ -311,13 +311,6 @@ fn emit_obj(out: u8[>..]&, ns: const u8[:], o: Obj, objs, enums, fields, variant
         if f.ty.min_items > 0 { format(out, "    if v_.len < ", f.ty.min_items, " { json::fail(r, \"", f.key, ": minItems\"); }\n"); }
         if f.ty.max_items >= 0 { format(out, "    if v_.len > ", f.ty.max_items, " { json::fail(r, \"", f.key, ": maxItems\"); }\n"); }
         out.append("    return v_;\n}\n");
-    }
-
-    if o.pushed {
-        format(out, "\n// Pushes a ", o.name, " read from r onto v. An array reader's block calls this\n");
-        out.append("// rather than pushing itself (goose-rest's docs/goose-findings.md).\n");
-        format(out, "fn push_", reader, "(v: ", o.name, "[>..]&, r: json::Reader&, scratch: u8[>..]&) {\n");
-        format(out, "    v.push(read_", reader, "(r, scratch));\n}\n");
     }
 
     emit_writer(out, o, fs);

@@ -57,9 +57,7 @@ struct Field {
 }
 
 // An object schema, which becomes a struct. Its fields are
-// fields[first..first + count]. pushed: an array holds it, so it gets a
-// push_ function (docs/goose-findings.md, "A block can't push a value whose
-// call grows a parameter's array").
+// fields[first..first + count].
 struct Obj {
     name: const u8[:],
     ptr: const u8[:],
@@ -67,7 +65,6 @@ struct Obj {
     closed: bool = false,
     first: i64 = 0,
     count: i64 = 0,
-    pushed: bool = false,
 }
 
 // A string enum, which becomes a Goose enum. Its values are the elements of
@@ -583,7 +580,6 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
                 guard items else { fail(pptr, "an array needs items"); }
                 item = type_of(items, ptr1(pptr, "items"), objs[i].name, key, true);
                 guard !item.nullable else { fail(ptr2(pptr, "items", "type"), "a nullable element isn't supported"); }
-                if item.kind == K_OBJ { objs[item.ref].pushed = true; }
             }
             fields.push(Field { key: key, name: name, ptr: pptr, required: false, ty: ty, item: item });
         };

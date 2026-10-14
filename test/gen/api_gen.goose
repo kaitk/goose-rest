@@ -216,12 +216,6 @@ fn read_owner(r: json::Reader&, scratch: u8[>..]&) -> Owner {
     };
 }
 
-// Pushes a Owner read from r onto v. An array reader's block calls this
-// rather than pushing itself (goose-rest's docs/goose-findings.md).
-fn push_owner(v: Owner[>..]&, r: json::Reader&, scratch: u8[>..]&) {
-    v.push(read_owner(r, scratch));
-}
-
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const Owner&) {
     out.append("{\"id\":");
@@ -467,7 +461,7 @@ fn read_project(r: json::Reader&, scratch: u8[>..]&) -> Project {
 fn read_project_reviewers(r: json::Reader&, scratch: u8[>..]&) -> Owner[>..] {
     var v_: Owner[>..] = [];
     json::each_element(r) {
-        push_owner(v_, r, scratch);
+        v_.push(read_owner(r, scratch));
     };
     if v_.len > 10 { json::fail(r, "reviewers: maxItems"); }
     return v_;

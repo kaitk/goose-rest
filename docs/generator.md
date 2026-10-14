@@ -95,9 +95,6 @@ For a schema `Project`, the file has:
 - `struct Project`.
 - `fn read_project(r: json::Reader&, scratch: u8[>..]&) -> Project`, the reader.
 - `fn read_project_<field>(r, scratch) -> T[>..]` for each array field.
-- `fn push_project(v: Project[>..]&, r, scratch)` when an array holds `Project`. An
-  array reader calls it rather than pushing from its block, to work around a compiler
-  gap ([findings](goose-findings.md#a-block-cant-push-a-value-whose-call-grows-a-parameters-array)).
 - `fn format(out: u8[>..]&, v: const Project&)`, the writer, which `rest::json` finds by
   its namespace (spike 07).
 - `fn rest::from_request(cx, v: const api::Project?) -> api::Project`, the extractor
