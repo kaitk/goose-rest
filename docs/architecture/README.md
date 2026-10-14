@@ -154,7 +154,7 @@ keeps the literal types, and `tsc` rejects a keyword, a format, a shape, or a pa
 location the generator can't handle while the schema is being written, instead of when
 the generator runs. With the literals, it also rejects a `$ref` to a missing component
 and a `required` name that isn't a property. Cycles, names, and number values stay the
-generator's checks. Running the file with Bun or Node writes `api.json`. Two steps, TypeScript
+generator's checks. Running the file with Node or Bun writes `api.json`. Two steps, TypeScript
 to OpenAPI to Goose, keep each tool small and leave the JSON as an inspectable file
 between them.
 

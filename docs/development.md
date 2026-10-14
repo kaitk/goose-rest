@@ -110,12 +110,12 @@ access; later runs don't. Both scripts write only into `build/`, which git ignor
 `ts/` holds the TypeScript helper and its tests, and goose-rest doesn't install a
 JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
 `ts/tsconfig.json`, then runs `ts/test/*.mts` with `JS`: `node`, or `bun` where Node
-isn't installed. Without `tsc`, it prints `skipped` and goes on. With Bun or Node
-installed and no `tsc`, bunx or npx fetches one for the run:
+isn't installed. Without `tsc`, it prints `skipped` and goes on. With Node or Bun
+installed and no `tsc`, npx or bunx fetches one for the run:
 
 ```sh
-TSC="bunx -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
 TSC="npx -y -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
+TSC="bunx -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
 ```
 
 Node and Bun run the `.mts` files directly, stripping their types; Node needs 22.18 or

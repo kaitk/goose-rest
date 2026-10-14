@@ -13,7 +13,7 @@
 # the handler and library leaves stay functions.
 #
 # GOOSE names the compiler (default: goose on PATH), and TSC the TypeScript
-# compiler's command (default: tsc on PATH), such as "bunx -p typescript tsc".
+# compiler's command (default: tsc on PATH), such as "npx -p typescript tsc".
 # JS names the runtime that runs the helper (default: node, or else bun).
 set -eu
 

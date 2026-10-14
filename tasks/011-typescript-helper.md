@@ -54,8 +54,8 @@ Each test names which of the two rejects its construct.
 
 Built (2026-10-14): `ts/api.mts`, with `api()`, a generic function whose `const` type
 parameter keeps the document's literal types, and `json()`. A contract file passes its
-document to `api()` and prints `json()` of it, and `bun contract.mts > api.json` writes
-the file, or `node` in its place; both print the same JSON. `satisfies Api` alone would check less: without inference, `tsc` can't see a
+document to `api()` and prints `json()` of it, and `node contract.mts > api.json` writes
+the file, or `bun` in its place; both print the same JSON. `satisfies Api` alone would check less: without inference, `tsc` can't see a
 `$ref`'s target or a `required` name, and it doesn't flag a keyword one member of a
 union allows. The tests, in `ts/test/`:
 
