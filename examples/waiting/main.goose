@@ -32,13 +32,16 @@ enum Waiting {
 // The per-request state: rest::ask keeps the route's Waiting here.
 struct St { waiting: Waiting = Waiting.None }
 
-fn handle(cx, db: http::MailAddress) {
+// The worker's state: where the database thread takes jobs.
+struct App { db: http::MailAddress }
+
+fn handle(cx) {
     rest::timed(cx) {
         rest::routes(cx) { cx =>
             if rest::on(cx, "GET", "/health") {
                 rest::text(cx, 200, "ok");
             } else if rest::scope(cx, "/v1") {
-                rest::route(cx) { ask(cx, db); };
+                rest::route(cx) { ask(cx); };
             } else {
                 rest::otherwise(cx);
             }
@@ -46,18 +49,18 @@ fn handle(cx, db: http::MailAddress) {
     };
 }
 
-fn ask(cx, db: http::MailAddress) {
+fn ask(cx) {
     if rest::on(cx, "GET", "/report") {
         let org = need_int(cx, "org");
         let from = need_int(cx, "from");
         let to = need_int(cx, "to");
         if to < from { rest::fail_param(cx, "to: minimum"); }
-        rest::ask(cx, db, REPORT, ReportJob { org: org, from: from, to: to },
+        rest::ask(cx, cx.app.db, REPORT, ReportJob { org: org, from: from, to: to },
                   Waiting.Report { org: org, from: from, to: to });
     } else if rest::on(cx, "GET", "/export") {
         let rows = need_int(cx, "rows");
         if rows < 0 || rows > 10000 { rest::fail_param(cx, "rows: maximum"); }
-        rest::ask(cx, db, EXPORT, ExportJob { org: need_int(cx, "org"), rows: rows }, Waiting.Export);
+        rest::ask(cx, cx.app.db, EXPORT, ExportJob { org: need_int(cx, "org"), rows: rows }, Waiting.Export);
     } else {
         rest::otherwise(cx);
     }
@@ -119,11 +122,12 @@ thread_fn database(box: http::Box) {
 }
 
 thread_fn worker(cfg: http::Config, db: http::MailAddress) {
-    let e = rest::serve(cfg, St { .. }) { cx =>
+    var app = App { db: db };
+    let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::woken(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
         } else {
-            handle(cx, db);
+            handle(cx);
         }
     };
     if e.code != 0 { http::report(e); }

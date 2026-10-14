@@ -57,10 +57,11 @@ fn main() {
         var st = http::Stream { .. };
         var state = rest::NoState { .. };
         var scratch: u8[>..] = [];
+        var app = rest::NoState { .. };
         var none = rest::NoRouter { .. };
-        var cx = rest::Cx<rest::NoState, rest::NoRouter> { req: req, body: "", out: http::Reply { buf: out, common: "",
-                                           keep_alive: keep, minor: 1, head: false, stream: st }, state: state,
-                                           scratch: scratch, router: none };
+        var cx = rest::Cx<rest::NoState, rest::NoState, rest::NoRouter> { req: req, body: "", out: http::Reply {
+                                           buf: out, common: "", keep_alive: keep, minor: 1, head: false, stream: st },
+                                           state: state, app: app, scratch: scratch, router: none };
         handle(cx);
     }
     print(out);

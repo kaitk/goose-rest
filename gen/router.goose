@@ -105,7 +105,7 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
         if o.method == "GET" { format(t.out, ind, "if m == \"GET\" || m == \"HEAD\" {\n"); }
         else { format(t.out, ind, "if m == \"", o.method, "\" {\n"); }
         format(t.out, ind, "    rest::route(cx) {\n");
-        if o.scheme.len > 0 { format(t.out, in2, "let s_ = ", t.handlers, "::", o.scheme, "(cx, state);\n"); }
+        if o.scheme.len > 0 { format(t.out, in2, "let s_ = ", t.handlers, "::", o.scheme, "(cx);\n"); }
         var k = 0;
         for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
             if !s.param { continue; }
@@ -121,7 +121,7 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
         if o.count_q > 0 { format(t.out, in2, "let q_ = rest::take<", o.params_type, ">(cx);\n"); }
         if o.body_limit > 0 { format(t.out, in2, "rest::body(cx, ", size(o.body_limit), ");\n"); }
         if o.body >= 0 { format(t.out, in2, "let body_ = rest::take<", t.objs[o.body].name, ">(cx);\n"); }
-        format(t.out, in2, t.handlers, "::", o.handler, "(cx, state");
+        format(t.out, in2, t.handlers, "::", o.handler, "(cx");
         if o.scheme.len > 0 { t.out.append(", s_"); }
         for p in t.params[o.first..o.first + o.count] { format(t.out, ", ", p.local); }
         if o.count_q > 0 { t.out.append(", q_"); }
@@ -202,7 +202,7 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     out.append("// name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
     out.append("// a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,\n");
     out.append("// the Allow lists the methods of the program's routes tried before dispatch first.\n");
-    out.append("fn dispatch(cx, state) {\n");
+    out.append("fn dispatch(cx) {\n");
     out.append("    let path = http::path_of(cx.req.target);\n");
     out.append("    let m = cx.req.method;\n");
     out.append("    guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }\n");

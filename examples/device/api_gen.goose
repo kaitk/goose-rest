@@ -331,7 +331,7 @@ let MAX_BODY: i64 = 1 * 1024 * 1024;
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,
 // the Allow lists the methods of the program's routes tried before dispatch first.
-fn dispatch(cx, state) {
+fn dispatch(cx) {
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -342,7 +342,7 @@ fn dispatch(cx, state) {
                 if path == "/" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::page(cx, state);
+                            app::page(cx);
                         };
                         return;
                     }
@@ -354,7 +354,7 @@ fn dispatch(cx, state) {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::health(cx, state);
+                            app::health(cx);
                         };
                         return;
                     }
@@ -366,7 +366,7 @@ fn dispatch(cx, state) {
                 if path == "/v1/status" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::get_status(cx, state);
+                            app::get_status(cx);
                         };
                         return;
                     }
@@ -378,16 +378,16 @@ fn dispatch(cx, state) {
                 if path == "/v1/settings" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::get_settings(cx, state);
+                            app::get_settings(cx);
                         };
                         return;
                     }
                     if m == "PUT" {
                         rest::route(cx) {
-                            let s_ = app::security_token(cx, state);
+                            let s_ = app::security_token(cx);
                             rest::body(cx, 1 * 1024);
                             let body_ = rest::take<Settings>(cx);
-                            app::put_settings(cx, state, s_, body_);
+                            app::put_settings(cx, s_, body_);
                         };
                         return;
                     }
@@ -397,10 +397,10 @@ fn dispatch(cx, state) {
                 if path == "/v1/firmware" {
                     if m == "PUT" {
                         rest::route(cx) {
-                            let s_ = app::security_token(cx, state);
+                            let s_ = app::security_token(cx);
                             rest::body(cx, 256 * 1024);
                             let body_ = rest::take<FirmwareUpload>(cx);
-                            app::put_firmware(cx, state, s_, body_);
+                            app::put_firmware(cx, s_, body_);
                         };
                         return;
                     }
@@ -419,7 +419,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::page(cx, state);
+                            app::page(cx);
                         };
                         return;
                     }
@@ -431,7 +431,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::health(cx, state);
+                            app::health(cx);
                         };
                         return;
                     }
@@ -446,7 +446,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::get_status(cx, state);
+                                    app::get_status(cx);
                                 };
                                 return;
                             }
@@ -458,16 +458,16 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::get_settings(cx, state);
+                                    app::get_settings(cx);
                                 };
                                 return;
                             }
                             if m == "PUT" {
                                 rest::route(cx) {
-                                    let s_ = app::security_token(cx, state);
+                                    let s_ = app::security_token(cx);
                                     rest::body(cx, 1 * 1024);
                                     let body_ = rest::take<Settings>(cx);
-                                    app::put_settings(cx, state, s_, body_);
+                                    app::put_settings(cx, s_, body_);
                                 };
                                 return;
                             }
@@ -479,10 +479,10 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "PUT" {
                                 rest::route(cx) {
-                                    let s_ = app::security_token(cx, state);
+                                    let s_ = app::security_token(cx);
                                     rest::body(cx, 256 * 1024);
                                     let body_ = rest::take<FirmwareUpload>(cx);
-                                    app::put_firmware(cx, state, s_, body_);
+                                    app::put_firmware(cx, s_, body_);
                                 };
                                 return;
                             }

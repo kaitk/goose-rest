@@ -17,10 +17,10 @@ import .app;
 thread_fn worker(cfg: http::Config) {
     var projects: api::Project[>..] = [];
     var live: bool[>..] = [];
-    var state = app::App { projects: projects, live: live, token: "secret" };
-    let e = rest::serve(cfg) { cx =>
+    var app = app::App { projects: projects, live: live, token: "secret" };
+    let e = rest::serve(cfg, app) { cx =>
         rest::timed(cx) {
-            rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { api::dispatch(cx, state); };
+            rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { api::dispatch(cx); };
         };
     };
     if e.code != 0 { http::report(e); }

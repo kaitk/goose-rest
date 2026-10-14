@@ -27,36 +27,36 @@ fn format(out: u8[>..]&, l: const Listing&) {
     out.push(']');
 }
 
-// The security scheme token: a bearer token, which must be state's.
-fn security_token(cx, state: App&) -> bool {
-    guard rest::bearer_token(cx) == state.token else { rest::invalid_token(cx); }
+// The security scheme token: a bearer token, which must be the app's.
+fn security_token(cx) -> bool {
+    guard rest::bearer_token(cx) == cx.app.token else { rest::invalid_token(cx); }
     return true;
 }
 
-fn health(cx, state: App&) { rest::text(cx, 200, "ok"); }
+fn health(cx) { rest::text(cx, 200, "ok"); }
 
-fn list_projects(cx, state: App&, q: api::ListProjectsParams) {
-    rest::json(cx, 200, Listing { app: state, q: if q.has_q { q.q } else { "" }, limit: if q.has_limit { q.limit } else { 20 } });
+fn list_projects(cx, q: api::ListProjectsParams) {
+    rest::json(cx, 200, Listing { app: cx.app, q: if q.has_q { q.q } else { "" }, limit: if q.has_limit { q.limit } else { 20 } });
 }
 
-fn create_project(cx, state: App&, s: bool, body: const api::ProjectCreate&) {
-    let p .= state.projects.push(api::Project { id: state.projects.len + 1, name: body.name });
-    state.live.push(true);
+fn create_project(cx, s: bool, body: const api::ProjectCreate&) {
+    let p .= cx.app.projects.push(api::Project { id: cx.app.projects.len + 1, name: body.name });
+    cx.app.live.push(true);
     rest::json(cx, 201, p);
 }
 
 // The index of project id, or a failure, 404 project_not_found.
-fn index_of(cx, state: App&, id: i64) -> i64 {
-    guard id <= state.projects.len && state.live[id - 1] else { rest::fail(cx, 404, "project_not_found"); }
+fn index_of(cx, id: i64) -> i64 {
+    guard id <= cx.app.projects.len && cx.app.live[id - 1] else { rest::fail(cx, 404, "project_not_found"); }
     return id - 1;
 }
 
-fn get_project(cx, state: App&, id: i64) {
-    rest::json(cx, 200, state.projects[index_of(cx, state, id)]);
+fn get_project(cx, id: i64) {
+    rest::json(cx, 200, cx.app.projects[index_of(cx, id)]);
 }
 
-fn delete_project(cx, state: App&, s: bool, id: i64) {
-    state.live[index_of(cx, state, id)] = false;
+fn delete_project(cx, s: bool, id: i64) {
+    cx.app.live[index_of(cx, id)] = false;
     http::start(cx.out, 204);
     http::finish(cx.out, "", "");
 }

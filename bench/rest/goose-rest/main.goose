@@ -2788,7 +2788,7 @@ fn tier_f(cx) { rest::route(cx) { micro(cx); }; }
 // Tier R through the if chain, in one route, or the generator's router,
 // which opens a route for each.
 fn tier_r(cx, generated: bool) {
-    if generated { api::dispatch(cx, cx.state); } else { rest::route(cx) { app::chain(cx, cx.state); }; }
+    if generated { api::dispatch(cx); } else { rest::route(cx) { app::chain(cx); }; }
 }
 
 thread_fn worker_f(cfg: http::Config, epoll: bool, bare: bool) {
@@ -2809,13 +2809,15 @@ thread_fn worker_a(cfg: http::Config, epoll: bool, stack: bool) {
 }
 
 thread_fn worker_b(cfg: http::Config, epoll: bool) {
-    if epoll { stopped(rest::serve_epoll(cfg, Snow { .. }) { cx => tier_b(cx) }); }
-    else { stopped(rest::serve(cfg, Snow { .. }) { cx => tier_b(cx) }); }
+    var none = rest::NoState { .. };
+    if epoll { stopped(rest::serve_epoll(cfg, none, Snow { .. }) { cx => tier_b(cx) }); }
+    else { stopped(rest::serve(cfg, none, Snow { .. }) { cx => tier_b(cx) }); }
 }
 
 thread_fn worker_c(cfg: http::Config, epoll: bool, writes: bool) {
-    if epoll { stopped(rest::serve_epoll(cfg, Heavy { .. }) { cx => tier_c(cx, writes) }); }
-    else { stopped(rest::serve(cfg, Heavy { .. }) { cx => tier_c(cx, writes) }); }
+    var none = rest::NoState { .. };
+    if epoll { stopped(rest::serve_epoll(cfg, none, Heavy { .. }) { cx => tier_c(cx, writes) }); }
+    else { stopped(rest::serve(cfg, none, Heavy { .. }) { cx => tier_c(cx, writes) }); }
 }
 
 fn stopped(e: http::Error) {

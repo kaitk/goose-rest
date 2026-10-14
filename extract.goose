@@ -87,12 +87,12 @@ fn require(cx, name: const u8[:], found: bool) {
 }
 
 // The path parameter name of the route rest::on matched, decoded.
-fn param<S>(cx: Cx<S, http::Router>&, name: const u8[:]) -> const u8[:] {
+fn param<S, A>(cx: Cx<S, A, http::Router>&, name: const u8[:]) -> const u8[:] {
     return decoded(cx, http::param(cx.router, name), false, name);
 }
 
 // The path parameter name of the route rest::on matched, as an integer.
-fn param_int<S>(cx: Cx<S, http::Router>&, name: const u8[:]) -> i64 {
+fn param_int<S, A>(cx: Cx<S, A, http::Router>&, name: const u8[:]) -> i64 {
     return path_int(cx, http::param(cx.router, name), name);
 }
 

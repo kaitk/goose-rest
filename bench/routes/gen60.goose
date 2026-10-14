@@ -13,12 +13,12 @@ import rest from "../../../";
 import .routes_gen;
 import .app;
 
-// The worker's state, which the handlers get; they read none of it.
+// The worker's state, cx.app; the handlers read none of it.
 struct App { unused: bool = false }
 
 thread_fn worker(cfg: http::Config) {
-    var state = App { .. };
-    let e = rest::serve_epoll(cfg) { cx => api::dispatch(cx, state) };
+    var app = App { .. };
+    let e = rest::serve_epoll(cfg, app) { cx => api::dispatch(cx) };
     guard e.code != 0 else { return; }
     http::report(e);
     exit(1);

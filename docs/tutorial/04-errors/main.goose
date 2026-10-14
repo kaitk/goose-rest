@@ -37,7 +37,8 @@ fn handle(cx) {
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg, St { .. }) { cx => handle(cx) };
+    var none = rest::NoState { .. };
+    let e = rest::serve(cfg, none, St { .. }) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

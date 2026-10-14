@@ -14,7 +14,7 @@ let MAX_BODY: i64 = 1 * 1024 * 1024;
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,
 // the Allow lists the methods of the program's routes tried before dispatch first.
-fn dispatch(cx, state) {
+fn dispatch(cx) {
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -25,7 +25,7 @@ fn dispatch(cx, state) {
                 if path == "/meta" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r90(cx, state);
+                            app::r90(cx);
                         };
                         return;
                     }
@@ -35,7 +35,7 @@ fn dispatch(cx, state) {
                 if path == "/user" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r186(cx, state);
+                            app::r186(cx);
                         };
                         return;
                     }
@@ -47,7 +47,7 @@ fn dispatch(cx, state) {
                 if path == "/feeds" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r17(cx, state);
+                            app::r17(cx);
                         };
                         return;
                     }
@@ -57,13 +57,13 @@ fn dispatch(cx, state) {
                 if path == "/gists" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r42(cx, state);
+                            app::r42(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r44(cx, state);
+                            app::r44(cx);
                         };
                         return;
                     }
@@ -73,7 +73,7 @@ fn dispatch(cx, state) {
                 if path == "/users" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r187(cx, state);
+                            app::r187(cx);
                         };
                         return;
                     }
@@ -85,7 +85,7 @@ fn dispatch(cx, state) {
                 if path == "/events" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r8(cx, state);
+                            app::r8(cx);
                         };
                         return;
                     }
@@ -95,7 +95,7 @@ fn dispatch(cx, state) {
                 if path == "/issues" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r60(cx, state);
+                            app::r60(cx);
                         };
                         return;
                     }
@@ -105,7 +105,7 @@ fn dispatch(cx, state) {
                 if path == "/emojis" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r85(cx, state);
+                            app::r85(cx);
                         };
                         return;
                     }
@@ -117,7 +117,7 @@ fn dispatch(cx, state) {
                 if path == "/markdown" {
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r88(cx, state);
+                            app::r88(cx);
                         };
                         return;
                     }
@@ -129,7 +129,7 @@ fn dispatch(cx, state) {
                 if path == "/user/orgs" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r93(cx, state);
+                            app::r93(cx);
                         };
                         return;
                     }
@@ -139,13 +139,13 @@ fn dispatch(cx, state) {
                 if path == "/user/keys" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r200(cx, state);
+                            app::r200(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r202(cx, state);
+                            app::r202(cx);
                         };
                         return;
                     }
@@ -157,7 +157,7 @@ fn dispatch(cx, state) {
                 if path == "/rate_limit" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r91(cx, state);
+                            app::r91(cx);
                         };
                         return;
                     }
@@ -167,7 +167,7 @@ fn dispatch(cx, state) {
                 if path == "/user/teams" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r114(cx, state);
+                            app::r114(cx);
                         };
                         return;
                     }
@@ -177,13 +177,13 @@ fn dispatch(cx, state) {
                 if path == "/user/repos" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r124(cx, state);
+                            app::r124(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r128(cx, state);
+                            app::r128(cx);
                         };
                         return;
                     }
@@ -195,7 +195,7 @@ fn dispatch(cx, state) {
                 if path == "/user/issues" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r61(cx, state);
+                            app::r61(cx);
                         };
                         return;
                     }
@@ -205,7 +205,7 @@ fn dispatch(cx, state) {
                 if path == "/search/code" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r178(cx, state);
+                            app::r178(cx);
                         };
                         return;
                     }
@@ -215,19 +215,19 @@ fn dispatch(cx, state) {
                 if path == "/user/emails" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r188(cx, state);
+                            app::r188(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r189(cx, state);
+                            app::r189(cx);
                         };
                         return;
                     }
                     if m == "DELETE" {
                         rest::route(cx) {
-                            app::r190(cx, state);
+                            app::r190(cx);
                         };
                         return;
                     }
@@ -239,7 +239,7 @@ fn dispatch(cx, state) {
                 if path == "/user/starred" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r28(cx, state);
+                            app::r28(cx);
                         };
                         return;
                     }
@@ -249,7 +249,7 @@ fn dispatch(cx, state) {
                 if path == "/markdown/raw" {
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r89(cx, state);
+                            app::r89(cx);
                         };
                         return;
                     }
@@ -259,7 +259,7 @@ fn dispatch(cx, state) {
                 if path == "/repositories" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r127(cx, state);
+                            app::r127(cx);
                         };
                         return;
                     }
@@ -269,7 +269,7 @@ fn dispatch(cx, state) {
                 if path == "/search/users" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r180(cx, state);
+                            app::r180(cx);
                         };
                         return;
                     }
@@ -281,13 +281,13 @@ fn dispatch(cx, state) {
                 if path == "/notifications" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r18(cx, state);
+                            app::r18(cx);
                         };
                         return;
                     }
                     if m == "PUT" {
                         rest::route(cx) {
-                            app::r20(cx, state);
+                            app::r20(cx);
                         };
                         return;
                     }
@@ -297,7 +297,7 @@ fn dispatch(cx, state) {
                 if path == "/search/issues" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r179(cx, state);
+                            app::r179(cx);
                         };
                         return;
                     }
@@ -309,13 +309,13 @@ fn dispatch(cx, state) {
                 if path == "/authorizations" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r1(cx, state);
+                            app::r1(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r3(cx, state);
+                            app::r3(cx);
                         };
                         return;
                     }
@@ -325,7 +325,7 @@ fn dispatch(cx, state) {
                 if path == "/user/followers" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r192(cx, state);
+                            app::r192(cx);
                         };
                         return;
                     }
@@ -335,7 +335,7 @@ fn dispatch(cx, state) {
                 if path == "/user/following" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r194(cx, state);
+                            app::r194(cx);
                         };
                         return;
                     }
@@ -347,7 +347,7 @@ fn dispatch(cx, state) {
                 if path == "/user/subscriptions" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r34(cx, state);
+                            app::r34(cx);
                         };
                         return;
                     }
@@ -359,7 +359,7 @@ fn dispatch(cx, state) {
                 if path == "/gitignore/templates" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r86(cx, state);
+                            app::r86(cx);
                         };
                         return;
                     }
@@ -369,7 +369,7 @@ fn dispatch(cx, state) {
                 if path == "/search/repositories" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r177(cx, state);
+                            app::r177(cx);
                         };
                         return;
                     }
@@ -388,13 +388,13 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r1(cx, state);
+                            app::r1(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r3(cx, state);
+                            app::r3(cx);
                         };
                         return;
                     }
@@ -408,14 +408,14 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let id = rest::path_str(cx, s2, "id");
-                                    app::r2(cx, state, id);
+                                    app::r2(cx, id);
                                 };
                                 return;
                             }
                             if m == "DELETE" {
                                 rest::route(cx) {
                                     let id = rest::path_str(cx, s2, "id");
-                                    app::r4(cx, state, id);
+                                    app::r4(cx, id);
                                 };
                                 return;
                             }
@@ -436,7 +436,7 @@ fn dispatch(cx, state) {
                                     if m == "DELETE" {
                                         rest::route(cx) {
                                             let client_id = rest::path_str(cx, s2, "client_id");
-                                            app::r6(cx, state, client_id);
+                                            app::r6(cx, client_id);
                                         };
                                         return;
                                     }
@@ -451,7 +451,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let client_id = rest::path_str(cx, s2, "client_id");
                                                     let access_token = rest::path_str(cx, s4, "access_token");
-                                                    app::r5(cx, state, client_id, access_token);
+                                                    app::r5(cx, client_id, access_token);
                                                 };
                                                 return;
                                             }
@@ -459,7 +459,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let client_id = rest::path_str(cx, s2, "client_id");
                                                     let access_token = rest::path_str(cx, s4, "access_token");
-                                                    app::r7(cx, state, client_id, access_token);
+                                                    app::r7(cx, client_id, access_token);
                                                 };
                                                 return;
                                             }
@@ -477,7 +477,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r8(cx, state);
+                            app::r8(cx);
                         };
                         return;
                     }
@@ -497,7 +497,7 @@ fn dispatch(cx, state) {
                                         rest::route(cx) {
                                             let owner = rest::path_str(cx, s2, "owner");
                                             let repo = rest::path_str(cx, s3, "repo");
-                                            app::r130(cx, state, owner, repo);
+                                            app::r130(cx, owner, repo);
                                         };
                                         return;
                                     }
@@ -505,7 +505,7 @@ fn dispatch(cx, state) {
                                         rest::route(cx) {
                                             let owner = rest::path_str(cx, s2, "owner");
                                             let repo = rest::path_str(cx, s3, "repo");
-                                            app::r137(cx, state, owner, repo);
+                                            app::r137(cx, owner, repo);
                                         };
                                         return;
                                     }
@@ -520,7 +520,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r9(cx, state, owner, repo);
+                                                    app::r9(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -534,7 +534,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r19(cx, state, owner, repo);
+                                                    app::r19(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -542,7 +542,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r21(cx, state, owner, repo);
+                                                    app::r21(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -556,7 +556,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r26(cx, state, owner, repo);
+                                                    app::r26(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -570,7 +570,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r32(cx, state, owner, repo);
+                                                    app::r32(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -584,7 +584,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r35(cx, state, owner, repo);
+                                                    app::r35(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -592,7 +592,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r36(cx, state, owner, repo);
+                                                    app::r36(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -600,7 +600,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r37(cx, state, owner, repo);
+                                                    app::r37(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -617,7 +617,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r51(cx, state, owner, repo);
+                                                            app::r51(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -633,7 +633,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r50(cx, state, owner, repo, sha);
+                                                                    app::r50(cx, owner, repo, sha);
                                                                 };
                                                                 return;
                                                             }
@@ -649,7 +649,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r53(cx, state, owner, repo);
+                                                            app::r53(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -665,7 +665,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r52(cx, state, owner, repo, sha);
+                                                                    app::r52(cx, owner, repo, sha);
                                                                 };
                                                                 return;
                                                             }
@@ -681,7 +681,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r54(cx, state, owner, repo);
+                                                            app::r54(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -689,7 +689,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r55(cx, state, owner, repo);
+                                                            app::r55(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -703,7 +703,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r57(cx, state, owner, repo);
+                                                            app::r57(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -719,7 +719,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r56(cx, state, owner, repo, sha);
+                                                                    app::r56(cx, owner, repo, sha);
                                                                 };
                                                                 return;
                                                             }
@@ -735,7 +735,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r59(cx, state, owner, repo);
+                                                            app::r59(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -751,7 +751,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r58(cx, state, owner, repo, sha);
+                                                                    app::r58(cx, owner, repo, sha);
                                                                 };
                                                                 return;
                                                             }
@@ -769,7 +769,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r63(cx, state, owner, repo);
+                                                    app::r63(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -777,7 +777,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r65(cx, state, owner, repo);
+                                                    app::r65(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -793,7 +793,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let number = rest::path_str(cx, s5, "number");
-                                                            app::r64(cx, state, owner, repo, number);
+                                                            app::r64(cx, owner, repo, number);
                                                         };
                                                         return;
                                                     }
@@ -809,7 +809,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r68(cx, state, owner, repo, number);
+                                                                    app::r68(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -818,7 +818,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r69(cx, state, owner, repo, number);
+                                                                    app::r69(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -833,7 +833,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r70(cx, state, owner, repo, number);
+                                                                    app::r70(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -848,7 +848,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r75(cx, state, owner, repo, number);
+                                                                    app::r75(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -857,7 +857,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r76(cx, state, owner, repo, number);
+                                                                    app::r76(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -866,7 +866,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r78(cx, state, owner, repo, number);
+                                                                    app::r78(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -875,7 +875,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r79(cx, state, owner, repo, number);
+                                                                    app::r79(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -892,7 +892,7 @@ fn dispatch(cx, state) {
                                                                             let repo = rest::path_str(cx, s3, "repo");
                                                                             let number = rest::path_str(cx, s5, "number");
                                                                             let name = rest::path_str(cx, s7, "name");
-                                                                            app::r77(cx, state, owner, repo, number, name);
+                                                                            app::r77(cx, owner, repo, number, name);
                                                                         };
                                                                         return;
                                                                     }
@@ -912,7 +912,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r66(cx, state, owner, repo);
+                                                    app::r66(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -928,7 +928,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let assignee = rest::path_str(cx, s5, "assignee");
-                                                            app::r67(cx, state, owner, repo, assignee);
+                                                            app::r67(cx, owner, repo, assignee);
                                                         };
                                                         return;
                                                     }
@@ -944,7 +944,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r71(cx, state, owner, repo);
+                                                    app::r71(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -952,7 +952,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r73(cx, state, owner, repo);
+                                                    app::r73(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -968,7 +968,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let name = rest::path_str(cx, s5, "name");
-                                                            app::r72(cx, state, owner, repo, name);
+                                                            app::r72(cx, owner, repo, name);
                                                         };
                                                         return;
                                                     }
@@ -977,7 +977,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let name = rest::path_str(cx, s5, "name");
-                                                            app::r74(cx, state, owner, repo, name);
+                                                            app::r74(cx, owner, repo, name);
                                                         };
                                                         return;
                                                     }
@@ -993,7 +993,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r81(cx, state, owner, repo);
+                                                    app::r81(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1001,7 +1001,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r83(cx, state, owner, repo);
+                                                    app::r83(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1017,7 +1017,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let number = rest::path_str(cx, s5, "number");
-                                                            app::r82(cx, state, owner, repo, number);
+                                                            app::r82(cx, owner, repo, number);
                                                         };
                                                         return;
                                                     }
@@ -1026,7 +1026,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let number = rest::path_str(cx, s5, "number");
-                                                            app::r84(cx, state, owner, repo, number);
+                                                            app::r84(cx, owner, repo, number);
                                                         };
                                                         return;
                                                     }
@@ -1042,7 +1042,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r80(cx, state, owner, repo, number);
+                                                                    app::r80(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1060,7 +1060,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r115(cx, state, owner, repo);
+                                                    app::r115(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1068,7 +1068,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r117(cx, state, owner, repo);
+                                                    app::r117(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1084,7 +1084,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let number = rest::path_str(cx, s5, "number");
-                                                            app::r116(cx, state, owner, repo, number);
+                                                            app::r116(cx, owner, repo, number);
                                                         };
                                                         return;
                                                     }
@@ -1100,7 +1100,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r118(cx, state, owner, repo, number);
+                                                                    app::r118(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1115,7 +1115,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r119(cx, state, owner, repo, number);
+                                                                    app::r119(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1130,7 +1130,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r120(cx, state, owner, repo, number);
+                                                                    app::r120(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1139,7 +1139,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r121(cx, state, owner, repo, number);
+                                                                    app::r121(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1154,7 +1154,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r122(cx, state, owner, repo, number);
+                                                                    app::r122(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1163,7 +1163,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let number = rest::path_str(cx, s5, "number");
-                                                                    app::r123(cx, state, owner, repo, number);
+                                                                    app::r123(cx, owner, repo, number);
                                                                 };
                                                                 return;
                                                             }
@@ -1181,7 +1181,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r131(cx, state, owner, repo);
+                                                    app::r131(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1195,7 +1195,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r132(cx, state, owner, repo);
+                                                    app::r132(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1209,7 +1209,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r133(cx, state, owner, repo);
+                                                    app::r133(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1223,7 +1223,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r134(cx, state, owner, repo);
+                                                    app::r134(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1237,7 +1237,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r135(cx, state, owner, repo);
+                                                    app::r135(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1253,7 +1253,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let branch = rest::path_str(cx, s5, "branch");
-                                                            app::r136(cx, state, owner, repo, branch);
+                                                            app::r136(cx, owner, repo, branch);
                                                         };
                                                         return;
                                                     }
@@ -1269,7 +1269,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r138(cx, state, owner, repo);
+                                                    app::r138(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1285,7 +1285,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let user = rest::path_str(cx, s5, "user");
-                                                            app::r139(cx, state, owner, repo, user);
+                                                            app::r139(cx, owner, repo, user);
                                                         };
                                                         return;
                                                     }
@@ -1294,7 +1294,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let user = rest::path_str(cx, s5, "user");
-                                                            app::r140(cx, state, owner, repo, user);
+                                                            app::r140(cx, owner, repo, user);
                                                         };
                                                         return;
                                                     }
@@ -1303,7 +1303,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let user = rest::path_str(cx, s5, "user");
-                                                            app::r141(cx, state, owner, repo, user);
+                                                            app::r141(cx, owner, repo, user);
                                                         };
                                                         return;
                                                     }
@@ -1319,7 +1319,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r142(cx, state, owner, repo);
+                                                    app::r142(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1335,7 +1335,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r145(cx, state, owner, repo, id);
+                                                            app::r145(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1344,7 +1344,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r146(cx, state, owner, repo, id);
+                                                            app::r146(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1360,7 +1360,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r147(cx, state, owner, repo);
+                                                    app::r147(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1376,7 +1376,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let sha = rest::path_str(cx, s5, "sha");
-                                                            app::r148(cx, state, owner, repo, sha);
+                                                            app::r148(cx, owner, repo, sha);
                                                         };
                                                         return;
                                                     }
@@ -1392,7 +1392,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let sha = rest::path_str(cx, s5, "sha");
-                                                                    app::r143(cx, state, owner, repo, sha);
+                                                                    app::r143(cx, owner, repo, sha);
                                                                 };
                                                                 return;
                                                             }
@@ -1401,7 +1401,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let sha = rest::path_str(cx, s5, "sha");
-                                                                    app::r144(cx, state, owner, repo, sha);
+                                                                    app::r144(cx, owner, repo, sha);
                                                                 };
                                                                 return;
                                                             }
@@ -1419,7 +1419,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r149(cx, state, owner, repo);
+                                                    app::r149(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1433,7 +1433,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r150(cx, state, owner, repo);
+                                                    app::r150(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1441,7 +1441,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r152(cx, state, owner, repo);
+                                                    app::r152(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1457,7 +1457,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r151(cx, state, owner, repo, id);
+                                                            app::r151(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1466,7 +1466,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r153(cx, state, owner, repo, id);
+                                                            app::r153(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1482,7 +1482,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r154(cx, state, owner, repo);
+                                                    app::r154(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1498,7 +1498,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r155(cx, state, owner, repo, id);
+                                                            app::r155(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1507,7 +1507,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r156(cx, state, owner, repo, id);
+                                                            app::r156(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1523,7 +1523,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r157(cx, state, owner, repo);
+                                                    app::r157(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1531,7 +1531,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r158(cx, state, owner, repo);
+                                                    app::r158(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1545,7 +1545,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r159(cx, state, owner, repo);
+                                                    app::r159(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1553,7 +1553,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r161(cx, state, owner, repo);
+                                                    app::r161(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1569,7 +1569,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r160(cx, state, owner, repo, id);
+                                                            app::r160(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1578,7 +1578,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r163(cx, state, owner, repo, id);
+                                                            app::r163(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1594,7 +1594,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let id = rest::path_str(cx, s5, "id");
-                                                                    app::r162(cx, state, owner, repo, id);
+                                                                    app::r162(cx, owner, repo, id);
                                                                 };
                                                                 return;
                                                             }
@@ -1612,7 +1612,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r164(cx, state, owner, repo);
+                                                    app::r164(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1626,7 +1626,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r165(cx, state, owner, repo);
+                                                    app::r165(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1634,7 +1634,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r167(cx, state, owner, repo);
+                                                    app::r167(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1650,7 +1650,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r166(cx, state, owner, repo, id);
+                                                            app::r166(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1659,7 +1659,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let id = rest::path_str(cx, s5, "id");
-                                                            app::r168(cx, state, owner, repo, id);
+                                                            app::r168(cx, owner, repo, id);
                                                         };
                                                         return;
                                                     }
@@ -1675,7 +1675,7 @@ fn dispatch(cx, state) {
                                                                     let owner = rest::path_str(cx, s2, "owner");
                                                                     let repo = rest::path_str(cx, s3, "repo");
                                                                     let id = rest::path_str(cx, s5, "id");
-                                                                    app::r169(cx, state, owner, repo, id);
+                                                                    app::r169(cx, owner, repo, id);
                                                                 };
                                                                 return;
                                                             }
@@ -1696,7 +1696,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r170(cx, state, owner, repo);
+                                                            app::r170(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -1710,7 +1710,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r171(cx, state, owner, repo);
+                                                            app::r171(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -1724,7 +1724,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r172(cx, state, owner, repo);
+                                                            app::r172(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -1738,7 +1738,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r173(cx, state, owner, repo);
+                                                            app::r173(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -1752,7 +1752,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r174(cx, state, owner, repo);
+                                                            app::r174(cx, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -1772,7 +1772,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let ref = rest::path_str(cx, s5, "ref");
-                                                            app::r175(cx, state, owner, repo, ref);
+                                                            app::r175(cx, owner, repo, ref);
                                                         };
                                                         return;
                                                     }
@@ -1781,7 +1781,7 @@ fn dispatch(cx, state) {
                                                             let owner = rest::path_str(cx, s2, "owner");
                                                             let repo = rest::path_str(cx, s3, "repo");
                                                             let ref = rest::path_str(cx, s5, "ref");
-                                                            app::r176(cx, state, owner, repo, ref);
+                                                            app::r176(cx, owner, repo, ref);
                                                         };
                                                         return;
                                                     }
@@ -1812,7 +1812,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s2, "owner");
                                                     let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r10(cx, state, owner, repo);
+                                                    app::r10(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -1834,7 +1834,7 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let org = rest::path_str(cx, s2, "org");
-                                    app::r94(cx, state, org);
+                                    app::r94(cx, org);
                                 };
                                 return;
                             }
@@ -1848,7 +1848,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r11(cx, state, org);
+                                            app::r11(cx, org);
                                         };
                                         return;
                                     }
@@ -1861,7 +1861,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r62(cx, state, org);
+                                            app::r62(cx, org);
                                         };
                                         return;
                                     }
@@ -1874,7 +1874,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r95(cx, state, org);
+                                            app::r95(cx, org);
                                         };
                                         return;
                                     }
@@ -1889,7 +1889,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let org = rest::path_str(cx, s2, "org");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r96(cx, state, org, user);
+                                                    app::r96(cx, org, user);
                                                 };
                                                 return;
                                             }
@@ -1897,7 +1897,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let org = rest::path_str(cx, s2, "org");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r97(cx, state, org, user);
+                                                    app::r97(cx, org, user);
                                                 };
                                                 return;
                                             }
@@ -1912,7 +1912,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r98(cx, state, org);
+                                            app::r98(cx, org);
                                         };
                                         return;
                                     }
@@ -1927,7 +1927,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let org = rest::path_str(cx, s2, "org");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r99(cx, state, org, user);
+                                                    app::r99(cx, org, user);
                                                 };
                                                 return;
                                             }
@@ -1935,7 +1935,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let org = rest::path_str(cx, s2, "org");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r100(cx, state, org, user);
+                                                    app::r100(cx, org, user);
                                                 };
                                                 return;
                                             }
@@ -1943,7 +1943,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let org = rest::path_str(cx, s2, "org");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r101(cx, state, org, user);
+                                                    app::r101(cx, org, user);
                                                 };
                                                 return;
                                             }
@@ -1958,14 +1958,14 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r102(cx, state, org);
+                                            app::r102(cx, org);
                                         };
                                         return;
                                     }
                                     if m == "POST" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r104(cx, state, org);
+                                            app::r104(cx, org);
                                         };
                                         return;
                                     }
@@ -1978,14 +1978,14 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r126(cx, state, org);
+                                            app::r126(cx, org);
                                         };
                                         return;
                                     }
                                     if m == "POST" {
                                         rest::route(cx) {
                                             let org = rest::path_str(cx, s2, "org");
-                                            app::r129(cx, state, org);
+                                            app::r129(cx, org);
                                         };
                                         return;
                                     }
@@ -2001,7 +2001,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r187(cx, state);
+                            app::r187(cx);
                         };
                         return;
                     }
@@ -2015,7 +2015,7 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let user = rest::path_str(cx, s2, "user");
-                                    app::r185(cx, state, user);
+                                    app::r185(cx, user);
                                 };
                                 return;
                             }
@@ -2029,7 +2029,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r12(cx, state, user);
+                                            app::r12(cx, user);
                                         };
                                         return;
                                     }
@@ -2043,7 +2043,7 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let user = rest::path_str(cx, s2, "user");
-                                                    app::r13(cx, state, user);
+                                                    app::r13(cx, user);
                                                 };
                                                 return;
                                             }
@@ -2058,7 +2058,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r14(cx, state, user);
+                                            app::r14(cx, user);
                                         };
                                         return;
                                     }
@@ -2072,7 +2072,7 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let user = rest::path_str(cx, s2, "user");
-                                                    app::r15(cx, state, user);
+                                                    app::r15(cx, user);
                                                 };
                                                 return;
                                             }
@@ -2089,7 +2089,7 @@ fn dispatch(cx, state) {
                                                         rest::route(cx) {
                                                             let user = rest::path_str(cx, s2, "user");
                                                             let org = rest::path_str(cx, s5, "org");
-                                                            app::r16(cx, state, user, org);
+                                                            app::r16(cx, user, org);
                                                         };
                                                         return;
                                                     }
@@ -2106,7 +2106,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r27(cx, state, user);
+                                            app::r27(cx, user);
                                         };
                                         return;
                                     }
@@ -2119,7 +2119,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r33(cx, state, user);
+                                            app::r33(cx, user);
                                         };
                                         return;
                                     }
@@ -2132,7 +2132,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r41(cx, state, user);
+                                            app::r41(cx, user);
                                         };
                                         return;
                                     }
@@ -2145,7 +2145,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r92(cx, state, user);
+                                            app::r92(cx, user);
                                         };
                                         return;
                                     }
@@ -2158,7 +2158,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r125(cx, state, user);
+                                            app::r125(cx, user);
                                         };
                                         return;
                                     }
@@ -2171,7 +2171,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r191(cx, state, user);
+                                            app::r191(cx, user);
                                         };
                                         return;
                                     }
@@ -2184,7 +2184,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r193(cx, state, user);
+                                            app::r193(cx, user);
                                         };
                                         return;
                                     }
@@ -2199,7 +2199,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let user = rest::path_str(cx, s2, "user");
                                                     let target_user = rest::path_str(cx, s4, "target_user");
-                                                    app::r196(cx, state, user, target_user);
+                                                    app::r196(cx, user, target_user);
                                                 };
                                                 return;
                                             }
@@ -2214,7 +2214,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s2, "user");
-                                            app::r199(cx, state, user);
+                                            app::r199(cx, user);
                                         };
                                         return;
                                     }
@@ -2230,7 +2230,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r17(cx, state);
+                            app::r17(cx);
                         };
                         return;
                     }
@@ -2242,13 +2242,13 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r18(cx, state);
+                            app::r18(cx);
                         };
                         return;
                     }
                     if m == "PUT" {
                         rest::route(cx) {
-                            app::r20(cx, state);
+                            app::r20(cx);
                         };
                         return;
                     }
@@ -2265,7 +2265,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s3, "id");
-                                            app::r22(cx, state, id);
+                                            app::r22(cx, id);
                                         };
                                         return;
                                     }
@@ -2279,21 +2279,21 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let id = rest::path_str(cx, s3, "id");
-                                                    app::r23(cx, state, id);
+                                                    app::r23(cx, id);
                                                 };
                                                 return;
                                             }
                                             if m == "PUT" {
                                                 rest::route(cx) {
                                                     let id = rest::path_str(cx, s3, "id");
-                                                    app::r24(cx, state, id);
+                                                    app::r24(cx, id);
                                                 };
                                                 return;
                                             }
                                             if m == "DELETE" {
                                                 rest::route(cx) {
                                                     let id = rest::path_str(cx, s3, "id");
-                                                    app::r25(cx, state, id);
+                                                    app::r25(cx, id);
                                                 };
                                                 return;
                                             }
@@ -2311,7 +2311,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r186(cx, state);
+                            app::r186(cx);
                         };
                         return;
                     }
@@ -2324,7 +2324,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r28(cx, state);
+                                    app::r28(cx);
                                 };
                                 return;
                             }
@@ -2342,7 +2342,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s3, "owner");
                                                     let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r29(cx, state, owner, repo);
+                                                    app::r29(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -2350,7 +2350,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s3, "owner");
                                                     let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r30(cx, state, owner, repo);
+                                                    app::r30(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -2358,7 +2358,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s3, "owner");
                                                     let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r31(cx, state, owner, repo);
+                                                    app::r31(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -2374,7 +2374,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r34(cx, state);
+                                    app::r34(cx);
                                 };
                                 return;
                             }
@@ -2392,7 +2392,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s3, "owner");
                                                     let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r38(cx, state, owner, repo);
+                                                    app::r38(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -2400,7 +2400,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s3, "owner");
                                                     let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r39(cx, state, owner, repo);
+                                                    app::r39(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -2408,7 +2408,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let owner = rest::path_str(cx, s3, "owner");
                                                     let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r40(cx, state, owner, repo);
+                                                    app::r40(cx, owner, repo);
                                                 };
                                                 return;
                                             }
@@ -2424,7 +2424,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r61(cx, state);
+                                    app::r61(cx);
                                 };
                                 return;
                             }
@@ -2436,7 +2436,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r93(cx, state);
+                                    app::r93(cx);
                                 };
                                 return;
                             }
@@ -2448,7 +2448,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r114(cx, state);
+                                    app::r114(cx);
                                 };
                                 return;
                             }
@@ -2460,13 +2460,13 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r124(cx, state);
+                                    app::r124(cx);
                                 };
                                 return;
                             }
                             if m == "POST" {
                                 rest::route(cx) {
-                                    app::r128(cx, state);
+                                    app::r128(cx);
                                 };
                                 return;
                             }
@@ -2478,19 +2478,19 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r188(cx, state);
+                                    app::r188(cx);
                                 };
                                 return;
                             }
                             if m == "POST" {
                                 rest::route(cx) {
-                                    app::r189(cx, state);
+                                    app::r189(cx);
                                 };
                                 return;
                             }
                             if m == "DELETE" {
                                 rest::route(cx) {
-                                    app::r190(cx, state);
+                                    app::r190(cx);
                                 };
                                 return;
                             }
@@ -2502,7 +2502,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r192(cx, state);
+                                    app::r192(cx);
                                 };
                                 return;
                             }
@@ -2514,7 +2514,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r194(cx, state);
+                                    app::r194(cx);
                                 };
                                 return;
                             }
@@ -2528,21 +2528,21 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s3, "user");
-                                            app::r195(cx, state, user);
+                                            app::r195(cx, user);
                                         };
                                         return;
                                     }
                                     if m == "PUT" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s3, "user");
-                                            app::r197(cx, state, user);
+                                            app::r197(cx, user);
                                         };
                                         return;
                                     }
                                     if m == "DELETE" {
                                         rest::route(cx) {
                                             let user = rest::path_str(cx, s3, "user");
-                                            app::r198(cx, state, user);
+                                            app::r198(cx, user);
                                         };
                                         return;
                                     }
@@ -2556,13 +2556,13 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r200(cx, state);
+                                    app::r200(cx);
                                 };
                                 return;
                             }
                             if m == "POST" {
                                 rest::route(cx) {
-                                    app::r202(cx, state);
+                                    app::r202(cx);
                                 };
                                 return;
                             }
@@ -2576,14 +2576,14 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s3, "id");
-                                            app::r201(cx, state, id);
+                                            app::r201(cx, id);
                                         };
                                         return;
                                     }
                                     if m == "DELETE" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s3, "id");
-                                            app::r203(cx, state, id);
+                                            app::r203(cx, id);
                                         };
                                         return;
                                     }
@@ -2599,13 +2599,13 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r42(cx, state);
+                            app::r42(cx);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r44(cx, state);
+                            app::r44(cx);
                         };
                         return;
                     }
@@ -2619,14 +2619,14 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let id = rest::path_str(cx, s2, "id");
-                                    app::r43(cx, state, id);
+                                    app::r43(cx, id);
                                 };
                                 return;
                             }
                             if m == "DELETE" {
                                 rest::route(cx) {
                                     let id = rest::path_str(cx, s2, "id");
-                                    app::r49(cx, state, id);
+                                    app::r49(cx, id);
                                 };
                                 return;
                             }
@@ -2640,21 +2640,21 @@ fn dispatch(cx, state) {
                                     if m == "PUT" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s2, "id");
-                                            app::r45(cx, state, id);
+                                            app::r45(cx, id);
                                         };
                                         return;
                                     }
                                     if m == "DELETE" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s2, "id");
-                                            app::r46(cx, state, id);
+                                            app::r46(cx, id);
                                         };
                                         return;
                                     }
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s2, "id");
-                                            app::r47(cx, state, id);
+                                            app::r47(cx, id);
                                         };
                                         return;
                                     }
@@ -2667,7 +2667,7 @@ fn dispatch(cx, state) {
                                     if m == "POST" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s2, "id");
-                                            app::r48(cx, state, id);
+                                            app::r48(cx, id);
                                         };
                                         return;
                                     }
@@ -2683,7 +2683,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r60(cx, state);
+                            app::r60(cx);
                         };
                         return;
                     }
@@ -2695,7 +2695,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r85(cx, state);
+                            app::r85(cx);
                         };
                         return;
                     }
@@ -2710,7 +2710,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r86(cx, state);
+                                    app::r86(cx);
                                 };
                                 return;
                             }
@@ -2724,7 +2724,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let name = rest::path_str(cx, s3, "name");
-                                            app::r87(cx, state, name);
+                                            app::r87(cx, name);
                                         };
                                         return;
                                     }
@@ -2740,7 +2740,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "POST" {
                         rest::route(cx) {
-                            app::r88(cx, state);
+                            app::r88(cx);
                         };
                         return;
                     }
@@ -2753,7 +2753,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "POST" {
                                 rest::route(cx) {
-                                    app::r89(cx, state);
+                                    app::r89(cx);
                                 };
                                 return;
                             }
@@ -2767,7 +2767,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r90(cx, state);
+                            app::r90(cx);
                         };
                         return;
                     }
@@ -2779,7 +2779,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r91(cx, state);
+                            app::r91(cx);
                         };
                         return;
                     }
@@ -2795,14 +2795,14 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let id = rest::path_str(cx, s2, "id");
-                                    app::r103(cx, state, id);
+                                    app::r103(cx, id);
                                 };
                                 return;
                             }
                             if m == "DELETE" {
                                 rest::route(cx) {
                                     let id = rest::path_str(cx, s2, "id");
-                                    app::r105(cx, state, id);
+                                    app::r105(cx, id);
                                 };
                                 return;
                             }
@@ -2816,7 +2816,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s2, "id");
-                                            app::r106(cx, state, id);
+                                            app::r106(cx, id);
                                         };
                                         return;
                                     }
@@ -2831,7 +2831,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let id = rest::path_str(cx, s2, "id");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r107(cx, state, id, user);
+                                                    app::r107(cx, id, user);
                                                 };
                                                 return;
                                             }
@@ -2839,7 +2839,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let id = rest::path_str(cx, s2, "id");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r108(cx, state, id, user);
+                                                    app::r108(cx, id, user);
                                                 };
                                                 return;
                                             }
@@ -2847,7 +2847,7 @@ fn dispatch(cx, state) {
                                                 rest::route(cx) {
                                                     let id = rest::path_str(cx, s2, "id");
                                                     let user = rest::path_str(cx, s4, "user");
-                                                    app::r109(cx, state, id, user);
+                                                    app::r109(cx, id, user);
                                                 };
                                                 return;
                                             }
@@ -2862,7 +2862,7 @@ fn dispatch(cx, state) {
                                     if m == "GET" || m == "HEAD" {
                                         rest::route(cx) {
                                             let id = rest::path_str(cx, s2, "id");
-                                            app::r110(cx, state, id);
+                                            app::r110(cx, id);
                                         };
                                         return;
                                     }
@@ -2881,7 +2881,7 @@ fn dispatch(cx, state) {
                                                             let id = rest::path_str(cx, s2, "id");
                                                             let owner = rest::path_str(cx, s4, "owner");
                                                             let repo = rest::path_str(cx, s5, "repo");
-                                                            app::r111(cx, state, id, owner, repo);
+                                                            app::r111(cx, id, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -2890,7 +2890,7 @@ fn dispatch(cx, state) {
                                                             let id = rest::path_str(cx, s2, "id");
                                                             let owner = rest::path_str(cx, s4, "owner");
                                                             let repo = rest::path_str(cx, s5, "repo");
-                                                            app::r112(cx, state, id, owner, repo);
+                                                            app::r112(cx, id, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -2899,7 +2899,7 @@ fn dispatch(cx, state) {
                                                             let id = rest::path_str(cx, s2, "id");
                                                             let owner = rest::path_str(cx, s4, "owner");
                                                             let repo = rest::path_str(cx, s5, "repo");
-                                                            app::r113(cx, state, id, owner, repo);
+                                                            app::r113(cx, id, owner, repo);
                                                         };
                                                         return;
                                                     }
@@ -2919,7 +2919,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::r127(cx, state);
+                            app::r127(cx);
                         };
                         return;
                     }
@@ -2934,7 +2934,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r177(cx, state);
+                                    app::r177(cx);
                                 };
                                 return;
                             }
@@ -2946,7 +2946,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r178(cx, state);
+                                    app::r178(cx);
                                 };
                                 return;
                             }
@@ -2958,7 +2958,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r179(cx, state);
+                                    app::r179(cx);
                                 };
                                 return;
                             }
@@ -2970,7 +2970,7 @@ fn dispatch(cx, state) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
-                                    app::r180(cx, state);
+                                    app::r180(cx);
                                 };
                                 return;
                             }
@@ -3006,7 +3006,7 @@ fn dispatch(cx, state) {
                                                                             let repository = rest::path_str(cx, s5, "repository");
                                                                             let state_ = rest::path_str(cx, s6, "state_");
                                                                             let keyword = rest::path_str(cx, s7, "keyword");
-                                                                            app::r181(cx, state, owner, repository, state_, keyword);
+                                                                            app::r181(cx, owner, repository, state_, keyword);
                                                                         };
                                                                         return;
                                                                     }
@@ -3035,7 +3035,7 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let keyword = rest::path_str(cx, s4, "keyword");
-                                                    app::r182(cx, state, keyword);
+                                                    app::r182(cx, keyword);
                                                 };
                                                 return;
                                             }
@@ -3058,7 +3058,7 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let keyword = rest::path_str(cx, s4, "keyword");
-                                                    app::r183(cx, state, keyword);
+                                                    app::r183(cx, keyword);
                                                 };
                                                 return;
                                             }
@@ -3076,7 +3076,7 @@ fn dispatch(cx, state) {
                                             if m == "GET" || m == "HEAD" {
                                                 rest::route(cx) {
                                                     let email = rest::path_str(cx, s4, "email");
-                                                    app::r184(cx, state, email);
+                                                    app::r184(cx, email);
                                                 };
                                                 return;
                                             }

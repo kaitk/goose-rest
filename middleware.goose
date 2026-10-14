@@ -71,7 +71,7 @@ fn origin_in(list: const u8[:], origin: const u8[:]) -> bool {
 // answer written after F returns, at a WAKE, gets no CORS fields.
 //
 //   rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { ... };
-inline fn cors<S, R, F>(cx: Cx<S, R>&, c: Cors) {   // a reference: the block sees the caller's cx.out
+inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the block sees the caller's cx.out
     let origin, has_origin = http::field_of(cx.req, "origin");
     let common = cx.out.common;
     if has_origin {
@@ -169,10 +169,10 @@ inline fn timed<F>(cx, log: bool = true) {
 }
 
 // Whether the request is method on a path pattern matches, as http::on
-// takes them, against the router of the rest::routes block around it.
-// A pattern that matches with another method adds the method
-// to the router's Allow, which rest::otherwise answers with.
-fn on<S>(cx: Cx<S, http::Router>&, method: const u8[:], pattern: const u8[:]) -> bool {
+// takes them, against the router of the rest::routes block around it, the
+// only context that has one. A pattern that matches with another method adds
+// the method to the router's Allow, which rest::otherwise answers with.
+fn on<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], pattern: const u8[:]) -> bool {
     return http::on(cx.router, method, pattern);
 }
 
@@ -186,7 +186,7 @@ fn on<S>(cx: Cx<S, http::Router>&, method: const u8[:], pattern: const u8[:]) ->
 //           else { rest::otherwise(cx); }
 //       } else { rest::otherwise(cx); }
 //   };
-fn scope<S>(cx: Cx<S, http::Router>&, prefix: const u8[:]) -> bool {
+fn scope<S, A>(cx: Cx<S, A, http::Router>&, prefix: const u8[:]) -> bool {
     return narrowed(cx.router, prefix);
 }
 

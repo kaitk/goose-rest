@@ -27,11 +27,11 @@ import .app;
 
 thread_fn worker(cfg: http::Config, b: app::Board) {
     var settings = api::Settings { name: "device", brightness: 0, interval_ms: 1000 };
-    var state = app::App { board: b, settings: settings };
-    let e = rest::serve(cfg) { cx =>
+    var app = app::App { board: b, settings: settings };
+    let e = rest::serve(cfg, app) { cx =>
         rest::timed(cx) {
             rest::cors(cx, rest::Cors { origins: "https://fleet.example", methods: "GET, HEAD, PUT", .. }) {
-                api::dispatch(cx, state);
+                api::dispatch(cx);
             };
         };
     };

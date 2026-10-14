@@ -146,7 +146,7 @@ let MAX_BODY: i64 = 2 * 1024 * 1024;
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,
 // the Allow lists the methods of the program's routes tried before dispatch first.
-fn dispatch(cx, state) {
+fn dispatch(cx) {
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -157,7 +157,7 @@ fn dispatch(cx, state) {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::health(cx, state);
+                            app::health(cx);
                         };
                         return;
                     }
@@ -170,16 +170,16 @@ fn dispatch(cx, state) {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
                             let q_ = rest::take<ListProjectsParams>(cx);
-                            app::list_projects(cx, state, q_);
+                            app::list_projects(cx, q_);
                         };
                         return;
                     }
                     if m == "POST" {
                         rest::route(cx) {
-                            let s_ = app::security_token(cx, state);
+                            let s_ = app::security_token(cx);
                             rest::body(cx, 2 * 1024 * 1024);
                             let body_ = rest::take<ProjectCreate>(cx);
-                            app::create_project(cx, state, s_, body_);
+                            app::create_project(cx, s_, body_);
                         };
                         return;
                     }
@@ -198,7 +198,7 @@ fn dispatch(cx, state) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
                         rest::route(cx) {
-                            app::health(cx, state);
+                            app::health(cx);
                         };
                         return;
                     }
@@ -214,16 +214,16 @@ fn dispatch(cx, state) {
                             if m == "GET" || m == "HEAD" {
                                 rest::route(cx) {
                                     let q_ = rest::take<ListProjectsParams>(cx);
-                                    app::list_projects(cx, state, q_);
+                                    app::list_projects(cx, q_);
                                 };
                                 return;
                             }
                             if m == "POST" {
                                 rest::route(cx) {
-                                    let s_ = app::security_token(cx, state);
+                                    let s_ = app::security_token(cx);
                                     rest::body(cx, 2 * 1024 * 1024);
                                     let body_ = rest::take<ProjectCreate>(cx);
-                                    app::create_project(cx, state, s_, body_);
+                                    app::create_project(cx, s_, body_);
                                 };
                                 return;
                             }
@@ -238,16 +238,16 @@ fn dispatch(cx, state) {
                                         rest::route(cx) {
                                             let id = rest::path_int(cx, s3, "id");
                                             if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_project(cx, state, id);
+                                            app::get_project(cx, id);
                                         };
                                         return;
                                     }
                                     if m == "DELETE" {
                                         rest::route(cx) {
-                                            let s_ = app::security_token(cx, state);
+                                            let s_ = app::security_token(cx);
                                             let id = rest::path_int(cx, s3, "id");
                                             if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_project(cx, state, s_, id);
+                                            app::delete_project(cx, s_, id);
                                         };
                                         return;
                                     }

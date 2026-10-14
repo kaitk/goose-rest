@@ -74,15 +74,15 @@ lines = [
 for n, (method, pattern) in enumerate(routes, 1):
     names = [ident(p) for p in params(pattern)]
     args = "".join(f", {p}" for p in names)
-    lines.append(f"fn r{n}(cx, state{args}) {{ answer(cx, {n}, [{', '.join(names)}]); }}")
-lines += ["", "// The routes as an if chain, in github.txt's order.", "fn chain(cx, state) {",
+    lines.append(f"fn r{n}(cx{args}) {{ answer(cx, {n}, [{', '.join(names)}]); }}")
+lines += ["", "// The routes as an if chain, in github.txt's order.", "fn chain(cx) {",
           "    var r = http::router(cx.req);"]
 for n, (method, pattern) in enumerate(routes, 1):
     names = params(pattern)
     args = "".join(f", rest::param(cx, r, \"{p}\")" for p in names)
     lead = "if" if n == 1 else "} else if"
     lines.append(f"    {lead} http::on(r, \"{method}\", \"{pattern}\") {{")
-    lines.append(f"        r{n}(cx, state{args});")
+    lines.append(f"        r{n}(cx{args});")
 lines += ["    } else {", "        rest::otherwise(cx, r);", "    }", "}", ""]
 with open(os.path.join(out, "github_app.goose"), "w") as f:
     f.write("\n".join(lines))

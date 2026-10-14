@@ -9,18 +9,21 @@ import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d
 
 // A request's context: its head, its body, where its answer goes, the
 // application's per-request state, which goose-http keeps in the
-// connection's slot and starts from fresh for each request, and scratch
-// for what the extractors decode, which lasts until the handler returns.
-// When a route that asked another thread resumes (rest::woken), kind is
+// connection's slot and starts from fresh for each request, the worker's
+// state, app, which every request of the worker shares, and scratch for
+// what the extractors decode, which lasts until the handler returns. When a
+// route that asked another thread resumes (rest::woken), kind is
 // http::WAKE, and reply, tag, and more hold the reply (waiting.goose); req
 // is then empty. slot is the size of a reply message, Config.mail_size.
-// R is http::Router inside rest::routes and NoRouter elsewhere, so route
-// matching and parameter calls require the context routes gives its block.
-struct Cx<S, R> {
+// router is the http::Router of rest::routes' block, R, and a NoRouter
+// elsewhere, so that rest::on and the calls that read a matched route take
+// only the context routes gives its block, or the program doesn't compile.
+struct Cx<S, A, R> {
     req: const http::Request&,
     body: const u8[:],
     out: http::Reply,
     state: S&,
+    app: A&,
     scratch: u8[>..]&,
     kind: u8 = 0,
     reply: const u8[:] = "",
@@ -32,6 +35,7 @@ struct Cx<S, R> {
     router: R&,
 }
 
+// A context's router outside rest::routes: none.
 struct NoRouter { unused: bool = false }
 
 // Runs F(c), c being cx with a router over its request, so that the block's
@@ -42,15 +46,16 @@ struct NoRouter { unused: bool = false }
 //   rest::routes(cx) { cx =>
 //       if rest::on(cx, "GET", "/health") { ... } else { rest::otherwise(cx); }
 //   };
-inline fn routes<S, F>(cx: Cx<S, NoRouter>&) {
+inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     var r = http::router(cx.req);
-    var c = Cx<S, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
-                    scratch: cx.scratch, kind: cx.kind,
-                    reply: cx.reply, tag: cx.tag, more: cx.more, slot: cx.slot, gather: cx.gather, router: r };
+    var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
+                       app: cx.app, scratch: cx.scratch,
+                       kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, slot: cx.slot, gather: cx.gather,
+                       router: r };
     F(&c);   // a block given the local itself gets a copy of it
 }
 
-// The per-request state of a program that keeps none.
+// The per-request state, or the worker's, of a program that keeps none.
 struct NoState { unused: bool = false }
 
 // The most bytes of a body rest::body takes unless a route says otherwise.
@@ -69,27 +74,52 @@ struct Gather {
 }
 
 // goose-http's state for each request: the program's, and the gathering.
-struct Slot<S> { app: S, body: Gather = Gather { .. } }
+struct Slot<S> { state: S, body: Gather = Gather { .. } }
 
 // Serves cfg with goose-http's loop, calling H(cx) for each request, and again
-// when a route that asked another thread gets its reply (waiting.goose). A
-// body that doesn't come with its head is gathered when a route asks for it
-// (rest::body), and H runs again once it's whole. Each worker calls serve,
-// so the spill, a local of this call, is that worker's own.
-fn serve<S, H>(cfg: http::Config, fresh: S) -> http::Error {
+// when a route that asked another thread gets its reply (waiting.goose), with
+// app, the worker's state, in cx.app, and the per-request state, starting
+// from fresh, in cx.state. A body that doesn't come with its head is gathered
+// when a route asks for it (rest::body), and H runs again once it's whole.
+// Each worker calls serve, so the spill, a local of this call, is that
+// worker's own.
+//
+//   var app = App { .. };
+//   rest::serve(cfg, app) { cx => handle(cx) };
+fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
-    return http::serve(cfg, Slot<S> { app: fresh }) { ev, st, out =>
-        on_event(ev, st, out, cfg.mail_size, spill) { cx => H(cx) };
+    return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
+        on_event(ev, st, app, out, cfg.mail_size, spill) { cx => H(cx) };
     };
 }
 
 // serve on goose-http's epoll loop, http::serve_epoll, rather than its
 // io_uring loop.
-fn serve_epoll<S, H>(cfg: http::Config, fresh: S) -> http::Error {
+fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
-    return http::serve_epoll(cfg, Slot<S> { app: fresh }) { ev, st, out =>
-        on_event(ev, st, out, cfg.mail_size, spill) { cx => H(cx) };
+    return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
+        on_event(ev, st, app, out, cfg.mail_size, spill) { cx => H(cx) };
     };
+}
+
+// serve for a program that keeps no per-request state.
+fn serve<A, H>(cfg: http::Config, app: A&) -> http::Error {
+    return serve(cfg, app, NoState { .. }) { cx => H(cx) };
+}
+
+fn serve_epoll<A, H>(cfg: http::Config, app: A&) -> http::Error {
+    return serve_epoll(cfg, app, NoState { .. }) { cx => H(cx) };
+}
+
+// serve for a program that keeps no state.
+fn serve<H>(cfg: http::Config) -> http::Error {
+    var none = NoState { .. };
+    return serve(cfg, none, NoState { .. }) { cx => H(cx) };
+}
+
+fn serve_epoll<H>(cfg: http::Config) -> http::Error {
+    var none = NoState { .. };
+    return serve_epoll(cfg, none, NoState { .. }) { cx => H(cx) };
 }
 
 // What serve does with each of goose-http's events: H(cx) at REQUEST, at the
@@ -97,21 +127,21 @@ fn serve_epoll<S, H>(cfg: http::Config, fresh: S) -> http::Error {
 // pieces of a reply relay sends on itself; and 504 when a reply doesn't come
 // in time. A reply cut short by its time limit leaves the response open, and
 // goose-http closes the connection.
-inline fn on_event<S, H>(ev: http::Event, st: Slot<S>&, out: http::Reply, slot: i64, spill: u8[>..]&) {
+inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, slot: i64, spill: u8[>..]&) {
     if ev.kind == http::WAKE && (ev.tag & REPLY_CONT) != 0 {
         relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
     } else if ev.kind == http::TIMEOUT {
-        if !out.stream.open { write_error(out, st.app, 504, "timeout", "", -1, ""); }
+        if !out.stream.open { write_error(out, st.state, 504, "timeout", "", -1, ""); }
     } else if ev.kind == http::REQUEST || ev.kind == http::WAKE {
         var scratch: u8[>..] = [];
         let wake = ev.kind == http::WAKE;
         st.body.pending = !wake && !ev.whole;
         let mark = out.buf.len;
         var none = NoRouter { .. };
-        var cx = Cx<S, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.app,
-                         scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
-                         tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot, gather: st.body,
-                         router: none };
+        var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.state,
+                                      app: app, scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
+                                      tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot,
+                                      gather: st.body, router: none };
         H(cx);
         if st.body.pending && st.body.limit > 0 {
             if out.buf.len == mark { gather_head(st.body, ev.req, spill); } else { st.body.limit = 0; }
@@ -121,11 +151,11 @@ inline fn on_event<S, H>(ev: http::Event, st: Slot<S>&, out: http::Reply, slot: 
             guard gather_piece(st.body, ev.data, spill) else {
                 release(st.body, spill);
                 out.keep_alive = false;
-                write_error(out, st.app, 413, "payload_too_large", "", -1, "");
+                write_error(out, st.state, 413, "payload_too_large", "", -1, "");
                 return;
             }
         } else if ev.kind == http::END {
-            on_whole(st, out, slot, spill) { cx => H(cx) };
+            on_whole(st, app, out, slot, spill) { cx => H(cx) };
         } else if ev.kind == http::CLOSED {
             release(st.body, spill);
         }
@@ -133,14 +163,15 @@ inline fn on_event<S, H>(ev: http::Event, st: Slot<S>&, out: http::Reply, slot: 
 }
 
 // H(cx) for a gathered body, with the head parsed again from its copy.
-inline fn on_whole<S, H>(st: Slot<S>&, out: http::Reply, slot: i64, spill: u8[>..]&) {
+inline fn on_whole<S, A, H>(st: Slot<S>&, app: A&, out: http::Reply, slot: i64, spill: u8[>..]&) {
     let g = st.body;
     let req, status = http::parse(spill[g.at..g.at + g.head], g.head, g.len);
     st.body.pending = false;
     var scratch: u8[>..] = [];
     var none = NoRouter { .. };
-    var cx = Cx<S, NoRouter> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.app,
-                     scratch: scratch, kind: http::REQUEST, slot: slot, gather: st.body, router: none };
+    var cx = Cx<S, A, NoRouter> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.state,
+                                  app: app, scratch: scratch, kind: http::REQUEST, slot: slot, gather: st.body,
+                                  router: none };
     H(cx);
     release(st.body, spill);
 }
@@ -186,7 +217,7 @@ fn release(g: Gather&, spill: u8[>..]&) {
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
 // runs twice up to its first rest::body.
-fn body<S, R>(cx: Cx<S, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
+fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     var g .= cx.gather;
     guard g else {
         if cx.body.len > limit { fail(cx, 413, "payload_too_large"); }
@@ -199,14 +230,6 @@ fn body<S, R>(cx: Cx<S, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     }
     if cx.body.len > g.limit { fail(cx, 413, "payload_too_large"); }
     return cx.body;
-}
-
-fn serve<H>(cfg: http::Config) -> http::Error {
-    return serve(cfg, NoState { .. }) { cx => H(cx) };
-}
-
-fn serve_epoll<H>(cfg: http::Config) -> http::Error {
-    return serve_epoll(cfg, NoState { .. }) { cx => H(cx) };
 }
 
 // What fail answers with: challenge, when not empty, goes in a
@@ -316,9 +339,9 @@ fn no_method(cx, mine: const u8[:]) {
 }
 
 // The Allow of the routes rest::routes' block tried, "" outside one.
-fn allow_before<S>(cx: const Cx<S, http::Router>&) -> const u8[:] { cx.router.allow }
+fn allow_before<S, A>(cx: const Cx<S, A, http::Router>&) -> const u8[:] { cx.router.allow }
 
-fn allow_before<S>(cx: const Cx<S, NoRouter>&) -> const u8[:] { "" }
+fn allow_before<S, A>(cx: const Cx<S, A, NoRouter>&) -> const u8[:] { "" }
 
 fn allowed(cx, allow: const u8[:]) {
     if cx.req.method == "OPTIONS" {
@@ -404,7 +427,7 @@ fn text(cx, status: i32, s: const u8[:]) {
 // method of a path that did 405 method_not_allowed, with Allow. OPTIONS gets
 // 204 with that Allow, or for "*" without one. Inside rest::routes, as
 // rest::otherwise(cx); a program that builds its own http::router passes it.
-fn otherwise<S>(cx: Cx<S, http::Router>&) { otherwise(cx, cx.router); }
+fn otherwise<S, A>(cx: Cx<S, A, http::Router>&) { otherwise(cx, cx.router); }
 
 fn otherwise(cx, r: const http::Router&) {
     if !http::known_method(r.method) {

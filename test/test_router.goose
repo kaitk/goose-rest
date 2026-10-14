@@ -91,8 +91,7 @@ fn chain_routes(cx) {
 
 // What the generated router, or the if chain, answers to text.
 fn answer(text: const u8[:], generated: bool) -> u8[>..] {
-    var state = rest::NoState { .. };
-    return rest::serve_one(text) { cx => if generated { api::dispatch(cx, state); } else { chain(cx); } };
+    return rest::serve_one(text) { cx => if generated { api::dispatch(cx); } else { chain(cx); } };
 }
 
 fn request(method: const u8[:], target: const u8[:], fields: const u8[:] = "X-Trace: t1\r\n") -> u8[>..] {
@@ -216,21 +215,20 @@ fn test_body() {
 
 // Hand-written routes before dispatch, one on a path of its own and one on a
 // path the schema has, which dispatch answers with their Allow.
-fn beside(cx, state: rest::NoState&) {
+fn beside(cx) {
     rest::routes(cx) { cx =>
         if rest::on(cx, "PUT", "/uploads/:name") {
             rest::route(cx) { t(cx, str("upload ", rest::param(cx, "name"))); };
         } else if rest::on(cx, "POST", "/v1/files/:id/content") {
             t(cx, "post_file_content");
         } else {
-            api::dispatch(cx, state);
+            api::dispatch(cx);
         }
     };
 }
 
 fn answer_beside(text: const u8[:]) -> u8[>..] {
-    var state = rest::NoState { .. };
-    return rest::serve_one(text) { cx => beside(cx, state) };
+    return rest::serve_one(text) { cx => beside(cx) };
 }
 
 fn test_beside_dispatch() {

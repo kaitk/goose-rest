@@ -36,9 +36,11 @@ fn answers<H>(text: const u8[:], want: const u8[:], more: const u8[:] = "") {
     var state = rest::NoState { .. };
     let body = text[req.len..];
     var scratch: u8[>..] = [];
+    var app = rest::NoState { .. };
     var none = rest::NoRouter { .. };
-    var cx = rest::Cx<rest::NoState, rest::NoRouter> { req: req, body: body, out: http::Reply { buf: out, common: "", keep_alive: keep,
-                        minor: 1, head: false, stream: st }, state: state, scratch: scratch, router: none };
+    var cx = rest::Cx<rest::NoState, rest::NoState, rest::NoRouter> { req: req, body: body, out: http::Reply { buf: out,
+                        common: "", keep_alive: keep, minor: 1, head: false, stream: st }, state: state, app: app,
+                        scratch: scratch, router: none };
     H(cx);
     same(out, str(want, more));
 }
@@ -159,9 +161,11 @@ fn shaped<H>(text: const u8[:], want: const u8[:], more: const u8[:]) {
     var st = http::Stream { .. };
     var state = Shaped { .. };
     var scratch: u8[>..] = [];
+    var app = rest::NoState { .. };
     var none = rest::NoRouter { .. };
-    var cx = rest::Cx<Shaped, rest::NoRouter> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "", keep_alive: keep,
-                 minor: 1, head: false, stream: st }, state: state, scratch: scratch, router: none };
+    var cx = rest::Cx<Shaped, rest::NoState, rest::NoRouter> { req: req, body: text[req.len..], out: http::Reply {
+                 buf: out, common: "", keep_alive: keep, minor: 1, head: false, stream: st }, state: state, app: app,
+                 scratch: scratch, router: none };
     H(cx);
     same(out, str(want, more));
 }

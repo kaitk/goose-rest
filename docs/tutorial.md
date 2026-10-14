@@ -255,9 +255,10 @@ reader stopped. The [reference](reference.md#errors) lists each status and code.
 first answer wins: a route that answers and then fails keeps its answer.
 
 A program picks its own shape with an overload of `rest::error_body` for the type of its
-per-request state, which `rest::serve(cfg, fresh)` sets ([section 10](#10-state)). The
-overload gets every error, including the 404s, 405s, and 413s goose-rest writes itself.
-From [`tutorial/04-errors`](tutorial/04-errors/main.goose):
+per-request state, which `rest::serve(cfg, app, fresh)` sets ([section 10](#10-state)).
+The overload gets every error, including the 404s, 405s, and 413s goose-rest writes
+itself. From [`tutorial/04-errors`](tutorial/04-errors/main.goose), which keeps no
+worker's state:
 
 ```goose
 struct St { unused: bool = false }
@@ -277,7 +278,8 @@ fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:
 ```
 
 ```goose
-    let e = rest::serve(cfg, St { .. }) { cx => handle(cx) };
+    var none = rest::NoState { .. };
+    let e = rest::serve(cfg, none, St { .. }) { cx => handle(cx) };
 ```
 
 ```text
@@ -416,7 +418,7 @@ pointer rather than drop it.
 
 ## 6. The whole API from a schema
 
-With `paths`, the generator also writes the router, `api::dispatch(cx, state)`, and the
+With `paths`, the generator also writes the router, `api::dispatch(cx)`, and the
 program writes the handlers it calls. [`tutorial/06-schema`](tutorial/06-schema/) has
 three files besides the schema: `api_gen.goose`, generated; `app.goose`, the handlers;
 and `main.goose`, the workers. Here are the paths from its `api.json`:
@@ -455,7 +457,7 @@ Each operation calls a handler in the `app` namespace, named after its `operatio
 snake_case: `listProjects` calls `app::list_projects`. A handler's arguments come in this
 order:
 
-1. `cx`, and `state`, whatever the program passed to `dispatch`.
+1. `cx`, whose `cx.app` is the worker's state, whatever the program gave `rest::serve`.
 2. The security check's result, when the operation names a scheme.
 3. The path parameters, in the template's order, typed: an `integer` is an `i64`.
 4. A struct of the query, header, and cookie parameters, `<OperationId>Params`.
@@ -464,20 +466,20 @@ order:
 So the handlers in [`app.goose`](tutorial/06-schema/app.goose) are:
 
 ```goose
-fn health(cx, state: App&) { rest::text(cx, 200, "ok"); }
+fn health(cx) { rest::text(cx, 200, "ok"); }
 
-fn list_projects(cx, state: App&, q: api::ListProjectsParams) {
-    rest::json(cx, 200, Listing { app: state, q: if q.has_q { q.q } else { "" }, limit: if q.has_limit { q.limit } else { 20 } });
+fn list_projects(cx, q: api::ListProjectsParams) {
+    rest::json(cx, 200, Listing { app: cx.app, q: if q.has_q { q.q } else { "" }, limit: if q.has_limit { q.limit } else { 20 } });
 }
 
-fn create_project(cx, state: App&, user: const u8[:], body: const api::ProjectCreate&) {
-    let p .= state.projects.push(api::Project { id: state.projects.len + 1, name: body.name, owner: user });
+fn create_project(cx, user: const u8[:], body: const api::ProjectCreate&) {
+    let p .= cx.app.projects.push(api::Project { id: cx.app.projects.len + 1, name: body.name, owner: user });
     rest::json(cx, 201, p);
 }
 
-fn get_project(cx, state: App&, id: i64) {
-    guard id <= state.projects.len else { rest::fail(cx, 404, "project_not_found"); }
-    rest::json(cx, 200, state.projects[id - 1]);
+fn get_project(cx, id: i64) {
+    guard id <= cx.app.projects.len else { rest::fail(cx, 404, "project_not_found"); }
+    rest::json(cx, 200, cx.app.projects[id - 1]);
 }
 ```
 
@@ -495,13 +497,13 @@ struct ListProjectsParams {
 }
 ```
 
-A scheme in `security` calls `app::security_<scheme>(cx, state)` before the handler, and
-the handler gets what it returns. Here the `token` scheme checks a bearer token and
-returns the user it belongs to:
+A scheme in `security` calls `app::security_<scheme>(cx)` before the handler, and the
+handler gets what it returns. Here the `token` scheme checks a bearer token and returns
+the user it belongs to:
 
 ```goose
-fn security_token(cx, state: App&) -> const u8[:] {
-    guard rest::bearer_token(cx) == state.token else { rest::invalid_token(cx); }
+fn security_token(cx) -> const u8[:] {
+    guard rest::bearer_token(cx) == cx.app.token else { rest::invalid_token(cx); }
     return "ada";
 }
 ```
@@ -511,15 +513,15 @@ can't drift apart unnoticed. Delete `get_project`, and the build stops:
 
 ```text
 api_gen.goose:259: error: unknown function: app::get_project
-                                            app::get_project(cx, state, id);
-  in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:206
-  in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState>) instantiated from api_gen.goose:256
-  in fn api::dispatch(rest::Cx<rest::NoState>, app::App&, const u8[:]) instantiated from main.goose:32
+                                            app::get_project(cx, id);
+  in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:244
+  in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState, app::App>&) instantiated from api_gen.goose:256
+  in fn api::dispatch(rest::Cx<rest::NoState, app::App>&) instantiated from main.goose:32
   ...
 ```
 
 Declare its `id` as a string instead, and it stops with
-`argument 3: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
+`argument 2: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
 `api_gen.goose` names the call, and the operation is the one around it. The chain goes
 on for 15 more frames, through `rest::serve` and goose-http's event loop, because Goose
 lists every generic function between the error and `main`
@@ -546,19 +548,19 @@ before it, in the same `rest::routes` block. From
 [`tutorial/06-schema/main.goose`](tutorial/06-schema/main.goose):
 
 ```goose
-fn handle(cx, state: app::App&) {
+fn handle(cx) {
     rest::routes(cx) { cx =>
         if rest::on(cx, "PUT", "/uploads/:name") {
-            rest::route(cx) { upload(cx, state); };
+            rest::route(cx) { upload(cx); };
         } else {
-            api::dispatch(cx, state);
+            api::dispatch(cx);
         }
     };
 }
 
 // An upload of any bytes, which a schema can't describe: its bodies are JSON.
-fn upload(cx, state: app::App&) {
-    app::security_token(cx, state);
+fn upload(cx) {
+    app::security_token(cx);
     let data = rest::body(cx, UPLOAD_LIMIT);
     rest::json(cx, 200, Upload { name: rest::param(cx, "name"), bytes: data.len });
 }
@@ -641,8 +643,8 @@ With a schema, middleware goes around `dispatch`, as `tutorial/06-schema` does w
 `timed`:
 
 ```goose
-    let e = rest::serve(cfg) { cx =>
-        rest::timed(cx) { handle(cx, state); };
+    let e = rest::serve(cfg, app) { cx =>
+        rest::timed(cx) { handle(cx); };
     };
 ```
 
@@ -665,7 +667,7 @@ ends the request without reading the body. `upload` in
 [section 7](#7-generated-and-hand-written-routes) checks the token, then reads the body:
 
 ```goose
-    app::security_token(cx, state);
+    app::security_token(cx);
     let data = rest::body(cx, UPLOAD_LIMIT);
 ```
 
@@ -707,9 +709,9 @@ route that takes a JSON body over 1 MB calls `rest::body` with its limit before
 
 Workers share nothing, so state lives in one of three places.
 
-**Per worker.** The worker's `thread_fn` owns it as locals, and the handler gets a
-struct of references to them, as Actix's `web::Data` but without the `Arc`. From
-`tutorial/06-schema`:
+**Per worker.** The worker's `thread_fn` owns it as locals, and `rest::serve(cfg, app)`
+gives every request `cx.app`, a reference to a struct of references to them, as Actix's
+`web::Data` but without the `Arc`. From `tutorial/06-schema`:
 
 ```goose
 struct App { projects: api::Project[>..]&, token: const u8[:] }
@@ -718,7 +720,8 @@ struct App { projects: api::Project[>..]&, token: const u8[:] }
 ```goose
 thread_fn worker(cfg: http::Config) {
     var projects: api::Project[>..] = [];
-    var state = app::App { projects: projects, token: "secret" };
+    var app = app::App { projects: projects, token: "secret" };
+    let e = rest::serve(cfg, app) { cx =>
 ```
 
 Each worker has its own `projects`, so a project created on one worker isn't on another.
@@ -726,8 +729,8 @@ The tutorial's programs that keep projects run one worker for that reason. A cac
 rate limiter is fine per worker; data every worker must see goes on a thread of its own,
 below.
 
-**Per request.** `rest::serve(cfg, fresh)` gives each request `cx.state`, a fresh copy
-of `fresh`. Its type picks the error shape ([section 4](#4-answers-and-errors)), and a
+**Per request.** `rest::serve(cfg, app, fresh)` gives each request `cx.state`, a fresh
+copy of `fresh`. Its type picks the error shape ([section 4](#4-answers-and-errors)), and a
 `rest::Once<T>` field in it computes a value on its first use in a request. From
 [`tutorial/10-state`](tutorial/10-state/main.goose):
 
@@ -741,16 +744,16 @@ struct St { user: rest::Once<User> }
 struct App { lookups: i64 }
 
 // The request's user, looked up on the first call in a request.
-fn user(cx, app: App&) -> User& {
-    return rest::once(cx.state.user) { lookup(cx, app) };
+fn user(cx) -> User& {
+    return rest::once(cx.state.user) { lookup(cx) };
 }
 ```
 
 ```goose
-        rest::route(cx) {
-            guard user(cx, app).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
-            rest::text(cx, 200, str(user(cx, app).name, ", lookups so far: ", app.lookups));
-        };
+            rest::route(cx) {
+                guard user(cx).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
+                rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
+            };
 ```
 
 The route calls `user` twice, and `lookup` runs once:
@@ -779,7 +782,7 @@ struct St { waiting: Waiting = Waiting.None }
 ```
 
 ```goose
-        rest::ask(cx, db, REPORT, ReportJob { org: org, from: from, to: to },
+        rest::ask(cx, cx.app.db, REPORT, ReportJob { org: org, from: from, to: to },
                   Waiting.Report { org: org, from: from, to: to });
 ```
 
@@ -795,11 +798,11 @@ fn resume(w: Waiting.Report, cx) {
 ```
 
 ```goose
-    let e = rest::serve(cfg, St { .. }) { cx =>
+    let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::woken(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
         } else {
-            handle(cx, db);
+            handle(cx);
         }
     };
 ```
@@ -867,7 +870,7 @@ another language and a Goose one can then share one contract.
 
 ## 12. Testing without sockets
 
-`rest::serve_one(text) { cx => ... }` answers one request, given as its bytes, as
+`rest::serve_one(text, app) { cx => ... }` answers one request, given as its bytes, as
 `rest::serve` would through the block, and returns the response's bytes: no socket, no
 threads, and no goose-http types in the test. Such a test runs in-process through
 TinyCC, `goose test.goose`. From
@@ -875,7 +878,7 @@ TinyCC, `goose test.goose`. From
 
 ```goose
     fn answer(text: const u8[:]) -> u8[>..] {
-        return rest::serve_one(text) { cx => api::dispatch(cx, state) };
+        return rest::serve_one(text, state) { cx => api::dispatch(cx) };
     }
     let auth = "Authorization: Bearer secret\r\n";
     expect(body_of(answer(post("", "{\"name\": \"goose\"}"))), "{\"error\":\"unauthenticated\"}");

@@ -24,28 +24,28 @@ fn format(out: u8[>..]&, u: const Upload&) {
     format(out, ",\"bytes\":", u.bytes, "}");
 }
 
-fn handle(cx, state: app::App&) {
+fn handle(cx) {
     rest::routes(cx) { cx =>
         if rest::on(cx, "PUT", "/uploads/:name") {
-            rest::route(cx) { upload(cx, state); };
+            rest::route(cx) { upload(cx); };
         } else {
-            api::dispatch(cx, state);
+            api::dispatch(cx);
         }
     };
 }
 
 // An upload of any bytes, which a schema can't describe: its bodies are JSON.
-fn upload(cx, state: app::App&) {
-    app::security_token(cx, state);
+fn upload(cx) {
+    app::security_token(cx);
     let data = rest::body(cx, UPLOAD_LIMIT);
     rest::json(cx, 200, Upload { name: rest::param(cx, "name"), bytes: data.len });
 }
 
 thread_fn worker(cfg: http::Config) {
     var projects: api::Project[>..] = [];
-    var state = app::App { projects: projects, token: "secret" };
-    let e = rest::serve(cfg) { cx =>
-        rest::timed(cx) { handle(cx, state); };
+    var app = app::App { projects: projects, token: "secret" };
+    let e = rest::serve(cfg, app) { cx =>
+        rest::timed(cx) { handle(cx); };
     };
     if e.code != 0 { http::report(e); }
 }

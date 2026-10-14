@@ -23,10 +23,12 @@ fn answer<H>(text: const u8[:]) -> u8[>..] {
     var st = http::Stream { .. };
     var state = rest::NoState { .. };
     var scratch: u8[>..] = [];
+    var app = rest::NoState { .. };
     var none = rest::NoRouter { .. };
-    var cx = rest::Cx<rest::NoState, rest::NoRouter> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
-                                       keep_alive: keep, minor: 1, head: req.method == "HEAD", stream: st },
-                                       state: state, scratch: scratch, router: none };
+    var cx = rest::Cx<rest::NoState, rest::NoState, rest::NoRouter> { req: req, body: text[req.len..],
+                                       out: http::Reply { buf: out, common: "", keep_alive: keep, minor: 1,
+                                       head: req.method == "HEAD", stream: st }, state: state, app: app,
+                                       scratch: scratch, router: none };
     H(cx);
     return out;
 }

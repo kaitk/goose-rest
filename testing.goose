@@ -8,13 +8,13 @@ import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d
 
 // What serve answers to text, one request's bytes, through H(cx) inside
 // rest::route: the status line, the fields, and the body, without Date or
-// Server. fresh is the per-request state, and cfg the limits goose-http
-// applies. A body that doesn't fit in cfg.max_head with its head comes in
-// pieces and is gathered as serve gathers it, so H runs again once it's
-// whole if it called rest::body. An HTTP/1.1 request without Host is given
-// "Host: localhost". A request goose-http refuses gets its refusal, and H
-// that doesn't answer 500, as from the server.
-fn serve_one<S, H>(text: const u8[:], fresh: S, cfg: http::Config = http::Config { .. }) -> u8[>..] {
+// Server. app is the worker's state, fresh the per-request state, and cfg the
+// limits goose-http applies. A body that doesn't fit in cfg.max_head with
+// its head comes in pieces and is gathered as serve gathers it, so H runs
+// again once it's whole if it called rest::body. An HTTP/1.1 request
+// without Host is given "Host: localhost". A request goose-http refuses gets
+// its refusal, and H that doesn't answer 500, as from the server.
+fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = http::Config { .. }) -> u8[>..] {
     var out: u8[>..] = [];
     let full = with_host(text);
     let req, status = http::parse(full, cfg.max_head, cfg.max_body, cfg.max_line, cfg.max_fields);
@@ -30,30 +30,36 @@ fn serve_one<S, H>(text: const u8[:], fresh: S, cfg: http::Config = http::Config
     let whole = body.len <= cfg.max_head - req.len;
     var keep = req.keep_alive;
     var stream = http::Stream { .. };
-    var st = Slot<S> { app: fresh };
+    var st = Slot<S> { state: fresh };
     reusable[] var spill: u8[>..] = [];
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: req.minor,
                               head: req.method == "HEAD", stream: stream };
     on_event(http::Event { kind: http::REQUEST, req: req, data: if whole { body } else { "" }, whole: whole,
-                           trailers: "" }, st, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
+                           trailers: "" }, st, app, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
     if !whole {
         var at = 0;
         while at < body.len {
             let end = min(at + cfg.max_head, body.len);
             on_event(http::Event { kind: http::BODY, req: req, data: body[at..end], whole: false, trailers: "" },
-                     st, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
+                     st, app, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
             at = end;
         }
         on_event(http::Event { kind: http::END, req: req, data: "", whole: false, trailers: "" },
-                 st, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
+                 st, app, reply, cfg.mail_size, spill) { cx => route(cx) { H(cx); }; };
     }
     if out.len == 0 { http::refuse(out, 500, ""); }
     return out;
 }
 
 // serve_one for a program that keeps no per-request state.
+fn serve_one<A, H>(text: const u8[:], app: A&) -> u8[>..] {
+    return serve_one(text, app, NoState { .. }) { cx => H(cx) };
+}
+
+// serve_one for a program that keeps no state.
 fn serve_one<H>(text: const u8[:]) -> u8[>..] {
-    return serve_one(text, NoState { .. }) { cx => H(cx) };
+    var none = NoState { .. };
+    return serve_one(text, none, NoState { .. }) { cx => H(cx) };
 }
 
 // text with a Host field after its request line, when it's HTTP/1.1 and has
