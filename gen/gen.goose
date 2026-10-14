@@ -766,12 +766,8 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             guard fok && (fs == "int32" || fs == "int64") else { fail(ptr1(sptr, "format"), "only int32 and int64 are supported"); }
             pp.int32 = fs == "int32";
         }
-        let lo, has_lo = json::as_i64(bound(schema, sptr, "minimum", true));
-        let hi, has_hi = json::as_i64(bound(schema, sptr, "maximum", true));
-        pp.has_minimum = has_lo;
-        pp.minimum = lo;
-        pp.has_maximum = has_hi;
-        pp.maximum = hi;
+        pp.minimum, pp.has_minimum = json::as_i64(bound(schema, sptr, "minimum", true));
+        pp.maximum, pp.has_maximum = json::as_i64(bound(schema, sptr, "maximum", true));
         return pp;
     }
 
