@@ -13,7 +13,7 @@ served by the generated router, builds no router.
 Also checks a function that types its context through an alias,
 `type Cx = rest::Cx<St, App>;`.
 
-Goose commit: `46356c2`. goose-http: `cb57a0b`.
+Goose commit: `46356c2`. goose-http: `bc75f2a`, with the same output as at `cb57a0b`.
 
 ```sh
 GOOSE=<build>/goose

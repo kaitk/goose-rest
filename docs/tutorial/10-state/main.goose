@@ -2,7 +2,7 @@
 // worker, so that the count below is the server's.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
+import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
 import rest from "../../../";
 
 struct User { name: u8[..64] }

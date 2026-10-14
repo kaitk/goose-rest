@@ -57,7 +57,7 @@ A program declares both packages in its root file, goose-http at the pin below a
 goose-rest at a pushed commit, each by its full hash:
 
 ```goose
-import http from "github.com/kaitk/goose-http@cb57a0ba678d9eb90ff7bba017d24238cc05bdaf";
+import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d027b3c";
 import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
 ```
 
@@ -97,7 +97,7 @@ route to a schema, middleware, large bodies, state, tests, and a board.
 | What | Pin | Why |
 |---|---|---|
 | Goose compiler | `aardappel/goose` `46356c2` (`master`, 2026-10-14) | The language and stdlib change often |
-| goose-http | `kaitk/goose-http` `cb57a0b` (`main`, 2026-10-14) | Its API is still changing (its task 027) |
+| goose-http | `kaitk/goose-http` `bc75f2a` (`main`, 2026-10-14) | Its API is still changing (its task 027) |
 
 Move each pin in its own commit, with the spikes and tests rerun
 ([development.md](docs/development.md#move-the-pin)).
