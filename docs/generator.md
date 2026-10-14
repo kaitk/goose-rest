@@ -65,6 +65,27 @@ node contract.mts > api.json    # Node 22.18 or later, or bun
 
 With Bun instead of Node, `bunx -p typescript tsc` runs the check.
 
+## Export it from Python or Rust
+
+A team that keeps its models in pydantic (2.x) exports them as the document's
+components, with `$ref`s pointing there instead of at `$defs`:
+
+```python
+from pydantic.json_schema import models_json_schema
+
+_, top = models_json_schema([(Settings, "validation")], ref_template="#/components/schemas/{model}")
+doc = {"openapi": "3.1.0", "info": {"title": "Device", "version": "1"},
+       "components": {"schemas": top["$defs"]}}
+```
+
+`test/gen/pydantic.json` is such an export, of pydantic 2.11.7, and the golden file
+beside it what the generator writes from it. `Field(ge=, le=, min_length=, max_length=)`,
+`Literal` of strings, `Optional[T] = None`, nested models, `list[T]`, and
+`extra="forbid"` map onto the subset. Defaults other than `None`, unions other than with
+`None`, and `pattern` are refused, each with its pointer. FastAPI writes a whole
+document the same way, with paths. Rust's schemars writes optional values in the same
+`anyOf` shape.
+
 `api()` keeps the document's literal types, so `tsc` also rejects a `$ref` to a missing
 component, a `required` name that isn't a property, and a path parameter its template
 doesn't name. The generator still checks what types can't: cycles, names that aren't
@@ -84,6 +105,7 @@ Task 011 lists which of the two rejects each construct, and `ts/test/` checks ea
 | `"$ref": "#/components/schemas/X"` | `X`, for an object or enum; any other schema is read in place |
 | a property not in `required` | `has_<field>: bool` before the field |
 | `"type": ["T", "null"]` | `<field>_null: bool` before the field |
+| `"anyOf": [<schema>, {"type": "null"}]`, in either order, with annotations and `"default": null` beside it | the schema, nullable, as above; pydantic and schemars write optional values this way |
 
 Each kind takes these keywords besides `type`:
 
@@ -97,8 +119,9 @@ Each kind takes these keywords besides `type`:
 
 Any schema may carry `description`, `title`, `examples`, `example`, `deprecated`, and
 `$comment`, which the generator ignores. Any other keyword is an error, among them
-`pattern`, `default`, `const`, `multipleOf`, `uniqueItems`, `oneOf`, `anyOf`, `allOf`,
-`not`, `readOnly`, `writeOnly`, and OpenAPI 3.0's `nullable`. So are:
+`pattern`, `default`, `const`, `multipleOf`, `uniqueItems`, `oneOf`, `anyOf` other than
+with null (above), `allOf`, `not`, `readOnly`, `writeOnly`, and OpenAPI 3.0's
+`nullable`. So are:
 
 - A `$ref` outside `#/components/schemas/`, a `$ref` with a keyword beside it other than
   an annotation, and a cycle of `$ref`s.

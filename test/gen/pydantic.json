@@ -1,0 +1,104 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "t",
+  "version": "1"
+ },
+ "components": {
+  "schemas": {
+   "Owner": {
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "minimum": 1,
+      "title": "Id",
+      "type": "integer"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Email"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "Owner",
+    "type": "object"
+   },
+   "Settings": {
+    "additionalProperties": false,
+    "properties": {
+     "name": {
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "brightness": {
+      "maximum": 255,
+      "minimum": 0,
+      "title": "Brightness",
+      "type": "integer"
+     },
+     "interval_ms": {
+      "anyOf": [
+       {
+        "maximum": 60000,
+        "minimum": 100,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Interval Ms"
+     },
+     "mode": {
+      "enum": [
+       "auto",
+       "manual"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "owner": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Owner"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 4,
+      "title": "Tags",
+      "type": "array"
+     }
+    },
+    "required": [
+     "name",
+     "brightness",
+     "mode",
+     "tags"
+    ],
+    "title": "Settings",
+    "type": "object"
+   }
+  }
+ }
+}

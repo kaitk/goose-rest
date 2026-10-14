@@ -505,6 +505,37 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         return c, nullable;
     }
 
+    // anyOf of a schema and {"type": "null"}, as pydantic and schemars write
+    // an optional value, which is that schema, nullable: the index of the
+    // schema in anyOf. Beside it, annotations and a "default" of null.
+    fn nullable_branch(node: json::Node&, ptr: const u8[:]) -> i64 {
+        json::each(node) { m =>
+            if m.key == "default" {
+                match m.val { Null => {}, _ => fail(ptr1(ptr, m.key), "only null is supported beside anyOf") }
+            } else {
+                guard m.key == "anyOf" || is_one_of(m.key, ANNOTATIONS) else { fail(ptr1(ptr, m.key), "not supported beside anyOf"); }
+            }
+        };
+        let aptr = ptr1(ptr, "anyOf");
+        let any = json::member(node, "anyOf");
+        guard any else { fail(aptr, "missing"); }
+        match any.val { Arr a => {}, _ => fail(aptr, "must be an array of schemas") }
+        var count = 0;
+        var nulls = 0;
+        var other = -1;
+        json::each(any) { s =>
+            let t, ok = json::as_string(json::member(s, "type"));
+            var only_type = true;
+            json::each(s) { m => if m.key != "type" { only_type = false; } };
+            if ok && t == "null" && only_type { nulls++; } else { other = count; }
+            count++;
+        };
+        guard count == 2 && nulls == 1 else {
+            fail(aptr, "only anyOf of one schema and {\"type\": \"null\"} is supported");
+        }
+        return other;
+    }
+
     // The type of the schema at node, the property key of the object
     // parent. A $ref to an object or an enum is that type; one to any
     // other schema is read as that schema, through any chain of $refs.
@@ -514,25 +545,39 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         var node .= node0;
         var ptr = ptr0;
         var hops = 0;
-        while json::member(node, "$ref") {
-            json::each(node) { m =>
-                guard m.key == "$ref" || is_one_of(m.key, ANNOTATIONS) else {
-                    fail(ptr1(ptr, m.key), "not supported beside $ref");
-                }
+        var any_null = false;
+        loop {
+            if json::member(node, "$ref") {
+                json::each(node) { m =>
+                    guard m.key == "$ref" || is_one_of(m.key, ANNOTATIONS) else {
+                        fail(ptr1(ptr, m.key), "not supported beside $ref");
+                    }
+                };
+                let t = target(node, ptr);
+                if named[t].obj >= 0 { return Ty { kind: K_OBJ, ref: named[t].obj, nullable: any_null }; }
+                if named[t].en >= 0 { return Ty { kind: K_ENUM, ref: named[t].en, nullable: any_null }; }
+                hops++;
+                guard hops <= named.len else { fail(ptr, "a cycle of $refs"); }
+                node .= named[t].node;
+                ptr = ptr1("#/components/schemas", named[t].name);
+                continue;
+            }
+            let any = json::member(node, "anyOf");
+            guard any && !any_null else { break; }
+            let b = nullable_branch(node, ptr);
+            var k = 0;
+            json::each(any) { s =>
+                if k == b { node .= s; }
+                k++;
             };
-            let t = target(node, ptr);
-            if named[t].obj >= 0 { return Ty { kind: K_OBJ, ref: named[t].obj }; }
-            if named[t].en >= 0 { return Ty { kind: K_ENUM, ref: named[t].en }; }
-            hops++;
-            guard hops <= named.len else { fail(ptr, "a cycle of $refs"); }
-            node .= named[t].node;
-            ptr = ptr1("#/components/schemas", named[t].name);
+            ptr = ptr2(ptr, "anyOf", str(b));
+            any_null = true;
         }
         let tnode = json::member(node, "type");
         guard tnode else { fail(ptr, "a schema needs a type or a $ref"); }
         let tptr = ptr1(ptr, "type");
         let tname, nullable = type_name_of(tnode, tptr);
-        var ty = Ty { kind: 0, nullable: nullable };
+        var ty = Ty { kind: 0, nullable: nullable || any_null };
         let suffix = if item { "Item" } else { "" };
         if tname == "boolean" {
             check_keys(node, ptr, [], "a boolean");
