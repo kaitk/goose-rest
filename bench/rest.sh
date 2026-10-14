@@ -57,9 +57,10 @@ PATH=$HOME/.cargo/bin:$PATH
 export GOOSE_HTTP=$gh
 
 # goose-http at the pin rest.goose imports.
-pin=$(sed -n 's/^import http from .*goose-http@\([0-9a-f]\{40\}\).*/\1/p' "$root/rest.goose")
-[ "$(git -C "$gh" rev-parse HEAD)" = "$pin" ] ||
-    echo "bench/rest.sh: $gh isn't at goose-http's pin ${pin%"${pin#???????}"}" >&2
+ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/rest.goose" | head -1)
+pin=$(git -C "$gh" rev-parse --verify -q "$ref^{commit}" || true)
+[ -n "$pin" ] && [ "$(git -C "$gh" rev-parse HEAD)" = "$pin" ] ||
+    echo "bench/rest.sh: $gh isn't at goose-http's pin $ref" >&2
 
 case ${1:-} in
 build)
