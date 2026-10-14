@@ -52,8 +52,16 @@ goose-rest imports goose-http by its full commit hash; git can't fetch an abbrev
 one. Move it to a pushed commit of goose-http's `main`, in its own commit, once the
 tests pass. The hash appears in each of the package's files, in each root file under
 `test/`, `examples/`, `docs/tutorial/`, `spikes/`, and `bench/`, in the README's Pins
-table and Quick start, and in `docs/tutorial.md`; `git grep` the old hash and change
-every match. A root that declares
+table and Quick start, and in `docs/tutorial.md`. `scripts/move-http-pin.sh` changes
+every one:
+
+```sh
+git -C ../goose-http fetch
+scripts/move-http-pin.sh $(git -C ../goose-http rev-parse origin/main)
+```
+
+Then update the date in the README's Pins row and the goose-http commit each spike's
+README names, once `scripts/test.sh` passes. A root that declares
 goose-http at another commit than `rest.goose` gets a warning, and from another source
 an error, so a test can't point at a local goose-http checkout instead. Until goose-http's task 027 lands its
 breaking changes, expect each move to need code changes here.
