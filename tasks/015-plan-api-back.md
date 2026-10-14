@@ -1,8 +1,8 @@
 # 015: Win back the plan's API where Goose and goose-http now allow it
 
 Status: in-progress (asked for 2026-10-14). The inventory is done, and the
-recommendations are built on a local prototype branch and measured; they wait on the
-maintainer before anything public changes.
+recommendations are built on a local prototype branch, measured, and decided
+(2026-10-14); merging them is what's left.
 
 The plan (`docs/plan.md` in `923c4fb`) wrote handlers and the generated router in calls
 that read as the route means. The built API drifted from them, call by call, as each
@@ -485,20 +485,25 @@ its README has the details.
   recorded in `docs/goose-findings.md`. UFCS on the receiver's namespace would make every
   call shorter at no cost, and is the one Goose change this API would use most.
 
-### For the maintainer to decide
+### Decided (2026-10-14)
 
-- **A's two versions.** The router's type in the context (recommended): compile errors
-  for a route outside `rest::routes`, and the cheaper of the two. Or the optional router:
-  one context type, `rest::Cx<St, App>`, and those mistakes answered at run time.
-- **B's names.** `cx.app` for the worker's state and `cx.state` for the request's, as
-  built, or other names.
-- **B's placeholder.** A program with per-request state and no worker's state passes
-  `rest::NoState` by reference as its app. A named overload, such as
-  `rest::serve_fresh(cfg, St { .. })`, would spare it, at one more name.
-- **Merging the prototype.** Its commits pass `scripts/test.sh` each, but leave
-  `docs/reference.md`, `docs/generator.md`, and the architecture doc describing today's
-  calls. Taking the recommendations means updating those, dropping the optional router's
-  commit or squashing it into the typed one, and keeping `genr60` in `bench/routes.sh`.
+The maintainer takes each recommendation above: A with the router's type in the
+context, B, C, D, E, and F, and drops `rest::routes` opening the route. The choices that
+were open:
+
+- **A's version:** the router's type in the context, `Cx<S, A, R>`. A route outside
+  `rest::routes` fails to compile.
+- **B's names:** `cx.app` for the worker's state and `cx.state` for the request's.
+- **B's placeholder:** kept, with no new name for now. A program with per-request state
+  and no worker's state passes `rest::NoState` by reference as its app. The tutorial
+  (task 016) shows whether it comes up often enough for an overload.
+- **Merging the prototype:** in a new session. The optional router's commit is squashed
+  into the typed one, `genr60` stays in `bench/routes.sh`, and `docs/reference.md`,
+  `docs/generator.md`, and the architecture doc are updated with the code.
+
+Found beside it, each a task of its own: the service pattern for routes that wait on a
+database, and a tutorial that builds up from the simple cases to it (task 016), and a
+service that learns the client has gone (task 017).
 
 
 - [x] Each row above, and any drift found beside them, has its reason and whether it
