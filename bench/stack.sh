@@ -47,12 +47,13 @@ start() {
     until nc -z 127.0.0.1 "$port" 2>/dev/null; do sleep 0.05; done
 }
 
-# Stops the server and prints its instructions retired.
+# Stops the server and sets retired to its instructions retired. Not run in
+# a subshell, so that tpid is cleared for the trap.
 stop() {
     pkill -INT -P "$tpid"
     wait "$tpid" || true
     tpid=
-    awk '/instructions retired/ { print $1 }' "$tmp/time"
+    retired=$(awk '/instructions retired/ { print $1 }' "$tmp/time")
 }
 
 # case, tier
@@ -69,11 +70,13 @@ printf 'case\ttier\trun\tinstructions/req\treq/s\n'
 for run in $(seq "$runs"); do
     while read -r name tier; do
         start "$tier"
-        idle=$(stop)
+        stop
+        idle=$retired
         start "$tier"
         wrk -t 8 -c 256 -d "$d" -s "$root/bench/stack/pipelined.lua" "http://127.0.0.1:$port" -- "$name" \
             >"$tmp/wrk" 2>&1 || { cat "$tmp/wrk" >&2; exit 1; }
-        busy=$(stop)
+        stop
+        busy=$retired
         if grep -q 'Non-2xx\|Socket errors' "$tmp/wrk"; then
             echo "$name $tier: not every response was 2xx" >&2
             cat "$tmp/wrk" >&2
