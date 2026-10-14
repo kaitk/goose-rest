@@ -2,9 +2,10 @@
 # Runs every test this repository has, and fails on the first failure: the
 # typecheck of each root file under test/, the unit tests through TinyCC
 # (scripts/test-unit.sh), the generator's output for each schema under
-# test/gen/ and examples/ against its golden file, the TypeScript helper's
-# tests where tsc is installed (ts/), each example served and
-# requested (scripts/test-examples.sh), then each spike, whose output must match the
+# test/gen/, examples/, and docs/tutorial/ against its golden file, the
+# TypeScript helper's tests where tsc is installed (ts/), each example and
+# tutorial program served and requested (scripts/test-examples.sh), each
+# tutorial test.goose, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
 # also keep main as its only Goose function: everything else inlined. And
@@ -39,7 +40,8 @@ step "test-unit.sh"
 # committed source byte for byte. test_gen.goose, among the unit tests,
 # compiles one and round-trips JSON through it.
 mkdir -p "$root/build/gen"
-for f in "$root"/test/gen/*.json "$root"/examples/*/api.json "$root"/bench/rest/goose-rest/github.json; do
+for f in "$root"/test/gen/*.json "$root"/examples/*/api.json "$root"/docs/tutorial/*/api.json \
+         "$root"/bench/rest/goose-rest/github.json; do
     name=$(basename "$f" .json)
     dir=$(dirname "$f")
     step "gen ${f#"$root"/}"
@@ -56,12 +58,14 @@ ts=$root/build/ts
 if command -v "${TSC%% *}" >/dev/null 2>&1; then
     step "tsc ts/"
     $TSC -p "$root/ts"
-    for pair in projects:test/gen/api.json schema:examples/schema/api.json routes:test/gen/routes.json; do
-        name=${pair%%:*}
+    for pair in ts/test/projects.mts:test/gen/api.json ts/test/schema.mts:examples/schema/api.json \
+                ts/test/routes.mts:test/gen/routes.json docs/tutorial/06-schema/api.mts:docs/tutorial/06-schema/api.json; do
+        mts=${pair%%:*}
         json=$root/${pair#*:}
-        step "ts/test/$name.mts"
+        name=$(basename "$(dirname "$mts")")-$(basename "$mts" .mts)
+        step "$mts"
         mkdir -p "$ts/$name"
-        "$JS" "$root/ts/test/$name.mts" >"$ts/$name/api.json"
+        "$JS" "$root/$mts" >"$ts/$name/api.json"
         "$JS" -e 'const fs = require("fs"), j = (p) => JSON.stringify(JSON.parse(fs.readFileSync(p, "utf8")));
                  if (j(process.argv[1]) !== j(process.argv[2])) { console.log("differs from " + process.argv[2]); process.exit(1); }' \
             "$ts/$name/api.json" "$json"
@@ -89,7 +93,12 @@ else
 fi
 
 step "test-examples.sh"
-"$root/scripts/test-examples.sh"
+"$root/scripts/test-examples.sh" "$root"/examples/*/ "$root"/docs/tutorial/*/
+
+for t in "$root"/docs/tutorial/*/test.goose; do
+    step "${t#"$root"/}"
+    "$goose" "$t"
+done
 
 mkdir -p "$root/build"
 for f in "$root"/spikes/*/main.goose "$root"/spikes/*/*/main.goose; do

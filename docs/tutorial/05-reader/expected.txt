@@ -1,0 +1,7 @@
+POST /projects 201 {"id":1,"name":"goose"}
+POST /projects 400 {"error":"invalid_body","detail":"name: length","at":12}
+POST /projects 400 {"error":"invalid_body","detail":"unknown member","at":9}
+POST /projects 400 {"error":"invalid_body","detail":"expected ',' or '}'","at":16}
+POST /projects 415 {"error":"unsupported_media_type"}
+GET /projects/1 200 {"id":1,"name":"goose"}
+GET /projects/2 404 {"error":"project_not_found"}

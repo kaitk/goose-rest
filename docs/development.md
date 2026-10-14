@@ -65,15 +65,16 @@ breaking changes, expect each move to need code changes here.
    main()"), so the tests' roots check it.
 2. `scripts/test-unit.sh`, which runs each `test/test_*.goose` through TinyCC. Each test
    asserts what it tests and exits nonzero on the first failed `assert`.
-3. The generator on each schema under `test/gen/` and `examples/`, whose output must
-   match the golden `_gen.goose` beside it byte for byte. A change to the generator
+3. The generator on each schema under `test/gen/`, `examples/`, and `docs/tutorial/`,
+   whose output must match the golden `_gen.goose` beside it byte for byte. A change to the generator
    regenerates them ([generator.md](generator.md#tests)).
    Then the TypeScript helper's tests, where `tsc` is installed
    ([below](#run-the-typescript-helpers-tests)).
-4. `scripts/test-examples.sh`, which builds each example under `examples/`, serves it
-   on `127.0.0.1` from port 18081 up, sends the requests its `requests.sh` lists with
-   `curl`, and compares the answers with its `expected.txt`. A port in use there fails
-   the run.
+4. `scripts/test-examples.sh`, which builds each example under `examples/` and each
+   tutorial program under `docs/tutorial/`, serves it on `127.0.0.1` from port 18081
+   up, sends the requests its `requests.sh` lists with `curl`, and compares the answers
+   with its `expected.txt`. A port in use there fails the run. Then each tutorial
+   program's `test.goose`, through TinyCC.
 5. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it. The compiler's own lines (`parsed ok`, `typechecked ok`, `bce`) go to standard
    error and aren't compared. TinyCC can't run threads, so a `main.goose` that calls
@@ -109,7 +110,8 @@ access; later runs don't. Both scripts write only into `build/`, which git ignor
 
 `ts/` holds the TypeScript helper and its tests, and goose-rest doesn't install a
 JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
-`ts/tsconfig.json`, then runs `ts/test/*.mts` with `JS`: `node`, or `bun` where Node
+`ts/tsconfig.json`, which also covers the tutorial's `.mts` files, then runs
+`ts/test/*.mts` and `docs/tutorial/06-schema/api.mts` with `JS`: `node`, or `bun` where Node
 isn't installed. Without `tsc`, it prints `skipped` and goes on. With Node or Bun
 installed and no `tsc`, npx or bunx fetches one for the run:
 

@@ -1,0 +1,4 @@
+GET /me 200 ada, lookups so far: 1
+GET /me 200 grace, lookups so far: 2
+GET /me 403 {"error":"forbidden"}
+GET /me 401 {"error":"unauthenticated"}

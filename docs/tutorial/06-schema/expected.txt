@@ -1,0 +1,20 @@
+GET /health 200 ok
+GET /v1/projects 200 []
+POST /v1/projects 401 {"error":"unauthenticated"}
+POST /v1/projects 401 {"error":"invalid_token"}
+POST /v1/projects 201 {"id":1,"name":"goose","owner":"ada"}
+POST /v1/projects 400 {"error":"invalid_body","detail":"unknown member","at":27}
+POST /v1/projects 201 {"id":2,"name":"big","owner":"ada"}
+POST /v1/projects 413 {"error":"payload_too_large"}
+GET /v1/projects?limit=1 200 [{"id":1,"name":"goose","owner":"ada"}]
+GET /v1/projects?limit=0 400 {"error":"invalid_parameter","detail":"limit: minimum"}
+GET /v1/projects?q=bi 200 [{"id":2,"name":"big","owner":"ada"}]
+GET /v1/projects/2 200 {"id":2,"name":"big","owner":"ada"}
+GET /v1/projects/0 400 {"error":"invalid_parameter","detail":"id: minimum"}
+GET /v1/projects/7 404 {"error":"project_not_found"}
+DELETE /v1/projects/1 405 {"error":"method_not_allowed"}
+PUT /uploads/logo.png 200 {"name":"logo.png","bytes":1500000}
+PUT /uploads/logo.png 413
+PUT /uploads/logo.png 401 {"error":"unauthenticated"}
+GET /uploads/logo.png 405 {"error":"method_not_allowed"}
+GET /nope 404 {"error":"not_found"}

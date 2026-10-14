@@ -10,5 +10,5 @@
     "verbatimModuleSyntax": true,
     "types": []
   },
-  "include": ["*.mts", "test/*.mts"]
+  "include": ["*.mts", "test/*.mts", "../docs/tutorial/*/*.mts"]
 }

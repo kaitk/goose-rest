@@ -1,0 +1,8 @@
+POST /projects 201 {"id":1,"name":"goose","color":"#00ff00"}
+POST /projects 201 {"id":2,"name":"gander"}
+POST /projects 400 {"error":"invalid_body","detail":"color: maxLength","at":39}
+POST /projects 400 {"error":"invalid_body","detail":"unknown member","at":26}
+POST /projects 400 {"error":"invalid_body","detail":"name: required","at":2}
+POST /projects 415 {"error":"unsupported_media_type"}
+GET /projects/1 200 {"id":1,"name":"goose","color":"#00ff00"}
+GET /projects/2 200 {"id":2,"name":"gander"}

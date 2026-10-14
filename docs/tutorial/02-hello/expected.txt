@@ -1,0 +1,5 @@
+GET /hello/goose 200 hello, goose
+GET /hello/aaaaaaaaaaaaaaaaaaaaaaaaa 400 {"error":"name_too_long"}
+GET /hello/two%20words 200 hello, two words
+POST /hello/goose 405 {"error":"method_not_allowed"}
+GET /hello/ 404 {"error":"not_found"}

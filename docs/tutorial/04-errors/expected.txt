@@ -1,0 +1,5 @@
+GET /projects/1 200 goose
+GET /projects/2 404 {"error":{"code":"project_not_found","status":404}}
+GET /projects/x 400 {"error":{"code":"invalid_parameter","status":400,"message":"id: integer"}}
+POST /projects/1 405 {"error":{"code":"method_not_allowed","status":405}}
+GET /nope 404 {"error":{"code":"not_found","status":404}}

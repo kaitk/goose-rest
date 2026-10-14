@@ -1,5 +1,6 @@
 #!/bin/sh
-# Builds each example under examples/, serves it on a local port, sends the
+# Builds each example under examples/, or each directory given as an
+# argument, such as docs/tutorial/*/, serves it on a local port, sends the
 # requests its requests.sh lists, one per route at least, and compares each
 # answer's status and body with the expected.txt beside it. A request is a
 # line `req METHOD PATH [curl options]`; its answer is the line
@@ -22,8 +23,11 @@ mkdir -p "$out"
 
 peak() { sed -n 's/^VmHWM:[[:space:]]*//p' "/proc/$pid/status"; }
 
+[ "$#" -gt 0 ] || set -- "$root"/examples/*/
+
 port=18081
-for dir in "$root"/examples/*/; do
+for dir in "$@"; do
+    dir=${dir%/}
     name=$(basename "$dir")
     echo
     echo "== example $name"

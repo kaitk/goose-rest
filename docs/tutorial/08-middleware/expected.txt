@@ -1,0 +1,10 @@
+GET /health 200 ok
+GET /v1/projects 400 {"error":"tenant_required"}
+GET /v1/projects 200 the projects of acme
+POST /admin/reindex 401 {"error":"unauthenticated"}
+POST /admin/reindex 401 {"error":"invalid_token"}
+POST /admin/reindex 202 reindexing
+GET /admin/reindex 405 {"error":"method_not_allowed"}
+GET /v1/projects 200 the projects of acme
+GET /health 403 {"error":"origin_not_allowed"}
+OPTIONS /admin/reindex 204

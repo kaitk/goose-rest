@@ -1,0 +1,15 @@
+GET /health 200 ok
+GET /v1/projects 200 [{"id":1,"name":"goose"},{"id":2,"name":"gander"}]
+GET /v1/projects?q=g&limit=1 200 [{"id":1,"name":"goose"}]
+GET /v1/projects?archived=true 200 [{"id":3,"name":"gosling"}]
+GET /v1/projects?archived=yes 400 {"error":"invalid_parameter","detail":"archived: boolean"}
+GET /v1/projects?limit=ten 400 {"error":"invalid_parameter","detail":"limit: integer"}
+GET /v1/projects/2 200 {"id":2,"name":"gander"}
+GET /v1/projects/9 404 {"error":"project_not_found"}
+GET /v1/projects/two 400 {"error":"invalid_parameter","detail":"id: integer"}
+GET /v1/me 400 {"error":"invalid_parameter","detail":"X-User: required"}
+GET /v1/me 200 ada likes light
+GET /v1/me 200 ada likes dark
+DELETE /v1/projects/2 405 {"error":"method_not_allowed"}
+GET /v1/nope 404 {"error":"not_found"}
+GET /nope 404 {"error":"not_found"}
