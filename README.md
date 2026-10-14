@@ -10,9 +10,7 @@ and a router from an OpenAPI document.
 Experimental: a proof of concept with a first runtime core and no stable API, and the
 name is provisional. Nothing here is stable enough to build on.
 
-The design is in [`docs/architecture/README.md`](docs/architecture/README.md), the
-middleware, extractors, and errors in [`docs/reference.md`](docs/reference.md), and the
-Goose gaps found here in [`docs/goose-findings.md`](docs/goose-findings.md).
+Start with the [tutorial](docs/tutorial.md); the [docs](#docs) table lists the rest.
 
 ## Status
 
@@ -47,7 +45,8 @@ scripts/          test.sh runs every test; test-unit.sh the unit tests alone
 bench/            measurements: routes.sh counts the if chain's instructions (task 007);
                   rest.sh runs the REST benchmark against goose-http and three frameworks (task 010)
 spikes/           language checks the design relies on, one folder each with a README
-docs/             architecture, generator reference, development setup, Goose findings
+docs/             the tutorial and its programs (docs/tutorial/), references, architecture,
+                  development setup, Goose findings
 tasks/            task tracking (tasks/README.md)
 ```
 
@@ -78,64 +77,19 @@ curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
      -d '{"name": "goose"}' localhost:8080/v1/projects
 ```
 
-A worker serves with `rest::serve`, which calls its block with a `rest::Cx` for each
-request whose body has come whole. A route runs inside `rest::route`, so that `rest::fail`
-answers from any depth below it. From `examples/plain/`:
+[goose-rest, by example](docs/tutorial.md) builds a projects API step by step, from one
+route to a schema, middleware, large bodies, state, tests, and a board.
 
-```goose
-fn handle(cx, app: App&) {
-    rest::timed(cx) {                                  // Server-Timing and the access log
-        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            var r = http::router(cx.req);
-            if http::on(r, "GET", "/health") {
-                rest::text(cx, 200, "ok");
-            } else if rest::scope(r, "/v1") {          // the rest of the path, under /v1
-                rest::route(cx) { projects(cx, app, r); };
-            } else {
-                rest::otherwise(cx, r);                // 404, or 405 with Allow
-            }
-        };
-    };
-}
+## Docs
 
-fn projects(cx, app: App&, r: http::Router&) {
-    if http::on(r, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, r, "id")));
-    } else if http::on(r, "POST", "/projects") {
-        rest::bearer(cx) { token =>                    // 401 without a bearer token
-            guard token == app.token else { rest::invalid_token(cx); }
-            let body = rest::take<ProjectCreate>(cx);  // 415, or 400 with the reader's error
-            rest::json(cx, 201, app.projects.push(Project { id: app.projects.len + 1, name: body.name }));
-        };
-    } else {
-        rest::otherwise(cx, r);
-    }
-}
-
-thread_fn worker(cfg: http::Config) {
-    var projects: Project[>..] = [];
-    var app = App { projects: projects, token: "secret" };
-    let e = rest::serve(cfg) { cx => handle(cx, app) };
-    if e.code != 0 { http::report(e); }
-}
-```
-
-`rest::serve(cfg, fresh)` keeps per-request state as well: `cx.state` starts from `fresh`
-for each request. `rest::json` writes a value through its type's `format` overload, which
-the generator writes for each schema. Workers share nothing, so state that every worker
-must see lives on a thread of its own ([architecture](docs/architecture/README.md)).
-
-## On a board
-
-A program cross-builds for an embedded Linux board as goose-http's does, with
-`goose build --cc` and the board's C cross compiler: goose-http's
-[docs/embedded.md](https://github.com/kaitk/goose-http/blob/main/docs/embedded.md)
-covers distribution cross compilers, Yocto SDKs, what the board needs, and the checks
-to run on it. `scripts/test-aarch64.sh` cross-builds every example for aarch64 and runs
-their checks in an arm64 container, printing each one's peak RSS
-([development.md](docs/development.md#run-the-examples-on-arm64)). There,
-`examples/device` peaked at 4,728 kB on one worker (task 013). None has run on a board
-yet.
+| Doc | What it holds |
+|---|---|
+| [`docs/tutorial.md`](docs/tutorial.md) | goose-rest, by example: the framework in 14 steps, each a program `scripts/test.sh` runs |
+| [`docs/reference.md`](docs/reference.md) | Every middleware, extractor, and error code |
+| [`docs/generator.md`](docs/generator.md) | What `goose-rest gen` reads, writes, and refuses, and how its router matches |
+| [`docs/architecture/README.md`](docs/architecture/README.md) | The design, its decisions, and why: Actix and Elysia, changed where Goose differs |
+| [`docs/development.md`](docs/development.md) | The toolchain, the tests, the arm64 checks, the benchmarks, and moving the pins |
+| [`docs/goose-findings.md`](docs/goose-findings.md) | Goose compiler and stdlib gaps found here, and their workarounds |
 
 ## Pins
 

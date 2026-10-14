@@ -50,8 +50,10 @@ update the pin in `README.md` and the table above.
 
 goose-rest imports goose-http by its full commit hash; git can't fetch an abbreviated
 one. Move it to a pushed commit of goose-http's `main`, in its own commit, once the
-tests pass. The hash appears in `rest.goose`, in each root file under `test/` and
-`bench/routes/`, and in the README's Pins table and Use section; change all of them. A root that declares
+tests pass. The hash appears in each of the package's files, in each root file under
+`test/`, `examples/`, `docs/tutorial/`, `spikes/`, and `bench/`, in the README's Pins
+table and Quick start, and in `docs/tutorial.md`; `git grep` the old hash and change
+every match. A root that declares
 goose-http at another commit than `rest.goose` gets a warning, and from another source
 an error, so a test can't point at a local goose-http checkout instead. Until goose-http's task 027 lands its
 breaking changes, expect each move to need code changes here.

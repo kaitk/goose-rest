@@ -5,7 +5,8 @@
 # test/gen/, examples/, and docs/tutorial/ against its golden file, the
 # TypeScript helper's tests where tsc is installed (ts/), each example and
 # tutorial program served and requested (scripts/test-examples.sh), each
-# tutorial test.goose, then each spike, whose output must match the
+# tutorial test.goose, docs/tutorial.md's code blocks against the programs
+# they quote, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
 # also keep main as its only Goose function: everything else inlined. And
@@ -99,6 +100,33 @@ for t in "$root"/docs/tutorial/*/test.goose; do
     step "${t#"$root"/}"
     "$goose" "$t"
 done
+
+# docs/tutorial.md's goose and json blocks quote the tutorial's programs and
+# the examples: each run of lines between "..." lines must appear as it is
+# in one of their files.
+step "docs/tutorial.md's code"
+blocks=$root/build/tutorial-blocks
+rm -rf "$blocks"
+mkdir -p "$blocks"
+awk -v dir="$blocks" '
+    /^```(goose|json)$/ { n++; part = 0; file = dir "/" n "." part; inside = 1; next }
+    inside && /^```$/ { inside = 0; next }
+    inside && /^ *\.\.\.$/ { part++; file = dir "/" n "." part; next }
+    inside { print > file }
+' "$root/docs/tutorial.md"
+for b in "$blocks"/*; do
+    want=$(cat "$b")
+    found=
+    for f in "$root"/docs/tutorial/*/* "$root"/examples/*/*; do
+        case $(cat "$f") in *"$want"*) found=1; break ;; esac
+    done
+    if [ -z "$found" ]; then
+        echo "docs/tutorial.md quotes what no program holds:"
+        cat "$b"
+        exit 1
+    fi
+done
+echo "$(ls "$blocks" | wc -l | tr -d ' ') excerpts found"
 
 mkdir -p "$root/build"
 for f in "$root"/spikes/*/main.goose "$root"/spikes/*/*/main.goose; do
