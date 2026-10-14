@@ -58,6 +58,12 @@ fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {
     return a, ok;
 }
 
+// Whether the route that asked a still waits for its reply: false once its
+// client has gone, its wait has timed out, or its worker has stopped. A
+// service checks it before work worth skipping. It's a snapshot: the route
+// can still go before the answer, which answer then reports.
+fn wanted(a) -> bool { http::mail_live(a.reply) }
+
 // Replies data, with tag, to the route that asked a, in pieces of at most
 // the size a carries. A piece that finds the box full is sent again after a
 // millisecond: the worker's box is shared by all its waiting routes.

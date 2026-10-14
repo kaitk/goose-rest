@@ -51,7 +51,10 @@ for dir in "$@"; do
         method=$1
         path=$2
         shift 2
-        code=$(curl -s -o "$out/body" -w '%{http_code}' -X "$method" "$@" "http://127.0.0.1:$port$path")
+        # A request that gives up, such as with -m, prints 000 and goes on,
+        # with no body: curl then leaves the file as it was.
+        : >"$out/body"
+        code=$(curl -s -o "$out/body" -w '%{http_code}' -X "$method" "$@" "http://127.0.0.1:$port$path") || true
         body=$(cat "$out/body")
         if [ -n "$body" ]; then echo "$method $path $code $body"; else echo "$method $path $code"; fi
     }

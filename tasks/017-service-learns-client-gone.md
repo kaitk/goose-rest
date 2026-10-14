@@ -1,6 +1,6 @@
 # 017: A service learns that the client it works for has gone
 
-Status: todo (asked for 2026-10-14)
+Status: done (2026-10-14), but for the tutorial's limits section, which task 016 writes
 
 Found in task 015's review (2026-10-14), at goose-http `bc75f2a`. A route that asked
 another thread (`rest::ask`) and whose client then closes the connection, or whose wait
@@ -66,14 +66,25 @@ The task 015 merge imports goose-http `v0.3.1` (`faead67`), as requested
 WAKE while a handler rearms a reply in pieces (`8ab362c`). `rest::answer` already
 stops on `STALE`, so its doc now names a stale exchange as well as a closed box and
 an oversized piece. A send already in flight can still be accepted and dropped.
-`rest::wanted`, the example's work-skipping checks, and their tests remain to build.
+
+## Built (2026-10-14)
+
+`rest::wanted(a)` is `http::mail_live(a.reply)`. `examples/waiting`'s database skips an
+export whose client has gone before the job starts, and counts an answer that
+`rest::answer` refuses because the client went during the job, which sends none of the
+pieces left. An export's `ms` holds the database for that long, as a slow query would,
+and `GET /v1/gone` answers both counts. Its `requests.sh` sends an export with
+`ms=1000` and one behind it, each with `curl -m 0.2`, and expects
+`{"skipped":1,"dropped":1}`: the first client goes while its job runs, and the second
+before its job starts. `scripts/test-examples.sh` records a request that gives up as
+status `000` without a body.
 
 ## Acceptance criteria
 
 - [x] `rest::answer`'s doc says what it returns false for
 - [x] goose-http's task 027 has the request, after asking the maintainer, and its
       answer is recorded here
-- [ ] With it: a test where the client closes before the service answers, and the
+- [x] With it: a test where the client closes before the service answers, and the
       service's send returns `STALE`; `rest::wanted`, and `examples/waiting`'s database
       thread skipping a job and stopping an export's pieces for a client that has gone
 - [ ] The tutorial's limits section (task 016) shows it

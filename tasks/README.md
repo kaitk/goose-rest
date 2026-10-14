@@ -49,5 +49,5 @@ and decides task 008. Task 009 follows spike 06 and task 004. Task 010 benchmark
 011 can be settled at any point, and task 013 waits on an x86-64 host and a board.
 Task 014 follows tasks 008 and 009. Task 015 can start at any point; what it needs from
 goose-http waits on that package's task 027. Task 016, the tutorial, follows task 015's
-merge. Task 017's doc fix can land at once; the rest waits on goose-http's task 027,
-and its limits section in task 016's tutorial on it.
+merge. Task 017 is built; its limits section in task 016's tutorial waits on that
+tutorial.

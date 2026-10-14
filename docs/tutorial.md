@@ -793,6 +793,7 @@ enum Waiting {
     None,
     Report { org: i64, from: i64, to: i64 },
     Export,
+    Gone,
 }
 
 // The per-request state: rest::ask keeps the route's Waiting here.
@@ -828,7 +829,24 @@ fn resume(w: Waiting.Report, cx) {
 The compiler checks that every variant has its `resume`. The other thread takes jobs
 with `rest::asked<J>` and replies with `rest::answer` or `rest::answer_value`. A reply
 longer than a mailbox message comes in pieces, which `rest::relay` sends on as a chunked
-response. `waiting.goose`'s header and the example have the whole API, including the
+response.
+
+A client can go while the other thread works for it: its connection closes, or its wait
+times out. `rest::wanted(a)` says whether the route still waits, so the thread can skip
+the work, and `rest::answer` returns false once it doesn't, sending none of the pieces
+left. From the example's database thread:
+
+```goose
+                if ok && !rest::wanted(a) {
+                    gone.skipped++;
+```
+
+```goose
+                    // False once the client goes, which sends none of the pieces left.
+                    if !rest::answer(a, text) { gone.dropped++; }
+```
+
+`waiting.goose`'s header and the example have the whole API, including the
 `http::Config` fields a waiting route needs (`mail_slots`, `mail_size`, `max_waiting`).
 An answer written when a route resumes gets neither `timed`'s nor `cors`'s fields.
 

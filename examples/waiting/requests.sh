@@ -9,3 +9,9 @@ req GET '/v1/export?org=7&rows=3'
 req GET '/v1/export?org=7&rows=40'
 req GET '/v1/export?org=7&rows=x'
 req GET /v1/nope
+# Two clients that go before their exports answer: the first while the
+# database works on its job, so its answer is dropped, and the second before
+# its job starts, so the database skips it. curl gives up, and prints 000.
+req GET '/v1/export?org=7&rows=40&ms=1000' -m 0.2
+req GET '/v1/export?org=7&rows=40' -m 0.2
+req GET /v1/gone

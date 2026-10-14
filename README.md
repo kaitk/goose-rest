@@ -68,7 +68,7 @@ can't run. `scripts/test.sh` builds each example and requests each of its routes
 |---|---|
 | [`examples/plain/`](examples/plain/main.goose) | Without a schema: `rest::on` routes in `rest::routes`, prefix scopes, extractors, a hand-written body reader, middleware, and a 4 MB upload route beside the 1 MB default |
 | [`examples/schema/`](examples/schema/) | From `api.json`: the generated types and router in `api_gen.goose`, and the handlers in `app.goose`; `createProject` takes 2 MB by `x-body-limit` |
-| [`examples/waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a mailbox message |
+| [`examples/waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a mailbox message, and a database that skips the work of a client that has gone |
 | [`examples/device/`](examples/device/) | A board's API from `api.json`: temperature and uptime from sysfs and `/proc`, bounded settings that set an LED through sysfs, a 256 KB firmware upload, a bearer token on writes, CORS, and a page; one worker and small limits |
 
 ```sh

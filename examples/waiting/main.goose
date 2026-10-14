@@ -2,11 +2,16 @@
 // and an export, and each route resumes through its case function when the
 // reply comes. The worker's reply messages are 64 bytes, so that an export
 // comes back in pieces, which rest::relay sends on as a chunked response.
+// An export's ms makes the database take that long, as a slow query would,
+// and the database skips the work of a client that has gone, which
+// GET /v1/gone counts.
 //
 //   goose build -o build/examples/waiting examples/waiting/main.goose
 //   build/examples/waiting 8080
 //   curl -s 'localhost:8080/v1/report?org=3&from=1&to=10'
 //   curl -s 'localhost:8080/v1/export?org=7&rows=50'
+//   curl -s -m 0.2 'localhost:8080/v1/export?org=7&rows=50&ms=1000'
+//   curl -s 'localhost:8080/v1/gone'
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.3.1";
@@ -16,10 +21,20 @@ import rest from "../../";
 let REPORT: i32 = 1;
 let EXPORT: i32 = 2;
 let STOP: i32 = 3;
+let GONE: i32 = 4;
 
 struct ReportJob { org: i64, from: i64, to: i64 }
 struct ReportReply { days: i64, total: i64 }
-struct ExportJob { org: i64, rows: i64 }
+struct ExportJob { org: i64, rows: i64, ms: i64 }
+struct GoneJob { unused: bool = false }
+
+// The jobs the database did no work for, as their clients had gone before
+// they started, and the answers it sent to a client that went during the job.
+struct Gone { skipped: i64, dropped: i64 }
+
+fn format(out: u8[>..]&, g: const Gone&) {
+    format(out, "{\"skipped\":", g.skipped, ",\"dropped\":", g.dropped, "}");
+}
 
 // What each waiting route needs when its reply comes. Fixed-mode: each
 // request overwrites it (spec §3.5).
@@ -27,6 +42,7 @@ enum Waiting {
     None,
     Report { org: i64, from: i64, to: i64 },
     Export,
+    Gone,
 }
 
 // The per-request state: rest::ask keeps the route's Waiting here.
@@ -60,7 +76,12 @@ fn ask(cx) {
     } else if rest::on(cx, "GET", "/export") {
         let rows = need_int(cx, "rows");
         if rows < 0 || rows > 10000 { rest::fail_param(cx, "rows: maximum"); }
-        rest::ask(cx, cx.app.db, EXPORT, ExportJob { org: need_int(cx, "org"), rows: rows }, Waiting.Export);
+        let ms, has_ms = rest::query_int(cx, "ms");
+        if ms < 0 || ms > 2000 { rest::fail_param(cx, "ms: maximum"); }
+        let job = ExportJob { org: need_int(cx, "org"), rows: rows, ms: if has_ms { ms } else { 0 } };
+        rest::ask(cx, cx.app.db, EXPORT, job, Waiting.Export);
+    } else if rest::on(cx, "GET", "/gone") {
+        rest::ask(cx, cx.app.db, GONE, GoneJob { .. }, Waiting.Gone);
     } else {
         rest::otherwise(cx);
     }
@@ -87,8 +108,15 @@ fn resume(w: Waiting.Report, cx) {
 
 fn resume(w: Waiting.Export, cx) { rest::relay(cx, 200, "application/json"); }
 
+fn resume(w: Waiting.Gone, cx) {
+    let g, ok = rest::reply_value<Gone>(cx);
+    guard ok else { rest::fail(cx, 502, "bad_reply"); }
+    rest::json(cx, 200, g);
+}
+
 // The database thread: it takes jobs from its box until STOP.
 thread_fn database(box: http::Box) {
+    var gone = Gone { skipped: 0, dropped: 0 };
     var running = true;
     while running {
         http::mail_wait(box, 1000);
@@ -102,7 +130,10 @@ thread_fn database(box: http::Box) {
                 }
             } else if tag == EXPORT {
                 let a, ok = rest::asked<ExportJob>(bytes);
-                if ok {
+                if ok && !rest::wanted(a) {
+                    gone.skipped++;
+                } else if ok {
+                    if a.job.ms > 0 { sleep_ms(a.job.ms); }
                     // [[org, row, row²], ...], larger than a reply message.
                     var text: u8[>..] = [];
                     text.push('[');
@@ -111,8 +142,12 @@ thread_fn database(box: http::Box) {
                         format(text, "[", a.job.org, ",", i, ",", i * i, "]");
                     }
                     text.push(']');
-                    rest::answer(a, text);
+                    // False once the client goes, which sends none of the pieces left.
+                    if !rest::answer(a, text) { gone.dropped++; }
                 }
+            } else if tag == GONE {
+                let a, ok = rest::asked<GoneJob>(bytes);
+                if ok { rest::answer_value(a, gone); }
             } else if tag == STOP {
                 running = false;
             }
