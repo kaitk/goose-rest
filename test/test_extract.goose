@@ -28,8 +28,10 @@ fn answer<H>(text: const u8[:]) -> u8[>..] {
     var st = http::Stream { .. };
     var state = St { .. };
     var scratch: u8[>..] = [];
-    var cx = rest::Cx<St> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
-                            keep_alive: keep, minor: 1, head: false, stream: st }, state: state, scratch: scratch };
+    var none = rest::NoRouter { .. };
+    var cx = rest::Cx<St, rest::NoRouter> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
+                            keep_alive: keep, minor: 1, head: false, stream: st }, state: state, scratch: scratch,
+                            router: none };
     H(cx);
     return out;
 }
@@ -51,22 +53,32 @@ fn bad(detail: const u8[:]) -> u8[>..] { str("{\"error\":\"invalid_parameter\",\
 
 fn test_path() {
     let p = "/users/7/files/a%20b%2Fc";
-    fn on(cx) -> http::Router {
-        var r = http::router(cx.req);
-        assert(http::on(r, "GET", "/users/:id/files/:name"));
-        return r;
-    }
-    same(body_of(says(get(p)) { cx => let r = on(cx); str(rest::param_int(cx, r, "id"), " ", rest::param(cx, r, "name")) }),
-         "7 a b/c");
-    same(body_of(says(get("/users/%37/files/x")) { cx => let r = on(cx); rest::param_int(cx, r, "id") }), "7");
-    let out = says(get("/users/x7/files/x")) { cx => let r = on(cx); rest::param_int(cx, r, "id") };
+    same(body_of(matched(get(p)) { cx => str(rest::param_int(cx, "id"), " ", rest::param(cx, "name")) }), "7 a b/c");
+    same(body_of(matched(get("/users/%37/files/x")) { cx => rest::param_int(cx, "id") }), "7");
+    let out = matched(get("/users/x7/files/x")) { cx => rest::param_int(cx, "id") };
     same(out, str("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: 52\r\n\r\n",
                   bad("id: integer")));
-    same(body_of(says(get("/users/-/files/x")) { cx => let r = on(cx); rest::param_int(cx, r, "id") }), bad("id: integer"));
-    same(body_of(says(get("/users/9223372036854775808/files/x")) { cx => let r = on(cx); rest::param_int(cx, r, "id") }),
+    same(body_of(matched(get("/users/-/files/x")) { cx => rest::param_int(cx, "id") }), bad("id: integer"));
+    same(body_of(matched(get("/users/9223372036854775808/files/x")) { cx => rest::param_int(cx, "id") }),
          bad("id: integer"));
-    same(body_of(says(get("/users/-9223372036854775807/files/x")) { cx => let r = on(cx); rest::param_int(cx, r, "id") }),
+    same(body_of(matched(get("/users/-9223372036854775807/files/x")) { cx => rest::param_int(cx, "id") }),
          "-9223372036854775807");
+    // A program's own http::router, given to the extractors.
+    same(body_of(says(get(p)) { cx =>
+        var r = http::router(cx.req);
+        assert(http::on(r, "GET", "/users/:id/files/:name"));
+        str(rest::param_int(cx, r, "id"), " ", rest::param(cx, r, "name"))
+    }), "7 a b/c");
+}
+
+// says, inside the route /users/:id/files/:name.
+fn matched<F>(text: const u8[:]) -> u8[>..] {
+    return answer(text) { cx =>
+        rest::routes(cx) { cx =>
+            assert(rest::on(cx, "GET", "/users/:id/files/:name"));
+            rest::route(cx) { rest::text(cx, 200, str(F(cx))); };
+        };
+    };
 }
 
 fn test_query() {

@@ -129,7 +129,7 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
         t.out.append(");\n");
         format(t.out, ind, "    };\n", ind, "    return;\n", ind, "}\n");
     }
-    format(t.out, ind, "rest::no_method(cx, \"", r.allow, "\", allow);\n", ind, "return;\n");
+    format(t.out, ind, "rest::no_method(cx, \"", r.allow, "\");\n", ind, "return;\n");
 }
 
 // The trie's node for the routes idx[lo..hi], whose first d segments all
@@ -200,9 +200,9 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     format(out, "let MAX_BODY: i64 = ", size(max_body), ";\n");
     format(out, "\n// Answers a request through the handler in ", handlers, " that its path and method\n");
     out.append("// name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
-    out.append("// a path; and as rest::otherwise does for a path no route takes. allow is the Allow of\n");
-    out.append("// the program's routes before dispatch, http::Router's, which the Allow lists first.\n");
-    out.append("fn dispatch(cx, state, allow: const u8[:] = \"\") {\n");
+    out.append("// a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,\n");
+    out.append("// the Allow lists the methods of the program's routes tried before dispatch first.\n");
+    out.append("fn dispatch(cx, state) {\n");
     out.append("    let path = http::path_of(cx.req.target);\n");
     out.append("    let m = cx.req.method;\n");
     out.append("    guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }\n");
@@ -233,6 +233,6 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     for i in routes.len { idx.push(i); }
     emit_node(t, idx, 0, routes.len, 0, 2);
     out.append("    }\n");
-    out.append("    rest::not_found(cx, m, path, allow);\n");
+    out.append("    rest::not_found(cx, m, path);\n");
     out.append("}\n");
 }

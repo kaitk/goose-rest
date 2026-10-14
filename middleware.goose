@@ -71,7 +71,7 @@ fn origin_in(list: const u8[:], origin: const u8[:]) -> bool {
 // answer written after F returns, at a WAKE, gets no CORS fields.
 //
 //   rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { ... };
-inline fn cors<S, F>(cx: Cx<S>&, c: Cors) {   // a reference: the block sees the caller's cx.out
+inline fn cors<S, R, F>(cx: Cx<S, R>&, c: Cors) {   // a reference: the block sees the caller's cx.out
     let origin, has_origin = http::field_of(cx.req, "origin");
     let common = cx.out.common;
     if has_origin {
@@ -168,18 +168,35 @@ inline fn timed<F>(cx, log: bool = true) {
     }
 }
 
+// Whether the request is method on a path pattern matches, as http::on
+// takes them, against the router of the rest::routes block around it.
+// A pattern that matches with another method adds the method
+// to the router's Allow, which rest::otherwise answers with.
+fn on<S>(cx: Cx<S, http::Router>&, method: const u8[:], pattern: const u8[:]) -> bool {
+    return http::on(cx.router, method, pattern);
+}
+
+// Whether the path left to match starts with prefix, as the scope below
+// takes it, against the router of the rest::routes block around it. If it
+// does, rest::on inside the scope matches the rest.
+//
+//   rest::routes(cx) { cx =>
+//       if rest::scope(cx, "/v1") {
+//           if rest::on(cx, "GET", "/projects") { ... }
+//           else { rest::otherwise(cx); }
+//       } else { rest::otherwise(cx); }
+//   };
+fn scope<S>(cx: Cx<S, http::Router>&, prefix: const u8[:]) -> bool {
+    return narrowed(cx.router, prefix);
+}
+
 // Whether r's path starts with prefix, one or more literal segments such as
 // "/v1" or "/api/v1", ending at a segment's end, as http::on compares
 // segments. If it does, r's path becomes the rest, which the routes inside
 // the scope match: "/projects" for "/v1/projects", "" for "/v1" itself. A
 // route that doesn't match there still adds its method to r's Allow, so
 // rest::otherwise answers 404, 405, and OPTIONS across scopes.
-//
-//   if rest::scope(r, "/v1") {
-//       if http::on(r, "GET", "/projects") { ... }
-//       else { rest::otherwise(cx, r); }
-//   }
-fn scope(r: http::Router&, prefix: const u8[:]) -> bool {
+fn narrowed(r: http::Router&, prefix: const u8[:]) -> bool {
     guard !r.bad else { return false; }
     let path = r.path;
     var p = 0;

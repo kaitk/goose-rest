@@ -27,21 +27,22 @@ fn load(cx, user: i64, id: i64) -> Item {
 fn handle(cx) {
     rest::timed(cx, false) {
         rest::cors(cx, rest::Cors { origins: "https://a.example", .. }) {
-            var r = http::router(cx.req);
-            if rest::scope(r, "/v1") {
-                rest::route(cx) {
-                    rest::bearer(cx) { token =>
-                        let user = rest::int_of(cx, token, "token");
-                        if http::on(r, "GET", "/items/:id") {
-                            rest::json(cx, 200, load(cx, user, rest::param_int(cx, r, "id")));
-                        } else {
-                            rest::otherwise(cx, r);
-                        }
+            rest::routes(cx) { cx =>
+                if rest::scope(cx, "/v1") {
+                    rest::route(cx) {
+                        rest::bearer(cx) { token =>
+                            let user = rest::int_of(cx, token, "token");
+                            if rest::on(cx, "GET", "/items/:id") {
+                                rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id")));
+                            } else {
+                                rest::otherwise(cx);
+                            }
+                        };
                     };
-                };
-            } else {
-                rest::otherwise(cx, r);
-            }
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
         };
     };
 }
@@ -56,9 +57,10 @@ fn main() {
         var st = http::Stream { .. };
         var state = rest::NoState { .. };
         var scratch: u8[>..] = [];
-        var cx = rest::Cx<rest::NoState> { req: req, body: "", out: http::Reply { buf: out, common: "",
+        var none = rest::NoRouter { .. };
+        var cx = rest::Cx<rest::NoState, rest::NoRouter> { req: req, body: "", out: http::Reply { buf: out, common: "",
                                            keep_alive: keep, minor: 1, head: false, stream: st }, state: state,
-                                           scratch: scratch };
+                                           scratch: scratch, router: none };
         handle(cx);
     }
     print(out);

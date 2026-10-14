@@ -34,31 +34,32 @@ struct St { waiting: Waiting = Waiting.None }
 
 fn handle(cx, db: http::MailAddress) {
     rest::timed(cx) {
-        var r = http::router(cx.req);
-        if http::on(r, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::scope(r, "/v1") {
-            rest::route(cx) { ask(cx, db, r); };
-        } else {
-            rest::otherwise(cx, r);
-        }
+        rest::routes(cx) { cx =>
+            if rest::on(cx, "GET", "/health") {
+                rest::text(cx, 200, "ok");
+            } else if rest::scope(cx, "/v1") {
+                rest::route(cx) { ask(cx, db); };
+            } else {
+                rest::otherwise(cx);
+            }
+        };
     };
 }
 
-fn ask(cx, db: http::MailAddress, r: http::Router&) {
-    if http::on(r, "GET", "/report") {
+fn ask(cx, db: http::MailAddress) {
+    if rest::on(cx, "GET", "/report") {
         let org = need_int(cx, "org");
         let from = need_int(cx, "from");
         let to = need_int(cx, "to");
         if to < from { rest::fail_param(cx, "to: minimum"); }
         rest::ask(cx, db, REPORT, ReportJob { org: org, from: from, to: to },
                   Waiting.Report { org: org, from: from, to: to });
-    } else if http::on(r, "GET", "/export") {
+    } else if rest::on(cx, "GET", "/export") {
         let rows = need_int(cx, "rows");
         if rows < 0 || rows > 10000 { rest::fail_param(cx, "rows: maximum"); }
         rest::ask(cx, db, EXPORT, ExportJob { org: need_int(cx, "org"), rows: rows }, Waiting.Export);
     } else {
-        rest::otherwise(cx, r);
+        rest::otherwise(cx);
     }
 }
 

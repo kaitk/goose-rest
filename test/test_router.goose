@@ -217,14 +217,15 @@ fn test_body() {
 // Hand-written routes before dispatch, one on a path of its own and one on a
 // path the schema has, which dispatch answers with their Allow.
 fn beside(cx, state: rest::NoState&) {
-    var r = http::router(cx.req);
-    if http::on(r, "PUT", "/uploads/:name") {
-        rest::route(cx) { t(cx, str("upload ", rest::param(cx, r, "name"))); };
-    } else if http::on(r, "POST", "/v1/files/:id/content") {
-        t(cx, "post_file_content");
-    } else {
-        api::dispatch(cx, state, r.allow);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "PUT", "/uploads/:name") {
+            rest::route(cx) { t(cx, str("upload ", rest::param(cx, "name"))); };
+        } else if rest::on(cx, "POST", "/v1/files/:id/content") {
+            t(cx, "post_file_content");
+        } else {
+            api::dispatch(cx, state);
+        }
+    };
 }
 
 fn answer_beside(text: const u8[:]) -> u8[>..] {

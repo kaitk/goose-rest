@@ -15,40 +15,41 @@ inline fn tenant<F>(cx) {
 fn handle(cx) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            var r = http::router(cx.req);
-            if http::on(r, "GET", "/health") {
-                rest::text(cx, 200, "ok");
-            } else if rest::scope(r, "/v1") {
-                rest::route(cx) {
-                    tenant(cx) { id => v1(cx, r, id); };
-                };
-            } else if rest::scope(r, "/admin") {
-                rest::route(cx) {
-                    rest::bearer(cx) { token =>
-                        guard token == "secret" else { rest::invalid_token(cx); }
-                        admin(cx, r);
+            rest::routes(cx) { cx =>
+                if rest::on(cx, "GET", "/health") {
+                    rest::text(cx, 200, "ok");
+                } else if rest::scope(cx, "/v1") {
+                    rest::route(cx) {
+                        tenant(cx) { id => v1(cx, id); };
                     };
-                };
-            } else {
-                rest::otherwise(cx, r);
-            }
+                } else if rest::scope(cx, "/admin") {
+                    rest::route(cx) {
+                        rest::bearer(cx) { token =>
+                            guard token == "secret" else { rest::invalid_token(cx); }
+                            admin(cx);
+                        };
+                    };
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
         };
     };
 }
 
-fn v1(cx, r: http::Router&, tenant: const u8[:]) {
-    if http::on(r, "GET", "/projects") {
+fn v1(cx, tenant: const u8[:]) {
+    if rest::on(cx, "GET", "/projects") {
         rest::text(cx, 200, str("the projects of ", tenant));
     } else {
-        rest::otherwise(cx, r);
+        rest::otherwise(cx);
     }
 }
 
-fn admin(cx, r: http::Router&) {
-    if http::on(r, "POST", "/reindex") {
+fn admin(cx) {
+    if rest::on(cx, "POST", "/reindex") {
         rest::text(cx, 202, "reindexing");
     } else {
-        rest::otherwise(cx, r);
+        rest::otherwise(cx);
     }
 }
 

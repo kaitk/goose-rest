@@ -14,7 +14,9 @@ import http from "github.com/kaitk/goose-http@bc75f2a6e761cb35096b740329d9f8044d
 // When a route that asked another thread resumes (rest::woken), kind is
 // http::WAKE, and reply, tag, and more hold the reply (waiting.goose); req
 // is then empty. slot is the size of a reply message, Config.mail_size.
-struct Cx<S> {
+// R is http::Router inside rest::routes and NoRouter elsewhere, so route
+// matching and parameter calls require the context routes gives its block.
+struct Cx<S, R> {
     req: const http::Request&,
     body: const u8[:],
     out: http::Reply,
@@ -27,6 +29,25 @@ struct Cx<S> {
     slot: i64 = 0,
     // The connection's body gathering, under serve; null elsewhere.
     gather: Gather? = null,
+    router: R&,
+}
+
+struct NoRouter { unused: bool = false }
+
+// Runs F(c), c being cx with a router over its request, so that the block's
+// rest::on, rest::scope, rest::param, and rest::otherwise take c alone. A
+// generated dispatch inside the block answers with the Allow of the routes
+// tried before it.
+//
+//   rest::routes(cx) { cx =>
+//       if rest::on(cx, "GET", "/health") { ... } else { rest::otherwise(cx); }
+//   };
+inline fn routes<S, F>(cx: Cx<S, NoRouter>&) {
+    var r = http::router(cx.req);
+    var c = Cx<S, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
+                    scratch: cx.scratch, kind: cx.kind,
+                    reply: cx.reply, tag: cx.tag, more: cx.more, slot: cx.slot, gather: cx.gather, router: r };
+    F(&c);   // a block given the local itself gets a copy of it
 }
 
 // The per-request state of a program that keeps none.
@@ -86,9 +107,11 @@ inline fn on_event<S, H>(ev: http::Event, st: Slot<S>&, out: http::Reply, slot: 
         let wake = ev.kind == http::WAKE;
         st.body.pending = !wake && !ev.whole;
         let mark = out.buf.len;
-        var cx = Cx<S> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.app,
+        var none = NoRouter { .. };
+        var cx = Cx<S, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.app,
                          scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
-                         tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot, gather: st.body };
+                         tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0, slot: slot, gather: st.body,
+                         router: none };
         H(cx);
         if st.body.pending && st.body.limit > 0 {
             if out.buf.len == mark { gather_head(st.body, ev.req, spill); } else { st.body.limit = 0; }
@@ -115,8 +138,9 @@ inline fn on_whole<S, H>(st: Slot<S>&, out: http::Reply, slot: i64, spill: u8[>.
     let req, status = http::parse(spill[g.at..g.at + g.head], g.head, g.len);
     st.body.pending = false;
     var scratch: u8[>..] = [];
-    var cx = Cx<S> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.app,
-                     scratch: scratch, kind: http::REQUEST, slot: slot, gather: st.body };
+    var none = NoRouter { .. };
+    var cx = Cx<S, NoRouter> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.app,
+                     scratch: scratch, kind: http::REQUEST, slot: slot, gather: st.body, router: none };
     H(cx);
     release(st.body, spill);
 }
@@ -162,7 +186,7 @@ fn release(g: Gather&, spill: u8[>..]&) {
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
 // runs twice up to its first rest::body.
-fn body<S>(cx: Cx<S>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
+fn body<S, R>(cx: Cx<S, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     var g .= cx.gather;
     guard g else {
         if cx.body.len > limit { fail(cx, 413, "payload_too_large"); }
@@ -271,9 +295,10 @@ fn segment_is(seg: const u8[:], lit: const u8[:], plain: bool) -> bool {
 
 // Answers a request whose path matched with a method no route of the path
 // takes: OPTIONS with 204 and an Allow, any other method with 405 and that
-// Allow. The Allow is theirs, of the program's routes before dispatch, then
-// those of mine, the generated path's, that theirs lacks.
-fn no_method(cx, mine: const u8[:], theirs: const u8[:] = "") {
+// Allow. The Allow is that of the program's routes before dispatch, in
+// rest::routes, then those of mine, the generated path's, that theirs lacks.
+fn no_method(cx, mine: const u8[:]) {
+    let theirs = allow_before(cx);
     guard theirs.len > 0 else { allowed(cx, mine); return; }
     var both: u8[>..] = [];
     both.append(theirs);
@@ -289,6 +314,11 @@ fn no_method(cx, mine: const u8[:], theirs: const u8[:] = "") {
     }
     allowed(cx, both);
 }
+
+// The Allow of the routes rest::routes' block tried, "" outside one.
+fn allow_before<S>(cx: const Cx<S, http::Router>&) -> const u8[:] { cx.router.allow }
+
+fn allow_before<S>(cx: const Cx<S, NoRouter>&) -> const u8[:] { "" }
 
 fn allowed(cx, allow: const u8[:]) {
     if cx.req.method == "OPTIONS" {
@@ -330,11 +360,12 @@ fn no_route(cx, method: const u8[:], path: const u8[:]) {
 
 // no_route for a request whose method is known and whose path is routable,
 // as the generated routers have checked by then: OPTIONS * 204, and 404. A
-// path that only the program's routes before dispatch matched, which gave
-// their Allow, gets no_method's answer with it.
-fn not_found(cx, method: const u8[:], path: const u8[:], theirs: const u8[:] = "") {
+// path that only the program's routes before dispatch matched gets
+// no_method's answer with their Allow.
+fn not_found(cx, method: const u8[:], path: const u8[:]) {
+    let theirs = allow_before(cx);
     if theirs.len > 0 {
-        no_method(cx, theirs);
+        allowed(cx, theirs);
     } else if method == "OPTIONS" && path == "*" {
         http::start(cx.out, 204);
         http::finish(cx.out, "", "");
@@ -371,7 +402,10 @@ fn text(cx, status: i32, s: const u8[:]) {
 // the JSON shape: an unknown method 501 not_implemented, a path the router
 // refused 400 bad_path, a path no route matched 404 not_found, and another
 // method of a path that did 405 method_not_allowed, with Allow. OPTIONS gets
-// 204 with that Allow, or for "*" without one.
+// 204 with that Allow, or for "*" without one. Inside rest::routes, as
+// rest::otherwise(cx); a program that builds its own http::router passes it.
+fn otherwise<S>(cx: Cx<S, http::Router>&) { otherwise(cx, cx.router); }
+
 fn otherwise(cx, r: const http::Router&) {
     if !http::known_method(r.method) {
         write_error(cx.out, cx.state,501, "not_implemented", "", -1, "");

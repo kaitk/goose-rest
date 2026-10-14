@@ -86,51 +86,52 @@ fn find_project(cx, app: App&, id: i64) -> Project& {
 fn handle(cx, app: App&) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            var r = http::router(cx.req);
-            if http::on(r, "GET", "/health") {
-                rest::text(cx, 200, "ok");
-            } else if rest::scope(r, "/v1") {
-                rest::route(cx) { projects(cx, app, r); };
-            } else {
-                rest::otherwise(cx, r);
-            }
+            rest::routes(cx) { cx =>
+                if rest::on(cx, "GET", "/health") {
+                    rest::text(cx, 200, "ok");
+                } else if rest::scope(cx, "/v1") {
+                    rest::route(cx) { projects(cx, app); };
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
         };
     };
 }
 
 // The routes under /v1, inside the route.
-fn projects(cx, app: App&, r: http::Router&) {
-    if http::on(r, "GET", "/projects") {
+fn projects(cx, app: App&) {
+    if rest::on(cx, "GET", "/projects") {
         let q, has_q = rest::query(cx, "q");
         rest::json(cx, 200, Listing { projects: app.projects, q: q });
-    } else if http::on(r, "POST", "/projects") {
+    } else if rest::on(cx, "POST", "/projects") {
         rest::bearer(cx) { token =>
             guard token == app.token else { rest::invalid_token(cx); }
             let body = rest::take<ProjectCreate>(cx);
             let p .= app.projects.push(Project { id: app.projects.len + 1, name: body.name });
             rest::json(cx, 201, p);
         };
-    } else if http::on(r, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, r, "id")));
-    } else if http::on(r, "PUT", "/projects/:id/logo") {
+    } else if rest::on(cx, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, app, rest::param_int(cx, "id")));
+    } else if rest::on(cx, "PUT", "/projects/:id/logo") {
         // A body past the read buffer runs this block twice, so nothing
         // before rest::body changes state.
         rest::bearer(cx) { token =>
             guard token == app.token else { rest::invalid_token(cx); }
-            let p = find_project(cx, app, rest::param_int(cx, r, "id"));
+            let p = find_project(cx, app, rest::param_int(cx, "id"));
             let logo = rest::body(cx, LOGO_LIMIT);
             rest::json(cx, 200, Logo { id: p.id, bytes: logo.len });
         };
-    } else if http::on(r, "DELETE", "/projects/:id") {
+    } else if rest::on(cx, "DELETE", "/projects/:id") {
         rest::bearer(cx) { token =>
             guard token == app.token else { rest::invalid_token(cx); }
-            let p .= find_project(cx, app, rest::param_int(cx, r, "id"));
+            let p .= find_project(cx, app, rest::param_int(cx, "id"));
             p.deleted = true;
             http::start(cx.out, 204);
             http::finish(cx.out, "", "");
         };
     } else {
-        rest::otherwise(cx, r);
+        rest::otherwise(cx);
     }
 }
 

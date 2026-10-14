@@ -2634,52 +2634,54 @@ fn form_answer(cx, body: const u8[:], buf: u8[>..]&) {
 
 // Tier A's routes, in goose-rest's own error shape.
 fn arena(cx, buf: u8[>..]&) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/api/items/:id") {
-        let i = index_of(rest::param(cx, r, "id"), items.len);
-        guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
-        if template { buf.append(item_json[item_at[i]..item_at[i + 1]]); } else { item_open(buf, items[i]); }
-        served(buf);
-        rest::json_bytes(cx, 200, buf);
-    } else if http::on(r, "GET", "/api/me") {
-        let id, has = rest::header(cx, "x-user-id");
-        let i = if has { index_of(id, users.len) } else { -1 };
-        guard i >= 0 else { rest::fail(cx, 401, "unknown_user"); }
-        if template { buf.append(user_json[user_at[i]..user_at[i + 1]]); } else { user_open(buf, users[i]); }
-        served(buf);
-        rest::json_bytes(cx, 200, buf);
-    } else if http::on(r, "POST", "/api/items/:id") {
-        let i = index_of(rest::param(cx, r, "id"), items.len);
-        guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
-        guard valid_write(rest::body(cx)) else { rest::fail(cx, 422, "invalid_item"); }
-        http::start(cx.out, 204);
-        http::finish(cx.out, "", "");
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/api/items/:id") {
+            let i = index_of(rest::param(cx, "id"), items.len);
+            guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
+            if template { buf.append(item_json[item_at[i]..item_at[i + 1]]); } else { item_open(buf, items[i]); }
+            served(buf);
+            rest::json_bytes(cx, 200, buf);
+        } else if rest::on(cx, "GET", "/api/me") {
+            let id, has = rest::header(cx, "x-user-id");
+            let i = if has { index_of(id, users.len) } else { -1 };
+            guard i >= 0 else { rest::fail(cx, 401, "unknown_user"); }
+            if template { buf.append(user_json[user_at[i]..user_at[i + 1]]); } else { user_open(buf, users[i]); }
+            served(buf);
+            rest::json_bytes(cx, 200, buf);
+        } else if rest::on(cx, "POST", "/api/items/:id") {
+            let i = index_of(rest::param(cx, "id"), items.len);
+            guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
+            guard valid_write(rest::body(cx)) else { rest::fail(cx, 422, "invalid_item"); }
+            http::start(cx.out, 204);
+            http::finish(cx.out, "", "");
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
 // Tier F, the bun-http-framework-benchmark's three routes (bench/rest/tiers).
 fn micro(cx) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/") {
-        rest::text(cx, 200, "Hi");
-    } else if http::on(r, "GET", "/id/:id") {
-        var b: u8[>..] = [];
-        b.append(rest::param(cx, r, "id"));
-        b.push(' ');
-        let name, has = rest::query(cx, "name");
-        b.append(name);
-        http::start(cx.out, 200);
-        http::field(cx.out, "x-powered-by", "benchmark");
-        http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", b);
-    } else if http::on(r, "POST", "/json") {
-        var out: u8[>..] = [];
-        guard echo(rest::body(cx), out) else { rest::fail(cx, 400, "invalid_body"); }
-        rest::json_bytes(cx, 200, out);
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/") {
+            rest::text(cx, 200, "Hi");
+        } else if rest::on(cx, "GET", "/id/:id") {
+            var b: u8[>..] = [];
+            b.append(rest::param(cx, "id"));
+            b.push(' ');
+            let name, has = rest::query(cx, "name");
+            b.append(name);
+            http::start(cx.out, 200);
+            http::field(cx.out, "x-powered-by", "benchmark");
+            http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", b);
+        } else if rest::on(cx, "POST", "/json") {
+            var out: u8[>..] = [];
+            guard echo(rest::body(cx), out) else { rest::fail(cx, 400, "invalid_body"); }
+            rest::json_bytes(cx, 200, out);
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
 // Tier F on goose-http alone, the baseline: http::serve's handler, its

@@ -86,7 +86,18 @@ fn require(cx, name: const u8[:], found: bool) {
     guard found else { fail_param(cx, str(name, ": required")); }
 }
 
-// The path parameter name of the route r matched, decoded.
+// The path parameter name of the route rest::on matched, decoded.
+fn param<S>(cx: Cx<S, http::Router>&, name: const u8[:]) -> const u8[:] {
+    return decoded(cx, http::param(cx.router, name), false, name);
+}
+
+// The path parameter name of the route rest::on matched, as an integer.
+fn param_int<S>(cx: Cx<S, http::Router>&, name: const u8[:]) -> i64 {
+    return path_int(cx, http::param(cx.router, name), name);
+}
+
+// The path parameter name of the route r matched, decoded, for a program
+// that builds its own http::router.
 fn param(cx, r: const http::Router&, name: const u8[:]) -> const u8[:] {
     return decoded(cx, http::param(r, name), false, name);
 }

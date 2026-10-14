@@ -329,9 +329,9 @@ let MAX_BODY: i64 = 1 * 1024 * 1024;
 
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
-// a path; and as rest::otherwise does for a path no route takes. allow is the Allow of
-// the program's routes before dispatch, http::Router's, which the Allow lists first.
-fn dispatch(cx, state, allow: const u8[:] = "") {
+// a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,
+// the Allow lists the methods of the program's routes tried before dispatch first.
+fn dispatch(cx, state) {
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -346,7 +346,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD", allow);
+                    rest::no_method(cx, "GET, HEAD");
                     return;
                 }
             },
@@ -358,7 +358,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD", allow);
+                    rest::no_method(cx, "GET, HEAD");
                     return;
                 }
             },
@@ -370,7 +370,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD", allow);
+                    rest::no_method(cx, "GET, HEAD");
                     return;
                 }
             },
@@ -391,7 +391,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD, PUT", allow);
+                    rest::no_method(cx, "GET, HEAD, PUT");
                     return;
                 }
                 if path == "/v1/firmware" {
@@ -404,7 +404,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "PUT", allow);
+                    rest::no_method(cx, "PUT");
                     return;
                 }
             },
@@ -423,7 +423,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD", allow);
+                    rest::no_method(cx, "GET, HEAD");
                     return;
                 }
             }
@@ -435,7 +435,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                         };
                         return;
                     }
-                    rest::no_method(cx, "GET, HEAD", allow);
+                    rest::no_method(cx, "GET, HEAD");
                     return;
                 }
             }
@@ -450,7 +450,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD", allow);
+                            rest::no_method(cx, "GET, HEAD");
                             return;
                         }
                     }
@@ -471,7 +471,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "GET, HEAD, PUT", allow);
+                            rest::no_method(cx, "GET, HEAD, PUT");
                             return;
                         }
                     }
@@ -486,7 +486,7 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
                                 };
                                 return;
                             }
-                            rest::no_method(cx, "PUT", allow);
+                            rest::no_method(cx, "PUT");
                             return;
                         }
                     }
@@ -494,5 +494,5 @@ fn dispatch(cx, state, allow: const u8[:] = "") {
             }
         }
     }
-    rest::not_found(cx, m, path, allow);
+    rest::not_found(cx, m, path);
 }

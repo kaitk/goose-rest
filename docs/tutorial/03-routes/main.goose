@@ -1,4 +1,4 @@
-// docs/tutorial.md, sections 3 and 4: routes in an http::router chain, a
+// docs/tutorial.md, sections 3 and 4: routes in a rest::routes chain, a
 // scope, the extractors, and answers in JSON.
 import std;
 import os;
@@ -39,32 +39,33 @@ fn format(out: u8[>..]&, l: const Listing&) {
 }
 
 fn handle(cx) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/health") {
-        rest::text(cx, 200, "ok");
-    } else if rest::scope(r, "/v1") {
-        rest::route(cx) { v1(cx, r); };
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/health") {
+            rest::text(cx, 200, "ok");
+        } else if rest::scope(cx, "/v1") {
+            rest::route(cx) { v1(cx); };
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
-// The routes under /v1, whose paths r now holds without the prefix.
-fn v1(cx, r: http::Router&) {
-    if http::on(r, "GET", "/projects") {
+// The routes under /v1, matched without the prefix.
+fn v1(cx) {
+    if rest::on(cx, "GET", "/projects") {
         let q, has_q = rest::query(cx, "q");
         let archived, has_archived = rest::query_bool(cx, "archived");
         let limit, has_limit = rest::query_int(cx, "limit");
         rest::json(cx, 200, Listing { q: q, archived: archived, limit: if has_limit { limit } else { 10 } });
-    } else if http::on(r, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, rest::param_int(cx, r, "id")));
-    } else if http::on(r, "GET", "/me") {
+    } else if rest::on(cx, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id")));
+    } else if rest::on(cx, "GET", "/me") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let theme, has_theme = rest::cookie(cx, "theme");
         rest::text(cx, 200, str(user, " likes ", if has_theme { theme } else { "light" }));
     } else {
-        rest::otherwise(cx, r);
+        rest::otherwise(cx);
     }
 }
 

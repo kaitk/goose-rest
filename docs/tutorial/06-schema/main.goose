@@ -25,19 +25,20 @@ fn format(out: u8[>..]&, u: const Upload&) {
 }
 
 fn handle(cx, state: app::App&) {
-    var r = http::router(cx.req);
-    if http::on(r, "PUT", "/uploads/:name") {
-        rest::route(cx) { upload(cx, state, r); };
-    } else {
-        api::dispatch(cx, state, r.allow);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "PUT", "/uploads/:name") {
+            rest::route(cx) { upload(cx, state); };
+        } else {
+            api::dispatch(cx, state);
+        }
+    };
 }
 
 // An upload of any bytes, which a schema can't describe: its bodies are JSON.
-fn upload(cx, state: app::App&, r: const http::Router&) {
+fn upload(cx, state: app::App&) {
     app::security_token(cx, state);
     let data = rest::body(cx, UPLOAD_LIMIT);
-    rest::json(cx, 200, Upload { name: rest::param(cx, r, "name"), bytes: data.len });
+    rest::json(cx, 200, Upload { name: rest::param(cx, "name"), bytes: data.len });
 }
 
 thread_fn worker(cfg: http::Config) {

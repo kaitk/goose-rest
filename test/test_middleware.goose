@@ -23,9 +23,10 @@ fn answer<H>(text: const u8[:]) -> u8[>..] {
     var st = http::Stream { .. };
     var state = rest::NoState { .. };
     var scratch: u8[>..] = [];
-    var cx = rest::Cx<rest::NoState> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
+    var none = rest::NoRouter { .. };
+    var cx = rest::Cx<rest::NoState, rest::NoRouter> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
                                        keep_alive: keep, minor: 1, head: req.method == "HEAD", stream: st },
-                                       state: state, scratch: scratch };
+                                       state: state, scratch: scratch, router: none };
     H(cx);
     return out;
 }
@@ -117,21 +118,24 @@ fn test_timed() {
 // holds /users; /health is outside.
 fn scoped(text: const u8[:]) -> u8[>..] {
     return answer(text) { cx =>
-        var r = http::router(cx.req);
-        if rest::scope(r, "/v1") {
-            if http::on(r, "GET", "") { rest::text(cx, 200, "v1"); }
-            else if http::on(r, "GET", "/projects") { rest::text(cx, 200, "list"); }
-            else if http::on(r, "POST", "/projects") { rest::text(cx, 200, "create"); }
-            else if rest::scope(r, "/admin") {
-                if http::on(r, "DELETE", "/users/:id") { rest::text(cx, 200, str("delete ", http::param(r, "id"))); }
-                else { rest::otherwise(cx, r); }
+        rest::routes(cx) { cx =>
+            if rest::scope(cx, "/v1") {
+                if rest::on(cx, "GET", "") { rest::text(cx, 200, "v1"); }
+                else if rest::on(cx, "GET", "/projects") { rest::text(cx, 200, "list"); }
+                else if rest::on(cx, "POST", "/projects") { rest::text(cx, 200, "create"); }
+                else if rest::scope(cx, "/admin") {
+                    if rest::on(cx, "DELETE", "/users/:id") {
+                        rest::route(cx) { rest::text(cx, 200, str("delete ", rest::param(cx, "id"))); };
+                    }
+                    else { rest::otherwise(cx); }
+                }
+                else { rest::otherwise(cx); }
+            } else if rest::on(cx, "GET", "/health") {
+                rest::text(cx, 200, "health");
+            } else {
+                rest::otherwise(cx);
             }
-            else { rest::otherwise(cx, r); }
-        } else if http::on(r, "GET", "/health") {
-            rest::text(cx, 200, "health");
-        } else {
-            rest::otherwise(cx, r);
-        }
+        };
     };
 }
 

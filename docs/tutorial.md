@@ -141,25 +141,27 @@ curl -s -X POST localhost:8080/hello/goose      # {"error":"method_not_allowed"}
 
 ## 3. Routes and extractors
 
-A router is goose-http's `http::router`, and each route an `http::on` with a method and
-a pattern: literal segments, `:name` for one segment, and `*name`, last, for the rest of
-the path. `GET` routes take `HEAD` too. A route that matches the path with another method
-adds the method to the router's `Allow`, so `rest::otherwise`, at the end of the chain,
-answers 405 with `Allow` where the path exists, 404 where it doesn't, and OPTIONS itself.
+Routes go in a `rest::routes` block, whose context holds a router over the request, and
+each route is a `rest::on` with a method and a pattern: literal segments, `:name` for one
+segment, and `*name`, last, for the rest of the path. `GET` routes take `HEAD` too. A
+route that matches the path with another method adds the method to the router's
+`Allow`, so `rest::otherwise`, at the end of the chain, answers 405 with `Allow` where
+the path exists, 404 where it doesn't, and OPTIONS itself.
 
 `rest::scope` takes a prefix off the path, so the routes inside it match the rest. From
 [`tutorial/03-routes`](tutorial/03-routes/main.goose):
 
 ```goose
 fn handle(cx) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/health") {
-        rest::text(cx, 200, "ok");
-    } else if rest::scope(r, "/v1") {
-        rest::route(cx) { v1(cx, r); };
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/health") {
+            rest::text(cx, 200, "ok");
+        } else if rest::scope(cx, "/v1") {
+            rest::route(cx) { v1(cx); };
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 ```
 
@@ -167,21 +169,21 @@ Extractors read one part of the request each. They are plain calls, made where t
 handler needs the value, rather than handler arguments as in Actix or Axum:
 
 ```goose
-fn v1(cx, r: http::Router&) {
-    if http::on(r, "GET", "/projects") {
+fn v1(cx) {
+    if rest::on(cx, "GET", "/projects") {
         let q, has_q = rest::query(cx, "q");
         let archived, has_archived = rest::query_bool(cx, "archived");
         let limit, has_limit = rest::query_int(cx, "limit");
         rest::json(cx, 200, Listing { q: q, archived: archived, limit: if has_limit { limit } else { 10 } });
-    } else if http::on(r, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, rest::param_int(cx, r, "id")));
-    } else if http::on(r, "GET", "/me") {
+    } else if rest::on(cx, "GET", "/projects/:id") {
+        rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id")));
+    } else if rest::on(cx, "GET", "/me") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let theme, has_theme = rest::cookie(cx, "theme");
         rest::text(cx, 200, str(user, " likes ", if has_theme { theme } else { "light" }));
     } else {
-        rest::otherwise(cx, r);
+        rest::otherwise(cx);
     }
 }
 ```
@@ -540,29 +542,30 @@ template that also matches ([generator reference](generator.md#how-it-matches)).
 
 `dispatch` answers every request it's given, with 404 for a path the schema doesn't
 have. A route the schema can't describe, such as one whose body isn't JSON, goes
-before it, and `dispatch` gets the router's `Allow`. From
+before it, in the same `rest::routes` block. From
 [`tutorial/06-schema/main.goose`](tutorial/06-schema/main.goose):
 
 ```goose
 fn handle(cx, state: app::App&) {
-    var r = http::router(cx.req);
-    if http::on(r, "PUT", "/uploads/:name") {
-        rest::route(cx) { upload(cx, state, r); };
-    } else {
-        api::dispatch(cx, state, r.allow);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "PUT", "/uploads/:name") {
+            rest::route(cx) { upload(cx, state); };
+        } else {
+            api::dispatch(cx, state);
+        }
+    };
 }
 
 // An upload of any bytes, which a schema can't describe: its bodies are JSON.
-fn upload(cx, state: app::App&, r: const http::Router&) {
+fn upload(cx, state: app::App&) {
     app::security_token(cx, state);
     let data = rest::body(cx, UPLOAD_LIMIT);
-    rest::json(cx, 200, Upload { name: rest::param(cx, r, "name"), bytes: data.len });
+    rest::json(cx, 200, Upload { name: rest::param(cx, "name"), bytes: data.len });
 }
 ```
 
-`http::on` adds the methods of the routes whose path matched to `r.allow`, and
-`dispatch` answers with them: `GET /uploads/logo.png` gets 405 with `Allow: PUT`, and
+`rest::on` adds the methods of the routes whose path matched to the router's `Allow`,
+and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with `Allow: PUT`, and
 `OPTIONS` 204 with it, as from one router. Where hand-written routes and the schema share
 a path, the `Allow` lists the hand-written routes' methods, then the schema's, and a
 hand-written route with a schema operation's method wins over it, since it comes first.
@@ -581,23 +584,24 @@ and a program writes its own the same way. From
 fn handle(cx) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            var r = http::router(cx.req);
-            if http::on(r, "GET", "/health") {
-                rest::text(cx, 200, "ok");
-            } else if rest::scope(r, "/v1") {
-                rest::route(cx) {
-                    tenant(cx) { id => v1(cx, r, id); };
-                };
-            } else if rest::scope(r, "/admin") {
-                rest::route(cx) {
-                    rest::bearer(cx) { token =>
-                        guard token == "secret" else { rest::invalid_token(cx); }
-                        admin(cx, r);
+            rest::routes(cx) { cx =>
+                if rest::on(cx, "GET", "/health") {
+                    rest::text(cx, 200, "ok");
+                } else if rest::scope(cx, "/v1") {
+                    rest::route(cx) {
+                        tenant(cx) { id => v1(cx, id); };
                     };
-                };
-            } else {
-                rest::otherwise(cx, r);
-            }
+                } else if rest::scope(cx, "/admin") {
+                    rest::route(cx) {
+                        rest::bearer(cx) { token =>
+                            guard token == "secret" else { rest::invalid_token(cx); }
+                            admin(cx);
+                        };
+                    };
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
         };
     };
 }
