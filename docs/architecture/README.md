@@ -342,8 +342,13 @@ main.goose          workers and middleware                          (written)
 The build runs `goose-rest gen api.json -o api_gen.goose`, after writing `api.json`
 from `api.ts` where there is one. The generated file is `api_gen.goose`, not
 `api.gen.goose`, because an import names a module by identifiers separated by dots
-(2026-10-13). Whether the generated files are committed is open. Committing them shows
-each schema change as a diff in review.
+(2026-10-13).
+
+Decided (2026-10-14): goose-rest commits its generated files, under `test/gen/`,
+`examples/`, `docs/tutorial/`, and `bench/`, as golden files that `scripts/test.sh`
+regenerates and compares byte for byte. An application chooses for itself. It can
+commit its `api_gen.goose`, so that a schema change shows as a diff of the code it
+makes in review and the build needs no generator, or generate it in its build.
 
 ```json
 "paths": {

@@ -24,7 +24,7 @@ goose-http's call chain.
 
 ## Acceptance criteria
 
-- [ ] `docs/architecture/README.md` records whether generated files are committed
+- [x] `docs/architecture/README.md` records whether generated files are committed
 - [ ] A test reproduces the 404 for another method of a hand-written route's path
 - [ ] A path matched by hand-written or generated routes answers 405, and OPTIONS 204,
       with an `Allow` listing both

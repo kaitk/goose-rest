@@ -522,8 +522,9 @@ Declare its `id` as a string instead, and it stops with
 
 The workflow, then, is: change `api.json`, regenerate `api_gen.goose`, and let the
 compiler list the handlers to add or change. This repository commits both files, so
-that a schema change shows in review as a diff of the code it makes; whether a program
-must is left open ([architecture](architecture/README.md#with-a-schema)).
+that a schema change shows in review as a diff of the code it makes. A program can do
+the same, and then builds without the generator, or generate `api_gen.goose` in its
+build ([architecture](architecture/README.md#with-a-schema)).
 
 The router itself is a `match` on the path's length for the static paths, then a walk
 segment by segment, literals before parameters. Its answers are the `if` chain's,
