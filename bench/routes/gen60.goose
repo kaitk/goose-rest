@@ -1,8 +1,9 @@
 // Task 008's server: routes60.goose's 60 routes through the router goose-rest
 // gen writes from test/gen/routes.json, each answering "ok" as routes60's do,
-// on the same loop, http::serve_epoll. It also does what routes60 doesn't:
-// it calls the session check and parses each integer parameter. bench/routes.sh
-// builds it from build/routes/gen/, beside the generated routes_gen.goose.
+// on the same loop, through rest::serve_epoll as a program serves it. It also
+// does what routes60 doesn't: it calls the session check and parses each
+// integer parameter. bench/routes.sh builds it from build/routes/gen/, beside
+// the generated routes_gen.goose.
 //
 //   gen60 http [port]   (WORKERS 1)
 import std;
@@ -12,13 +13,12 @@ import rest from "../../../";
 import .routes_gen;
 import .app;
 
+// The worker's state, which the handlers get; they read none of it.
+struct App { unused: bool = false }
+
 thread_fn worker(cfg: http::Config) {
-    let e = http::serve_epoll(cfg) { req, body, out =>
-        var state = rest::NoState { .. };
-        var scratch: u8[>..] = [];
-        var cx = rest::Cx<rest::NoState> { req: req, body: body, out: out, state: state, scratch: scratch };
-        api::dispatch(cx, state);
-    };
+    var state = App { .. };
+    let e = rest::serve_epoll(cfg) { cx => api::dispatch(cx, state) };
     guard e.code != 0 else { return; }
     http::report(e);
     exit(1);
