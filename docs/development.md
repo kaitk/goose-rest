@@ -60,7 +60,9 @@ git -C ../goose-http fetch --tags
 scripts/move-http-pin.sh v0.3.1
 ```
 
-Then update the date and resolved commit in the README's Pins row and the goose-http
+A release tag is for a release; a commit hash is for a fix not yet released. For a tag,
+the script writes the commit it resolves to in `../goose-http` (or `GOOSE_HTTP`) into
+the README's Pins row, so fetch that checkout's tags first. Then update the row's date and the goose-http
 reference each spike's README names, once `scripts/test.sh` passes. A root that declares
 goose-http at another commit than `rest.goose` gets a warning, and from another source
 an error, so a test can't point at a local goose-http checkout instead.
