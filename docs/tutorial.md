@@ -5,7 +5,7 @@
 
 - [1. The one idea](#1-the-one-idea)
 - [2. Running something](#2-running-something)
-- [3. Routes and extractors](#3-routes-and-extractors)
+- [3. Routes, path, query, and headers](#3-routes-path-query-and-headers)
 - [4. Answers and errors](#4-answers-and-errors)
 - [5. JSON bodies](#5-json-bodies)
 - [6. The whole API from a schema](#6-the-whole-api-from-a-schema)
@@ -72,9 +72,10 @@ to the `rest::route` around `hello`, which answers `400 {"error":"name_too_long"
 The compiler checks that every call that can fail runs inside a `rest::route`: one
 outside it doesn't compile.
 
-The rest of goose-rest follows from these two facts:
+The rest of goose-rest follows from this, and from Goose being unable to store a
+function:
 
-- There is no handler table. Goose can't store a function, so routes are code: an
+- There is no handler table, so routes are code: an
   `if` chain of `rest::on` calls inside `rest::routes`, or a router the generator
   writes as a `match`.
 - Middleware is a block around routes, inlined into the handler, so it costs no call
@@ -141,11 +142,13 @@ curl -s -X POST localhost:8080/hello/goose      # {"error":"method_not_allowed"}
 
 ---
 
-## 3. Routes and extractors
+## 3. Routes, path, query, and headers
 
 Routes go in a `rest::routes` block, whose context holds a router over the request, and
 each route is a `rest::on` with a method and a pattern: literal segments, `:name` for one
-segment, and `*name`, last, for the rest of the path. `GET` routes take `HEAD` too. A
+segment, and `*name`, last, for the rest of the path. A pattern matches the path without
+the query string, so `/v1/projects` takes `/v1/projects?q=g`. `GET` routes take `HEAD`
+too. A
 route that matches the path with another method adds the method to the router's
 `Allow`, so `rest::otherwise`, at the end of the chain, answers 405 with `Allow` where
 the path exists, 404 where it doesn't, and OPTIONS itself.
@@ -167,8 +170,11 @@ fn handle(cx) {
 }
 ```
 
-Extractors read one part of the request each. They are plain calls, made where the
-handler needs the value, rather than handler arguments as in Actix or Axum:
+Extractors read one part of the request each: `rest::param` and `rest::param_int` a path
+parameter, `rest::query`, `rest::query_int`, and `rest::query_bool` a query string
+parameter, `rest::header` a header field, and `rest::cookie` a cookie. They are plain
+calls, made where the handler needs the value, rather than handler arguments as in Actix
+or Axum:
 
 ```goose
 fn v1(cx) {
@@ -192,9 +198,11 @@ fn v1(cx) {
 
 An optional value comes with a `bool` that says whether the request has it, and a value
 that doesn't parse fails the route with 400. `rest::require` turns a missing one into a
-failure too:
+failure too. A query value is percent-decoded, with `+` as a space, and a repeated key
+gives its first value:
 
 ```text
+GET /v1/projects?q=g&limit=1   200 [{"id":1,"name":"goose"}]
 GET /v1/projects?archived=yes  400 {"error":"invalid_parameter","detail":"archived: boolean"}
 GET /v1/projects/two           400 {"error":"invalid_parameter","detail":"id: integer"}
 GET /v1/me                     400 {"error":"invalid_parameter","detail":"X-User: required"}
@@ -517,7 +525,7 @@ can't drift apart unnoticed. Delete `get_project`, and the build stops:
 ```text
 api_gen.goose:259: error: unknown function: app::get_project
                                             app::get_project(cx, id);
-  in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:244
+  in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:252
   in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from api_gen.goose:256
   in fn api::dispatch(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from main.goose:32
   ...
