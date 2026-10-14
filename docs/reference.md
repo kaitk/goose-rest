@@ -1,8 +1,8 @@
 # Reference
 
-goose-rest's middleware, extractors, and errors: what each call does, what it gives,
-and what it answers when it fails. The [tutorial](tutorial.md) introduces them in order,
-and the [generator reference](generator.md) covers what `goose-rest gen` writes.
+goose-rest's middleware, extractors, errors, and test helper: what each call does, what
+it gives, and what it answers when it fails. The [tutorial](tutorial.md) introduces them
+in order, and the [generator reference](generator.md) covers what `goose-rest gen` writes.
 
 ## Middleware
 
@@ -141,3 +141,17 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
     body.push('}');
 }
 ```
+
+## Testing
+
+| Call | Answers |
+|---|---|
+| `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
+| `rest::serve_one(text, fresh, cfg) { cx => ... }` | The same, with `fresh` as the per-request state and `cfg`'s limits; `cfg` is optional |
+
+A body that doesn't fit in `cfg.max_head` with its head is gathered as the server gathers
+it, so the block runs again once it's whole. A request goose-http refuses gets its
+refusal, and a block that writes no answer gets 500. An HTTP/1.1 request without `Host`
+is given `Host: localhost`. A chunked body isn't decoded: give a test request a
+`Content-Length`. The response has no `Date` or `Server` field
+([tutorial](tutorial.md#12-testing-without-sockets)).

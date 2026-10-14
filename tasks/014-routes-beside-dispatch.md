@@ -31,11 +31,12 @@ goose-http's call chain.
 - [x] `bench/routes.sh` shows no slowdown of the generated router, recorded here with how
       it was measured
 - [x] Tutorial section 7 and `docs/generator.md` describe the fix
-- [ ] A helper answers a request's bytes through a block, gathering a long body as
-      `rest::serve` does
-- [ ] `test/test_router.goose` and `docs/tutorial/06-schema/test.goose` use it, and
+- [x] A helper answers a request's bytes through a block, gathering a long body as
+      `rest::serve` does: `rest::serve_one`, as `rest::answer` already replies to a
+      waiting route
+- [x] `test/test_router.goose` and `docs/tutorial/06-schema/test.goose` use it, and
       tutorial section 12 is written around it
-- [ ] A test request without `Host` works, or fails with an error that says why
+- [x] A test request without `Host` works: `rest::serve_one` adds `Host: localhost`
 - [ ] The missing-handler error is shorter, or its noise is recorded in
       `docs/goose-findings.md` with a minimal program
 

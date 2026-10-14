@@ -91,18 +91,8 @@ fn chain_routes(cx) {
 
 // What the generated router, or the if chain, answers to text.
 fn answer(text: const u8[:], generated: bool) -> u8[>..] {
-    var out: u8[>..] = [];
-    let req, status = http::parse(text);
-    if status != 200 { print("parse: ", status, "\n", text); assert(false); }
-    var keep = true;
-    var st = http::Stream { .. };
     var state = rest::NoState { .. };
-    var scratch: u8[>..] = [];
-    var cx = rest::Cx<rest::NoState> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
-                                       keep_alive: keep, minor: 1, head: req.method == "HEAD", stream: st },
-                                       state: state, scratch: scratch };
-    if generated { api::dispatch(cx, state); } else { chain(cx); }
-    return out;
+    return rest::serve_one(text) { cx => if generated { api::dispatch(cx, state); } else { chain(cx); } };
 }
 
 fn request(method: const u8[:], target: const u8[:], fields: const u8[:] = "X-Trace: t1\r\n") -> u8[>..] {
@@ -238,18 +228,8 @@ fn beside(cx, state: rest::NoState&) {
 }
 
 fn answer_beside(text: const u8[:]) -> u8[>..] {
-    var out: u8[>..] = [];
-    let req, status = http::parse(text);
-    assert(status == 200);
-    var keep = true;
-    var st = http::Stream { .. };
     var state = rest::NoState { .. };
-    var scratch: u8[>..] = [];
-    var cx = rest::Cx<rest::NoState> { req: req, body: text[req.len..], out: http::Reply { buf: out, common: "",
-                                       keep_alive: keep, minor: 1, head: req.method == "HEAD", stream: st },
-                                       state: state, scratch: scratch };
-    beside(cx, state);
-    return out;
+    return rest::serve_one(text) { cx => beside(cx, state) };
 }
 
 fn test_beside_dispatch() {

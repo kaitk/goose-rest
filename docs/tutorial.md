@@ -860,43 +860,48 @@ another language and a Goose one can then share one contract.
 
 ## 12. Testing without sockets
 
-A handler is a function of a `rest::Cx`, so a test can build one from a request's bytes,
-call the handler, and compare what it wrote, with no server and no threads. Such a test
-runs in-process through TinyCC, `goose test.goose`. From
+`rest::serve_one(text) { cx => ... }` answers one request, given as its bytes, as
+`rest::serve` would through the block, and returns the response's bytes: no socket, no
+threads, and no goose-http types in the test. Such a test runs in-process through
+TinyCC, `goose test.goose`. From
 [`tutorial/06-schema/test.goose`](tutorial/06-schema/test.goose):
 
 ```goose
-fn answer(state: app::App&, text: const u8[:]) -> u8[>..] {
-    var out: u8[>..] = [];
-    let req, status = http::parse(text);
-    assert(status == 200);
-    var keep = true;
-    var stream = http::Stream { .. };
-    var none = rest::NoState { .. };
-    var scratch: u8[>..] = [];
-    var cx = rest::Cx<rest::NoState> {
-        req: req, body: text[req.len..],
-        out: http::Reply { buf: out, common: "", keep_alive: keep, minor: 1, head: false, stream: stream },
-        state: none, scratch: scratch,
-    };
-    api::dispatch(cx, state);
-    return out;
-}
+    fn answer(text: const u8[:]) -> u8[>..] {
+        return rest::serve_one(text) { cx => api::dispatch(cx, state) };
+    }
+    let auth = "Authorization: Bearer secret\r\n";
+    expect(body_of(answer(post("", "{\"name\": \"goose\"}"))), "{\"error\":\"unauthenticated\"}");
+    expect(body_of(answer(post(auth, "{\"name\": \"goose\"}"))), "{\"id\":1,\"name\":\"goose\",\"owner\":\"ada\"}");
 ```
 
+The answer is the whole response, so a test can compare the status line and fields too;
+it has no `Date` or `Server` field. `serve_one` works as the server does:
+
+- The block runs inside `rest::route`, so it can call `rest::fail`.
+- A body that doesn't fit in the 8 KB read buffer with its head arrives in pieces, which
+  `rest::body` gathers, and the block runs again with it whole. A test with a long
+  body therefore covers the rule from [section 9](#9-large-bodies) that code before a
+  route's first `rest::body` runs twice.
+- goose-http's limits apply: a request it refuses, such as a body past `max_body`, gets
+  its refusal, and a block that writes no answer gets 500. A third argument, an
+  `http::Config`, changes the limits, and the second is the per-request state.
+- An HTTP/1.1 request without `Host` is given `Host: localhost`, so a test request can
+  leave it out.
+
 ```goose
-    expect(body_of(answer(state, post("", "{\"name\": \"goose\"}"))), "{\"error\":\"unauthenticated\"}");
-    expect(body_of(answer(state, post("Authorization: Bearer secret\r\n", "{\"name\": \"goose\"}"))),
-           "{\"id\":1,\"name\":\"goose\",\"owner\":\"ada\"}");
+    // A body past the 8 KB read buffer, gathered as the server gathers it, and
+    // one past the route's 16 KB x-body-limit.
+    expect(body_of(answer(post(auth, padded(10000)))), "{\"id\":2,\"name\":\"swan\",\"owner\":\"ada\"}");
+    expect(body_of(answer(post(auth, padded(20000)))), "{\"error\":\"payload_too_large\"}");
 ```
 
 The test imports `api_gen.goose` and `app.goose` as `main.goose` does, so it can't import
-`main.goose` itself: keep the handlers out of the file with `main`. The answer is the
-whole response, so a test can compare the status line and fields too. `http::parse`
-refuses an HTTP/1.1 request without `Host`. A body larger than the read buffer isn't
-gathered here: `cx` has no gathering, so `rest::body` takes the body as given.
-[`test/test_router.goose`](../test/test_router.goose) uses the same harness to check the
-generated router against an `if` chain of the same 60 routes.
+`main.goose` itself: keep the handlers out of the file with `main`.
+[`test/test_router.goose`](../test/test_router.goose) checks the generated router against
+an `if` chain of the same 60 routes the same way, and
+[`test/test_serve_one.goose`](../test/test_serve_one.goose) counts a route's runs for a
+long body.
 
 For the whole server, the tutorial's programs and the examples follow one pattern: a
 `requests.sh` lists requests as `req METHOD PATH [curl options]`, and
