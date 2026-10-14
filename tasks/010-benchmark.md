@@ -122,7 +122,8 @@ interleaved runs:
       `NOTES.md`; goes beside the rows once there are results)
 - [x] Tiers F, R, and M served by every framework, each with a checker
 - [ ] Measured against goose-http alone with goose-http's `bench/rest.sh`, wrapped by
-      goose-rest's `bench/rest.sh`, which runs tiers F, R, and M itself
+      goose-rest's `bench/rest.sh`, which runs tiers F, R, and M itself, after task 012
+      so both Goose servers share the application code
 - [ ] Instruction counts from `count.sh`
 - [ ] Results in `docs/results.md`, with how they were measured, losses as plainly as
       wins, and a summary in the README
