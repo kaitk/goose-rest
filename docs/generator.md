@@ -33,6 +33,42 @@ program's root declares goose-rest and goose-http (README, "Use"). It doesn't im
 handlers' module: the root does, wherever the module lives, and the router's qualified
 calls find it.
 
+## Write it in TypeScript
+
+`ts/api.mts` types the subset below, so `tsc` rejects a keyword, a type, a format, or a
+shape outside it while the document is being written. Copy it beside the contract, pass
+the document to `api()`, and print it with `json()`:
+
+```ts
+import { api, json } from "./api.mts";
+
+const doc = api({
+  openapi: "3.1.0",
+  info: { title: "Projects", version: "1" },
+  components: {
+    schemas: {
+      Project: {
+        type: "object",
+        required: ["id"],
+        properties: { id: { type: "integer", minimum: 1 }, name: { type: "string", maxLength: 64 } },
+      },
+    },
+  },
+});
+console.log(json(doc));
+```
+
+```sh
+tsc --noEmit --strict --allowImportingTsExtensions --module nodenext contract.mts
+node contract.mts > api.json
+```
+
+`api()` keeps the document's literal types, so `tsc` also rejects a `$ref` to a missing
+component, a `required` name that isn't a property, and a path parameter its template
+doesn't name. The generator still checks what types can't: cycles, names that aren't
+Goose identifiers or that collide, and number values such as a negative `maxLength`.
+Task 011 lists which of the two rejects each construct, and `ts/test/` checks each.
+
 ## The subset
 
 | Schema | Goose |

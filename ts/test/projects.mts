@@ -1,0 +1,65 @@
+// test/gen/api.json, written with the helper: scripts/test.sh generates Goose
+// from its output and compares it with test/gen/api_gen.goose.
+import { api, json } from "../api.mts";
+
+const doc = api({
+  openapi: "3.1.0",
+  info: { title: "Projects", version: "1" },
+  paths: {},
+  components: {
+    schemas: {
+      Status: { type: "string", enum: ["active", "archived", "in-review"] },
+      Id: { type: "integer", minimum: 1 },
+      ProjectCreate: {
+        type: "object",
+        description: "What a client sends to create a project.",
+        required: ["name"],
+        additionalProperties: false,
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          color: { type: "string", maxLength: 7 },
+          status: { $ref: "#/components/schemas/Status" },
+        },
+      },
+      Owner: {
+        type: "object",
+        required: ["id", "email"],
+        properties: {
+          id: { $ref: "#/components/schemas/Id" },
+          email: { type: "string", format: "email" },
+          displayName: { type: ["string", "null"] },
+        },
+      },
+      Project: {
+        type: "object",
+        required: ["id", "name", "status", "owner", "tags", "createdAt"],
+        properties: {
+          id: { $ref: "#/components/schemas/Id" },
+          name: { type: "string" },
+          status: { $ref: "#/components/schemas/Status" },
+          budget: { type: "number", minimum: 0, exclusiveMaximum: 1e9 },
+          priority: { type: "integer", format: "int32", minimum: -5, maximum: 5 },
+          public: { type: "boolean" },
+          owner: { $ref: "#/components/schemas/Owner" },
+          reviewers: { type: "array", items: { $ref: "#/components/schemas/Owner" }, maxItems: 10 },
+          tags: { type: "array", items: { type: "string", maxLength: 20 }, minItems: 0 },
+          scores: { type: "array", items: { type: "number" } },
+          createdAt: { type: "string", format: "date-time" },
+          dueOn: { type: ["string", "null"], format: "date" },
+          ref: { type: "string", format: "uuid" },
+          kind: { type: "string", enum: ["internal", "client"] },
+          settings: {
+            type: ["object", "null"],
+            properties: {
+              notify: { type: "boolean" },
+              channels: { type: "array", items: { type: "string", enum: ["email", "slack"] } },
+            },
+          },
+          type: { type: "string" },
+        },
+      },
+    },
+  },
+});
+
+console.log(json(doc));

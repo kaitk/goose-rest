@@ -2,7 +2,8 @@
 # Runs every test this repository has, and fails on the first failure: the
 # typecheck of each root file under test/, the unit tests through TinyCC
 # (scripts/test-unit.sh), the generator's output for each schema under
-# test/gen/ and examples/ against its golden file, each example served and
+# test/gen/ and examples/ against its golden file, the TypeScript helper's
+# tests where tsc is installed (ts/), each example served and
 # requested (scripts/test-examples.sh), then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
@@ -11,11 +12,13 @@
 # rest::route, or the functions that fail, all inlined into the handler: only
 # the handler and library leaves stay functions.
 #
-# GOOSE names the compiler (default: goose on PATH).
+# GOOSE names the compiler (default: goose on PATH), and TSC the TypeScript
+# compiler's command (default: tsc on PATH), such as "npx -p typescript tsc".
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 goose=${GOOSE:-goose}
+TSC=${TSC:-tsc}
 
 step() {
     echo
@@ -41,6 +44,47 @@ for f in "$root"/test/gen/*.json "$root"/examples/*/api.json "$root"/bench/rest/
     "$goose" "$root/gen/main.goose" -- gen "$f" -o "$root/build/gen/${name}_gen.goose"
     diff -u "$dir/${name}_gen.goose" "$root/build/gen/${name}_gen.goose"
 done
+
+# The TypeScript helper, only where tsc is: tsc checks ts/, where
+# ts/test/reject.mts holds what tsc must refuse. Then node runs the documents
+# written with the helper, each of which must be the JSON it copies and pass
+# the generator, and ts/test/generator.mts's, each of which the generator must
+# refuse with the error it names.
+ts=$root/build/ts
+if command -v "${TSC%% *}" >/dev/null 2>&1; then
+    step "tsc ts/"
+    $TSC -p "$root/ts"
+    for pair in projects:test/gen/api.json schema:examples/schema/api.json routes:test/gen/routes.json; do
+        name=${pair%%:*}
+        json=$root/${pair#*:}
+        step "ts/test/$name.mts"
+        mkdir -p "$ts/$name"
+        node "$root/ts/test/$name.mts" >"$ts/$name/api.json"
+        node -e 'const fs = require("fs"), j = (p) => JSON.stringify(JSON.parse(fs.readFileSync(p, "utf8")));
+                 if (j(process.argv[1]) !== j(process.argv[2])) { console.log("differs from " + process.argv[2]); process.exit(1); }' \
+            "$ts/$name/api.json" "$json"
+        "$goose" "$root/gen/main.goose" -- gen "$ts/$name/api.json" -o "$ts/$name/api_gen.goose"
+    done
+    step "ts/test/generator.mts"
+    node "$root/ts/test/generator.mts" >"$ts/cases"
+    tab=$(printf '\t')
+    while IFS=$tab read -r want doc; do
+        printf '%s\n' "$doc" >"$ts/api.json"
+        if "$goose" "$root/gen/main.goose" -- gen "$ts/api.json" -o "$ts/api_gen.goose" 2>"$ts/err"; then
+            echo "accepted, but want: $want"
+            exit 1
+        fi
+        if ! grep -qxF "goose-rest: $ts/api.json: $want" "$ts/err"; then
+            echo "want: $want"
+            grep '^goose-rest' "$ts/err"
+            exit 1
+        fi
+    done <"$ts/cases"
+    echo "$(wc -l <"$ts/cases" | tr -d ' ') refused"
+else
+    step "ts/"
+    echo "skipped: no ${TSC%% *} on PATH (TSC names another)"
+fi
 
 step "test-examples.sh"
 "$root/scripts/test-examples.sh"

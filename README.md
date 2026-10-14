@@ -24,6 +24,7 @@ Goose gaps found here are in [`docs/goose-findings.md`](docs/goose-findings.md).
 | 🟢 | Extractors | Path, query, header, and cookie parameters; `take<T>` for a JSON body or a program's own type; `once` ([below](#extractors)) |
 | 🟢 | Middleware, scopes, examples | CORS, a bearer check, Server-Timing and the access log, prefix scopes ([below](#middleware)); a JSON API with and without a schema |
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
+| 🟢 | TypeScript helper | `ts/api.mts`: write the OpenAPI document in TypeScript, and `tsc` rejects what the generator doesn't support as you type it; cycles, names, and number values stay the generator's checks ([reference](docs/generator.md#write-it-in-typescript)) |
 | 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
 | 🟢 | Waiting on another thread | `rest::ask`, resuming through the program's `Waiting` enum, replies of any size in pieces (`waiting.goose`, `examples/waiting/`) |
 | 🟡 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty on goose-http's REST tiers and three of its own, F, R, and M (`bench/rest.sh`); the servers pass their checks, and the runs wait on the Linux desktop (task 010) |
@@ -39,6 +40,7 @@ waiting.goose     ask another thread, and resume with its reply
 examples/         a JSON API without a schema and one with a schema
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)
+ts/               the TypeScript helper: types for the generator's subset, api.mts
 test/             unit tests, test_*.goose, each a root file; test/gen/ golden files
 scripts/          test.sh runs every test; test-unit.sh the unit tests alone
 bench/            measurements: routes.sh counts the if chain's instructions (task 007);

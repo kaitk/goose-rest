@@ -12,6 +12,7 @@ The spikes have run on macOS (2026-10-13).
 | Goose compiler | `46356c2`, the pin in `README.md` | everything |
 | OS | macOS 26.3.1, Apple M1 Pro | |
 | C compiler | Apple clang 21.0.0 (`clang-2100.0.123.102`) | `goose build`, and reading the generated C (spike 04) |
+| Node, TypeScript (optional) | Node 24.14.1, TypeScript 7.0.2 through npx (2026-10-14) | the TypeScript helper's tests |
 
 ## Set up the Goose compiler
 
@@ -67,6 +68,8 @@ breaking changes, expect each move to need code changes here.
 3. The generator on each schema under `test/gen/` and `examples/`, whose output must
    match the golden `_gen.goose` beside it byte for byte. A change to the generator
    regenerates them ([generator.md](generator.md#tests)).
+   Then the TypeScript helper's tests, where `tsc` is installed
+   ([below](#run-the-typescript-helpers-tests)).
 4. `scripts/test-examples.sh`, which builds each example under `examples/`, serves it
    on `127.0.0.1` from port 18081 up, sends the requests its `requests.sh` lists with
    `curl`, and compares the answers with its `expected.txt`. A port in use there fails
@@ -101,6 +104,22 @@ GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
 
 The first run fetches goose-http at its pin into `~/.goose/pkg`, so it needs network
 access; later runs don't. Both scripts write only into `build/`, which git ignores.
+
+### Run the TypeScript helper's tests
+
+`ts/` holds the TypeScript helper and its tests, and goose-rest doesn't install a
+JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
+`ts/tsconfig.json`, then runs `ts/test/*.mts` with `node`; without `tsc`, it prints
+`skipped` and goes on. With Node installed and no `tsc`, npx fetches one for the run:
+
+```sh
+TSC="npx -y -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
+```
+
+Node runs the `.mts` files directly, stripping their types, which needs Node 22.18 or
+later. The files are `.mts`, not `.ts`: without a `package.json` that says
+`"type": "module"`, `tsc` reads a `.ts` file as CommonJS, where `import` is an error, and
+Node warns before it rereads one as a module. The tests passed with TypeScript 7.0.2 and Node 24.14.1 (2026-10-14).
 
 ## Run the spikes
 
