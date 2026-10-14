@@ -73,7 +73,8 @@ It ends in `rest::not_found`.
 - The checker gave up on a loop calling the operation loader, which rebound an optional
   reference with `.=` inside `json::each` blocks
   (aardappel/goose#32, fixed in `c0e2297`).
-  Looking the parameter up by index instead let it settle.
+  Looking the parameter up by index instead let it settle, until the fix; the loader
+  rebinds inside `json::each` again.
 - Storing a `json::Node?` from a parameter's schema in the generator's tables was
   refused for `test_generator.goose`'s instantiation of `generate` ("storing a
   reference rooted at n, which does not outlive the destination") and accepted for

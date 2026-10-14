@@ -266,28 +266,19 @@ fn format_token(out: u8[>..]&, key: const u8[:]) {
     }
 }
 
-// The index of the member of list whose "name" is name, or -1.
-fn index_of_name(list: json::Node?, name: const u8[:]) -> i64 {
-    guard list else { return -1; }
+// The element of list whose "name" is name, and its index; null and -1
+// when there's none.
+fn find_name(list: json::Node?, name: const u8[:]) -> json::Node?, i64 {
+    var found: json::Node? = null;
+    guard list else { return found, -1; }
     var k = 0;
-    var found = -1;
+    var at = -1;
     json::each(list) { p =>
         let n, ok = json::as_string(json::member(p, "name"));
-        if ok && n == name { found = k; }
+        if ok && n == name { found .= p; at = k; }
         k++;
     };
-    return found;
-}
-
-// The element of list at n, which exists.
-fn nth(list: json::Node?, n: i64) -> json::Node& {
-    guard list else { abort("nth: no list"); }
-    var k = 0;
-    json::each(list) { p =>
-        if k == n { return p; }
-        k++;
-    };
-    abort("nth: no such element");
+    return found, at;
 }
 
 // The index of key in METHODS, or -1.
@@ -784,19 +775,15 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         return pp;
     }
 
-    // The number of elements of list, an array.
-    fn count_in(list: json::Node?) -> i64 {
-        guard list else { return 0; }
-        return match list.val { Arr a => a.count, _ => 0 };
-    }
-
     // The index of the parameter in list named name at where, or -1.
     fn index_at(list: json::Node?, name: const u8[:], where: i64, ptr: const u8[:]) -> i64 {
-        for k in count_in(list) {
-            let p .= nth(list, k);
+        guard list else { return -1; }
+        var k = 0;
+        json::each(list) { p =>
             let n, ok = json::as_string(json::member(p, "name"));
             if ok && n == name && place_of(p, ptr) == where { return k; }
-        }
+            k++;
+        };
         return -1;
     }
 
@@ -804,20 +791,18 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
     // params: those that other, the operation's own list, doesn't declare
     // again, or all when other is null.
     fn add_params(list: json::Node?, lptr: const u8[:], other: json::Node?) {
-        for k in count_in(list) {
-            let p .= nth(list, k);
+        guard list else { return; }
+        var k = 0;
+        json::each(list) { p =>
             let pptr = ptr1(lptr, str(k));
             let where = place_of(p, pptr);
-            if where == P_PATH { continue; }
-            let given, nok = json::as_string(json::member(p, "name"));
-            guard index_at(list, given, where, pptr) == k else { fail(pptr, "a repeated parameter"); }
-            if index_at(other, given, where, pptr) >= 0 { continue; }
-            // Kept in strs: test_generator's documents can't store the
-            // JSON's own slice here (not reduced to a minimal program yet).
-            let at = strs.len;
-            strs.append(given);
-            params.push(param_of(p, pptr, strs[at..], where));
-        }
+            if where != P_PATH {
+                let given, nok = json::as_string(json::member(p, "name"));
+                guard index_at(list, given, where, pptr) == k else { fail(pptr, "a repeated parameter"); }
+                if index_at(other, given, where, pptr) < 0 { params.push(param_of(p, pptr, given, where)); }
+            }
+            k++;
+        };
     }
 
     // The object component a request body is read as.
@@ -877,12 +862,13 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         let first = params.len;
         for s in segs[route.first_seg..route.first_seg + route.nsegs] {
             if !s.param { continue; }
-            let at_own = index_of_name(own, s.text);
-            let at_shared = index_of_name(shared, s.text);
-            guard at_own >= 0 || at_shared >= 0 else { fail(optr, str("no parameter declares {", s.text, "}")); }
-            let cptr = if at_own >= 0 { ptr1(pptr, str(at_own)) } else { ptr1(sptr, str(at_shared)) };
-            let pp = if at_own >= 0 { param_of(nth(own, at_own), cptr, s.text, P_PATH) }
-                     else { param_of(nth(shared, at_shared), cptr, s.text, P_PATH) };
+            let in_own, at_own = find_name(own, s.text);
+            let in_shared, at_shared = find_name(shared, s.text);
+            var p = in_own;
+            if !in_own { p .= in_shared; }
+            guard p else { fail(optr, str("no parameter declares {", s.text, "}")); }
+            let cptr = if in_own { ptr1(pptr, str(at_own)) } else { ptr1(sptr, str(at_shared)) };
+            let pp = param_of(p, cptr, s.text, P_PATH);
             for q in params[first..] {
                 guard q.local != pp.local else { fail(cptr, str("two parameters make the name ", pp.local)); }
             }
