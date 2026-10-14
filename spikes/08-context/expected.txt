@@ -1,0 +1,11 @@
+200 ok
+
+200 goose has 3 projects; this is 42
+
+204 deleted 7 of goose
+
+405 allow: GET, HEAD, DELETE
+
+404 not_found
+
+requests seen: 5

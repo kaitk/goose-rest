@@ -1,6 +1,7 @@
 # 015: Win back the plan's API where Goose and goose-http now allow it
 
-Status: todo (asked for 2026-10-14)
+Status: in-progress (asked for 2026-10-14). The inventory is done; the
+recommendations wait on the maintainer before anything public changes.
 
 The plan (`docs/plan.md` in `923c4fb`) wrote handlers and the generated router in calls
 that read as the route means. The built API drifted from them, call by call, as each
@@ -125,17 +126,101 @@ costs 45-70 instructions more on kqueue, 0.3%, and `gen60` pays most of that. `h
 moves by 3-12. `bench/stack.sh`'s cells stay within their old ranges, from -33 to +110
 of 20,700-33,000.
 
+## Inventory
+
+Why each drift happened, and whether the reason still holds at Goose `46356c2` and
+goose-http `cb57a0b` (read 2026-10-14). Spike 08 checked what the docs didn't settle.
+
+### The table's rows
+
+1. **Handler signature, `cx, state` for `cx: rest::Cx&, app: App&`.** A choice made
+   here. `Cx<S>` is generic in the per-request state, since `cx.state` has the
+   program's type and `rest::error_body` is overloaded by it (tasks 004 and 010). An
+   untyped `cx` is how Goose writes a generic parameter. `state` is the name the
+   generated router gives whatever the program passes to `dispatch`; a handler names
+   and types its own parameter, as `state: App&`. Still holds, but a program can now
+   name the context: `type Cx = rest::Cx<St>;` and `cx: Cx&` (spike 08).
+2. **`http::path_of(cx.req.target)` and `cx.req.method == "GET"` for `cx.path` and
+   `cx.is("GET")`.** A choice made here, in generated code only. The router computes
+   the path once into a local and compares the method directly, at no cost. Still
+   holds.
+3. **`rest::route(cx) { ... };` then `return;` for `return rest::route(cx) { ... };`.**
+   A Goose limit, in generated code only: "cannot return a valueless expression". Still
+   holds ([findings](../docs/goose-findings.md#a-function-cant-return-a-valueless-call)).
+4. **`rest::no_method(cx, "GET, HEAD", allow)` and `rest::not_found(cx, m, path, allow)`
+   for `rest::not_allowed` and `rest::not_found(cx)`.** A choice made here, in
+   generated code only. `allow` carries the `Allow` of hand-written routes before
+   `dispatch` (task 014), and `m` and `path` are the locals the router already has.
+   Still holds.
+5. **`rest::segment`, `rest::segment_is`, and `rest::path_int` for `rest::under` and
+   `rest::segment_int`.** A choice made here, in generated code only. Walking segments
+   lets a literal match an escaped byte as `http::on` does, and a typed parameter fail
+   with its name (task 008). Still holds.
+6. **`var r = http::router(cx.req)`, `http::on(r, ...)`, and `r` passed on, for routes
+   taking `cx` alone.** goose-http's API: a route's parameters and `Allow` live in the
+   `http::Router` the program builds, and `Cx` doesn't hold one, since a program served
+   by the generated router needs none. So each function of hand-written routes takes
+   `cx`, the program's state, and `r`, and each extractor of a path parameter takes `r`
+   too: `rest::param_int(cx, r, "id")`. The reason no longer holds: spike 08 puts an
+   optional router in `Cx`, which `rest::routes(cx) { cx => ... }` sets, so a program
+   that never calls `routes` builds none. One store needs a helper there
+   ([findings](../docs/goose-findings.md#a-store-through-an-optional-field-is-charged-to-the-structs-other-references)).
+   goose-http's "Router built once" (task 027) is blocked on Goose, and doesn't change
+   this.
+
+### Found beside them
+
+7. **The worker's state, passed beside `cx` to every handler and helper.** The plan's
+   own design, `fn get_project(cx: rest::Cx&, app: App&, ...)`, as Actix's `web::Data`
+   is an argument. Every function a route calls takes it, `find_project(cx, app, id)`,
+   and the generated router passes it on. Spike 08 shows `Cx` can hold a reference to it
+   beside the per-request state, `cx.app`.
+8. **`rest::route` written in hand-written routes.** The plan wrote it only in the
+   generated router. A program without a schema opens one route per request itself,
+   inside `timed` and `cors` and around the code that fails (task 006): a route nested in
+   a route stays out of line (architecture doc, "Inlining"). Still holds. A `routes` block
+   could be that route too.
+9. **`rest::cors(cx, rest::Cors { origins: "...", .. })` for `rest::cors(cx,
+   ALLOWED_ORIGINS)`.** A choice made here, for the methods, headers, credentials, and
+   max age a real API sets (task 006). Still holds.
+10. **No `cx.now`.** The plan's security check compared a session's expiry with
+    `cx.now`. A choice made here: nothing built needed a clock per request. Still holds.
+11. **An empty answer takes two goose-http calls**: `http::start(cx.out, 204);
+    http::finish(cx.out, "", "");` in `examples/plain`. goose-http's API: `http::respond`
+    always writes a `Content-Type`. goose-http's fix is on `findings-46356c2-hot` and
+    `api-hot`, not on `main`; goose-rest can add its own answer without either.
+12. **Middleware costs 12,000 instructions a GET** ("Baseline"). Measured alone on tier
+    M's GET and POST: `timed` costs 5,200 and 2,000, `cors` 3,750 and 3,500, and
+    `bearer` 1,700 and 2,000. `timed` moves the whole written response a byte at a time
+    to insert `Server-Timing`, since Goose has no move within an array (goose-http's
+    findings, "Moving bytes up within an array takes a byte loop"), so a larger
+    response costs more. `cors` looks for `Access-Control-Request-Method` on every
+    request with an `Origin`, a GET's too, and formats its fields per request. Choices
+    made here, in the implementation; the API needn't change.
+13. **goose-rest's own copies of what goose-http's `main` now has.** goose-http's API at
+    `e27ab21` lacked them; `cb57a0b` has them: `http::gather` for `runtime.goose`'s body
+    gathering (about 70 lines), `http::insert_field`, `http::bearer` for
+    `rest::bearer_token`'s parsing, `http::JSON` and `http::TEXT` for the raw
+    `"Content-Type: ...\r\nContent-Length: "` strings, and `http::mail_slot_size` for
+    the slot size `rest::ask` sends in each job.
+14. **UFCS.** Not a drift from the plan, which named the namespace too, but the one
+    change that would shorten every call: `cx.text(200, "ok")` for `rest::text(cx, 200,
+    "ok")`. A Goose limit: UFCS looks in the caller's namespace, not the type's (spike 08,
+    [findings](../docs/goose-findings.md#ufcs-doesnt-reach-the-namespace-of-the-receivers-type)).
+15. **`rest::take<T>(cx)` with `T` explicit.** The plan's own. A Goose limit:
+    `let v: T = rest::take(cx)` can't infer `T` (spike 08). Still holds.
+
 ## Acceptance criteria
 
-- [ ] Each row above, and any drift found beside them, has its reason and whether it
+- [x] Each row above, and any drift found beside them, has its reason and whether it
       still holds at the current Goose and goose-http pins, checked by a spike where the
       answer isn't in the docs
-- [ ] goose-http's task 027 changes and its rough-edges list are read for what they make
+- [x] goose-http's task 027 changes and its rough-edges list are read for what they make
       possible here, and each that would help is named in this file
 - [ ] A recommendation per drift: undo it, undo it after a goose-http change (proposed
       to its task 027, after asking first), or keep it, with the reason
 - [ ] The drifts undone are built, with the tutorial, reference, examples, and
       generated code updated, and `bench/routes.sh` measured before and after, recorded
       here with how it was measured
-- [ ] A Goose limit that keeps a drift is in `docs/goose-findings.md` with a minimal
+- [x] A Goose limit that keeps a drift is in `docs/goose-findings.md` with a minimal
       program

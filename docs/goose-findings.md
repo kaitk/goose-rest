@@ -67,6 +67,50 @@ untyped function parameter does.
 Workaround: pass the local as a reference, `R(&r, cx.scratch)`, which is shorter than
 goose-http's struct holding a reference.
 
+### A store through an optional field is charged to the struct's other references
+
+Found on `46356c2`, spike 08. Status: open
+
+A function that writes through a binding of a struct's optional reference field is taken
+to store into whatever any of the struct's references lead to. Called on a struct whose
+optional field points at a local, the call is refused when another field points at the
+caller's storage, though the store goes only into the local. The same store in a
+function that takes the local's type by reference is accepted. Expected: the store is
+charged to the optional field's target alone, as the reference parameter's is.
+
+    import std;
+    struct Inner { path: const u8[:] }
+    struct Outer { log: u8[>..]&, inner: Inner? = null }
+
+    fn trim(o) {
+        var r .= o.inner;
+        guard r else { return; }
+        r.path = r.path[1..];       // refused at the call below
+    }
+
+    fn with_inner(o: Outer&) {
+        var i = Inner { path: "/abc" };
+        var c = Outer { log: o.log, inner: i };
+        trim(c);
+        o.log.append(i.path);
+    }
+
+    fn main() {
+        var log: u8[>..] = [];
+        var o = Outer { log: log };
+        with_inner(o);
+        print(log);
+    }
+
+    error: call trim stores a reference rooted at i into what its parameter o leads to,
+    which may be the caller's storage behind o, which i does not outlive (§9.2)
+
+goose-rest meets it with a context that holds the router a route's block adds: `rest::scope`
+narrows the router's path through the context's optional field.
+
+Workaround: move the store into a function that takes the field's type by reference,
+`fn cut(r: Inner&) { r.path = r.path[1..]; }`, called as `cut(r)`.
+
 ### A long-distance return can't carry a slice a caller passed in
 
 Found on `a6249a4`, spike 03. Status: open; still fails on `46356c2`
@@ -88,6 +132,26 @@ Workaround: carry owned bytes, `u8[]` built with `str(path)`, as `exception::thr
 docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works too.
 
 ## Feature requests
+
+### A function can't return a valueless call
+
+Found on `46356c2`, task 015. Status: open
+
+`return f();` is refused when `f` returns nothing, so a function that ends on such a
+call writes it and then `return;`. Expected: `return` of a valueless expression in a
+function without a result, as C++ and Rust allow, so a branch that hands off can end in
+one statement.
+
+    import std;
+    fn wrap<F>() { F(); }
+    fn f() { return wrap() { print("in"); }; }
+    fn main() { f(); }
+
+    error: cannot return a valueless expression
+
+goose-rest's plan wrote each generated route as `return rest::route(cx) { ... };`.
+
+Workaround: `rest::route(cx) { ... };` and then `return;`, as the generated router does.
 
 ### An error inside a generic function lists every frame up to main
 
@@ -171,6 +235,36 @@ Workaround: goose-rest's functions that take a block are `inline fn` (`route`,
 `attempt`, `cors`, `bearer`, `timed`, `json_body`), so the middleware, the route, and
 the code that fails all fold into the handler, which may stay one function of its own
 (`test/inline_route.goose`).
+
+### UFCS doesn't reach the namespace of the receiver's type
+
+Found on `46356c2`, task 015. Status: open
+
+`x.f(a)` looks `f` up in the calling code's namespace, then the global one (§11.1), never
+in the namespace that declares `x`'s type. So a library's functions on its own types
+can't be called with UFCS from a program, which must name the namespace on each call.
+Expected: UFCS tries the receiver type's namespace too, as the `format` hook does (§3.7).
+Within the library itself, and for programs in the global namespace, nothing changes.
+
+    // lib.goose
+    namespace lib;
+    import std;
+    struct Cx { n: i64 }
+    fn text(cx: const Cx&, s: const u8[:]) { print(s, " ", cx.n); }
+
+    // main.goose
+    import std;
+    import .lib;
+    fn main() { let cx = lib::Cx { n: 1 }; cx.text("ufcs"); }
+
+    error: unknown function or member: text
+
+goose-rest's every call takes the context first: `rest::text(cx, 200, "ok")`,
+`rest::fail(cx, 404, "project_not_found")`, `rest::param_int(cx, "id")`. With the lookup,
+they'd read `cx.text(200, "ok")`, `cx.fail(404, "project_not_found")`, and
+`cx.param_int("id")`, which is what a reader of Actix or Axum expects.
+
+Workaround: name the namespace, `rest::text(cx, ...)`.
 
 ### The regex module has no anchors, so JSON Schema's pattern can't be checked
 
