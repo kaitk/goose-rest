@@ -1,6 +1,6 @@
 # 011: The TypeScript helper
 
-Status: todo (decided 2026-10-13; the helper isn't built yet)
+Status: done (decided 2026-10-13, built 2026-10-14)
 
 Settle the open question in the architecture doc: a `.ts` file typed to the subset that
 writes `api.json`.
@@ -8,7 +8,7 @@ writes `api.json`.
 ## Acceptance criteria
 
 - [x] Decided whether it lives here or in its own repository, recorded with the reason
-- [ ] Its types describe the subset, and `tsc` rejects every keyword, type, format, and
+- [x] Its types describe the subset, and `tsc` rejects every keyword, type, format, and
       shape outside it, checked by a test of each that names whether `tsc` or the
       generator rejects it (reworded 2026-10-13, below)
 - [x] Decided whether it exports from valibot, with the lossy cases listed
@@ -43,11 +43,47 @@ type, format, and shape outside the subset, but not all the values and names
 | A field named after a reader local (`r`, `scratch`, `key`, and the rest) | Yes, against a fixed list, with the same inference |
 | A cycle of `$ref`s, or an object that holds itself | No |
 | A component name that isn't a Goose identifier, or two names equal after snake_case | Not in practice |
-| A negative or fractional `maxLength`, or `minLength` above `maxLength` | No |
+| A negative or fractional `maxLength`, or a fractional bound on an integer | No |
+| `minLength` above `maxLength` | No, and the generator accepts it too (2026-10-14) |
 
 Decided (2026-10-13): the criterion now reads "`tsc` rejects every keyword, type,
 format, and shape outside the subset", and the generator stays the check for the rest.
 Each test names which of the two rejects its construct.
+
+## What's built
+
+Built (2026-10-14): `ts/api.mts`, with `api()`, a generic function whose `const` type
+parameter keeps the document's literal types, and `json()`. A contract file passes its
+document to `api()` and prints `json()` of it, and `node contract.mts > api.json` writes
+the file. `satisfies Api` alone would check less: without inference, `tsc` can't see a
+`$ref`'s target or a `required` name, and it doesn't flag a keyword one member of a
+union allows. The tests, in `ts/test/`:
+
+- `reject.mts`: 77 documents that `tsc` refuses, each valid but for one construct and
+  marked `@ts-expect-error`, so `tsc` fails once it accepts one.
+- `generator.mts`: 22 documents that type-check and that the generator refuses with the
+  error each names, which `scripts/test.sh` checks.
+- `projects.mts`, `schema.mts`, and `routes.mts`: `test/gen/api.json`,
+  `examples/schema/api.json`, and `test/gen/routes.json` written with the helper. Each
+  must print the same JSON, and the generator must accept it.
+
+The paths follow the table's split, which listed only schemas (2026-10-14):
+
+| The generator refuses | `tsc` rejects it |
+|---|---|
+| A key outside the subset on a path item, an operation, a parameter, or a request body; a parameter `in` anything else; a parameter's schema outside the subset | Yes |
+| A path that doesn't start with `/`, a path without an operation, an operation without `operationId` | Yes |
+| A path parameter without `required: true`, or one the template doesn't name; a template parameter no parameter declares | Yes, with the same inference |
+| A body that isn't `required`, isn't `application/json`, or isn't a `$ref` to an object component | Yes, with the same inference |
+| Alternatives, two schemes in one requirement, scopes, a scheme `securitySchemes` doesn't declare | Yes, with the same inference |
+| A header parameter named `Accept`, `Content-Type`, or `Authorization`; a parameter or handler named after a local of the generated code | Yes, against fixed lists, with the same inference |
+| A segment with `{`, `}`, or `%`, a repeated `{name}`, two paths that match the same requests | No |
+| Two operations with one handler, an `operationId` that isn't a Goose identifier, a repeated parameter, two parameters with one field, a parameters struct named as another type | No |
+
+`tsc` is stricter than the generator in two places, both outside the generator's
+reference: it requires `info`, which OpenAPI requires, and it refuses top-level keys
+other than OpenAPI's own and `components` keys other than `schemas` and
+`securitySchemes`, which the generator ignores.
 
 ## Exporting from valibot
 

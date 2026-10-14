@@ -144,15 +144,19 @@ so goose-rest itself needs no JavaScript toolchain. A schema format of goose-res
 (TypeSpec, or Goose struct declarations with annotations) was set aside: each would be
 another language beside OpenAPI.
 
-Decided (2026-10-13), not built yet: an optional TypeScript helper for writing that JSON. JSON is
-JavaScript notation, so a `.ts` file exporting the document as an object literal reads
-almost as the JSON does, and adds what JSON lacks: comments, shared fragments as
-constants, and functions for repeated shapes. Its main value is TypeScript types that
-describe only the subset goose-rest supports. With `satisfies Api`, `tsc` rejects a
-keyword, a format, or a parameter location the generator can't handle while the schema
-is being written, instead of when the generator runs. Running the file writes
-`api.json`. Two steps, TypeScript to OpenAPI to Goose, keep each tool small and leave
-the JSON as an inspectable file between them.
+Decided (2026-10-13), implemented (2026-10-14, task 011): an optional TypeScript helper
+for writing that JSON, `ts/api.mts`. JSON is JavaScript notation, so a TypeScript file
+holding the document as an object literal reads almost as the JSON does, and adds what
+JSON lacks: comments, shared fragments as constants, and functions for repeated shapes.
+Its main value is TypeScript types that describe only the subset goose-rest supports.
+The file passes the document to the helper's `api()`, whose `const` type parameter
+keeps the literal types, and `tsc` rejects a keyword, a format, a shape, or a parameter
+location the generator can't handle while the schema is being written, instead of when
+the generator runs. With the literals, it also rejects a `$ref` to a missing component
+and a `required` name that isn't a property. Cycles, names, and number values stay the
+generator's checks. Running the file with Node writes `api.json`. Two steps, TypeScript
+to OpenAPI to Goose, keep each tool small and leave the JSON as an inspectable file
+between them.
 
 The case for it is an application that already has a TypeScript backend and gains a
 Goose one. Snowtime is that shape: 45 routes in Hono routers per domain, with valibot
@@ -163,7 +167,8 @@ exported from those schemas, or written beside them in the helper, keeps both ba
 on one definition. Decided (2026-10-13, task 011):
 
 - The helper lives here, in `ts/`, until the subset settles: the commit that teaches the
-  generator a keyword changes the helper's types with it. Publishing it to npm would be
+  generator a keyword changes the helper's types and their tests with it.
+  `scripts/test.sh` runs those tests only where `tsc` is installed. Publishing it to npm would be
   the reason to move it to a repository of its own.
 - It doesn't export from valibot. valibot's own exporter does that, and the generator
   refuses what falls outside the subset. Where the export succeeds and the backends
