@@ -83,9 +83,9 @@ fn bound_check(out: u8[>..]&, b: json::Node?, x: const u8[:], op: const u8[:], k
     format(out, " { json::fail(r, \"", what, ": ", keyword, "\"); }\n");
 }
 
-// Whether a value of ty needs rest's checks, or its number writer.
+// Whether a value of ty needs rest's checks.
 fn uses_rest(ty: Ty) -> bool {
-    ty.kind == K_NUM || ty.kind == K_STR && (ty.min_len >= 0 || ty.max_len >= 0 || ty.format > 0)
+    ty.kind == K_STR &&(ty.min_len >= 0 || ty.max_len >= 0 || ty.format > 0)
 }
 
 // Writes the file's head, types, readers, and writers. handlers names the
@@ -352,7 +352,7 @@ fn write_one(out: u8[>..]&, ty: Ty, x: const u8[:], indent: const u8[:]) {
     let k = ty.kind;
     if k == K_BOOL { format(out, indent, "json::format_bool(out, ", x, ");\n"); }
     else if k == K_INT { format(out, indent, "json::format_int(out, ", x, ");\n"); }
-    else if k == K_NUM { format(out, indent, "rest::format_number(out, ", x, ");\n"); }
+    else if k == K_NUM { format(out, indent, "json::format_number(out, ", x, ");\n"); }
     else if k == K_STR { format(out, indent, "json::format_string(out, ", x, ");\n"); }
     else if k == K_ENUM || k == K_OBJ { format(out, indent, "format(out, ", x, ");\n"); }
 }

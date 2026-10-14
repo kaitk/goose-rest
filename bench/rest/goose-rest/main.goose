@@ -2722,7 +2722,7 @@ recursive fn write_node(out: u8[>..]&, n: json::Node&) {
         Null => out.append("null"),
         Bool b => json::format_bool(out, b.v),
         Int i => json::format_int(out, i.v),
-        Num x => rest::format_number(out, x.v),
+        Num x => json::format_number(out, x.v),
         Str s => json::format_string(out, s.s),
         Arr a => {
             out.push('[');

@@ -46,4 +46,5 @@ writer's 201 (macOS, 2026-10-13).
   point into any `u8` array (spec §5.1). So the first answer wins, which the README
   states.
 - A thread can't call `json::format_number`, and the generated writers did
-  (aardappel/goose#31, fixed in `861b7a9`). They now call `rest::format_number`.
+  (aardappel/goose#31). They called `rest::format_number` until the fix, `861b7a9`,
+  and call `json::format_number` again.
