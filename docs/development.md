@@ -156,6 +156,10 @@ support, despite its version; Node 24.14.1's Linux distribution runs the `.mts` 
 Git Bash's converted paths also differ from the exact generator diagnostics the
 suite checks, so run this suite in WSL.
 
+The Ubuntu distribution runs as `root`. Without a global Git identity there, Git
+records the author as `root@<hostname>`, so set `user.name` and `user.email` in WSL
+before committing from it (2026-10-14).
+
 A pin can be built without changing the sibling compiler checkout. Archive the
 fetched commit into an ignored directory and build there:
 
@@ -169,6 +173,8 @@ GOOSE=$PWD/build/goose-current/build/goose TSC="npx -y -p typescript tsc" script
 
 The move from `46356c2` to `bc3c1f1` adds only a logo; compiler and stdlib sources
 are unchanged. The full suite and each spike were rerun from that archived build.
+Goose at `bc3c1f1` has no `--version` option, so name an archived compiler by its
+source commit and the binary's SHA-256 (2026-10-14).
 
 ## Run the examples on arm64
 
