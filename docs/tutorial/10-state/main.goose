@@ -13,8 +13,10 @@ struct St { user: rest::Once<User> }
 // The per-worker state, which lasts as long as the worker.
 struct App { lookups: i64 }
 
+type Cx = rest::Cx<St, App, http::Router>;
+
 // The request's user, looked up on the first call in a request.
-fn user(cx) -> User& {
+fn user(cx: Cx&) -> User& {
     return rest::once(cx.state.user) { lookup(cx) };
 }
 

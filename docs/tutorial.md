@@ -47,12 +47,13 @@ from any depth below it. From [`tutorial/02-hello`](tutorial/02-hello/main.goose
 
 ```goose
 fn handle(cx) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/hello/:name") {
-        rest::route(cx) { hello(cx, rest::param(cx, r, "name")); };
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/hello/:name") {
+            rest::route(cx) { hello(cx, rest::param(cx, "name")); };
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
 fn hello(cx, name: const u8[:]) {
@@ -74,7 +75,8 @@ outside it doesn't compile.
 The rest of goose-rest follows from these two facts:
 
 - There is no handler table. Goose can't store a function, so routes are code: an
-  `if` chain over `http::router`, or a router the generator writes as a `match`.
+  `if` chain of `rest::on` calls inside `rest::routes`, or a router the generator
+  writes as a `match`.
 - Middleware is a block around routes, inlined into the handler, so it costs no call
   and no boxing. A `rest::fail` inside it leaves the whole route.
 - State a request changes lives in its worker, or on a thread of its own that workers
@@ -215,8 +217,9 @@ A route answers once, with one of these:
 | `rest::json(cx, status, v)` | `v` as JSON, written by `v`'s `format` overload |
 | `rest::json_bytes(cx, status, body)` | JSON the program wrote itself |
 | `rest::text(cx, status, s)` | `s` as `text/plain; charset=utf-8` |
+| `rest::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
 | `rest::fail(cx, status, code)` | `{"error": code}`, from anywhere inside `rest::route` |
-| `http::start`, `http::field`, `http::finish` | anything else, such as a 204 or a page |
+| `http::start`, `http::field`, `http::finish` | anything else, such as a page |
 
 `rest::json` calls `format(out, v)`, Goose's one type-directed hook, and Goose finds the
 overload in the namespace that declares `v`'s type. There is no derive: a type gets its
@@ -329,12 +332,12 @@ fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
 ```
 
 ```goose
-    if http::on(r, "POST", "/projects") {
-        rest::route(cx) {
-            let body = rest::take<ProjectCreate>(cx);
-            let p .= app.projects.push(Project { id: app.projects.len + 1, name: body.name });
-            rest::json(cx, 201, p);
-        };
+        if rest::on(cx, "POST", "/projects") {
+            rest::route(cx) {
+                let body = rest::take<ProjectCreate>(cx);
+                let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
+                rest::json(cx, 201, p);
+            };
 ```
 
 ```text
@@ -388,14 +391,14 @@ struct Project {
 The hand-written routes use the generated types as their own:
 
 ```goose
-    if http::on(r, "POST", "/projects") {
-        rest::route(cx) {
-            let body = rest::take<api::ProjectCreate>(cx);
-            let p .= app.projects.push(api::Project {
-                id: app.projects.len + 1, name: body.name, has_color: body.has_color, color: body.color,
-            });
-            rest::json(cx, 201, p);
-        };
+        if rest::on(cx, "POST", "/projects") {
+            rest::route(cx) {
+                let body = rest::take<api::ProjectCreate>(cx);
+                let p .= cx.app.projects.push(api::Project {
+                    id: cx.app.projects.len + 1, name: body.name, has_color: body.has_color, color: body.color,
+                });
+                rest::json(cx, 201, p);
+            };
 ```
 
 The generated reader names the field and the check that failed, and the writer leaves
@@ -515,8 +518,8 @@ can't drift apart unnoticed. Delete `get_project`, and the build stops:
 api_gen.goose:259: error: unknown function: app::get_project
                                             app::get_project(cx, id);
   in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:244
-  in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState, app::App>&) instantiated from api_gen.goose:256
-  in fn api::dispatch(rest::Cx<rest::NoState, app::App>&) instantiated from main.goose:32
+  in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from api_gen.goose:256
+  in fn api::dispatch(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from main.goose:32
   ...
 ```
 
@@ -743,8 +746,10 @@ struct St { user: rest::Once<User> }
 // The per-worker state, which lasts as long as the worker.
 struct App { lookups: i64 }
 
+type Cx = rest::Cx<St, App, http::Router>;
+
 // The request's user, looked up on the first call in a request.
-fn user(cx) -> User& {
+fn user(cx: Cx&) -> User& {
     return rest::once(cx.state.user) { lookup(cx) };
 }
 ```
@@ -755,6 +760,11 @@ fn user(cx) -> User& {
                 rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
             };
 ```
+
+The alias types a route's context: `St` is the request's state, `App` is the worker's,
+and `http::Router` is the router supplied by `rest::routes`. Outside that block the
+context has `rest::NoRouter`, so it cannot be passed to `user`. A generic helper can
+leave its context parameter untyped, as the other examples do.
 
 The route calls `user` twice, and `lookup` runs once:
 
@@ -894,8 +904,10 @@ it has no `Date` or `Server` field. `serve_one` works as the server does:
   body therefore covers the rule from [section 9](#9-large-bodies) that code before a
   route's first `rest::body` runs twice.
 - goose-http's limits apply: a request it refuses, such as a body past `max_body`, gets
-  its refusal, and a block that writes no answer gets 500. A third argument, an
-  `http::Config`, changes the limits, and the second is the per-request state.
+  its refusal, and a block that writes no answer gets 500. The full call is
+  `rest::serve_one(text, app, fresh, cfg)`: `app` is the worker's state, `fresh` the
+  per-request state, and the optional `cfg` changes the limits. Leave off `fresh`
+  when there is no per-request state, or both state arguments when there is none.
 - An HTTP/1.1 request without `Host` is given `Host: localhost`, so a test request can
   leave it out.
 

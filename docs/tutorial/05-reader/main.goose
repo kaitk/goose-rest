@@ -40,29 +40,30 @@ fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
 // The worker's state, which the handlers get by reference.
 struct App { projects: Project[>..]& }
 
-fn handle(cx, app: App&) {
-    var r = http::router(cx.req);
-    if http::on(r, "POST", "/projects") {
-        rest::route(cx) {
-            let body = rest::take<ProjectCreate>(cx);
-            let p .= app.projects.push(Project { id: app.projects.len + 1, name: body.name });
-            rest::json(cx, 201, p);
-        };
-    } else if http::on(r, "GET", "/projects/:id") {
-        rest::route(cx) {
-            let id = rest::param_int(cx, r, "id");
-            guard id >= 1 && id <= app.projects.len else { rest::fail(cx, 404, "project_not_found"); }
-            rest::json(cx, 200, app.projects[id - 1]);
-        };
-    } else {
-        rest::otherwise(cx, r);
-    }
+fn handle(cx) {
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "POST", "/projects") {
+            rest::route(cx) {
+                let body = rest::take<ProjectCreate>(cx);
+                let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
+                rest::json(cx, 201, p);
+            };
+        } else if rest::on(cx, "GET", "/projects/:id") {
+            rest::route(cx) {
+                let id = rest::param_int(cx, "id");
+                guard id >= 1 && id <= cx.app.projects.len else { rest::fail(cx, 404, "project_not_found"); }
+                rest::json(cx, 200, cx.app.projects[id - 1]);
+            };
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
 thread_fn worker(cfg: http::Config) {
     var projects: Project[>..] = [];
     var app = App { projects: projects };
-    let e = rest::serve(cfg) { cx => handle(cx, app) };
+    let e = rest::serve(cfg, app) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

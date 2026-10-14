@@ -24,16 +24,17 @@ fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:
 }
 
 fn handle(cx) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/projects/:id") {
-        rest::route(cx) {
-            let id = rest::param_int(cx, r, "id");
-            guard id == 1 else { rest::fail(cx, 404, "project_not_found"); }
-            rest::text(cx, 200, "goose");
-        };
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/projects/:id") {
+            rest::route(cx) {
+                let id = rest::param_int(cx, "id");
+                guard id == 1 else { rest::fail(cx, 404, "project_not_found"); }
+                rest::text(cx, 200, "goose");
+            };
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
 thread_fn worker(cfg: http::Config) {

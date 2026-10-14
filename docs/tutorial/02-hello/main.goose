@@ -9,12 +9,13 @@ import http from "github.com/kaitk/goose-http@v0.3.1";
 import rest from "../../../";
 
 fn handle(cx) {
-    var r = http::router(cx.req);
-    if http::on(r, "GET", "/hello/:name") {
-        rest::route(cx) { hello(cx, rest::param(cx, r, "name")); };
-    } else {
-        rest::otherwise(cx, r);
-    }
+    rest::routes(cx) { cx =>
+        if rest::on(cx, "GET", "/hello/:name") {
+            rest::route(cx) { hello(cx, rest::param(cx, "name")); };
+        } else {
+            rest::otherwise(cx);
+        }
+    };
 }
 
 fn hello(cx, name: const u8[:]) {
