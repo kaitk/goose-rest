@@ -1,8 +1,8 @@
 # 015: Win back the plan's API where Goose and goose-http now allow it
 
-Status: in-progress (asked for 2026-10-14). The inventory is done, and the
-recommendations are built on a local prototype branch, measured, and decided
-(2026-10-14); merging them is what's left.
+Status: done (2026-10-14). The decided API is built on `task-015-prototype`, rebased
+onto `origin/main` at `e94e647`, and ready for review. The branch is not merged or
+pushed; the measurements below remain at the commits and pins they name.
 
 The plan (`docs/plan.md` in `923c4fb`) wrote handlers and the generated router in calls
 that read as the route means. The built API drifted from them, call by call, as each
@@ -456,7 +456,7 @@ its README has the details.
   rather than right after the status line; `timed` takes `cx` by reference, as `cors`
   does; and `http::bearer` refuses a token that isn't a token68 (RFC 6750 §2.1) as
   `unauthenticated`, where the program used to get it.
-- **E. goose-rest's copies of goose-http's `main` (item 13): take it, not yet built.**
+- **E. goose-rest's copies of goose-http's `main` (item 13): take it, built (2026-10-14).**
   `http::NO_TYPE`, `http::JSON`, and `http::TEXT` for the raw field strings, and
   `http::mail_slot_size` in each job; `http::bearer` came in with D. goose-http's own
   `http::insert_field` now rotates a field into place, but D needs none. `http::gather`
@@ -505,6 +505,23 @@ Found beside it, each a task of its own: the service pattern for routes that wai
 database, and a tutorial that builds up from the simple cases to it (task 016), and a
 service that learns the client has gone (task 017).
 
+### Merge prepared (2026-10-14)
+
+A is one typed-router commit; B, spike 09, `genr60`, C, and D remain separate.
+The remaining tutorial programs and their quotes use the context API, including
+F's typed alias. The reference, generator reference, architecture, and README match
+it. E uses HTTP's field constants and `mail_slot_size`; `http::TEXT` writes
+`text/plain` without a charset parameter. `http::gather` is left for a later task.
+No benchmark was rerun or measurement changed.
+
+The requested HTTP release is `v0.3.1` (`faead67`), including the fix that keeps a
+reply key live through WAKE. Task 017 was not on main, so this branch lands its
+answer-doc correction and leaves `rest::wanted` and the example's work-skipping
+checks to that task. Goose is `bc3c1f1`, a logo-only move with the spikes rerun.
+
+Merge commits: `8035511`, `95138d2`, `48e5c10`, `a460f14`, `7e27a72`, `7876572`,
+`7606054`, `46a6c80`, `acfbce4`, `8cf2c24`, `423f178`, `7f4bcb3`, `994bc6a`,
+`a2335f0`, and `6e0eb63`, followed by this completion record.
 
 - [x] Each row above, and any drift found beside them, has its reason and whether it
       still holds at the current Goose and goose-http pins, checked by a spike where the
@@ -513,7 +530,7 @@ service that learns the client has gone (task 017).
       possible here, and each that would help is named in this file
 - [x] A recommendation per drift: undo it, undo it after a goose-http change (proposed
       to its task 027, after asking first), or keep it, with the reason
-- [ ] The drifts undone are built, with the tutorial, reference, examples, and
+- [x] The drifts undone are built, with the tutorial, reference, examples, and
       generated code updated, and `bench/routes.sh` measured before and after, recorded
       here with how it was measured
 - [x] A Goose limit that keeps a drift is in `docs/goose-findings.md` with a minimal
