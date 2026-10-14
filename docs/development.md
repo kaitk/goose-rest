@@ -12,7 +12,7 @@ The spikes have run on macOS (2026-10-13).
 | Goose compiler | `46356c2`, the pin in `README.md` | everything |
 | OS | macOS 26.3.1, Apple M1 Pro | |
 | C compiler | Apple clang 21.0.0 (`clang-2100.0.123.102`) | `goose build`, and reading the generated C (spike 04) |
-| Node, TypeScript (optional) | Node 24.14.1, TypeScript 7.0.2 through npx (2026-10-14) | the TypeScript helper's tests |
+| Node or Bun, TypeScript (optional) | Node 24.14.1, Bun 1.4.2, TypeScript 7.0.2 through npx or bunx (2026-10-14) | the TypeScript helper's tests |
 
 ## Set up the Goose compiler
 
@@ -109,17 +109,20 @@ access; later runs don't. Both scripts write only into `build/`, which git ignor
 
 `ts/` holds the TypeScript helper and its tests, and goose-rest doesn't install a
 JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
-`ts/tsconfig.json`, then runs `ts/test/*.mts` with `node`; without `tsc`, it prints
-`skipped` and goes on. With Node installed and no `tsc`, npx fetches one for the run:
+`ts/tsconfig.json`, then runs `ts/test/*.mts` with `JS`: `node`, or `bun` where Node
+isn't installed. Without `tsc`, it prints `skipped` and goes on. With Bun or Node
+installed and no `tsc`, bunx or npx fetches one for the run:
 
 ```sh
+TSC="bunx -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
 TSC="npx -y -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
 ```
 
-Node runs the `.mts` files directly, stripping their types, which needs Node 22.18 or
-later. The files are `.mts`, not `.ts`: without a `package.json` that says
+Node and Bun run the `.mts` files directly, stripping their types; Node needs 22.18 or
+later for that. The files are `.mts`, not `.ts`: without a `package.json` that says
 `"type": "module"`, `tsc` reads a `.ts` file as CommonJS, where `import` is an error, and
-Node warns before it rereads one as a module. The tests passed with TypeScript 7.0.2 and Node 24.14.1 (2026-10-14).
+Node warns before it rereads one as a module. The tests passed with TypeScript 7.0.2,
+under Node 24.14.1 and under Bun 1.4.2, which print the same JSON (2026-10-14).
 
 ## Run the spikes
 

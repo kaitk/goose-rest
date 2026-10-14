@@ -60,8 +60,10 @@ console.log(json(doc));
 
 ```sh
 tsc --noEmit --strict --allowImportingTsExtensions --module nodenext contract.mts
-node contract.mts > api.json
+bun contract.mts > api.json    # or node, 22.18 or later
 ```
+
+With Bun alone, `bunx -p typescript tsc` runs the check.
 
 `api()` keeps the document's literal types, so `tsc` also rejects a `$ref` to a missing
 component, a `required` name that isn't a property, and a path parameter its template

@@ -1,7 +1,7 @@
 // Types for the OpenAPI 3.1 subset that goose-rest gen accepts
 // (docs/generator.md), and api(), which checks a document against them while
 // it's written. A contract file passes the document to api(), and running it
-// with node prints api.json:
+// with bun or node prints api.json:
 //
 //   import { api, json } from "./api.mts";
 //   const doc = api({ openapi: "3.1.0", info: { title: "Projects", version: "1" }, ... });

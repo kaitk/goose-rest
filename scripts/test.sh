@@ -13,12 +13,14 @@
 # the handler and library leaves stay functions.
 #
 # GOOSE names the compiler (default: goose on PATH), and TSC the TypeScript
-# compiler's command (default: tsc on PATH), such as "npx -p typescript tsc".
+# compiler's command (default: tsc on PATH), such as "bunx -p typescript tsc".
+# JS names the runtime that runs the helper (default: node, or else bun).
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 goose=${GOOSE:-goose}
 TSC=${TSC:-tsc}
+JS=${JS:-$(command -v node || command -v bun || echo node)}
 
 step() {
     echo
@@ -46,7 +48,7 @@ for f in "$root"/test/gen/*.json "$root"/examples/*/api.json "$root"/bench/rest/
 done
 
 # The TypeScript helper, only where tsc is: tsc checks ts/, where
-# ts/test/reject.mts holds what tsc must refuse. Then node runs the documents
+# ts/test/reject.mts holds what tsc must refuse. Then JS runs the documents
 # written with the helper, each of which must be the JSON it copies and pass
 # the generator, and ts/test/generator.mts's, each of which the generator must
 # refuse with the error it names.
@@ -59,14 +61,14 @@ if command -v "${TSC%% *}" >/dev/null 2>&1; then
         json=$root/${pair#*:}
         step "ts/test/$name.mts"
         mkdir -p "$ts/$name"
-        node "$root/ts/test/$name.mts" >"$ts/$name/api.json"
-        node -e 'const fs = require("fs"), j = (p) => JSON.stringify(JSON.parse(fs.readFileSync(p, "utf8")));
+        "$JS" "$root/ts/test/$name.mts" >"$ts/$name/api.json"
+        "$JS" -e 'const fs = require("fs"), j = (p) => JSON.stringify(JSON.parse(fs.readFileSync(p, "utf8")));
                  if (j(process.argv[1]) !== j(process.argv[2])) { console.log("differs from " + process.argv[2]); process.exit(1); }' \
             "$ts/$name/api.json" "$json"
         "$goose" "$root/gen/main.goose" -- gen "$ts/$name/api.json" -o "$ts/$name/api_gen.goose"
     done
     step "ts/test/generator.mts"
-    node "$root/ts/test/generator.mts" >"$ts/cases"
+    "$JS" "$root/ts/test/generator.mts" >"$ts/cases"
     tab=$(printf '\t')
     while IFS=$tab read -r want doc; do
         printf '%s\n' "$doc" >"$ts/api.json"
