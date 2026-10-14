@@ -42,7 +42,8 @@ gen/              goose-rest gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
 test/             unit tests, test_*.goose, each a root file; test/gen/ golden files
 scripts/          test.sh runs every test; test-unit.sh the unit tests alone
-bench/            measurements: routes.sh counts the routers' instructions per request (task 007);
+bench/            measurements: routes.sh counts the routers' instructions per request (task 007),
+                  stack.sh a JSON body's and the middleware's (task 015);
                   rest.sh runs the REST benchmark against goose-http and three frameworks (task 010)
 spikes/           language checks the design relies on, one folder each with a README
 docs/             the tutorial and its programs (docs/tutorial/), references, architecture,

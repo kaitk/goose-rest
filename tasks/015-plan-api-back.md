@@ -28,8 +28,16 @@ there, which goes through goose-http's task 027.
 
 For each row, record why it drifted (a Goose limit, goose-http's API, or a choice made
 here), whether that still holds at the current pins, and what undoing it costs. A
-change lands only if `bench/routes.sh` and task 010's tiers show no slowdown, as in
-task 014, and the generated router stays at one route's cost.
+change lands only if `bench/routes.sh`, `bench/stack.sh`, and task 010's tiers show no
+slowdown, as in task 014, and the generated router stays at one route's cost.
+
+The plan is a starting point, not the target (2026-10-14). Any change that makes the API
+more concise is welcome, even where it departs from the plan, if it:
+
+1. Doesn't make a real application harder to write: one whose routes do more than the
+   simple cases. Shorthand for simple cases is welcome when it's general enough.
+2. Doesn't slow the hot path. A small cost can be accepted for a large gain in
+   readability, but only when the gain is shown and the cost is measured.
 
 ## Baseline
 
@@ -62,6 +70,33 @@ instructions retired from `/usr/bin/time -l`, kernel included, divided by the re
 A hand-written route deep in the chain costs about 4,200 instructions more than a
 generated one, since `http::on` tries each route before it. That's less than `routes60`
 pays, because after `rest::scope` each `http::on` matches only the rest of the path.
+
+`bench/routes.sh` sends only GETs, since h2load's POSTs run at a tenth of its GETs'
+rate. `bench/stack.sh` covers a JSON body and the middleware stack instead. It runs
+task 010's server (`bench/rest/goose-rest/main.goose`) under wrk, which sends POSTs at
+full rate, with each connection pipelined 16 deep. Unpipelined, the kernel's share is
+about 250,000 instructions per request, ten times the server's. The `item` and `post`
+cases send the same request to tier A and to tier M, which wraps tier A's routes in
+`rest::timed` (without its log), `rest::cors`, and `rest::bearer`, so the difference
+between the two is the stack's cost.
+
+Measured with `bench/stack.sh` at goose-rest `028af19` on the same machine and pins as
+above, load average 9.4-16.1 from other work: one worker, wrk 4.2.0 `-t 8 -c 256 -d 10`,
+pipelined 16 deep, nothing pinned. The server's instructions retired
+from `/usr/bin/time -l`, kernel included, less those of the same server started and
+stopped without load, divided by wrk's request count. 3 rounds, interleaving the cells:
+
+| Case | Tier | Instructions per request | req/s |
+|---|---|---:|---:|
+| `POST /json`, 159 bytes, `rest::take` | F | 26,151.6-26,153.7 | 503,889-506,574 |
+| `GET /api/items/42` | A | 20,703.1-20,787.0 | 519,832-556,118 |
+| The same, inside the stack | M | 32,792.6-33,139.0 | 407,675-415,738 |
+| `POST /api/items/7`, 51 bytes | A | 21,449.8-21,457.6 | 549,827-556,656 |
+| The same, inside the stack | M | 30,407.1-30,596.2 | 427,559-434,644 |
+
+The stack costs about 12,100 instructions per request on the GET and 9,000 on the POST,
+and a quarter of the GET's throughput. That's more than a 60-route chain costs, so
+middleware is worth a look within this task.
 
 ## Acceptance criteria
 

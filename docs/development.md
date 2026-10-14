@@ -206,6 +206,18 @@ then do a full run for the numbers you record:
 GOOSE=$PWD/../goose-upstream/build-macos/goose SERVERS="gen60 hand60" RUNS=1 N=200000 bench/routes.sh
 ```
 
+`bench/stack.sh` counts a JSON body and the middleware stack the same way, with wrk
+pipelined 16 deep, in about 3 minutes (`RUNS=1 D=3` for a quick check). It needs the
+datasets goose-http's `bench/rest.sh build` writes, in `../goose-http/build/rest`
+unless `REST_DATA` names another folder.
+
+```sh
+GOOSE=$PWD/../goose-upstream/build-macos/goose bench/stack.sh
+```
+
+A Docker container gives req/s but no instruction counts, for the reason above. These
+macOS counts vary by less than 1.5% between rounds.
+
 Traps met measuring task 007 (2026-10-13, h2load 1.70.0):
 
 - h2load counts a 4xx response as "failed", not "succeeded", and `count.sh` exits unless
