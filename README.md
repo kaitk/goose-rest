@@ -72,7 +72,7 @@ Save this as `hello.goose`:
 
 ```rust
 import http from "github.com/kaitk/goose-http@v0.3.3";
-import rest from "github.com/kaitk/goose-rest@v0.0.1";
+import rest from "github.com/kaitk/goose-rest@v0.1.0";
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

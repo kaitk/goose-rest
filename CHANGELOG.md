@@ -2,6 +2,49 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.1.0 (2026-10-15)
+
+Bodies and responses in pieces, files and upgraded connections, forms, compression, and
+bounded memory for gathered bodies, with renamed service calls. Goose `v2026.1`
+(`ac759c3`), goose-http `v0.3.3`.
+
+- Bodies and responses in pieces: `rest::body_in_pieces` reads a body of any size as it
+  arrives, up to a route's limit, and `rest::begin`, `send`, and `end` send a response
+  as the client takes it. Each later call goes to the route's case function, with
+  `cx.kind` saying which event it is.
+- `rest::file` and `rest::send_file` serve a file in pieces, with ranges, `ETag`,
+  `Last-Modified`, and 304; `rest::upgrade` answers 101 and hands the upgraded
+  connection's bytes to the route, which `rest::send` writes back raw.
+- URL-encoded form extractors: `rest::form`, `rest::form_int`, and `rest::form_bool`.
+- An optional `rest.compression` module: `rest::compressed` compresses answers with
+  gzip, deflate, or zstd according to `Accept-Encoding`, including responses sent in
+  pieces with `rest::begin`. It declares goose-compress at `v0.1.0`.
+- The CORS fields and `Server-Timing` that a route's middleware decided reach an answer
+  written at a later call: a reply, a body's end, a 504, or a 413.
+- `rest::serve_one` takes a waiting route's replies or its timeout (`rest::Wake`), so a
+  test can drive a route that asks a service.
+- A body with a `Content-Length` is gathered in one run of its exact size.
+- A per-worker budget for bodies being gathered, `rest::Config`'s `gather_budget` (64 MB
+  by default), passed to `rest::serve` or `serve_one`. A body past it gets 503
+  `unavailable` with `Retry-After`.
+- The generator's `format: ascii`, and strings of the ASCII formats sized in bytes, not
+  four bytes a code point.
+- Every JSON string goose-rest writes, in the generated writers and the error bodies,
+  goes through goose-http's `http::json_string`, which looks for a byte to escape 16
+  bytes at a time. The output is unchanged.
+- Docs: tutorial pages on bodies in pieces, long responses, services, limits, testing
+  with services, and middleware stacks of a program's own; a Best practices section on
+  laying out an application; and the architecture split into how goose-rest works and
+  the decisions behind it.
+- The tests follow Goose's convention: small programs by area under `test/`, each
+  checked against its expected output, run by `test/run_tests.py`.
+- API changes: `rest::woken` is `rest::resumed`, and is true for every call after the
+  request's first. The service calls are renamed: `rest::answer` is `rest::reply`,
+  `rest::answer_value` is `rest::reply_value`, and `rest::wanted` is
+  `rest::still_wanted`; the route reads a value reply with `rest::read_reply<T>`, which
+  was `rest::reply_value<T>`. `rest::serve` and `serve_one` take an optional
+  `rest::Config`.
+
 ## v0.0.1 (2026-10-15)
 
 The first tag, of the API goose-rest means to keep: routes, middleware, extractors, and

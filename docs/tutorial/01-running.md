@@ -55,7 +55,7 @@ that the goose-rest release imports:
 
 ```text
 import http from "github.com/kaitk/goose-http@v0.3.3";
-import rest from "github.com/kaitk/goose-rest@v0.0.1";
+import rest from "github.com/kaitk/goose-rest@v0.1.0";
 ```
 
 The tutorial's programs live in this repository, so they import goose-rest by its path
