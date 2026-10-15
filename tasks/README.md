@@ -55,7 +55,7 @@ instruction counts measured on Linux. Task 020, the extra memory, and task 021, 
 beside uploads, block v0.1.0 (2026-10-15): both are fixed, and wait only on a rerun on
 Linux. Tasks 027, a helper for read-only
 data every worker shares, 028, a body of known length gathered at its exact size, and
-029, a per-worker budget for bodies being gathered, come from it. Task 025, the middleware's fields on answers
+029, a per-worker budget for bodies being gathered, come from it; 028 and 029 are done. Task 025, the middleware's fields on answers
 written after the request, and task 026, the architecture doc's split, follow. Task
 024, the tutorial's testing of part two's application, task 031, `serve_one` past
 `rest::ask`, and task 033, ASCII strings sized in bytes, are done. Tasks 030, responses

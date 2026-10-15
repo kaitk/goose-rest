@@ -10,7 +10,9 @@ in order, and the [generator reference](generator.md) covers what `goose-rest ge
 by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each request's
 `cx.state` from `fresh`. A program with no state can call `rest::serve(cfg)`.
 With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
-`fresh`. `rest::serve_epoll` has the same forms.
+`fresh`. `rest::serve(cfg, app, fresh, limits)` also takes goose-rest's own settings,
+a `rest::Config`: its `gather_budget` bounds the bodies a worker gathers at once
+([Extractors](#extractors)). `rest::serve_epoll` has the same forms.
 
 The context is `rest::Cx<S, A, R>`: the request's state, the worker's state, and the
 router type. Its `req`, `body`, `out`, and `scratch` carry the request and response.
@@ -69,6 +71,7 @@ Which answers get the fields:
 | A response begun in the route (`rest::begin`, `rest::file`, `rest::upgrade`) | in its head | in its head |
 | Written at a later call ([Later calls](#later-calls)) of a route that called `rest::ask` or `rest::body_in_pieces` at the request: at `WAKE`, at a body's `BODY` or `END`, a response begun then, a 504 `timeout`, or a 413 past the limit | yes | yes, timed from the request to the answer's head |
 | Written once a body left to gather (`rest::body`) is whole, when the route runs again | yes | yes, timed from that run |
+| goose-rest's 413 or 503 while a body is gathered, for a chunked body past its limit or the gather budget | no | no |
 
 When a route leaves its request unanswered for a later call, each middleware keeps what it
 decided with the exchange: the fields its answers get, and `timed`'s start and log
@@ -183,7 +186,7 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
 | `rest::require(cx, "q", found)` | | `q: required` |
 | `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
-| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default); a larger one in pieces with `rest::body_in_pieces` ([later calls](#later-calls)) | 413 `payload_too_large` |
+| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default); a larger one in pieces with `rest::body_in_pieces` ([later calls](#later-calls)) | 413 `payload_too_large`; 503 `unavailable` past the worker's gather budget |
 
 A query parameter, form field, or cookie that repeats gives its first value, and its
 name is compared as sent, without decoding it.
@@ -219,6 +222,25 @@ with its limit first; a generated route does so for its `x-body-limit`
 ([generator](generator.md)). `http::Config`'s `max_body`, 1 MB by default, caps
 every route, so a program with a larger limit raises it too: to `api::MAX_BODY` with a
 schema.
+
+Each worker gathers bodies into memory it keeps for its life, at the most it has held
+at once. A body with a `Content-Length` takes its head and its length, and a chunked
+one 16 KB, doubling as it fills. `rest::Config`'s `gather_budget`, 64 MB by default,
+bounds that memory, so that it follows the configuration rather than what clients
+send:
+
+```rust
+rest::serve(cfg, app, St { .. }, rest::Config { gather_budget: 16 * 1024 * 1024 }) { cx => handle(cx) };
+```
+
+A body with a `Content-Length` that the worker can't place within the budget gets 503
+`unavailable` with `Retry-After: 1` at its head, in the program's error shape, before
+the body is sent and before `100 Continue`; the connection stays open. A chunked body
+gets the same 503 once it can't grow within the budget, and the connection closes, as
+one past its limit gets 413. A body is placed in the first free space that holds it, so
+one can be refused while less than the budget is in use, when the free space is in
+pieces too small for it. Bodies read with `rest::body_in_pieces` don't count against the
+budget: a route that takes large bodies, or many at once, reads them in pieces.
 
 ```rust
 rest::route(cx) {
@@ -316,6 +338,8 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 | 500 | `file_unreadable` | `rest::file`: a file that couldn't be opened for another reason |
 | 500 | `not_served` | `rest::body_in_pieces` with a context that `rest::serve` or `serve_one` didn't make |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
+| 503 | `unavailable` | `rest::ask`: the thread's box is full or closed |
+| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#extractors)) |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
 through `rest::no_route`, `rest::no_method`, and `rest::not_found`.
@@ -355,14 +379,14 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 |---|---|
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
 | `rest::serve_one(text, app) { cx => ... }` | The same, with the worker's state by reference in `cx.app` |
-| `rest::serve_one(text, app, fresh, cfg) { cx => ... }` | The same, with `fresh` as the per-request state and `cfg`'s limits; `cfg` is optional |
-| `rest::serve_one(text, app, fresh, wakes, cfg) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
+| `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the per-request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
+| `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
 | `rest::Wake { data, tag, timeout }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, or with `timeout: true`, the end of the wait |
 | `rest::value_bytes(v)` | The bytes `rest::reply_value` sends of `v`, a flat value, for a `Wake`'s `data` |
 
 A body that doesn't fit in `cfg.max_head` with its head comes in pieces of
-`cfg.max_head` bytes: gathered as the server gathers it, so the block runs again once
-it's whole, or passed to a route that called `rest::body_in_pieces`. A body shorter than its
+`cfg.max_head` bytes: gathered as the server gathers it, within `limits`' gather budget,
+so the block runs again once it's whole, or passed to a route that called `rest::body_in_pieces`. A body shorter than its
 `Content-Length` is a client that hung up midway: its pieces come, then `http::CLOSED`
 in place of `http::END`. A response begun with `rest::begin` or `rest::file` is taken to
 its end, `http::MORE` at a time, as by a client that keeps up; an upgraded connection's

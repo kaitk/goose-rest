@@ -16,6 +16,10 @@ import rest from "../../../";
 // server's 1 MB, so the route's limit is the one that applies.
 let IMPORT_LIMIT: i64 = 256 * 1024;
 
+// The most bytes the worker gathers at once: 16 imports at the limit, where
+// the default, 64 MB, would take 256.
+let LIMITS = rest::Config { gather_budget: 16 * IMPORT_LIMIT };
+
 let PROJECTS = 2;
 
 struct Task { project: i64, title: u8[..128], assignee: u8[..32] }
@@ -82,7 +86,7 @@ fn import_tasks(cx, project: i64) {
 thread_fn worker(cfg: http::Config) {
     var tasks: Task[>..] = [];
     var app = App { tasks: tasks };
-    let e = rest::serve(cfg, app) { cx => handle(cx) };
+    let e = rest::serve(cfg, app, rest::NoState { .. }, LIMITS) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

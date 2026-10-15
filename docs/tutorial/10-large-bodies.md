@@ -78,13 +78,15 @@ is added only once.
 
 ## Three limits
 
-Three limits apply, and the smallest wins:
+Three limits apply to each body, and the smallest wins; a fourth, the gather budget,
+applies to the bodies a worker gathers at once:
 
 | Limit | Set by | Past it |
 |---|---|---|
 | A route's | its first `rest::body(cx, limit)`, 1 MB without one | 413 `{"error":"payload_too_large"}` |
 | A generated route's | `x-body-limit` on its `requestBody`, in bytes | the same |
 | The server's | `http::Config`'s `max_body`, 1 MB by default | goose-http's 413, without a body, before any route runs |
+| The gather budget, per worker | `rest::Config`'s `gather_budget`, 64 MB by default | 503 `{"error":"unavailable"}` with `Retry-After: 1` |
 
 The import accepts up to 256 KB, below the server's 1 MB limit, so the program keeps
 the default. A route that accepts more raises `max_body` to its limit, as
@@ -105,9 +107,32 @@ The worker holds each body it gathers until the route returns, so the limit also
 the memory used for that body by each connection importing at the same time. The
 worker keeps that memory after the request, for the bodies it gathers next: the most it
 has gathered at once stays with it for its life. The route then reads the whole body in
-one call, and the worker answers no other request meanwhile. A body too large for that,
-such as an attachment of any size, or an import of many megabytes, is read in pieces as
-it arrives: [the next page](11-bodies-in-pieces.md).
+one call, and the worker answers no other request meanwhile.
+
+The gather budget bounds that memory. A body with a `Content-Length` takes its whole
+length, with its head, from the moment its route calls `rest::body`, and a chunked body
+takes room as it grows. A body for which the worker has no room within the budget gets
+503 and `Retry-After: 1`, in the program's error shape: one with a `Content-Length` at
+once, before the client sends it, and a chunked one once it can't grow, which also
+closes the connection. The client can send it again a second later, once the bodies
+gathered meanwhile have been answered.
+The default lets a worker gather 64 bodies at the 1 MB limit at once. The import sets a
+budget of its own, in the `rest::Config` it passes to `rest::serve` after the
+per-request state, here none:
+
+```rust
+// The most bytes the worker gathers at once: 16 imports at the limit, where
+// the default, 64 MB, would take 256.
+let LIMITS = rest::Config { gather_budget: 16 * IMPORT_LIMIT };
+```
+
+```rust
+    let e = rest::serve(cfg, app, rest::NoState { .. }, LIMITS) { cx => handle(cx) };
+```
+
+A body too large to gather, such as an attachment of any size, or an import of many
+megabytes, is read in pieces as it arrives, which the budget doesn't count:
+[the next page](11-bodies-in-pieces.md).
 
 ---
 
