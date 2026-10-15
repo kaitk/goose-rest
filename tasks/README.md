@@ -39,33 +39,26 @@ When a task is done and nothing still builds on its file, move it to `000-archiv
 unique across both folders: pick the next number after the highest in either. Refer to
 tasks by number ("task 001"), not by path, so a move breaks no reference.
 
-
 ## Order
 
-Task 001 makes the package. Tasks 002 and 003 can start at once: the spikes, and the
-generator, which doesn't depend on goose-http's API. Task 004 waits on goose-http's task
-027 breaking changes, and tasks 005 and 006 follow it. Task 007 measures the if chain
-and decides task 008. Task 009 follows spike 06 and task 004. Task 010 benchmarks goose-rest against goose-http alone and three frameworks, and comes last. Task
-011 can be settled at any point, and task 013 waits on an x86-64 host and a board.
-Task 014 follows tasks 008 and 009. Task 015 can start at any point; what it needs from
-goose-http waits on that package's task 027. Tasks 016, the tutorial, and 017 are done.
-Task 018 follows goose-http's task 034, and waits only on a WSL run. Task 023, bodies and
-responses in pieces, is built with the tutorial's pages 11 and 12, and waits only on
-instruction counts measured on Linux. Task 020, the extra memory, and task 021, the reads
-beside uploads, block v0.1.0 (2026-10-15): both are fixed, and wait only on a rerun on
-Linux. Tasks 027, a helper for read-only
-data every worker shares, 028, a body of known length gathered at its exact size, and
-029, a per-worker budget for bodies being gathered, come from it; 028 and 029 are done. Task 025, the middleware's fields on answers
-written after the request, and task 026, the architecture doc's split, are done. Task
-024, the tutorial's testing of part two's application, task 031, `serve_one` past
-`rest::ask`, task 033, ASCII strings sized in bytes, and task 030, responses in pieces
-under `rest::compressed`, are done. Task 032, timers for a route that began a response,
-can start at any point. Task 034, middleware stacks of the program's own, is built (its
-generator question open), and comes before task 035, the docs' "Best practices" section on laying out an application, which names
-them.
-Task 027, a helper over goose-http's shared store, is deferred until a program needs
-it. Task 038 moves the tests to Goose's test convention, with a runner of
-the repository's own, as goose-http's task 041 and goose-compress's task 007 do. Task 037, data compiled
-into the binary, and task 036, parameters in a scope's
-prefix, are spikes that can start at any point. Task 039, an upgraded connection's
-bytes while its route waits on `rest::ask`, comes after v0.1.0 and can start at any point.
+The benchmark session on Linux settles the first five; the rest can start at any point
+unless the table says otherwise.
+
+| Open work | Remaining outcome or dependency |
+|---|---|
+| 019: serialized JSON | The package's half is done; the Linux run says whether B and C closed on goose-http alone. |
+| 020: memory | Fixed; idle and peak RSS rerun on Linux, recorded in `docs/benchmarks.md`. |
+| 021: reads beside uploads | Fixed; the Linux rerun confirms it. |
+| 023: bodies and responses in pieces | Built; instruction counts on tiers A and M on Linux. |
+| 025: middleware fields on later answers, and 029: the gathering budget | Done; tier M's instructions per request on Linux record what each added. |
+| 039: upgraded connections that ask | A route that upgraded and then asks a service gets the client's bytes in the wrong case function; after v0.1.0. |
+| 032: timers after `begin` | Check whether goose-http arms a timer on an open response first. |
+| 036: parameters in a scope's prefix | Research; the best practices' member audience waits on it. |
+| 037: data compiled into the binary | Spike. |
+| 034: middleware stacks | Built; whether the generator takes a program's stack per security scheme. |
+| 035: best practices | Built; the testing page, then data access and a full example once there are database helpers and JWT. |
+| 027: a helper over the shared store | Deferred until a program needs it. |
+| 022: OpenAPI output | Planned for later. |
+| 012: a benchmark app shared with goose-http | Waits on goose-http's task 031. |
+| 013: embedded aarch64 | Waits on an x86-64 host and a board. |
+| 018: Goose releases | Waits only on a WSL run. |

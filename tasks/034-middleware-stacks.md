@@ -1,6 +1,6 @@
 # 034: Middleware stacks of the program's own
 
-Status: in-progress (2026-10-15; the generator question open)
+Status: built (2026-10-15); the generator question open
 
 Middleware composes by nesting blocks, so each one a program adds takes every handler a
 level deeper: timing, CORS, the route, a token, a tenant, and a rate limit make six

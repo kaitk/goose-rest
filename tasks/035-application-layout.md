@@ -1,7 +1,7 @@
 # 035: Best practices, a section of the docs on laying out an application
 
-Status: in-progress (asked for 2026-10-15; a docs section, not a tutorial part,
-2026-10-15; the section written, its testing page a stub, 2026-10-15)
+Status: built (2026-10-15); the testing page, the data-access page, and a full example
+application open (asked for 2026-10-15; a docs section, not a tutorial part)
 
 The tutorial's pages teach goose-rest's mechanisms one at a time, and leave how a whole
 application is laid out to the reader. A "Best practices" section of its own, beside

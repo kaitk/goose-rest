@@ -1,6 +1,6 @@
 # 016: A step-by-step tutorial, up to services for routes that wait
 
-Status: done (2026-10-15), but for pages 11 and 12, which wait on task 023
+Status: done (2026-10-15), pages 11 and 12 included, built with task 023
 
 `docs/tutorial.md` shows goose-rest a feature at a time. A program that does more than
 the simple cases needs to see the approaches this package takes, in the order it meets
