@@ -1,7 +1,9 @@
 // Answers compressed by the request's Accept-Encoding: a service's event log
 // behind rest::compressed, which only a program that imports
-// rest.compression builds with, and goose-compress with it. A listing past
-// 1 KB comes compressed; one event, an error, or /health is too short for it.
+// rest.compression builds with, and goose-compress with it. Under /v1, with
+// goose-http's defaults, a listing past 1 KB comes compressed; one event, an
+// error, or /health is too short for it. /archive serves the same events with
+// options of its own.
 //
 //   goose build -o build/examples/compress examples/compress/main.goose
 //   build/examples/compress 8080
@@ -34,18 +36,29 @@ fn format(out: u8[>..]&, l: const Listing&) {
     out.push(']');
 }
 
+// The archive's options: gzip and deflate at level 9, their smallest and
+// slowest, no zstd, and bodies from 256 bytes. Only zstd can be turned off:
+// gzip and deflate are always offered, and the request's Accept-Encoding
+// picks among the codings left.
+let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
+
 fn handle(cx) {
     rest::timed(cx) {
-        rest::compressed(cx) { cx =>
-            rest::routes(cx) { cx =>
-                if rest::on(cx, "GET", "/health") {
-                    rest::text(cx, 200, "ok");
-                } else if rest::scope(cx, "/v1") {
+        rest::routes(cx) { cx =>
+            if rest::on(cx, "GET", "/health") {
+                rest::text(cx, 200, "ok");
+            } else if rest::scope(cx, "/v1") {
+                // goose-http's defaults: level 1, zstd offered, from 1 KB.
+                rest::compressed(cx) { cx =>
                     rest::route(cx) { events(cx); };
-                } else {
-                    rest::otherwise(cx);
-                }
-            };
+                };
+            } else if rest::scope(cx, "/archive") {
+                rest::compressed(cx, ARCHIVE) { cx =>
+                    rest::route(cx) { events(cx); };
+                };
+            } else {
+                rest::otherwise(cx);
+            }
         };
     };
 }

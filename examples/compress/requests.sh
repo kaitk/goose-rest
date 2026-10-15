@@ -27,3 +27,11 @@ coded GET '/v1/events?limit=100'
 coded GET /v1/events/7 -H 'Accept-Encoding: gzip'
 coded GET /v1/events/0 -H 'Accept-Encoding: gzip'
 coded GET /nope -H 'Accept-Encoding: gzip'
+# /archive's options: level 9, smaller than /v1's level 1; gzip where zstd
+# is offered, since the archive doesn't offer zstd; and a listing of five,
+# past its 256-byte minimum, compressed where /v1 sends it as it is.
+coded GET '/archive/events?limit=100' -H 'Accept-Encoding: gzip'
+coded GET '/archive/events?limit=100' -H 'Accept-Encoding: zstd, gzip'
+coded GET '/archive/events?limit=5' -H 'Accept-Encoding: gzip'
+coded GET '/v1/events?limit=5' -H 'Accept-Encoding: gzip'
+coded GET /archive/events/7 -H 'Accept-Encoding: gzip'

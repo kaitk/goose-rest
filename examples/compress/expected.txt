@@ -9,4 +9,9 @@ GET /v1/events?limit=100 200 encoding=deflate vary=Accept-Encoding sent=480 body
 GET /v1/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=492 body=1564805783/5793
 GET /v1/events/7 200 encoding=none vary=Accept-Encoding sent=56 body=2088668682/56
 GET /v1/events/0 404 encoding=none vary=Accept-Encoding sent=27 body=1177042288/27
-GET /nope 404 encoding=none vary=Accept-Encoding sent=21 body=401450075/21
+GET /nope 404 encoding=none vary=none sent=21 body=401450075/21
+GET /archive/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=402 body=1564805783/5793
+GET /archive/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=402 body=1564805783/5793
+GET /archive/events?limit=5 200 encoding=gzip vary=Accept-Encoding sent=104 body=1576705413/286
+GET /v1/events?limit=5 200 encoding=none vary=Accept-Encoding sent=286 body=1576705413/286
+GET /archive/events/7 200 encoding=none vary=Accept-Encoding sent=56 body=2088668682/56

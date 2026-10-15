@@ -89,9 +89,29 @@ The block gets its own context, as `rest::routes`'s does. Its answer goes to a b
 its own, and `compressed` then copies it to the response, compressed as goose-http's
 `http::respond_compressed` would compress it: in the coding `Accept-Encoding` weighs
 highest, zstd before gzip before deflate at equal weights, with `Content-Encoding`, the
-compressed `Content-Length`, and `Vary: Accept-Encoding`. `rest::compressed(cx,
-http::Compression { level: 6, .. })` sets goose-http's options: `min_size` (1024 bytes),
-`level` and `zstd_level` (1), and `zstd` (offered).
+compressed `Content-Length`, and `Vary: Accept-Encoding`.
+
+A second argument, goose-http's `http::Compression`, sets the levels and which codings
+are offered, as [`examples/compress`](../examples/compress/main.goose)'s `/archive` does:
+
+```rust
+// The archive's options: gzip and deflate at level 9, their smallest and
+// slowest, no zstd, and bodies from 256 bytes. Only zstd can be turned off:
+// gzip and deflate are always offered, and the request's Accept-Encoding
+// picks among the codings left.
+let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
+```
+
+| Field | Default | Sets |
+|---|---|---|
+| `level` | 1 | gzip's and deflate's level, 1 to 9 |
+| `zstd_level` | 1 | zstd's level, 1 to 22 |
+| `zstd` | `true` | whether zstd is offered |
+| `min_size` | 1024 | the shortest body compressed, in bytes |
+
+gzip and deflate can't be turned off, and the server has no order of its own: the
+request's `Accept-Encoding` weights pick the coding, with zstd before gzip before
+deflate where they're equal.
 
 | Answer | Gets |
 |---|---|

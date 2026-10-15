@@ -120,7 +120,7 @@ programs to start from, each built and tested with HTTP requests:
 |---|---|
 | [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, a JSON or form body, middleware, and a 4 MB upload alongside the 1 MB default |
 | [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
-| [`compress/`](examples/compress/main.goose) | Answers compressed by `Accept-Encoding`, with the optional `rest.compression` module |
+| [`compress/`](examples/compress/main.goose) | Answers compressed by `Accept-Encoding`, with the optional `rest.compression` module: goose-http's defaults, and a scope with levels of its own and no zstd |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 
 ## Concepts
