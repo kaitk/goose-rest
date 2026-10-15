@@ -156,24 +156,49 @@ For differences from Actix and the reasons behind them, see the
 ## Benchmarks
 
 goose-rest `v0.0.1`, goose-http `v0.3.1`, and Goose `v2026.1` on a Ryzen 7 5800X3D
-(WSL2), 4 workers per server, on the io_uring loop.
+(WSL2), 4 workers per server, wrk with 256 connections, 3 runs of 15 s, medians, all in
+one session on 2026-10-15. goose-rest on its io_uring loop.
 [Full results, methodology, and losses](docs/benchmarks.md).
 
-Compared with goose-http's REST server, which serves the same routes without a framework:
+| Workload | dusty | actix-web | Axum | goose-rest | goose-http alone\* |
+|---|---:|---:|---:|---:|---:|
+| [A](docs/benchmarks.md#the-tiers): HttpArena's items, 0.2 KB | 339k | 260k | 244k | 582k | 586k |
+| [B](docs/benchmarks.md#the-tiers): a time tracker, 0.3-13 KB | 160k | 142k | 135k | 277k | 313k |
+| [C](docs/benchmarks.md#the-tiers): records up to 728 KB | 24.0k | 31.3k | 34.3k | 52.7k | 61.8k |
+| C, templates | 130k | 91.6k | 87.3k | 141k | 144k |
+| [F](docs/benchmarks.md#tier-f): `GET /id/{id}?name=` | 361k | 269k | 250k | 506k | 512k |
+| [R](docs/benchmarks.md#tier-r): 203 routes | 355k | 143k | 245k | 462k | |
+| [M](docs/benchmarks.md#tier-m): A with CORS, bearer, Server-Timing | 321k | 218k | 180k | 494k | |
+| [Uploads](docs/benchmarks.md#the-tiers) of up to 8 MB | 1,191/s | 1,117/s | 1,119/s | 972/s | 1,125/s |
+| Peak RSS, tier C | 216 MB | 334 MB | 477 MB | 140 MB | 70 MB |
+| Peak RSS, uploads | 31 MB | 57 MB | 163 MB | 385 MB | 70 MB |
 
-| Workload | goose-rest | goose-http alone | |
-|---|---:|---:|---|
-| [A](docs/benchmarks.md#the-tiers): HttpArena's items, 0.2 KB | 585k req/s | 598k | 2.2% behind |
-| [C](docs/benchmarks.md#the-tiers): records up to 728 KB | 53.4k req/s | 62.4k | 14% behind |
-| C, templates | 142k req/s | 147k | 3.1% behind |
-| [F](docs/benchmarks.md#tier-f): `GET /id/{id}?name=` | 504k req/s | 509k | 1.1% behind |
-| [M](docs/benchmarks.md#tier-m): A + CORS, bearer, Server-Timing | 489k req/s | | 15% below A |
-| [R](docs/benchmarks.md#tier-r): 203 routes, generated | 458k req/s | | 41% over an if chain |
+Rates are req/s at saturation; goose-rest and goose-http on the io_uring loop. dusty
+serves with a route per path; goose-rest's tier R uses its generated router.
+\* Not a framework: goose-http's REST server answers the same routes with hand-written
+routing, so it shows what goose-rest costs.
 
-Comparisons with Rust and Zig frameworks are not yet available. For the underlying
-HTTP layer, see goose-http's
-[REST API benchmarks](https://github.com/kaitk/goose-http#rest-apis)
-against xitca-web, dusty, hyper, and tokio.
+goose-rest leads every framework on every rate but uploads, and is within 0.1-3% of
+goose-http alone where routing and middleware are the work. It loses 12-15% to
+goose-http on serialized B and C, and uploads the slowest of every server.
+
+**Memory.** The extra memory is the `v0.0.1` benchmark program's, not the framework's.
+Its tier server loads the records in `main`, so `thread_spawn` copies them into every
+worker, which keeps two copies; it builds the templates' JSON once per worker; and it
+gathers each upload whole. goose-http's server loads on a thread that hands each worker
+one set, keeps the templates once per process in `http::store`, and parses uploads in
+pieces. Measured on an M1 Pro with each server's peak RSS under load:
+
+| Workload | Extra over goose-http | From the records and templates | From gathered uploads |
+|---|---:|---:|---:|
+| Tier A | 18 MiB | 18 MiB | |
+| Tier C | 68 MiB | 68 MiB | |
+| Tier C, templates | 330 MiB | 330 MiB | |
+| Uploads alone | 293 MiB | 69 MiB | 240-251 MiB |
+
+The framework itself adds under 1 MiB at saturation on tiers A to C: a few dozen bytes
+per connection and the per-event context. A program avoids the copies the same way
+goose-http's server does ([tutorial, per worker](docs/tutorial/08-state.md#per-worker)).
 
 ## Credits
 

@@ -1,6 +1,6 @@
 # 010: Benchmark against goose-http, Axum, actix-web, and dusty
 
-Status: in-progress
+Status: done (2026-10-15)
 
 The framework's overhead is the number this design exists to keep small. Serve
 goose-http's task 021 tiers on goose-rest, and on three frameworks used as their own
@@ -88,6 +88,19 @@ in [docs/benchmarks.md](../docs/benchmarks.md#against-goose-http-alone). Its los
 are tasks 019 (serialized JSON), 020 (memory), and 021 (reads beside uploads), to
 settle before the next run.
 
+## Every server on Linux (2026-10-15)
+
+The full run: goose-http alone, goose-rest, Axum, actix-web, dusty-routes, and
+goose-http's dusty and hyper anchors, tiers A to D and F, R, and M in one session, from
+the binaries of 2026-10-14 for the Goose servers. It first stopped in the checks:
+axum's tier D 404 for an unknown path didn't read the request body, and hyper closed
+the kept-alive connection under the checker's next request, every run on Linux. axum's
+fallbacks now read the body first, as its routes did (its `NOTES.md`); the rerun passed
+every check. The results replace the Goose-only ones in
+[docs/benchmarks.md](../docs/benchmarks.md#against-other-frameworks), labelled
+goose-rest `v0.0.1`, whose framework code the binary matches. Tasks 019 to 021 still
+apply to them; the next run, Goose servers only, follows their fixes and a new tag.
+
 ## Acceptance criteria
 
 - [x] goose-rest answers errors in a shape the program chooses
@@ -98,16 +111,14 @@ settle before the next run.
       middleware, built in release mode (`ReleaseFast` for dusty) in their fastest
       documented configuration, with the same worker count (macOS checks, 2026-10-14;
       each entry's `NOTES.md` has its configuration and the TechEmpower commit it follows)
-- [ ] Where a framework answers an error before the handler (a 404, 405, or bad query)
+- [x] Where a framework answers an error before the handler (a 404, 405, or bad query)
       differently from the checker's expectation, the difference is recorded beside its
-      rows, not worked around with a catch-all route (recorded in each entry's
-      `NOTES.md`; goes beside the rows once there are results)
+      rows, not worked around with a catch-all route (each entry's `NOTES.md`, linked
+      beside the rows in `docs/benchmarks.md`)
 - [x] Tiers F, R, and M served by every framework, each with a checker
-- [ ] Measured against goose-http alone with goose-http's `bench/rest.sh`, wrapped by
+- [x] Measured against goose-http alone with goose-http's `bench/rest.sh`, wrapped by
       goose-rest's `bench/rest.sh`, which runs tiers F, R, and M itself, after task 012
-      so both Goose servers share the application code (the Goose servers on
-      2026-10-14 and 2026-10-15, above; the frameworks not yet)
+      so both Goose servers share the application code (every server, 2026-10-15)
 - [x] Instruction counts from `count.sh` (Linux, 2026-10-15, above)
-- [ ] Results in `docs/benchmarks.md`, with how they were measured, losses as plainly
-      as wins, and a summary in the README (the Goose servers, 2026-10-15; the
-      frameworks not yet)
+- [x] Results in `docs/benchmarks.md`, with how they were measured, losses as plainly
+      as wins, and a summary in the README (2026-10-15)
