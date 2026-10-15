@@ -40,7 +40,7 @@ pass their tests on arm64 Linux.
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
 | ⚪ | Bodies in pieces | A body is gathered whole, up to its limit; goose-http reads one [as it arrives](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies). |
 | ⚪ | Static files, streaming | Not in goose-rest yet; goose-http [serves files and streams](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses). |
-| 🔴 | WebSocket | Currently out of scope. |
+| 🔴 | WebSocket | Currently out of scope, as in goose-http. |
 
 ### Middleware
 
