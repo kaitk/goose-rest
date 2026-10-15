@@ -27,7 +27,7 @@ it (2026-10-15).
       refusal's pointer and message
 - [x] `docs/generator.md` lists `ascii` with the formats, gives each format's width in
       its types table, and says other tools don't enforce `ascii`
-- [ ] The tutorial teaches it where a reader writes a schema: page 4 ("JSON"), whose
+- [x] The tutorial teaches it where a reader writes a schema: page 4 ("JSON"), whose
       `color` (`maxLength: 7`, a `#rrggbb`) becomes `format: ascii`. It says why it
       matters and what happens otherwise: without it, a `maxLength: n` field holds 4n
       bytes in every value, whatever its content, which is free in a request but adds

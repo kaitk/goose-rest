@@ -57,7 +57,7 @@ Linux. Tasks 027, a helper for read-only
 data every worker shares, 028, a body of known length gathered at its exact size, and
 029, a per-worker budget for bodies being gathered, come from it. Task 025, the middleware's fields on answers
 written after the request, and task 026, the architecture doc's split, follow. Task
-024, the tutorial's testing of part two's application, and task 031, `serve_one` past
-`rest::ask`, are done. Tasks 030, responses in pieces under `rest::compressed`, and 032,
-timers for a route that began a response, can start at any point, as can task 033, ASCII strings
-sized in bytes.
+024, the tutorial's testing of part two's application, task 031, `serve_one` past
+`rest::ask`, and task 033, ASCII strings sized in bytes, are done. Tasks 030, responses
+in pieces under `rest::compressed`, and 032, timers for a route that began a response,
+can start at any point.
