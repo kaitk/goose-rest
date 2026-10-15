@@ -201,11 +201,15 @@ holds those 2 KB, whichever route it's on.
 
 ## Answers written at the END
 
-`rest::cors` and `rest::timed` run around `handle`, when the request comes, and not
-around `resume`. So an answer written at the `END` has no CORS fields and no
-`Server-Timing`, as an answer to a service's reply has none
-([reference](../reference.md#middleware)). A browser that uploads from another origin
-refuses such an answer: goose-rest doesn't add the fields to it yet.
+This program uses no middleware. In one that wraps `handle` in `rest::cors` and
+`rest::timed`, as [page 7](07-middleware.md)'s does, they run when the request comes,
+and not around `resume`. A route that calls `rest::body_in_pieces` returns before its answer,
+so each middleware keeps what it decided with the exchange: the allowed origin's fields,
+and the time the request came. The answer `resume` writes at the `END` gets the same
+CORS fields and a `Server-Timing` measured from the request, as does a 413 for a body
+past its limit. A browser that uploads from another origin reads that answer as it
+reads one written in the route. An answer to a service's reply gets them the same way
+([reference](../reference.md#middleware)).
 
 ---
 

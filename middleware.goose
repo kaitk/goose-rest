@@ -52,13 +52,15 @@ fn origin_in(list: const u8[:], origin: const u8[:]) -> bool {
 // Origin, same-origin or not from a browser, runs F as it is. An Origin c
 // doesn't list gets 403 origin_not_allowed. A preflight, OPTIONS with
 // Access-Control-Request-Method, gets 204 with c's methods, headers, and max
-// age, without running F; the browser checks the request against them. An
-// answer written after F returns, at a WAKE, gets no CORS fields.
+// age, without running F; the browser checks the request against them. A
+// route F leaves to answer at a later call keeps the fields with its
+// exchange, and serve adds them to that answer (keep_fields).
 //
 //   rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { ... };
 inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the block sees the caller's cx.out
     let origin, has_origin = http::field_of(cx.req, "origin");
     let common = cx.out.common;
+    let at = cx.scratch.len;
     if has_origin {
         guard origin_in(c.origins, origin) else {
             write_error(cx.out, cx.state, 403, "origin_not_allowed", "", -1, "");
@@ -73,8 +75,45 @@ inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the bl
         }
         cx.out.common = with_cors(cx.scratch, common, c, origin);
     }
+    let mark = cx.out.buf.len;
     F();
+    if has_origin && cx.out.buf.len == mark { keep_fields(cx, at, at + cx.out.common.len); }
     cx.out.common = common;
+}
+
+// Keeps the fields the middleware around F adds, cx.out.common, which is
+// cx.scratch[from..to], for the answer at a later call, when F left the
+// request unanswered for one: a reply it waits for (rest::ask), or a body
+// it reads in pieces. The innermost middleware keeps them first, with the
+// outer ones' in them. Kept holds offsets, not the slice: the checker can't
+// tell that the scratch outlives what cx.kept points to.
+fn keep_fields(cx, from: i64, to: i64) {
+    var k .= cx.kept;
+    guard k && !k.taken && answers_later(cx) else { return; }
+    k.from = from;
+    k.to = to;
+    k.taken = true;
+}
+
+// Whether the route waits to answer at a later call, at REQUEST. A body
+// left to gather (rest::body) runs the route again, middleware and all,
+// once it's whole.
+fn answers_later(cx) -> bool {
+    guard cx.kind == http::REQUEST else { return false; }
+    var x .= cx.ex;
+    guard x else { return false; }
+    guard (x.mode & GATHERING) == 0 || !x.pending else { return false; }
+    return cx.out.stream.waiting || (x.mode & RECEIVING) != 0;
+}
+
+// Appends ns as milliseconds with three decimals, as "0.042".
+fn format_ms(out: u8[..32]&, ns: i64) {
+    let us = ns / 1000;
+    format(out, us / 1000, ".");
+    let frac = us % 1000;
+    if frac < 100 { out.push('0'); }
+    if frac < 10 { out.push('0'); }
+    format(out, frac);
 }
 
 fn answer_preflight(out: http::Reply, c: Cors, origin: const u8[:]) {
@@ -136,31 +175,42 @@ fn invalid_token(cx) {
 // Runs F, with Server-Timing in its answer, the milliseconds F took, as
 // "app;dur=0.042", and, when log is set, writes an access log line to
 // standard error: method, target, status, the response's bytes, and the
-// milliseconds, as "GET /v1/projects?page=2 200 87 0.042". A request whose
-// answer F didn't write, as one that waits, gets neither. The field goes in
-// cx.out.common, which http::start writes after the status line, with
-// TIMING_WIDTH spaces for its value, and timed fills them in once F has
-// answered, so that no byte of the answer moves. The spaces the value
-// doesn't take are whitespace a field value may end in (RFC 9110 §5.5).
+// milliseconds, as "GET /v1/projects?page=2 200 87 0.042". A route F leaves
+// to answer at a later call keeps the field and the start with its
+// exchange, and serve fills in the field and writes the line for that
+// answer, timed from the request (keep_fields); one that writes no answer
+// gets neither. The field goes in cx.out.common, which
+// http::start writes after the status line, with TIMING_WIDTH spaces for its
+// value, and timed fills them in once F has answered, so that no byte of the
+// answer moves. The spaces the value doesn't take are whitespace a field
+// value may end in (RFC 9110 §5.5). At a later call, F runs as it is.
 inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a reference, as cors's
     let begun = clock_ns();
     let mark = cx.out.buf.len;
     let common = cx.out.common;
+    let first = cx.kind == http::REQUEST;
     let at = cx.scratch.len;
-    cx.scratch.append(common);
-    cx.scratch.append(TIMING);
-    cx.scratch.append("            \r\n");
-    cx.out.common = cx.scratch[at..];
+    if first {
+        cx.scratch.append(common);
+        cx.scratch.append(TIMING);
+        cx.scratch.append("            \r\n");
+        cx.out.common = cx.scratch[at..];
+    }
     F();
+    guard first else { return; }
+    if cx.out.buf.len == mark {
+        keep_fields(cx, at, at + common.len + TIMING.len + TIMING_WIDTH + 2);
+        var k .= cx.kept;
+        if k && k.taken {
+            k.timed = true;
+            k.log = log;
+            k.begun = begun;
+        }
+    }
     cx.out.common = common;
     guard cx.out.buf.len > mark else { return; }
-    let us = (clock_ns() - begun) / 1000;
     var ms: u8[..32] = [];
-    format(ms, us / 1000, ".");
-    let frac = us % 1000;
-    if frac < 100 { ms.push('0'); }
-    if frac < 10 { ms.push('0'); }
-    format(ms, frac);
+    format_ms(ms, clock_ns() - begun);
     fill_timing(cx.out, mark, common.len, ms);
     if log {
         write_stderr(str(cx.req.method, " ", cx.req.target, " ", cx.out.stream.status, " ", cx.out.buf.len - mark,

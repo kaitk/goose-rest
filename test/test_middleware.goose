@@ -1,7 +1,8 @@
 // The middleware and scopes, byte for byte: CORS for a simple request, a
 // refused origin, a preflight, and an error inside; the bearer check; the
-// Server-Timing field; and prefix scopes with 404, 405, and OPTIONS across
-// them. scripts/test-unit.sh runs this through TinyCC.
+// Server-Timing field; prefix scopes with 404, 405, and OPTIONS across
+// them; and both middlewares' fields on answers at a later call, at WAKE,
+// TIMEOUT, and a body's END. scripts/test-unit.sh runs this through TinyCC.
 import std;
 import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../";
@@ -173,10 +174,161 @@ fn test_scopes() {
     same(status_of(scoped(request("BREW", "/v1/projects"))), "HTTP/1.1 501 Not Implemented");
 }
 
+// Answers at a later call, behind CORS and Server-Timing: a route that asks
+// and answers the reply at WAKE, or 504 at TIMEOUT, and one that reads its
+// body in pieces and answers at the END.
+enum Waiting { None, Report, Upload }
+
+struct St { waiting: Waiting = Waiting.None, size: i64 = 0 }
+
+let CORS = rest::Cors { origins: "https://a.example", expose: "X-Total", .. };
+
+let ALLOWED = "Access-Control-Allow-Origin: https://a.example\r\nAccess-Control-Expose-Headers: X-Total\r\nVary: Origin\r\n";
+
+fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+
+fn resume(w: Waiting.Report, cx) { rest::text(cx, 200, str("got ", cx.reply)); }
+
+fn resume(w: Waiting.Upload, cx) {
+    if cx.kind == http::BODY { cx.state.size += cx.body.len; }
+    else if cx.kind == http::END { rest::text(cx, 201, str(cx.state.size)); }
+}
+
+// The route of what, behind the middleware of which: "cors", "timed", or
+// both, timed outside. "ask" asks to, "upload" reads its body in pieces, and
+// "gathered" asks once rest::body has the body whole.
+fn later_route(cx, what: const u8[:], which: const u8[:], to: http::MailAddress) {
+    fn inner() {
+        rest::route(cx) {
+            if what == "upload" {
+                rest::body_in_pieces(cx, 1 << 20, Waiting.Upload);
+            } else {
+                if what == "gathered" { rest::body(cx); }
+                rest::ask(cx, to, 1, 7, Waiting.Report);
+            }
+        };
+    }
+    if which == "cors" {
+        rest::cors(cx, CORS) { inner(); };
+    } else if which == "timed" {
+        rest::timed(cx, false) { inner(); };
+    } else {
+        rest::timed(cx, false) { rest::cors(cx, CORS) { inner(); }; };
+    }
+}
+
+// What serve answers to text, whose route asks, given the reply, or TIMEOUT
+// for none: the REQUEST, the body's pieces when it doesn't come whole, and
+// then the WAKE. common is the loop's fields, another at the WAKE, as Date's
+// value changes. The exchange keeps nothing after.
+fn answered_later(text: const u8[:], which: const u8[:], reply: const u8[:], timeout: bool = false,
+                  what: const u8[:] = "ask") -> u8[>..] {
+    let box, e = http::mail_open(2, 256);
+    http::exit_on_error(e);
+    let to = http::address(box, 0);
+    let req, status = http::parse(text);
+    if status != 200 { print("parse: ", status, "\n", text); assert(false); }
+    let body = text[req.len..];
+    let whole = what != "gathered";
+    var out: u8[>..] = [];
+    var keep = true;
+    var stream = http::Stream { .. };
+    var st = rest::Slot<St> { state: St { .. } };
+    reusable[] var spill: u8[>..] = [];
+    var app = rest::NoState { .. };
+    let first = http::Reply { buf: out, common: "Server: t\r\n", keep_alive: keep, minor: 1, head: false,
+                              stream: stream };
+    fn send(kind: u8, data: const u8[:]) {
+        rest::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, first, spill)
+            { cx => later_route(cx, what, which, to); };
+    }
+    send(http::REQUEST, if whole { body } else { "" });
+    if !whole {
+        send(http::BODY, body);
+        send(http::END, "");
+    }
+    if !stream.waiting || out.len > 0 { print(which, " ", what, ": ", out); assert(false); }
+    let n = http::mail_take(box) { key, tag, bytes => assert(tag == 1); };
+    assert(n == 1);
+    sleep_ms(2);
+    stream.waiting = false;
+    let none = http::Request { .. };
+    let later = http::Reply { buf: out, common: "Server: t2\r\n", keep_alive: keep, minor: 1, head: false,
+                              stream: stream };
+    rest::deliver(http::Event { kind: if timeout { http::TIMEOUT } else { http::WAKE }, req: none, data: reply,
+                                whole: false, trailers: "" }, st, app, later, spill) { cx =>
+        if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { later_route(cx, what, which, to); }
+    };
+    assert(st.ex.mode == 0 && st.ex.cap == 0);
+    return out;
+}
+
+// Checks out's Server-Timing, after its status line and the loop's fields:
+// a value of at least least milliseconds, padded. Returns what follows it.
+fn timing_in(out: const u8[:], least: i64) -> const u8[:] {
+    let head = find(out, "\r\nServer-Timing: app;dur=") + 25;
+    assert(head >= 25);
+    let end = find(out[head..], "\r\n");
+    assert(end == 12);
+    let dur = out[head..head + find(out[head..], " ")];
+    let ms, ok = parse_int(dur[..find(dur, ".")]);
+    assert(ok && ms >= least);
+    return out[head + end + 2..];
+}
+
+fn test_later() {
+    let get = request("GET", "/report", "Origin: https://a.example\r\n");
+    let got = "Content-Type: text/plain; charset=utf-8\r\nContent-Length: 6\r\n\r\ngot ok";
+    same(answered_later(get, "cors", "ok"), str("HTTP/1.1 200 OK\r\nServer: t2\r\n", ALLOWED, got));
+    // Without Origin, nothing kept.
+    let plain = request("GET", "/report");
+    same(answered_later(plain, "cors", "ok"), str("HTTP/1.1 200 OK\r\nServer: t2\r\n", got));
+    // Timed from the request, which came 2 ms before the reply.
+    let timed = answered_later(plain, "timed", "ok");
+    same(status_of(timed), "HTTP/1.1 200 OK");
+    same(timing_in(timed, 2), got);
+    let both = answered_later(get, "both", "ok");
+    same(timing_in(both, 2), str(ALLOWED, got));
+    // TIMEOUT's 504.
+    let late = answered_later(get, "both", "", true);
+    same(status_of(late), "HTTP/1.1 504 Gateway Timeout");
+    same(timing_in(late, 2),
+         str(ALLOWED, "Content-Type: application/json\r\nContent-Length: 19\r\n\r\n{\"error\":\"timeout\"}"));
+    // A body gathered first, and then the ask.
+    let posted = str("POST /report HTTP/1.1\r\nHost: x\r\nOrigin: https://a.example\r\nContent-Length: 5\r\n\r\nhello");
+    same(answered_later(posted, "cors", "ok", false, "gathered"),
+         str("HTTP/1.1 200 OK\r\nServer: t2\r\n", ALLOWED, got));
+}
+
+// Answers a body read in pieces at its END, through serve_one.
+fn upload(which: const u8[:], n: i64) -> u8[>..] {
+    var text = str("POST /up HTTP/1.1\r\nHost: x\r\nOrigin: https://a.example\r\nContent-Length: ", n, "\r\n\r\n");
+    for i in n { text.push('a'); }
+    var app = rest::NoState { .. };
+    let to = http::MailAddress { .. };
+    return rest::serve_one(text, app, St { .. }) { cx =>
+        if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { later_route(cx, "upload", which, to); }
+    };
+}
+
+fn test_end() {
+    // Whole with its head, and in pieces.
+    for n in [100, 20000] {
+        let size = str(n);
+        let created = str("Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", size.len, "\r\n\r\n", size);
+        same(upload("cors", n), str("HTTP/1.1 201 Created\r\n", ALLOWED, created));
+        let both = upload("both", n);
+        same(status_of(both), "HTTP/1.1 201 Created");
+        same(timing_in(both, 0), str(ALLOWED, created));
+    }
+}
+
 fn main() {
     test_cors();
     test_bearer();
     test_timed();
     test_scopes();
+    test_later();
+    test_end();
     print("test_middleware: ok");
 }

@@ -128,7 +128,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
 // ev handled as serve handles it, with H inside rest::route.
 fn deliver<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&) {
     let mark = on_event(ev, st, app, out, spill) { cx => route(cx) { H(cx); }; };
-    if st.ex.mode != 0 { on_later(ev, st, app, out, spill, mark) { cx => route(cx) { H(cx); }; }; }
+    if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, mark) { cx => route(cx) { H(cx); }; }; }
 }
 
 // serve_one for a program that keeps no per-request state.

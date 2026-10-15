@@ -117,9 +117,9 @@ GET /v1/projects/1/files/a%5Cb 400 {"error":"bad_path"}
 | A file | `rest::file` and `rest::send_file` |
 | A service's reply, in pieces | `rest::relay` ([page 14](14-two-services.md)) |
 
-As at a body's `END` ([page 11](11-bodies-in-pieces.md#answers-written-at-the-end)), a
-response begun after the request's first call has no CORS fields and no
-`Server-Timing`. One begun in the route, as both here are, has both.
+A response begun in the route, as both here are, has the CORS fields and `Server-Timing`
+in its head. One begun at a later call, such as at a body's `END`, gets the fields the
+middleware kept at the request ([page 11](11-bodies-in-pieces.md#answers-written-at-the-end)).
 
 ---
 

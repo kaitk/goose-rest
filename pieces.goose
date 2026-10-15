@@ -76,7 +76,7 @@ fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
     http::end(cx.out, trailers);
     var x .= cx.ex;
     guard x else { return; }
-    x.mode = 0;
+    x.mode &= KEPT;
 }
 
 // Answers a GET or HEAD with the file at path, as http::serve_file does:

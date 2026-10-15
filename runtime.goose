@@ -33,6 +33,9 @@ struct Cx<S, A, R> {
     more: bool = false,
     // The request's exchange, under serve; null elsewhere.
     ex: Exchange? = null,
+    // What the middleware decided for an answer at a later call, under
+    // serve; null elsewhere.
+    kept: Kept? = null,
     router: R&,
 }
 
@@ -52,7 +55,7 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
                        kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, ex: cx.ex,
-                       router: r };
+                       kept: cx.kept, router: r };
     F(&c);   // a block given the local itself gets a copy of it
 }
 
@@ -65,16 +68,21 @@ let BODY_LIMIT = 1024 * 1024;
 // What a route asked serve for past its first call, Exchange.mode's bits:
 // the body gathered whole (rest::body), its pieces (rest::body_in_pieces), MORE for
 // a response it sends in pieces (rest::begin, rest::file), and the bytes of
-// a connection it upgraded (rest::upgrade).
+// a connection it upgraded (rest::upgrade), the four LATER names. KEPT says
+// the exchange keeps what its middleware decided for a later answer.
 let GATHERING: u8 = 1;
 let RECEIVING: u8 = 2;
 let SENDING: u8 = 4;
 let UPGRADED: u8 = 8;
+let LATER: u8 = 15;
+let KEPT: u8 = 16;
 
 // What serve keeps of a request past the handler's first call. A body
 // gathered for rest::body is a run of the worker's spill from at, of cap
 // bytes, that holds the head rebuilt (head bytes) and then the body so
-// far; a body received in pieces counts its bytes so far in len.
+// far; a body received in pieces counts its bytes so far in len. With KEPT,
+// at and cap are instead the run stash_kept wrote, and head the length of
+// its fields: a route keeps it only once its body is gathered.
 struct Exchange {
     pending: bool = false,   // the body hasn't come whole
     mode: u8 = 0,
@@ -105,7 +113,7 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
         let mark = on_event(ev, st, app, out, spill) { cx => H(cx) };
         // Here, not in on_event: a function holding a call given a block
         // that stays a call isn't inlined.
-        if st.ex.mode != 0 { on_later(ev, st, app, out, spill, mark) { cx => H(cx) }; }
+        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, mark) { cx => H(cx) }; }
     };
 }
 
@@ -115,7 +123,7 @@ fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
         let mark = on_event(ev, st, app, out, spill) { cx => H(cx) };
-        if st.ex.mode != 0 { on_later(ev, st, app, out, spill, mark) { cx => H(cx) }; }
+        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, mark) { cx => H(cx) }; }
     };
 }
 
@@ -143,6 +151,7 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 // the first message of a reply; the later pieces of a reply relay sends on
 // itself; and 504 when a reply doesn't come in time. A reply cut short by its
 // time limit leaves the response open, and goose-http closes the connection.
+// An answer after REQUEST gets the fields its middleware kept (stash_kept).
 // Returns out.buf.len from before its call to H, or -1 for none, for
 // on_later, which the caller then calls for a route that reads, sends, or
 // upgrades (Exchange.mode).
@@ -152,21 +161,38 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         return -1;
     }
     if ev.kind == http::TIMEOUT {
-        if !out.stream.open { write_error(out, st.state, 504, "timeout", "", -1, ""); }
+        var fields: u8[>..] = [];
+        var o = out;
+        o.common = kept_fields(out.common, st.ex, spill, fields);
+        let from = out.buf.len;
+        if !out.stream.open { write_error(o, st.state, 504, "timeout", "", -1, ""); }
+        settle_kept(st.ex, o, from, spill);
+        drop_kept(st.ex, spill);
         return -1;
     }
+    if ev.kind == http::CLOSED { drop_kept(st.ex, spill); }
     var mark: i64 = -1;
     if ev.kind == http::REQUEST || ev.kind == http::WAKE {
         var scratch: u8[>..] = [];
+        var fields: u8[>..] = [];
+        var kept = Kept { .. };
         let wake = ev.kind == http::WAKE;
         st.ex.pending = !wake && !ev.whole;
         mark = out.buf.len;
+        var o = out;
+        if wake { o.common = kept_fields(out.common, st.ex, spill, fields); }
         var none = NoRouter { .. };
-        var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.state,
+        var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: o, state: st.state,
                                       app: app, scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
                                       tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0,
-                                      ex: st.ex, router: none };
+                                      ex: st.ex, kept: kept, router: none };
         H(cx);
+        if wake {
+            settle_kept(st.ex, o, mark, spill);
+        } else if kept.taken {
+            let at, n, len = stash_kept(kept, scratch, out.common, ev.req, spill);
+            keep_run(st.ex, at, n, len);
+        }
     }
     return mark;
 }
@@ -186,7 +212,11 @@ let GATHERED: u8 = 254;
 // once in each place: no Goose construct keeps it out of line
 // (docs/goose-findings.md).
 fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&, mark: i64) {
-    var k = if mark >= 0 { after(ev, st, out, spill, ev.kind, mark) } else { arrived(ev, st, out, spill) };
+    var fields: u8[>..] = [];
+    var o = out;
+    o.common = kept_fields(out.common, st.ex, spill, fields);
+    let from = out.buf.len;
+    var k = if mark >= 0 { after(ev, st, o, spill, ev.kind, mark) } else { arrived(ev, st, o, spill) };
     while k != http::NO_EVENT {
         let before = out.buf.len;
         let gathered = k == GATHERED;
@@ -194,25 +224,136 @@ fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, s
         let g = st.ex;
         let head = head_of(ev.req, gathered, g, spill);
         var scratch: u8[>..] = [];
+        var kept = Kept { .. };
         var none = NoRouter { .. };
         // CLOSED's answer goes nowhere: the response has ended, or been cut.
         var sink: u8[>..] = [];
         var keep = out.keep_alive;
         var stream = out.stream;
-        let o = if k == http::CLOSED {
+        let r = if k == http::CLOSED {
             http::Reply { buf: sink, common: "", keep_alive: keep, minor: out.minor, head: out.head, stream: stream,
                           fd: out.fd }
         } else {
-            out
+            o
         };
         var cx = Cx<S, A, NoRouter> { req: head,
                                       body: if gathered { spill[g.at + g.head..g.at + g.len] }
                                             else if k == http::BODY { ev.data } else { "" },
-                                      out: o, state: st.state, app: app, scratch: scratch,
-                                      kind: if gathered { http::REQUEST } else { k }, ex: st.ex, router: none };
+                                      out: r, state: st.state, app: app, scratch: scratch,
+                                      kind: if gathered { http::REQUEST } else { k }, ex: st.ex, kept: kept,
+                                      router: none };
         H(cx);
-        k = after(ev, st, out, spill, k, before);
+        // Stashed before after releases the gathered run, which head points into.
+        var at: i64 = -1;
+        var n: i64 = 0;
+        var len: i64 = 0;
+        if gathered && kept.taken { at, n, len = stash_kept(kept, scratch, out.common, head, spill); }
+        k = after(ev, st, o, spill, k, before);
+        keep_run(st.ex, at, n, len);
     }
+    settle_kept(st.ex, o, from, spill);
+}
+
+// What the middleware around a route decided at its request (rest::cors,
+// rest::timed), for the answer if the route leaves it to a later call: the
+// fields its answers get after the status line, the innermost middleware's,
+// at from..to in cx.scratch, and timed's start and log.
+struct Kept {
+    from: i64 = 0,
+    to: i64 = 0,
+    taken: bool = false,
+    timed: bool = false,
+    log: bool = false,
+    begun: i64 = 0,
+}
+
+// A kept run's start before its fields: begun's 8 bytes, then a byte of
+// KEPT_TIMED and KEPT_LOG.
+let KEPT_HEAD = 9;
+let KEPT_TIMED: u8 = 1;
+let KEPT_LOG: u8 = 2;
+
+// Copies what k holds into a new run of the spill: begun, the flags, its
+// fields in scratch past base, the loop's common fields, which are the
+// current ones at the later answer, and for the log req's method and
+// target. Returns the run's start and length, and the length of its fields.
+fn stash_kept(k: const Kept&, scratch: const u8[:], base: const u8[:], req: const http::Request&,
+              spill: u8[>..]&) -> i64, i64, i64 {
+    let all = scratch[k.from..k.to];
+    let fields = if k.taken && starts_with(all, base) { all[base.len..] } else { "" };
+    let line = if k.timed && k.log { req.method.len + 1 + req.target.len } else { 0 };
+    let run = spill.alloc_slice(KEPT_HEAD + fields.len + line);
+    for i in 8 { run[i] = ((k.begun >> (i * 8)) & 0xFF) as u8; }
+    run[8] = (if k.timed { KEPT_TIMED } else { 0 }) | (if k.log { KEPT_LOG } else { 0 });
+    var at = KEPT_HEAD;
+    copy_into(run[at..at + fields.len], fields);
+    at += fields.len;
+    if line > 0 {
+        copy_into(run[at..at + req.method.len], req.method);
+        run[at + req.method.len] = ' ';
+        copy_into(run[at + req.method.len + 1..], req.target);
+    }
+    return spill.index_of(run[0]), run.len, fields.len;
+}
+
+// Makes x keep the run at, of n bytes, that stash_kept wrote; nothing for
+// an at of -1.
+fn keep_run(x: Exchange&, at: i64, n: i64, len: i64) {
+    guard at >= 0 else { return; }
+    x.at = at;
+    x.cap = n;
+    x.head = len;
+    x.mode |= KEPT;
+}
+
+// common, or with KEPT, common and then the fields x kept, onto fields,
+// which the result then points into.
+fn kept_fields(common: const u8[:], x: const Exchange&, spill: const u8[:], fields: u8[>..]&) -> const u8[:] {
+    guard (x.mode & KEPT) != 0 else { return common; }
+    fields.append(common);
+    fields.append(spill[x.at + KEPT_HEAD..x.at + KEPT_HEAD + x.head]);
+    return fields;
+}
+
+// Ends what x kept once out's buffer has an answer from from, its head
+// first: fills in its Server-Timing and writes timed's log line, then frees
+// the run. Frees it also once the exchange owes the route no more calls,
+// as when goose-http answers 500 for a route that didn't.
+fn settle_kept(x: Exchange&, out: http::Reply, from: i64, spill: u8[>..]&) {
+    guard (x.mode & KEPT) != 0 else { return; }
+    if out.buf.len == from {
+        guard !out.stream.waiting && (x.mode & LATER) == 0 else { return; }
+        drop_kept(x, spill);
+        return;
+    }
+    let run = spill[x.at..x.at + x.cap];
+    let flags = run[8];
+    if (flags & KEPT_TIMED) != 0 {
+        var begun: i64 = 0;
+        for i in 8 {
+            let b: i64 = run[i];
+            begun |= b << (i * 8);
+        }
+        var ms: u8[..32] = [];
+        format_ms(ms, clock_ns() - begun);
+        let fields = run[KEPT_HEAD..KEPT_HEAD + x.head];
+        let at = find(fields, TIMING);
+        if at >= 0 { fill_timing(out, from, out.common.len - fields.len + at, ms); }
+        if (flags & KEPT_LOG) != 0 {
+            write_stderr(str(run[KEPT_HEAD + x.head..], " ", out.stream.status, " ", out.buf.len - from, " ", ms, "\n"));
+        }
+    }
+    drop_kept(x, spill);
+}
+
+// Frees the run x kept, if any.
+fn drop_kept(x: Exchange&, spill: u8[>..]&) {
+    guard (x.mode & KEPT) != 0 else { return; }
+    spill.free_slice(spill[x.at..x.at + x.cap]);
+    x.at = 0;
+    x.cap = 0;
+    x.head = 0;
+    x.mode &= ~KEPT;
 }
 
 // What on_later calls H with for ev, an event after the request's first
@@ -265,7 +406,7 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&) 
 fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, k: u8, before: i64) -> u8 {
     let x .= st.ex;
     if k == http::CLOSED {
-        x.mode = 0;
+        x.mode &= KEPT;
         return http::NO_EVENT;
     }
     if (x.mode & GATHERING) != 0 {

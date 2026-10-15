@@ -60,9 +60,22 @@ can have its own, and a public route none.
 `timed` and `cors` go outside `rest::route`, so that the errors it answers get their
 fields; `bearer` and anything else that fails goes inside it. A request has one route:
 routes nested in routes don't inline ([architecture](architecture/README.md#inlining)).
-An answer written in a later call ([Later calls](#later-calls)), such as at a service's
-reply or at the end of a body read in pieces, gets neither middleware's fields. A
-response begun in the route, while they run, has them in its head.
+
+Which answers get the fields:
+
+| Answer | CORS fields | `Server-Timing` and log line |
+|---|---|---|
+| Written in the route, at the request | yes | yes, the route's time |
+| A response begun in the route (`rest::begin`, `rest::file`, `rest::upgrade`) | in its head | in its head |
+| Written at a later call ([Later calls](#later-calls)) of a route that called `rest::ask` or `rest::body_in_pieces` at the request: at `WAKE`, at a body's `BODY` or `END`, a response begun then, a 504 `timeout`, or a 413 past the limit | yes | yes, timed from the request to the answer's head |
+| Written once a body left to gather (`rest::body`) is whole, when the route runs again | yes | yes, timed from that run |
+
+When a route leaves its request unanswered for a later call, each middleware keeps what it
+decided with the exchange: the fields its answers get, and `timed`'s start and log
+setting. goose-rest adds them to the answer that call writes, after goose-http's current
+`Server` and `Date`, and drops them once the answer's head is written or the exchange
+ends. A route that uses neither middleware keeps nothing. At a later call, `cors` and
+`timed` run their block as it is, so a handler can also wrap its later calls in them.
 
 `timed` reserves its duration field in `cx.out.common` before the block and fills it
 after the response is written, so the body doesn't move. Both `timed` and `cors` take
