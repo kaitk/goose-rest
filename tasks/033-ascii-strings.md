@@ -27,6 +27,18 @@ it (2026-10-15).
       refusal's pointer and message
 - [ ] `docs/generator.md` lists `ascii` with the formats, gives each format's width in
       its types table, and says other tools don't enforce `ascii`
+- [ ] The tutorial teaches it where a reader writes a schema: page 4 ("JSON"), whose
+      `color` (`maxLength: 7`, a `#rrggbb`) becomes `format: ascii`. It says why it
+      matters and what happens otherwise: without it, a `maxLength: n` field holds 4n
+      bytes in every value, whatever its content, which is free in a request but adds
+      up where records are kept (a cache, per-request state in every connection's
+      slot), with a worked example of the bytes per record. And it gives the gotchas
+      of using it: a value that isn't ASCII, such as a name with an accent or an emoji,
+      is refused with 400 `<field>: format`, and a client's own validator won't catch
+      it first, as other tools ignore the format; so it suits codes, identifiers, and
+      tokens, not text people type; page 6 ("Schema languages"), how each
+      language there writes `format: ascii`; and page 8's note on limited arrays, which
+      points to it. Each program's answers and its golden output still pass
 - [ ] Optional, later: `pattern` limited to one anchored ASCII character class with
       `*`, `+`, or `{m,n}` (such as `^[a-z0-9-]+$`), checked byte by byte without a
       regex, and sized in bytes; any other `pattern` still refused while Goose's
