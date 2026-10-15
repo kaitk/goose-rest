@@ -2,14 +2,14 @@
 
 A goose-rest server is a few worker threads, each running goose-http's event loop with
 your handler inlined into it ([goose-http's concepts](https://github.com/kaitk/goose-http#concepts)).
-Workers share nothing but constants and messages: each has its own copy of the globals,
-and there are no locks. Each one builds its own state, and a request runs start to
-finish on the worker that read it.
+Workers share only constants and messages: each has its own copy of the globals,
+and there are no locks. Each worker builds its own state, and a request runs from start
+to finish on the worker that read it.
 
 ## The one idea
 
-Inside a worker, a route runs inside `rest::route`, and `rest::fail` answers the request
-from any depth below it. From [`01-running`](01-running/main.goose):
+Within a worker, a route runs inside `rest::route`. A call to `rest::fail` answers the
+request from any depth in the route's call chain. From [`01-running`](01-running/main.goose):
 
 ```rust
 fn handle(cx) {
@@ -35,23 +35,23 @@ fn greeting(cx, name: const u8[:]) -> u8[>..] {
 `greeting` returns a string, not a `Result`, and `hello` doesn't check anything. When
 the name is too long, `rest::fail` leaves through Goose's `return ... from`, straight
 to the `rest::route` around `hello`, which answers `400 {"error":"name_too_long"}`.
-The compiler checks that every call that can fail runs inside a `rest::route`: one
-outside it doesn't compile.
+The compiler checks that every call that can fail runs inside a `rest::route`. A call
+outside one doesn't compile.
 
-The rest of goose-rest follows from this, and from Goose being unable to store a
-function:
+The rest of goose-rest's design follows from this and from Goose's inability to store
+functions:
 
 - There is no handler table, so routes are code: an `if` chain of `rest::on` calls
   inside `rest::routes`, or a router the generator writes as a `match`.
 - Middleware is a block around routes, inlined into the handler, so it costs no call
   and no boxing. A `rest::fail` inside it leaves the whole route.
-- State a request changes lives in its worker, or on a thread of its own that workers
+- State that requests modify lives in the worker or on a dedicated thread that workers
   send messages to ([State](08-state.md)).
 
 ## Workers and `main`
 
-A program's root file declares both packages, each at a release tag, goose-http at the
-one goose-rest's release imports:
+A program's root file declares both packages at release tags. Use the goose-http tag
+that the goose-rest release imports:
 
 ```text
 import http from "github.com/kaitk/goose-http@v0.3.2";
@@ -61,8 +61,8 @@ import rest from "github.com/kaitk/goose-rest@v0.0.1";
 The tutorial's programs live in this repository, so they import goose-rest by its path
 instead (`import rest from "../../../";`).
 
-A worker is a `thread_fn` that calls `rest::serve`, which calls its block with a
-`rest::Cx`, the request's context, for each request:
+A worker is a `thread_fn` that calls `rest::serve`. For each request, `rest::serve`
+calls its block with a `rest::Cx`, the request context:
 
 ```rust
 thread_fn worker(cfg: http::Config) {
@@ -85,13 +85,13 @@ fn main() {
 }
 ```
 
-`http::worker_count` is `cfg.workers`, or without it one worker per hardware thread (per
-performance core on macOS), and `http::stop_on_signals` makes SIGINT and SIGTERM stop
-the server rather than end the process. The other programs repeat this `main`, some
-with `workers: 1`.
+`http::worker_count` uses `cfg.workers` when set; otherwise, it chooses one worker per
+hardware thread (per performance core on macOS). `http::stop_on_signals` makes SIGINT
+and SIGTERM stop the server rather than terminate the process. The other programs use
+the same `main`, some with `workers: 1`.
 
-Build with `goose build`. `goose run`, the in-process TinyCC backend, can't run threads,
-and a server spawns them:
+Build with `goose build`. The in-process TinyCC backend used by `goose run` can't run
+the threads a server needs:
 
 ```sh
 goose build -o build/hello docs/tutorial/01-running/main.goose

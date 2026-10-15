@@ -1,9 +1,9 @@
 # 5. The API from a schema
 
-With `paths`, the generator also writes the router, `api::dispatch(cx)`, and the
-program writes the handlers it calls. [`05-schema`](05-schema/) has three files besides
-the schema: `api_gen.goose`, generated; `app.goose`, the handlers; and `main.goose`, the
-workers. Here are the paths from its `api.json`:
+When the schema includes `paths`, the generator also writes the router,
+`api::dispatch(cx)`. You write the handlers it calls. [`05-schema`](05-schema/) has
+three files besides the schema: the generated `api_gen.goose`, `app.goose` with the
+handlers, and `main.goose` with the workers. Here are the paths from its `api.json`:
 
 ```json
   "paths": {
@@ -41,11 +41,11 @@ Each operation calls a handler in the `app` namespace, named after its `operatio
 snake_case: `listProjects` calls `app::list_projects`. A handler's arguments come in this
 order:
 
-1. `cx`, whose `cx.app` is the worker's state, whatever the program gave `rest::serve`.
-2. The security check's result, when the operation names a scheme.
-3. The path parameters, in the template's order, typed: an `integer` is an `i64`.
-4. A struct of the query, header, and cookie parameters, `<OperationId>Params`.
-5. The body, as the `$ref`'s type.
+1. `cx`, with `cx.app` referring to the worker state passed to `rest::serve`.
+2. The security check's result, when the operation specifies a scheme.
+3. Typed path parameters in template order: an `integer` becomes an `i64`.
+4. A `<OperationId>Params` struct containing the query, header, and cookie parameters.
+5. The body, using the type named by its `$ref`.
 
 So the handlers in [`app.goose`](05-schema/app.goose) are:
 
@@ -67,10 +67,10 @@ fn get_project(cx, id: i64) {
 }
 ```
 
-`get_project` doesn't check that `id` is at least 1: the router has, from the schema's
-`minimum`, and answered `400 {"error":"invalid_parameter","detail":"id: minimum"}`
-without calling it. The parameters struct holds each optional parameter after a
-`has_` flag:
+`get_project` doesn't check that `id` is at least 1: the router has already checked
+the schema's `minimum`. If the check fails, the router answers
+`400 {"error":"invalid_parameter","detail":"id: minimum"}` without calling the handler.
+In the parameters struct, each optional parameter follows a `has_` flag:
 
 ```rust
 struct ListProjectsParams {
@@ -81,9 +81,9 @@ struct ListProjectsParams {
 }
 ```
 
-A scheme in `security` calls `app::security_<scheme>(cx)` before the handler, and the
-handler gets what it returns. Here the `token` scheme checks a bearer token and returns
-the user it belongs to:
+For a scheme listed in `security`, the router calls `app::security_<scheme>(cx)` before
+the handler and passes the result to the handler. Here the `token` scheme checks a
+bearer token and returns the user it belongs to:
 
 ```rust
 fn security_token(cx) -> const u8[:] {
@@ -94,8 +94,8 @@ fn security_token(cx) -> const u8[:] {
 
 ## When the schema and the handlers disagree
 
-The router calls the handlers by name, with their types, so the schema and the handlers
-can't drift apart unnoticed. Delete `get_project`, and the build stops:
+The router makes typed calls to the handlers by name, so the schema and handlers can't
+drift apart unnoticed. Delete `get_project`, and the build fails:
 
 ```text
 api_gen.goose:259: error: unknown function: app::get_project
@@ -106,29 +106,30 @@ api_gen.goose:259: error: unknown function: app::get_project
   ...
 ```
 
-Declare its `id` as a string instead, and it stops with
+Declare its `id` as a string instead, and the build fails with
 `argument 2: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
-`api_gen.goose` names the call, and the operation is the one around it. The chain goes
-on for 15 more frames, through `rest::serve` and goose-http's event loop, because Goose
-lists every generic function between the error and `main`
+`api_gen.goose` identifies the call within the generated code for that operation. The
+chain continues for 15 more frames through `rest::serve` and goose-http's event loop,
+because Goose lists every generic function between the error and `main`
 ([Goose findings](../goose-findings.md#an-error-inside-a-generic-function-lists-every-frame-up-to-main)).
 
-The workflow, then, is: change `api.json`, regenerate `api_gen.goose`, and let the
-compiler list the handlers to add or change. This repository commits both files, so
-that a schema change shows in review as a diff of the code it makes. A program can do
-the same, and then builds without the generator, or generate `api_gen.goose` in its
-build ([architecture](../architecture/README.md#with-a-schema)).
+The workflow is to change `api.json`, regenerate `api_gen.goose`, and let the compiler
+list the handlers to add or change. This repository commits both files so reviewers
+can see the generated code changes alongside the schema change. Your project can do
+the same and build without the generator, or generate `api_gen.goose` during the build
+([architecture](../architecture/README.md#with-a-schema)).
 
-The router itself is a `match` on the path's length for the static paths, then a walk
-segment by segment, literals before parameters. Its answers are the `if` chain's,
-byte for byte, except that a typed parameter is checked and a literal path wins over a
-template that also matches ([generator reference](../generator.md#how-it-matches)).
+The router first uses a `match` on the path's length for static paths, then walks the
+path segment by segment, checking literals before parameters. Its answers match
+those of the `if` chain byte for byte, except that it validates typed parameters and
+gives a literal path priority over a matching template
+([generator reference](../generator.md#how-it-matches)).
 
 ## Generated and hand-written routes
 
-`dispatch` answers every request it's given, with 404 for a path the schema doesn't
-have. A route the schema can't describe, such as one whose body isn't JSON, goes
-before it, in the same `rest::routes` block. From
+`dispatch` answers every request it receives, returning 404 for paths absent from
+the schema. Put routes the schema can't describe, such as those with non-JSON bodies,
+before it in the same `rest::routes` block. From
 [`05-schema/main.goose`](05-schema/main.goose):
 
 ```rust
@@ -150,14 +151,15 @@ fn upload(cx) {
 }
 ```
 
-`rest::on` adds the methods of the routes whose path matched to the router's `Allow`,
-and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with `Allow: PUT`, and
-`OPTIONS` 204 with it, as from one router. Where hand-written routes and the schema share
-a path, the `Allow` lists the hand-written routes' methods, then the schema's, and a
-hand-written route with a schema operation's method wins over it, since it comes first.
-The hand-written route calls `app::security_token` itself, the same check the generated
-routes make. How `rest::body` gathers a body past the read buffer, and its limits:
-[Large bodies](10-large-bodies.md).
+`rest::on` adds the methods of routes with matching paths to the router's `Allow` list,
+and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with
+`Allow: PUT`, and `OPTIONS` gets 204 with the same header, just as with a single router.
+When hand-written routes and the schema share a path, `Allow` lists the hand-written
+routes' methods first, then the schema's. A hand-written route takes precedence over a
+schema operation with the same method because it comes first. The hand-written route
+calls `app::security_token` itself, performing the same check as the generated routes.
+For how `rest::body` gathers a body larger than the read buffer, and the limits that
+apply, see [Large bodies](10-large-bodies.md).
 
 ---
 

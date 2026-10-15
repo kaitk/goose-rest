@@ -1,14 +1,15 @@
 # 8. State
 
-Workers share nothing, so state lives in one of three places: the worker, the request,
-or a thread of its own
+Workers share nothing, so state lives in one of three places: within a worker, within a
+request, or on a dedicated thread
 ([goose-http's state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)).
 
 ## Per worker
 
-The worker's `thread_fn` owns it as locals, and `rest::serve(cfg, app)` gives every
-request `cx.app`, a reference to a struct of references to them, as Actix's `web::Data`
-but without the `Arc`. From [`05-schema`](05-schema/main.goose):
+The worker's `thread_fn` owns its state in local variables. `rest::serve(cfg, app)`
+gives each request `cx.app`, a reference to a struct containing references to those
+variables. This serves the role of Actix's `web::Data`, but without the `Arc`. From
+[`05-schema`](05-schema/main.goose):
 
 ```rust
 struct App { projects: api::Project[>..]&, token: const u8[:] }
@@ -21,16 +22,16 @@ thread_fn worker(cfg: http::Config) {
     let e = rest::serve(cfg, app) { cx =>
 ```
 
-Each worker has its own `projects`, so a project created on one worker isn't on another.
-The tutorial's programs that keep projects run one worker for that reason. A cache or a
-rate limiter is fine per worker; data every worker must see goes on a thread of its own,
-below.
+Each worker has its own `projects`, so a project created on one worker isn't available
+on another. For that reason, tutorial programs that store projects use one worker. A
+cache or rate limiter can be per-worker; data that every worker must see goes on a
+dedicated thread, as described below.
 
 ## Per request
 
 `rest::serve(cfg, app, fresh)` gives each request `cx.state`, a fresh copy of `fresh`.
-Its type picks the error shape ([Answers and errors](03-errors.md#errors)), and a
-`rest::Once<T>` field in it computes a value on its first use in a request. From
+The state type determines the error format ([Answers and errors](03-errors.md#errors)).
+A `rest::Once<T>` field computes a value on its first use within the request. From
 [`08-state`](08-state/main.goose):
 
 ```rust
@@ -57,10 +58,10 @@ fn user(cx: Cx&) -> User& {
             };
 ```
 
-The alias types a route's context: `St` is the request's state, `App` is the worker's,
-and `http::Router` is the router supplied by `rest::routes`. Outside that block the
-context has `rest::NoRouter`, so it cannot be passed to `user`. A generic helper can
-leave its context parameter untyped, as the other examples do.
+The alias defines the route's context type: `St` is the request state, `App` is the
+worker state, and `http::Router` is the router supplied by `rest::routes`. Outside that
+block, the context has `rest::NoRouter`, so it cannot be passed to `user`. A generic
+helper can leave its context parameter untyped, as the other examples do.
 
 The route calls `user` twice, and `lookup` runs once:
 
@@ -71,9 +72,9 @@ GET /me 200 grace, lookups so far: 2
 
 ## On another thread
 
-A database connection, or anything else every worker shares, lives on a thread of its
-own, which workers ask by message. A route asks it with `rest::ask`, and resumes when
-the reply comes: [Work that waits](13-waiting.md).
+A database connection, or other state used by every worker, lives on a dedicated
+thread. Workers send it requests by message. A route uses `rest::ask` and resumes when
+the reply arrives: [Work that waits](13-waiting.md).
 
 ---
 

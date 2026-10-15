@@ -1,20 +1,21 @@
 # 4. JSON bodies
 
-goose-http reads a request into a buffer of 8 KB, and a JSON body that fits there with
-its head reaches the route whole, as most do
+goose-http reads requests into an 8 KB buffer. A JSON body that fits alongside the
+request head reaches the route in full, as most do
 ([goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies)).
-A longer one is gathered when the route asks for it: [Large bodies](10-large-bodies.md).
+A larger body is gathered when the route asks for it: [Large bodies](10-large-bodies.md).
 
 ## Read by hand
 
-`rest::take<T>(cx)` is goose-rest's extractor by type, Actix's `web::Json<T>`. It calls
-the overload `rest::from_request(cx, v: const T?)` that you, or the generator, declare
-for `T`. `v` is always null; only its type matters.
+`rest::take<T>(cx)` is goose-rest's type-based extractor, corresponding to Actix's
+`web::Json<T>`. It calls the `rest::from_request(cx, v: const T?)` overload that you or
+the generator declare for `T`. `v` is always null; only its type matters.
 
-For a body read by hand, the overload passes a reader to `rest::json_body`, which
-answers 415 unless the request says `application/json`, and 400 `invalid_body` for a body
-the reader refuses. A reader collects each member as a slice, checks them, and builds the
-struct once at the end: a struct holding a string can't be filled field by field. From
+For a hand-written body reader, the overload passes the reader to `rest::json_body`,
+which answers 415 unless the request specifies `application/json`, or 400
+`invalid_body` if the reader rejects the body. The reader collects the members as
+slices, validates them, and constructs the struct at the end: a struct containing a
+string can't be filled field by field. From
 [`04-json/reader`](04-json/reader/main.goose):
 
 ```rust
@@ -55,15 +56,15 @@ POST /projects 400 {"error":"invalid_body","detail":"expected ',' or '}'","at":1
 POST /projects 415 {"error":"unsupported_media_type"}
 ```
 
-`T` is given explicitly, `take<ProjectCreate>`: Goose can't infer it from what the result
-is assigned to.
+Specify `T` explicitly, as in `take<ProjectCreate>`: Goose can't infer it from the
+assignment target.
 
 ## Generated from a schema
 
-Writing readers by hand gets old. The generator writes the struct, the reader, the
-`format` writer, and the `from_request` overload for each schema in an OpenAPI
-document's `components`. A document without `paths` gets only those, and the routes stay
-yours. From [`04-json/types`](04-json/types/api.json):
+Writing readers by hand gets repetitive. The generator writes the struct, reader,
+`format` writer, and `from_request` overload for each schema in an OpenAPI document's
+`components`. A document without `paths` generates only these; you still write the
+routes. From [`04-json/types`](04-json/types/api.json):
 
 ```json
   "components": {
@@ -86,8 +87,9 @@ goose build -o build/goose-rest gen/main.goose        # once, from this reposito
 build/goose-rest gen docs/tutorial/04-json/types/api.json -o docs/tutorial/04-json/types/api_gen.goose
 ```
 
-The generated namespace is `api`. `Project` becomes a struct with `has_color` before its
-optional `color`, and its strings limited arrays of four bytes per code point:
+The generated namespace is `api`. `Project` becomes a struct with a `has_color` flag
+before the optional `color` field. Its strings use limited arrays sized at four bytes
+per code point:
 
 ```rust
 struct Project {
@@ -98,7 +100,7 @@ struct Project {
 }
 ```
 
-The hand-written routes use the generated types as their own:
+Hand-written routes can use the generated types directly:
 
 ```rust
         if rest::on(cx, "POST", "/projects") {
@@ -111,8 +113,8 @@ The hand-written routes use the generated types as their own:
             };
 ```
 
-The generated reader names the field and the check that failed, and the writer leaves
-out an optional field that isn't there:
+The generated reader reports the field and the check that failed. The writer omits
+optional fields that are absent:
 
 ```text
 POST /projects 201 {"id":1,"name":"goose","color":"#00ff00"}
@@ -121,11 +123,11 @@ POST /projects 400 {"error":"invalid_body","detail":"color: maxLength","at":39}
 POST /projects 400 {"error":"invalid_body","detail":"unknown member","at":26}
 ```
 
-The generator's file is never edited by hand: change the schema and regenerate.
-`scripts/test.sh` regenerates every `api_gen.goose` in this repository and fails when one
-differs from the committed file. The [generator reference](../generator.md#the-subset)
-lists the schema keywords it reads, and refuses anything else with the construct's JSON
-pointer rather than drop it.
+Never edit the generated file by hand: change the schema and regenerate.
+`scripts/test.sh` regenerates every `api_gen.goose` in this repository and fails if any
+result differs from the committed file. The [generator reference](../generator.md#the-subset)
+lists the supported schema keywords. The generator rejects unsupported constructs with
+their JSON pointers rather than silently dropping them.
 
 ---
 

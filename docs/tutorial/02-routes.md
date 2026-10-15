@@ -1,14 +1,14 @@
 # 2. Routes, path, query, and headers
 
-Routes go in a `rest::routes` block, whose context holds a router over the request, and
-each route is a `rest::on` with a method and a pattern: literal segments, `:name` for one
-segment, and `*name`, last, for the rest of the path. A pattern matches the path without
-the query string, so `/v1/projects` takes `/v1/projects?q=g`. `GET` routes take `HEAD`
-too. A route that matches the path with another method adds the method to the router's
-`Allow`, so `rest::otherwise`, at the end of the chain, answers 405 with `Allow` where
-the path exists, 404 where it doesn't, and OPTIONS itself.
+Routes go in a `rest::routes` block, whose context holds the router for the request.
+Each route uses `rest::on` with a method and a pattern: literal segments, `:name` for one
+segment, and `*name` at the end for the rest of the path. Patterns match the path without
+the query string, so `/v1/projects` matches `/v1/projects?q=g`. `GET` routes also accept
+`HEAD`. When a route's path matches but its method doesn't, the route adds its method
+to the router's `Allow` list. At the end of the chain, `rest::otherwise` answers 405 with
+`Allow` if the path exists, or 404 if it doesn't. It also answers OPTIONS itself.
 
-`rest::scope` takes a prefix off the path, so the routes inside it match the rest. From
+`rest::scope` removes a prefix from the path, so the routes inside it match the rest. From
 [`02-routes`](02-routes/main.goose):
 
 ```rust
@@ -25,11 +25,11 @@ fn handle(cx) {
 }
 ```
 
-Extractors read one part of the request each: `rest::param` and `rest::param_int` a path
-parameter, `rest::query`, `rest::query_int`, and `rest::query_bool` a query string
-parameter, `rest::header` a header field, and `rest::cookie` a cookie. They are plain
-calls, made where the handler needs the value, rather than handler arguments as in Actix
-or Axum:
+Each extractor reads one part of the request: `rest::param` and `rest::param_int` read a
+path parameter; `rest::query`, `rest::query_int`, and `rest::query_bool` read a query string
+parameter; `rest::header` reads a header field; and `rest::cookie` reads a cookie. These
+are plain function calls made where the handler needs the value, rather than handler
+arguments as in Actix or Axum:
 
 ```rust
 fn v1(cx) {
@@ -51,10 +51,10 @@ fn v1(cx) {
 }
 ```
 
-An optional value comes with a `bool` that says whether the request has it, and a value
-that doesn't parse fails the route with 400. `rest::require` turns a missing one into a
-failure too. A query value is percent-decoded, with `+` as a space, and a repeated key
-gives its first value:
+An optional value comes with a `bool` indicating whether it is present in the request.
+A value that doesn't parse fails the route with 400. `rest::require` also fails the route
+if the value is missing. Query values are percent-decoded, with `+` decoded as a space.
+For a repeated key, the first value is returned:
 
 ```text
 GET /v1/projects?q=g&limit=1   200 [{"id":1,"name":"goose"}]
@@ -64,10 +64,10 @@ GET /v1/me                     400 {"error":"invalid_parameter","detail":"X-User
 DELETE /v1/projects/2          405 {"error":"method_not_allowed"}
 ```
 
-An extractor returns a slice of the request where there is nothing to decode, and
-otherwise decodes into `cx.scratch`. Either lasts until the handler returns, so a
-value is used in the request and copied if it must outlive it. The
-[reference](../reference.md#extractors) lists every extractor and what it fails with.
+An extractor returns a slice of the request when no decoding is needed; otherwise, it
+decodes into `cx.scratch`. In either case, the value remains valid until the handler
+returns. Copy it if it must outlive the request. The
+[reference](../reference.md#extractors) lists every extractor and the errors it can return.
 
 ---
 

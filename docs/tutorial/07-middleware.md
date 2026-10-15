@@ -1,7 +1,7 @@
 # 7. Middleware and scopes
 
-Middleware is a function that takes a block, the routes it wraps. goose-rest has three,
-and a program writes its own the same way. From
+A middleware function takes a block containing the routes it wraps. goose-rest
+provides three middleware functions, and you can write your own the same way. From
 [`07-middleware`](07-middleware/main.goose):
 
 ```rust
@@ -37,18 +37,19 @@ fn handle(cx) {
 
 - `rest::timed` adds `Server-Timing: app;dur=<ms>` to every answer and writes an access
   log line to standard error: `GET /v1/projects 200 182 0.012`.
-- `rest::cors` adds the CORS fields to every answer inside it, errors included, answers
-  a preflight with 204 itself, and refuses an origin it doesn't list with 403.
-- `rest::bearer` gives its block the bearer token, or fails with 401 `unauthenticated`;
-  the block refuses a wrong one with `rest::invalid_token`.
+- `rest::cors` adds CORS headers to every answer inside it, including errors. It
+  answers preflight requests with 204 and rejects unlisted origins with 403.
+- `rest::bearer` passes the bearer token to its block, or fails with 401
+  `unauthenticated`. The block rejects an invalid token with `rest::invalid_token`.
 
 ## Where a middleware goes
 
-Where a middleware goes is how it applies. `/health` is public, every route under `/v1`
-needs a tenant, and every route under `/admin` a token, checked before the route is
-matched. A middleware that adds fields to every answer, as `timed` and `cors` do, goes
-outside `rest::route`, so that the errors the route answers get the fields too. One that
-fails, as `bearer` and `tenant` do, goes inside it. A request has one `rest::route`:
+Placement determines which routes middleware applies to. `/health` is public; every
+route under `/v1` requires a tenant, and every route under `/admin` requires a token.
+These checks run before matching the route within the scope. Middleware that adds
+headers to every answer, such as `timed` and `cors`, goes outside `rest::route` so
+the errors the route answers get the headers too. Middleware that can fail, such as
+`bearer` and `tenant`, goes inside it. A request has one `rest::route`:
 routes nested in routes keep each other out of line.
 
 ## A middleware of your own
@@ -63,13 +64,14 @@ inline fn tenant<F>(cx) {
 }
 ```
 
-Declare it `inline fn`. Goose inlines a plain function called once only up to a size, and
-a block of routes passes that size at once, so a plain `fn` stays a call, and the
-middleware around it stays out of line too. `inline fn` folds it into the handler, which
-then compiles to one C function, each early answer a jump
+Declare it `inline fn`. Goose inlines a plain function called once only if it is below
+a size threshold. A block of routes immediately exceeds that threshold, so a plain
+`fn` remains a function call and prevents the surrounding middleware from being
+inlined too. `inline fn` folds the middleware into the handler, which compiles to one
+C function with a jump for each early answer
 ([architecture](../architecture/README.md#inlining)).
 
-With a schema, middleware goes around `dispatch`, as [`05-schema`](05-schema/main.goose)
+With a schema, wrap `dispatch` in middleware, as [`05-schema`](05-schema/main.goose)
 does with `timed`:
 
 ```rust
