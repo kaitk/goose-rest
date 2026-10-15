@@ -57,4 +57,6 @@ v0.1.0 (2026-10-15): its benchmark server's data first, then the upload tier on
 data every worker shares, 028, a body of known length gathered at its exact size, and
 029, a per-worker budget for bodies being gathered, come from it. Task 025, the middleware's fields on answers
 written after the request, and task 026, the architecture doc's split, follow. Task
-024, the tutorial's testing of part two's application, is done.
+024, the tutorial's testing of part two's application, is done. Tasks 030, responses in
+pieces under `rest::compressed`, 031, `serve_one` past `rest::ask`, and 032, timers for
+a route that began a response, can start at any point.

@@ -40,9 +40,9 @@ struct Ask<J> { reply: http::MailAddress = http::MailAddress { .. }, piece: i64 
 // once.
 fn ask<J>(cx, to: http::MailAddress, tag: i32, job: J, w, ms: i64 = 5000) {
     cx.state.waiting = w;
-    let reply = http::later(cx.out, ms);
-    let piece = http::mail_slot_size(reply);
-    guard http::mail_send_value(to, tag, Ask<J> { reply: reply, piece: piece, job: job }) == http::SENT else {
+    let back = http::later(cx.out, ms);
+    let piece = http::mail_slot_size(back);
+    guard http::mail_send_value(to, tag, Ask<J> { reply: back, piece: piece, job: job }) == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
         fail(cx, 503, "unavailable");
