@@ -14,7 +14,7 @@ place without changing the pages.
 ## In the route
 
 A query that takes microseconds, such as one on an embedded SQLite database, can run in
-the route. From [`13-waiting`](13-waiting/main.goose):
+the route. From [`13-waiting`](13-waiting/app.goose):
 
 ```rust
     if rest::on(cx, "GET", "/in-place/projects/:id") {
@@ -122,7 +122,8 @@ with `rest::answer_value`:
 
 The route reads and checks the request, then asks once with `rest::ask`: the service's
 address, the job's tag, the job, and what the route needs when the reply comes. From
-[`main.goose`](13-waiting/main.goose):
+[`app.goose`](13-waiting/app.goose), which holds the routes apart from `main` so that
+a test can import them:
 
 ```rust
     } else if rest::on(cx, "PUT", "/projects/:id/tasks/:task/assignee") {
@@ -205,7 +206,8 @@ because:
 - Each route waits once: one `Waiting` variant, one time limit, and one place where a
   full box refuses work ([Limits](15-limits.md)).
 - A use case is tested as a plain call on a job, without a request or threads, as
-  [`test.goose`](13-waiting/test.goose) does:
+  [`test.goose`](13-waiting/test.goose) does ([Testing the application](16-testing.md)
+  covers the routes too):
 
 ```rust
     var c = db::open(0);
