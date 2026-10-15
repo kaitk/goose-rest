@@ -1,0 +1,11 @@
+GET /health 200 ok
+GET /v1/projects/1/summary 200 {"project":1,"tasks":5}
+GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
+GET /v1/projects/1/summary 000
+GET /v1/projects/1/summary 000
+GET /v1/projects/1/summary 503 {"error":"unavailable"}
+GET /v1/gone 200 {"skipped":2,"dropped":1}
+POST /v1/projects/1/reports 202 {"id":1,"project":1,"state":"running"}
+GET /v1/reports/1 200 {"id":1,"project":1,"state":"running"}
+GET /v1/reports/1 200 {"id":1,"project":1,"state":"done","tasks":5}
+GET /v1/reports/9 404 {"error":"report_not_found"}

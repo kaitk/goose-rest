@@ -199,7 +199,7 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
 
 ## Usage
 
-The examples are sketches; the [tutorial](../tutorial.md) quotes programs the test
+The examples are sketches; the [tutorial](../tutorial/README.md) quotes programs the test
 suite builds and requests.
 
 Decided (2026-10-14): the context is `Cx<S, A, R>`, with the
@@ -244,7 +244,7 @@ than the read buffer and needs the body tests and a tier D run on Linux.
 
 The framework alone, as an Actix program would use it:
 
-```goose
+```rust
 namespace app;
 
 fn handle(cx) {
@@ -311,7 +311,7 @@ findings).
 
 ### Handlers
 
-```goose
+```rust
 namespace app;
 
 fn get_project(cx, s: Session, id: i64) {
@@ -341,7 +341,7 @@ slice of the request is live (spec §5.1).
 A security check is the part that must run; it fails the route. What can wait is a lazy
 extractor, run on first call and kept in the per-request state for the request.
 
-```goose
+```rust
 struct Session { user: i64, org: i64, expires: i64 }
 
 fn security_session(cx) -> Session {
@@ -410,7 +410,7 @@ The generator writes plain Goose, read and debugged like any other file, never e
 This is its output for `ProjectCreate` and the router, shortened, and the
 [reference](../generator.md) has the rest.
 
-```goose
+```rust
 namespace api;
 
 struct ProjectCreate { name: u8[..480], has_color: bool, color: u8[..28] }
@@ -523,16 +523,23 @@ keyword, because the reader's error is a slice and the key is a slice of the req
 
 ### Waiting on another thread
 
-Checked by spike 06; built in `waiting.goose`, whose header and `examples/waiting/`
-show the API: `rest::ask`, `rest::woken`, `rest::answer`, and `rest::relay`.
-`rest::wanted` tells the other thread whether the route
-still waits, so it can skip the work of a client that has gone. Goose can't store a function to call later, so the
-per-request state holds a fixed-mode enum of what each waiting route needs, and the app
-writes a case function per variant. The compiler dispatches on the tag and checks that
-every variant has its case (§8.2). The enum is fixed-mode because each request
-overwrites the slot (§3.5).
+Checked by spike 06; built in `waiting.goose`, whose header shows the API:
+`rest::ask`, `rest::woken`, `rest::answer`, and `rest::relay`. `rest::wanted` tells the
+other thread whether the route still waits, so it can skip the work of a client that has
+gone. Goose can't store a function to call later, so the per-request state holds a
+fixed-mode enum of what each waiting route needs, and the app writes a case function per
+variant. The compiler dispatches on the tag and checks that every variant has its case
+(§8.2). The enum is fixed-mode because each request overwrites the slot (§3.5).
 
-```goose
+The default is a service: a thread that owns the connections, to which a route sends one
+job naming the whole use case, and which does it start to end with blocking calls, in
+one transaction (2026-10-14). A route then waits once, with one time limit and one place
+a full box refuses work, and a use case is tested as a plain call. A route waits more than
+once only for what one service can't do: a second service in turn. The tutorial builds
+both, from [work that waits](../tutorial/13-waiting.md) to
+[limits](../tutorial/15-limits.md).
+
+```rust
 let REPORT: i32 = 1;
 enum Waiting { None, Report { org: i64, from: i64, to: i64 } }
 struct St { waiting: Waiting = Waiting.None }
@@ -562,7 +569,7 @@ nothing on the connection.
 
 ### Main
 
-```goose
+```rust
 import http from "github.com/kaitk/goose-http@<commit>";
 import rest from "github.com/kaitk/goose-rest@<commit>";
 import app;

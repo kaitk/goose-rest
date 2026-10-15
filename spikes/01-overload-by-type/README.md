@@ -23,7 +23,7 @@ Across namespaces it fails, as the spec says it should. A generic body resolves 
 where it is defined (spec §11.1), and there is no argument-dependent lookup, so
 `rest::take` doesn't see `app::from_request`:
 
-```goose
+```rust
 namespace rest;
 fn take<T, F>(cx: Cx&) { var v = default<T>(); from_request(cx, v); F(v); }
 

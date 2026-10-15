@@ -1,15 +1,16 @@
 # goose-rest
 
-A REST framework for [Goose](https://github.com/aardappel/goose), on
-[goose-http](https://github.com/kaitk/goose-http): Actix's model, changed where Goose
-differs, at no cost over a hand-written router wherever the language allows. An optional
-generator writes types, JSON readers and writers, and a router from an OpenAPI document.
+A REST framework for [Goose](https://github.com/aardappel/goose), built on
+[goose-http](https://github.com/kaitk/goose-http). It follows Actix's model, adapted to
+Goose, with no overhead over a hand-written router wherever the language allows.
+An optional generator writes types, JSON readers and writers, and a router from an
+OpenAPI document.
 
-Early: this is the API goose-rest means to keep, and its tutorial and examples are
-written in it, but it isn't settled. Expect changes between tags, mostly in names and
-details, while some of its costs over goose-http are still being worked on.
+The API is still taking shape. The tutorial and examples use the intended API, but
+names and details may change between tags. Work is also underway to reduce the
+remaining overhead over goose-http.
 
-[Tutorial](docs/tutorial.md) · [Reference](docs/reference.md) ·
+[Tutorial](docs/tutorial/README.md) · [Reference](docs/reference.md) ·
 [Generator](docs/generator.md) · [Benchmarks](docs/benchmarks.md) ·
 [Architecture](docs/architecture/README.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)
@@ -28,31 +29,32 @@ pass their tests on arm64 Linux.
 |---|---|---|
 | 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#context-and-routes)). |
 | 🟢 | Scopes | Prefixes, each with its own middleware. |
-| 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and a program's own types ([reference](docs/reference.md#extractors)). |
-| 🟡 | Forms | Whole form bodies through goose-http's `http::form_value`; no extractor, and no multipart. |
-| 🟢 | State | The worker's state in `cx.app`, and the request's in `cx.state`. |
-| 🟢 | Middleware | Blocks inlined into the handler; which exist is [below](#middleware). |
-| 🟢 | Errors | JSON with a code, in a shape your program can replace ([reference](docs/reference.md#errors)). |
-| 🟢 | Async work | Ask a thread of the program's, resume with its reply, and skip the work for a client that has gone. |
-| 🟢 | Testing | `rest::serve_one` answers a request's bytes without a socket ([reference](docs/reference.md#testing)). |
-| 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1, written as JSON or in TypeScript ([generator](docs/generator.md)). |
-| ⚪ | OpenAPI out | A document from the routes, as Elysia's plugin writes. Planned, later. |
-| ⚪ | Static files, streaming | Not in goose-rest yet; goose-http serves files and streams. |
+| 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#extractors)). |
+| 🟡 | Forms | Whole form bodies through goose-http's `http::form_value`; no extractor or multipart support. |
+| 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
+| 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
+| 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#errors)). |
+| 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/13-waiting.md)). |
+| 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#testing)). |
+| 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
+| ⚪ | OpenAPI out | Generate a document from the routes, as Elysia's plugin does. Planned. |
+| ⚪ | Bodies in pieces | A body is gathered whole, up to its limit; goose-http reads one [as it arrives](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies). |
+| ⚪ | Static files, streaming | Not in goose-rest yet; goose-http [serves files and streams](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses). |
 | 🔴 | WebSocket | Out of scope, as in goose-http. |
 
 ### Middleware
 
 | | Middleware | Notes |
 |---|---|---|
-| 🟢 | CORS | Preflights, listed origins, and credentials. |
-| 🟢 | Bearer tokens | 401 with `WWW-Authenticate`, and the token for your check. |
-| 🟢 | Server-Timing and access log | One middleware, or the timing alone. |
+| 🟢 | CORS | Preflight requests, allowed origins, and credentials. |
+| 🟢 | Bearer tokens | 401 with `WWW-Authenticate`; passes the token to your verifier. |
+| 🟢 | Server-Timing and access log | Combined middleware, or timing alone. |
 | 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#middleware)). |
-| ⚪ | JWT | No verifier yet; the bearer middleware hands your own check the token. |
-| ⚪ | Sessions | No session store yet; read the cookie with `rest::cookie`. |
+| ⚪ | JWT | No built-in verifier; use your own with the bearer middleware. |
+| ⚪ | Sessions | No session store yet; read cookies with `rest::cookie`. |
 | ⚪ | Compression | No middleware yet; goose-http compresses responses. |
-| ⚪ | Rate limiting | No limiter yet; goose-http's limits and timeouts per connection apply. |
-| ⚪ | Default headers | No middleware yet; add fields to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
+| ⚪ | Rate limiting | No limiter yet; goose-http's per-connection limits and timeouts apply. |
+| ⚪ | Default headers | No middleware yet; add headers to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
 
 ## Quick start
 
@@ -67,7 +69,7 @@ a program also needs a C compiler and, on Linux, liburing:
 
 Save this as `hello.goose`:
 
-```goose
+```rust
 import http from "github.com/kaitk/goose-http@v0.3.1";
 import rest from "github.com/kaitk/goose-rest@v0.0.1";
 
@@ -94,7 +96,7 @@ fn main() {
 }
 ```
 
-Build it and run it, then open <http://localhost:8080/hello/goose>:
+Build and run it, then open <http://localhost:8080/hello/goose>:
 
 ```sh
 goose build hello.goose
@@ -104,20 +106,20 @@ goose build hello.goose
 *Note: a server with workers needs `goose build`: `goose hello.goose` runs through
 TinyCC, which can't start threads.*
 
-**With a schema**, describe the API in OpenAPI 3.1, as JSON or in
-[TypeScript](docs/generator.md#write-it-in-typescript), and generate its types and router
-([how](docs/generator.md#run-it)). `api::dispatch(cx)` then takes the place of the
-routes, and calls a handler of yours per operation with typed, validated parameters and
-body: [tutorial, step 6](docs/tutorial.md#6-the-whole-api-from-a-schema).
+**With a schema**, describe the API in OpenAPI 3.1 using JSON or
+[TypeScript](docs/generator.md#write-it-in-typescript), then
+[generate its types and router](docs/generator.md#run-it). `api::dispatch(cx)` replaces
+the routes and calls your handler for each operation with typed, validated parameters
+and a validated body: [tutorial, page 5](docs/tutorial/05-schema.md).
 
-The [tutorial](docs/tutorial.md) builds a projects API step by step. The examples, each
-built and requested by the tests:
+The [tutorial](docs/tutorial/README.md) builds a projects API a page at a time: the
+basics first, then large bodies, work that waits, and limits. The examples are complete
+programs to start from, each built and tested with HTTP requests:
 
 | Example | What it shows |
 |---|---|
-| [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, middleware, and a 4 MB upload beside the 1 MB default |
-| [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route by `x-body-limit` |
-| [`waiting/`](examples/waiting/main.goose) | Routes that ask a database thread and resume when it replies, with replies larger than a message |
+| [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, middleware, and a 4 MB upload alongside the 1 MB default |
+| [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 
 ## Concepts
@@ -129,33 +131,33 @@ flowchart LR
     H -. "fails" .-> E["error as JSON"] -.-> A
 ```
 
-- **Routes are code.** Goose has no function values to keep in a table, so a route is an
-  `if` that matches a method and a path, and a schema's generated router is a `match`.
-  What no route matches gets 404, 405, or an `OPTIONS` answer
+- **Routes are code.** Goose has no function values to store in a table, so a route is an
+  `if` that matches a method and a path, and a generated router uses a `match`.
+  Unmatched requests receive 404, 405, or an `OPTIONS` response
   ([routes](docs/reference.md#context-and-routes)).
-- **One context.** Every call takes `cx`: the request, the response being written, the
-  worker's state, and the request's own.
-- **Middleware is a block** around the routes it applies to, compiled into the handler,
-  so a layer costs no call ([middleware](docs/reference.md#middleware)).
-- **Errors return to the route.** A failure anywhere below a route ends it with a JSON
-  error, in a shape your program can replace ([errors](docs/reference.md#errors)).
+- **One context.** Every call takes `cx`: the request, the response being written,
+  worker state, and request state.
+- **Middleware is a block** around the routes it applies to. It compiles into the
+  handler, so a layer adds no function call ([middleware](docs/reference.md#middleware)).
+- **Errors return to the route.** A failure anywhere within a route ends it with a JSON
+  error in a customizable format ([errors](docs/reference.md#errors)).
 - **Workers share nothing**, as in
   [goose-http](https://github.com/kaitk/goose-http#concepts). A route that needs another
-  thread asks it by
-  [mail](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads),
-  and resumes when the reply comes
-  ([waiting](docs/architecture/README.md#waiting-on-another-thread)).
+  thread sends it a
+  [message](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
+  and resumes when the reply arrives ([tutorial](docs/tutorial/13-waiting.md),
+  [why](docs/architecture/README.md#waiting-on-another-thread)).
 
-Where and why goose-rest differs from Actix:
+For differences from Actix and the reasons behind them, see the
 [architecture](docs/architecture/README.md#actix-and-where-goose-rest-differs).
 
 ## Benchmarks
 
-goose-rest `b1226e4`, goose-http `v0.3.1`, and Goose `bc3c1f1` on a Ryzen 7 5800X3D
+goose-rest `v0.0.1`, goose-http `v0.3.1`, and Goose `v2026.1` on a Ryzen 7 5800X3D
 (WSL2), 4 workers per server, on the io_uring loop.
-[All results, the method, and the losses](docs/benchmarks.md).
+[Full results, methodology, and losses](docs/benchmarks.md).
 
-Against goose-http's REST server, which serves the same routes without a framework:
+Compared with goose-http's REST server, which serves the same routes without a framework:
 
 | Workload | goose-rest | goose-http alone | |
 |---|---:|---:|---|
@@ -166,24 +168,25 @@ Against goose-http's REST server, which serves the same routes without a framewo
 | [M](docs/benchmarks.md#tier-m): A + CORS, bearer, Server-Timing | 489k req/s | | 15% below A |
 | [R](docs/benchmarks.md#tier-r): 203 routes, generated | 458k req/s | | 41% over an if chain |
 
-Against Rust and Zig frameworks: to be measured. Meanwhile, goose-http's
-[REST APIs](https://github.com/kaitk/goose-http#rest-apis) compare the layer underneath
-with xitca-web, dusty, hyper, and tokio.
+Comparisons with Rust and Zig frameworks are not yet available. For the underlying
+HTTP layer, see goose-http's
+[REST API benchmarks](https://github.com/kaitk/goose-http#rest-apis)
+against xitca-web, dusty, hyper, and tokio.
 
 ## Credits
 
-The runtime takes three ideas from [actix-web](https://github.com/actix/actix-web):
+The runtime draws three ideas from [actix-web](https://github.com/actix/actix-web):
 
 - An `App` of scopes and routes.
 - Extractors chosen by type.
 - Middleware around a group of routes.
 
-The generator takes three from Elysia 2, the `kiana` branch of
-[Elysia](https://github.com/elysiajs/elysia), read at `c91f61f` (2026-10-11):
+The generator draws three ideas from Elysia 2, the `kiana` branch of
+[Elysia](https://github.com/elysiajs/elysia), reviewed at `c91f61f` (2026-10-11):
 
-- One composed handler per route, with only the hooks it has and the request parts it
+- One composed handler per route, with only the hooks it needs and the request parts it
   reads.
-- Validators inline.
+- Inline validators.
 - A response writer that copies only declared fields.
 
 Goose's compiler does at build time what Elysia generates at run time or in its AOT build

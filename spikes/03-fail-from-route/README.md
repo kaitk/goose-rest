@@ -35,7 +35,7 @@ const u8[:] }` compiles while every `code` is a literal. A code taken from the r
 `rest::fail(cx, 400, cx.path)`, is refused, as the design's `rest::invalid(r, key,
 ...)` would be. A bare slice is refused too, as the minimal program shows:
 
-```goose
+```rust
 fn route(path: const u8[:]) -> const u8[:] {
     check(path);
     return "";

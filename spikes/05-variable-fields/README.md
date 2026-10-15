@@ -16,7 +16,7 @@ $GOOSE main.goose
 A `u8[]` field can't be filled after construction, as spec §4.4 says. It can't grow,
 can't be assigned, and the struct holding it can't be assigned whole either:
 
-```goose
+```rust
 struct P { id: i64, name: u8[], note: u8[] }
 var p = P { id: 1, name: [], note: [] };
 p.name.append("goose");                    // error: .append is not available on u8[]
@@ -42,7 +42,7 @@ a repeated key rebinds its slice, so the last one wins.
 
 ## The workable pattern
 
-```goose
+```rust
 fn read_project(r: json::Reader&, scratch: u8[>..]&) -> Project {
     var name = r.text[..0];     // rooted at the reader's text, not at a literal
     json::each_member(r) { key =>

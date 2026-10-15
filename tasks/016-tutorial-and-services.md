@@ -1,6 +1,6 @@
 # 016: A step-by-step tutorial, up to services for routes that wait
 
-Status: todo (asked for 2026-10-14)
+Status: done (2026-10-15), but for pages 11 and 12, which wait on task 023
 
 `docs/tutorial.md` shows goose-rest a feature at a time. A program that does more than
 the simple cases needs to see the approaches this package takes, in the order it meets
@@ -30,6 +30,39 @@ how `scripts/test.sh` checks them) is decided when the work starts. It waits on 
 12. Limits and backpressure: `http::Config`'s bounds, 503 when a service's box is full,
     504 when it doesn't answer in time, a slow client, and a client that has gone
     (task 017).
+
+## The pages (2026-10-15)
+
+Agreed with goose-http's task 035, which records why. The tutorial is pages under
+`docs/tutorial/`, each `NN-name.md` with its program in `NN-name/`, indexed by
+`docs/tutorial/README.md`; `docs/tutorial.md` goes. Each page links the goose-http
+section it builds on, in a sentence.
+
+| Page | Approach | goose-http's `docs/patterns.md` |
+|---|---|---|
+| **Part one: the basics** | | |
+| 1. Running something | The one idea, and 1 | (its README's "Concepts") |
+| 2. Routes, path, query, and headers | 1 | |
+| 3. Answers and errors | 2 | |
+| 4. JSON bodies | 3 | "Request bodies" |
+| 5. The API from a schema | 4 | |
+| 6. The schema in TypeScript, Python, or Rust | 4 | |
+| 7. Middleware and scopes | 5 | |
+| 8. State | 6 | "State that workers share" |
+| 9. Testing without sockets | 8 | |
+| **Part two: bodies, waits, and limits** | | |
+| 10. Large bodies | 7 | "Request bodies" |
+| 11. Bodies read as they arrive | TBD: goose-rest reads no body in pieces yet | "Request bodies" |
+| 12. Long responses and files | TBD: goose-rest sends no response in pieces yet | "Long responses" |
+| 13. Work that waits | 9, then 10 | "Mail between threads", "Slow work" |
+| 14. Two services, or a reply in pieces | 11 | "Mail between threads" |
+| 15. Limits | 12, and minutes-long work as a job the client polls | "Limits" |
+| 16. Embedded Linux | | (its `docs/embedded.md`) |
+
+The fake database is the tutorial's own code, rows in memory with a set delay per
+query, called as plain functions: `db::fetch_all<Project>(conn, sql, owner)`. Goose
+v2026.1 can't chain calls on another namespace's functions, nor pass a type argument
+to a call written `x.f()` (task 035).
 
 ## The service pattern
 
@@ -99,17 +132,20 @@ per worker. A check that needs the database before the route, such as a session 
 up by its cookie, goes in the job, so that the route still waits once.
 
 The state machine stays for what one service can't do: a route that waits on two
-services in turn, or a reply streamed in pieces (`examples/waiting`'s export).
+services in turn, or a reply streamed in pieces (the tutorial's page 14).
 
 ## Acceptance criteria
 
-- [ ] The tutorial covers the twelve approaches above in that order, each with a program
-      `scripts/test.sh` builds and requests
-- [ ] The service pattern is shown on a route of several queries in one transaction, with
+- [x] The pages and the goose-http sections each links to are agreed (2026-10-15)
+- [x] The tutorial covers the twelve approaches above in that order, each with a program
+      `scripts/test.sh` builds and requests; a body of any size read in pieces, under
+      approach 7, waits on task 023
+- [x] The service pattern is shown on a route of several queries in one transaction, with
       a service function tested without HTTP, and an error from the service in the
-      error shape
-- [ ] The state machine is shown where it's needed, and the tutorial says when to pick it
-- [ ] Limits and backpressure are shown answering: 503 for a full box, 504 for a late
-      reply, and a client that has gone (task 017)
-- [ ] The architecture doc's "Waiting on another thread" names the service pattern as
+      error shape (page 13)
+- [x] The state machine is shown where it's needed, and the tutorial says when to pick it
+      (page 14)
+- [x] Limits and backpressure are shown answering: 503 for a full box, 504 for a late
+      reply, and a client that has gone (task 017; page 15)
+- [x] The architecture doc's "Waiting on another thread" names the service pattern as
       the default

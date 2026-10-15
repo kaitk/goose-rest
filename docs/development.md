@@ -99,8 +99,8 @@ which git ignores.
    up, sends the requests its `requests.sh` lists with `curl`, and compares the answers
    with its `expected.txt`. A port in use there fails the run. A request that gives up,
    such as one with `-m`, is recorded as status `000` without a body:
-   `examples/waiting` closes two clients early that way, and expects its database to
-   count them, with a margin of 0.6 s. Then each tutorial program's `test.goose`,
+   `docs/tutorial/15-limits` closes two clients early that way, and expects its
+   database to count them, with a margin of 0.5 s. Then each tutorial program's `test.goose`,
    through TinyCC. `examples/device` reads its fake sysfs from `build/examples/` and
    takes paths of up to 1 KB ([known issues](known-issues.md#tests)).
 5. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside

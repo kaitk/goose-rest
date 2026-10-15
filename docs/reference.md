@@ -1,7 +1,7 @@
 # Reference
 
 goose-rest's middleware, extractors, errors, and test helper: what each call does, what
-it gives, and what it answers when it fails. The [tutorial](tutorial.md) introduces them
+it gives, and what it answers when it fails. The [tutorial](tutorial/README.md) introduces them
 in order, and the [generator reference](generator.md) covers what `goose-rest gen` writes.
 
 ## Context and routes
@@ -17,7 +17,7 @@ router type. Its `req`, `body`, `out`, and `scratch` carry the request and respo
 It has `rest::NoRouter` outside a `rest::routes` block, including when a waiting route
 resumes. The block receives a context with an `http::Router`:
 
-```goose
+```rust
 rest::routes(cx) { cx =>
     if rest::on(cx, "GET", "/projects/:id") {
         rest::route(cx) { show(cx, rest::param_int(cx, "id")); };
@@ -64,7 +64,7 @@ OPTIONS. `bearer_token` uses `http::bearer` and requires a token68 bearer token.
 
 Declare your own middleware that takes a block as `inline fn`, as goose-rest's own are:
 
-```goose
+```rust
 inline fn tenant<F>(cx) {
     let id, has = rest::header(cx, "X-Tenant");
     guard has else { rest::fail(cx, 400, "tenant_required"); }
@@ -121,7 +121,7 @@ with its limit first; a generated route does so for its `x-body-limit`
 every route, so a program with a larger limit raises it too: to `api::MAX_BODY` with a
 schema.
 
-```goose
+```rust
 rest::route(cx) {
     let body = rest::take<api::ProjectCreate>(cx);
     let page, has_page = rest::query_int(cx, "page");
@@ -177,7 +177,7 @@ writes every error's body itself with an overload for its per-request state's ty
 gets the status, the code, and the detail and `at` the table names (empty and -1 where
 there are none); the status line and the fields stay goose-rest's:
 
-```goose
+```rust
 fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const u8[:],
                     detail: const u8[:], at: i64) {
     body.append("{\"error\":");
@@ -201,4 +201,4 @@ it, so the block runs again once it's whole. A request goose-http refuses gets i
 refusal, and a block that writes no answer gets 500. An HTTP/1.1 request without `Host`
 is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 `Content-Length`. The response has no `Date` or `Server` field
-([tutorial](tutorial.md#12-testing-without-sockets)).
+([tutorial](tutorial/09-testing.md)).

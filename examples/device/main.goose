@@ -3,7 +3,9 @@
 // holds the handlers. The SoC's temperature and the uptime are read from
 // sysfs and /proc, and PUT /v1/settings sets an LED's brightness through
 // sysfs. The page at / shows them. One worker, which keeps the settings, and
-// small limits: a board's memory is small.
+// small limits: a board's memory is small. What it adds to goose-http's
+// examples/device is the schema: the settings' bounds, the token scheme, and
+// the upload's limit. Events over time and a GPIO line through C are there.
 //
 //   build/goose-rest gen examples/device/api.json -o examples/device/api_gen.goose
 //   goose build -o build/examples/device examples/device/main.goose

@@ -201,7 +201,7 @@ A document with `paths` also gets `fn dispatch(cx)`, which answers a
 request through the handler its path and method name. A program calls it from
 `rest::serve`:
 
-```goose
+```rust
 let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 ```
 
@@ -226,7 +226,7 @@ A handler takes `cx`, then the security check's result if the operation names
 a scheme, its path parameters in the template's order, its parameters struct, and its
 body. For `GET /projects/{id}` with `security: [{"session": []}]`:
 
-```goose
+```rust
 fn get_project(cx, s, id: i64) { ... }    // in app, the handlers' namespace
 fn security_session(cx) -> Session { ... }
 ```
@@ -257,7 +257,7 @@ route with `400 {"error":"invalid_parameter","detail":"page: minimum"}`, named a
 document names it. For `listProjects` with an optional integer `page` and a required
 string `q`:
 
-```goose
+```rust
 struct ListProjectsParams { has_page: bool, page: i64, q: const u8[:] }
 
 fn list_projects(cx, s, q) { ... q.page ... }    // in app
@@ -322,9 +322,9 @@ checks the rest byte for byte against such a chain.
 hand-written routes in the surrounding `rest::routes` block, or an empty string with
 `rest::NoRouter`. A path matched by a hand-written route, a generated one, or both
 answers another method as one router would, listing the hand-written routes' methods first
-([tutorial](tutorial.md#7-generated-and-hand-written-routes)):
+([tutorial](tutorial/05-schema.md#generated-and-hand-written-routes)):
 
-```goose
+```rust
 rest::routes(cx) { cx =>
     if rest::on(cx, "PUT", "/uploads/:name") {
         rest::route(cx) { upload(cx, rest::param(cx, "name")); };

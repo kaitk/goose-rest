@@ -1,6 +1,6 @@
 # 017: A service learns that the client it works for has gone
 
-Status: done (2026-10-14), but for the tutorial's limits section, which task 016 writes
+Status: done (2026-10-15)
 
 Found in task 015's review (2026-10-14), at goose-http `bc75f2a`. A route that asked
 another thread (`rest::ask`) and whose client then closes the connection, or whose wait
@@ -87,4 +87,5 @@ status `000` without a body.
 - [x] With it: a test where the client closes before the service answers, and the
       service's send returns `STALE`; `rest::wanted`, and `examples/waiting`'s database
       thread skipping a job and stopping an export's pieces for a client that has gone
-- [ ] The tutorial's limits section (task 016) shows it
+- [x] The tutorial's limits section (task 016) shows it: page 15, whose database skips
+      two jobs and drops one answer (2026-10-15)

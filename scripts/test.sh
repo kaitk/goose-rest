@@ -5,7 +5,7 @@
 # test/gen/, examples/, and docs/tutorial/ against its golden file, the
 # TypeScript helper's tests where tsc is installed (ts/), each example and
 # tutorial program served and requested (scripts/test-examples.sh), each
-# tutorial test.goose, docs/tutorial.md's code blocks against the programs
+# tutorial test.goose, the tutorial pages' code blocks against the programs
 # they quote, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
@@ -43,7 +43,8 @@ step "test-unit.sh"
 # committed source byte for byte. test_gen.goose, among the unit tests,
 # compiles one and round-trips JSON through it.
 mkdir -p "$root/build/gen"
-for f in "$root"/test/gen/*.json "$root"/examples/*/api.json "$root"/docs/tutorial/*/api.json \
+for f in "$root"/test/gen/*.json "$root"/examples/*/api.json \
+         $(find "$root/docs/tutorial" -name api.json | sort) \
          "$root"/bench/rest/goose-rest/github.json; do
     name=$(basename "$f" .json)
     dir=$(dirname "$f")
@@ -62,7 +63,7 @@ if command -v "${TSC%% *}" >/dev/null 2>&1; then
     step "tsc ts/"
     $TSC -p "$root/ts"
     for pair in ts/test/projects.mts:test/gen/api.json ts/test/schema.mts:examples/schema/api.json \
-                ts/test/routes.mts:test/gen/routes.json docs/tutorial/06-schema/api.mts:docs/tutorial/06-schema/api.json; do
+                ts/test/routes.mts:test/gen/routes.json docs/tutorial/05-schema/api.mts:docs/tutorial/05-schema/api.json; do
         mts=${pair%%:*}
         json=$root/${pair#*:}
         name=$(basename "$(dirname "$mts")")-$(basename "$mts" .mts)
@@ -95,35 +96,41 @@ else
     echo "skipped: no ${TSC%% *} on PATH (TSC names another)"
 fi
 
+# A tutorial program is a folder under docs/tutorial/ with a requests.sh, one
+# level down or two, for a page with several programs.
+tutorial=$(find "$root/docs/tutorial" -name requests.sh -exec dirname {} \; | sort)
 step "test-examples.sh"
-"$root/scripts/test-examples.sh" "$root"/examples/*/ "$root"/docs/tutorial/*/
+# shellcheck disable=SC2086
+"$root/scripts/test-examples.sh" "$root"/examples/*/ $tutorial
 
-for t in "$root"/docs/tutorial/*/test.goose; do
+for t in $(find "$root/docs/tutorial" -name test.goose | sort); do
     step "${t#"$root"/}"
     "$goose" "$t"
 done
 
-# docs/tutorial.md's goose and json blocks quote the tutorial's programs and
+# The tutorial pages' rust and json blocks quote the tutorial's programs and
 # the examples: each run of lines between "..." lines must appear as it is
 # in one of their files.
-step "docs/tutorial.md's code"
+step "docs/tutorial/'s code"
 blocks=$root/build/tutorial-blocks
 rm -rf "$blocks"
 mkdir -p "$blocks"
 awk -v dir="$blocks" '
-    /^```(goose|json)$/ { n++; part = 0; file = dir "/" n "." part; inside = 1; next }
+    FNR == 1 { page = FILENAME; sub(/.*\//, "", page); sub(/\.md$/, "", page) }
+    /^```(rust|json)$/ { n++; part = 0; file = dir "/" page "." n "." part; inside = 1; next }
     inside && /^```$/ { inside = 0; next }
-    inside && /^ *\.\.\.$/ { part++; file = dir "/" n "." part; next }
+    inside && /^ *\.\.\.$/ { part++; file = dir "/" page "." n "." part; next }
     inside { print > file }
-' "$root/docs/tutorial.md"
+' "$root"/docs/tutorial/*.md
+sources=$(find "$root/docs/tutorial" "$root/examples" -type f ! -name '*.md' | sort)
 for b in "$blocks"/*; do
     want=$(cat "$b")
     found=
-    for f in "$root"/docs/tutorial/*/* "$root"/examples/*/*; do
+    for f in $sources; do
         case $(cat "$f") in *"$want"*) found=1; break ;; esac
     done
     if [ -z "$found" ]; then
-        echo "docs/tutorial.md quotes what no program holds:"
+        echo "docs/tutorial/$(basename "$b" | cut -d. -f1).md quotes what no program holds:"
         cat "$b"
         exit 1
     fi

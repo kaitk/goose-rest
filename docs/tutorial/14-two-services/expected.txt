@@ -1,0 +1,7 @@
+GET /health 200 ok
+GET /v1/projects/1/tasks 200 [{"id":1,"title":"Task 1","assignee":0},{"id":2,"title":"Task 2","assignee":0},{"id":3,"title":"Task 3","assignee":0},{"id":4,"title":"Task 4","assignee":0},{"id":5,"title":"Task 5","assignee":0}]
+GET /v1/projects/2/tasks 200 [{"id":6,"title":"Name it","assignee":2}]
+POST /v1/projects/1/members?user=3 201 {"project":1,"user":3,"mail":1}
+POST /v1/projects/2/members?user=3 201 {"project":2,"user":3,"mail":2}
+POST /v1/projects/1/members?user=3 409 {"error":"already_a_member"}
+POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}

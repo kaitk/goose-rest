@@ -133,6 +133,33 @@ docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works to
 
 ## Feature requests
 
+### A call written `x.f()` can't take type arguments
+
+Found on `ac759c3` (`v2026.1`). Status: open
+
+`x.f<T>()` doesn't parse, so a generic function whose type parameter isn't inferred
+from its arguments is called only as `f<T>(x)`. Expected: explicit type arguments in a
+call written with a receiver, as Rust's `iter.collect::<Vec<_>>()` has.
+
+    import std;
+    struct Query { sql: u8[..64] = "" }
+    struct Project { id: i64 = 7 }
+    fn fetch_one<T>(q: Query) -> T { return default<T>(); }
+    fn main() {
+        let q = Query { sql: "SELECT 1" };
+        print(q.fetch_one<Project>().id);
+    }
+
+    error: expression expected, found ')'
+
+The same call written `x.f()` also finds `f` only in the calling code's namespace (spec
+§11.1), so `db::query(sql).bind(owner)` from outside `db` is "unknown function or
+member: bind". Together they keep a library's calls from chaining as a Rust driver's do:
+the tutorial's fake database reads as plain calls,
+`db::fetch_one<db::Project>(c, sql, [id])`.
+
+Workaround: plain calls.
+
 ### A function can't return a valueless call
 
 Found on `46356c2`. Status: open
@@ -195,7 +222,7 @@ generated code can't shorten it: a named function that calls the handler would b
 generic in `cx` too, and get the same chain.
 
 Workaround: read the first lines. The error's line in `api_gen.goose` names the call,
-and the first frames name the operation (tutorial section 6).
+and the first frames name the operation ([tutorial](tutorial/05-schema.md#when-the-schema-and-the-handlers-disagree)).
 
 ### A function called once isn't inlined past a size
 

@@ -47,7 +47,7 @@ direct call that passes free variables as pointers, plus an `if (gs_rf)` check a
 `run`. Declaring the middleware `inline fn` changes nothing. Writing
 `run() { F() }` instead inlines all of it. `forward.goose` is the reduced case:
 
-```goose
+```rust
 fn route<F>(cx: Cx&) { let r = run(F); cx.status = r; }   // 0 inlined
 fn route<F>(cx: Cx&) { let r = run() { F() }; cx.status = r; }   // 5 inlined, only main_g left
 ```

@@ -1,0 +1,10 @@
+GET /health 200 ok
+GET /v1/in-place/projects/1 200 {"id":1,"name":"goose","owner":1}
+GET /v1/projects/1 200 {"id":1,"name":"goose","owner":1}
+GET /v1/projects/9 404 {"error":"project_not_found"}
+PUT /v1/projects/1/tasks/3/assignee?user=2 200 {"task":3,"assignee":2}
+PUT /v1/projects/9/tasks/3/assignee?user=2 404 {"error":"project_not_found"}
+PUT /v1/projects/1/tasks/3/assignee?user=2 403 {"error":"not_a_member"}
+PUT /v1/projects/1/tasks/3/assignee?user=3 409 {"error":"assignee_not_a_member"}
+PUT /v1/projects/1/tasks/6/assignee?user=2 404 {"error":"task_not_found"}
+PUT /v1/projects/1/tasks/3/assignee?user=2 400 {"error":"invalid_parameter","detail":"X-User: required"}
