@@ -4,8 +4,11 @@ Status: todo (asked for 2026-10-15)
 
 The tutorial's pages teach goose-rest's mechanisms one at a time, and leave how a whole
 application is laid out to the reader. A part of its own gives one opinionated way to
-do it, marked as a suggestion, not a requirement: one answer to each question a growing
-application meets, where the other pages show the options. Its model is snowtime's
+do it: the way goose-rest's authors build their own applications, and recommend
+following. It isn't required, and says so once, but it doesn't hedge or list
+alternatives: one answer to each question a growing application meets, where the other
+pages show the options. The value is in a convention everyone follows, so the part
+picks one and keeps to it (2026-10-15). Its model is snowtime's
 backend, which is grouped by domain: `src/server/<domain>/` holds the domain's routes,
 its rules, and its schemas; a route only wires, its handler one call of its rule; and
 code starts in its domain and moves out once a second one needs it (snowtime's
@@ -23,7 +26,8 @@ they know laid out, rather than a new one.
    a plain call.
 3. **Middleware and stacks.** A middleware is named for what it does, a verb
    (`authenticate`, `resolve_tenant`, `limit_rate`), and a stack for whose routes it
-   serves, a noun (`public`, `api`, `admin`), with the stacks in one file; a block's
+   serves, a noun for its audience (`public`, `members`, `admin`), with the stacks in
+   one file, and no name as generic or keyword-like as `api` (2026-10-15); a block's
    parameter for what it's given (`user`, `tenant`). The user prefers verbs to
    participles such as `authed` (2026-10-15). Task 034 builds stacks; this part names
    them.
