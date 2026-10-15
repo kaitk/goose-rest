@@ -26,7 +26,8 @@ they know laid out, rather than a new one.
    a plain call.
 3. **Middleware and stacks.** A middleware is named for what it does, a verb
    (`authenticate`, `resolve_tenant`, `limit_rate`), and a stack for whose routes it
-   serves, a noun for its audience (`public`, `members`, `admin`), with the stacks in
+   serves: its audience, singular, and `_routes` (`public_routes`, `member_routes`,
+   `admin_routes`), as it wraps routes the way `rest::routes` does, with the stacks in
    one file, and no name as generic or keyword-like as `api` (2026-10-15); a block's
    parameter for what it's given (`user`, `tenant`). The user prefers verbs to
    participles such as `authed` (2026-10-15). Task 034 builds stacks; this part names
