@@ -87,17 +87,16 @@ function:
 
 ## 2. Running something
 
-A program's root file declares both packages, goose-http at goose-rest's release tag
-and goose-rest at a pushed commit by its full hash:
+A program's root file declares both packages, each at a release tag, goose-http at the
+one goose-rest's release imports:
 
 ```text
 import http from "github.com/kaitk/goose-http@v0.3.1";
-import rest from "github.com/kaitk/goose-rest@<40-hex commit>";
+import rest from "github.com/kaitk/goose-rest@v0.0.1";
 ```
 
 The tutorial's programs live in this repository, so they import goose-rest by path
-instead (`import rest from "../../../";`). The [README](../README.md#pins) has the
-current goose-http pin.
+instead (`import rest from "../../../";`).
 
 A worker is a `thread_fn` that calls `rest::serve`, which calls its block with a
 `rest::Cx`, the request's context, for each request:
@@ -998,12 +997,12 @@ every example for aarch64 in an amd64 container and runs their checks in an arm6
 printing each one's peak RSS:
 
 ```sh
-GOOSE_HTTP=../goose-http scripts/test-aarch64.sh
+scripts/test-aarch64.sh
 ```
 
-There, `examples/device` peaked at 4,728 kB on one worker (task 013 has how it was
-measured). None has run on a board yet. [development.md](development.md#run-the-examples-on-arm64)
-covers the setup.
+There, `examples/device` peaked at 4,728 kB on one worker. None has run on a board yet.
+[development.md](development.md#run-the-examples-on-arm64) covers the setup and how
+that was measured.
 
 ---
 

@@ -1,7 +1,8 @@
 # rest-actix-web
 
-actix-web serving goose-http's REST tiers A to D (its task 021) and goose-rest's tiers F,
-R, and M (`bench/rest/tiers`), for task 010. Each route is registered on actix-web's
+actix-web serving goose-http's REST tiers A to D and goose-rest's tiers F, R, and M
+(`bench/rest/tiers`), for goose-rest's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
+[bench/README.md](../../README.md)). Each route is registered on actix-web's
 `App`, scopes, and resources, reads its input with actix-web's extractors, and answers
 its errors through actix-web's hooks. The records, the serde types, both JSON ways, and
 tier D's readers come from `bench/rest/rust-app`, a port of goose-http's

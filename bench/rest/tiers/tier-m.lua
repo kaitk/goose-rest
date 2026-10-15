@@ -1,4 +1,4 @@
--- wrk's request mix for tier M (task 010): goose-http's tier-a.lua, with
+-- wrk's request mix for tier M:goose-http's tier-a.lua, with
 -- every request from the browser origin tier M's CORS lists. 78% GET
 -- /api/items/{1..10000}, 16% GET /api/me as one of 1,000 users, and 6% POST
 -- /api/items/{1..20} with a 51-byte JSON body, each with a 147-byte bearer

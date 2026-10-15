@@ -107,7 +107,9 @@ reads the JSON body: 415 unless the request says `application/json`, and 400
 `invalid_body` for a body the reader refuses.
 
 goose-http hands a body to the handler with its head when both fit its read buffer,
-8 KB by default. `rest::body` reads a longer one too: at its first call, the route leaves
+8 KB by default
+([goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies)).
+`rest::body` reads a longer one too: at its first call, the route leaves
 without an answer, `rest::serve` gathers the body up to the limit, and then calls the
 handler again with the body whole. The code before a route's first `rest::body`, or
 `rest::take` of a JSON type, therefore runs twice for such a body, and must not change

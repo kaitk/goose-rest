@@ -1,4 +1,4 @@
-// Task 007's baseline: routes60.goose's server with only its last route,
+// bench/routes.sh's baseline:routes60.goose's server with only its last route,
 // GET /v1/reports/exports/:id/download, answering "ok", so that its last
 // route and a 404 in its last scope are compared on the same request and
 // response bytes.

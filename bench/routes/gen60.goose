@@ -1,4 +1,4 @@
-// Task 008's server: routes60.goose's 60 routes through the router goose-rest
+// The generated router's server: routes60.goose's 60 routes through the router goose-rest
 // gen writes from test/gen/routes.json, each answering "ok" as routes60's do,
 // on the same loop, through rest::serve_epoll as a program serves it. It also
 // does what routes60 doesn't: it calls the session check and parses each

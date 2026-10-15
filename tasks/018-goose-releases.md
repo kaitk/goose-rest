@@ -8,7 +8,7 @@ goose-rest builds from the pinned release by default, as goose-http does since i
 
 `scripts/goose.sh` is goose-http's, copied: it names the release (`v2026.1`) and its
 archives' SHA-256 sums, downloads the archive into `build/`, or uses `GOOSE` or
-`GOOSE_COMMIT` when set ([setup](../docs/development.md#set-up-the-goose-compiler)).
+`GOOSE_COMMIT` when set ([setup](../docs/development.md#get-goose)).
 `scripts/test.sh`, `test-unit.sh`, `test-examples.sh` (but for `PREBUILT=1`), and the
 benchmark scripts source it, and `bench/rest.sh` and `bench/all.sh` record
 `goose_version` in `env.txt`. `scripts/test-aarch64.sh` cross-builds with the release's

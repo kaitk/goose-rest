@@ -1,4 +1,4 @@
-// The REST benchmark's tiers (goose-http's task 021) on dusty's router: what
+// goose-http's REST tiers on dusty's router: what
 // the tiers share, and tier A's routes.
 //
 // Each tier's module lists its routes as a table of method, path, and

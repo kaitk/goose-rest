@@ -69,7 +69,7 @@ With Bun instead of Node, `bunx -p typescript tsc` runs the check.
 component, a `required` name that isn't a property, and a path parameter its template
 doesn't name. The generator still checks what types can't: cycles, names that aren't
 Goose identifiers or that collide, and number values such as a negative `maxLength`.
-Task 011 lists which of the two rejects each construct, and `ts/test/` checks each.
+`ts/test/` checks which of the two rejects each construct.
 
 ## Export it from Python or Rust
 

@@ -1,16 +1,16 @@
 #!/bin/sh
-# Task 007: instructions per request for the if chain at 60 routes
+# Instructions per request for the if chain at 60 routes
 # (bench/routes/routes60.goose) against one route, on the first route, the
 # last, a 404 in the last scope and one outside every scope, and a 405 in the
 # last scope. Each case's one-route server answers the same request with the
 # same bytes: routes1.goose has routes60's first route, routes1_last.goose
 # its last, and routes1_post.goose the POST route the 405 is a GET of.
 #
-# Task 008: gen60.goose serves the same routes through the router goose-rest
+# gen60.goose serves the same routes through the router goose-rest
 # gen writes from test/gen/routes.json. It answers a 404 and a 405 in the
 # JSON error shape, a body of 21 to 30 bytes, where the others send none.
 #
-# Task 015: hand60.goose serves the same routes written by hand on goose-rest,
+# hand60.goose serves the same routes written by hand on goose-rest,
 # through rest::serve_epoll, and answers as gen60 does. The query case reads
 # GET /v1/projects's three query parameters, which routes60 ignores. genr60.goose
 # is gen60 behind rest::routes and one hand-written route, as a program serves

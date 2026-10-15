@@ -1,4 +1,4 @@
-// goose-http's REST benchmark tiers (its task 021) apart from any framework,
+// goose-http's REST benchmark tiers apart from any framework,
 // for the framework servers beside it: goose-http's bench/rest/rust routes and
 // answers, byte for byte, without their routing. A server routes each request
 // on its framework's router, takes the path parameters, query, headers,

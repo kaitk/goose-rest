@@ -1,4 +1,4 @@
-// Task 007's baseline: routes60.goose's server with only its first route,
+// bench/routes.sh's baseline:routes60.goose's server with only its first route,
 // GET /health, answering "ok".
 //
 //   routes1 http [port]   (WORKERS 1)

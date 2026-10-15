@@ -1,4 +1,4 @@
-// The REST benchmark (goose-http's task 021) on dusty and the zio runtime,
+// goose-http's REST benchmark on dusty and the zio runtime,
 // configured as goose-http's bench/dusty serves /plaintext and /json: one
 // dusty Server on a work-stealing zio runtime with WORKERS executors, and the
 // Server and Date fields.

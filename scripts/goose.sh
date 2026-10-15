@@ -1,6 +1,6 @@
 #!/bin/sh
 # Sourced by the scripts that run the Goose compiler, after they set root: sets
-# and exports GOOSE (docs/development.md, "Set up the Goose compiler"), the
+# and exports GOOSE (docs/development.md, "Get Goose"), the
 # first of:
 #
 #   GOOSE          already set: the compiler as given, such as a checkout's build

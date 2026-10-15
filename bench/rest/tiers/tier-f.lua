@@ -1,4 +1,4 @@
--- wrk's requests for tier F (task 010), one route per run, as the
+-- wrk's requests for tier F,one route per run, as the
 -- bun-http-framework-benchmark sends them: GET /, GET /id/1?name=bun, or POST
 -- /json with a 159-byte object. Unpipelined.
 --

@@ -41,7 +41,7 @@ Workaround: none needed; compare the candidates with the enum's variants.
 
 ### A block given a local struct gets a copy of it
 
-Found on `a6249a4`, task 005. Status: open; still prints 0 on `46356c2`. Recorded in
+Found on `a6249a4`. Status: open; still prints 0 on `46356c2`. Recorded in
 goose-http's findings ("A block given a local struct writes to a copy of it", found on
 `5c83a5a`)
 
@@ -135,7 +135,7 @@ docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works to
 
 ### A function can't return a valueless call
 
-Found on `46356c2`, task 015. Status: open
+Found on `46356c2`. Status: open
 
 `return f();` is refused when `f` returns nothing, so a function that ends on such a
 call writes it and then `return;`. Expected: `return` of a valueless expression in a
@@ -155,7 +155,7 @@ Workaround: `rest::route(cx) { ... };` and then `return;`, as the generated rout
 
 ### An error inside a generic function lists every frame up to main
 
-Found on `46356c2`, task 014. Status: open
+Found on `46356c2`. Status: open
 
 An error in a specialized function is followed by the whole chain of instantiations
 that led to it, one line per frame, up to `main`. A frame instantiated through a block
@@ -199,7 +199,7 @@ and the first frames name the operation (tutorial section 6).
 
 ### A function called once isn't inlined past a size
 
-Found on `a6249a4`, task 006. Status: open, reported as
+Found on `a6249a4`. Status: open, reported as
 [aardappel/goose#33](https://github.com/aardappel/goose/issues/33) (2026-10-13); still
 fails on `46356c2`. The limit is intended: inlining every single-caller function made
 `main` too large for the C compiler. The maintainer proposed (2026-10-13) a larger node
@@ -238,7 +238,7 @@ the code that fails all fold into the handler, which may stay one function of it
 
 ### UFCS doesn't reach the namespace of the receiver's type
 
-Found on `46356c2`, task 015. Status: open
+Found on `46356c2`. Status: open
 
 `x.f(a)` looks `f` up in the calling code's namespace, then the global one (§11.1), never
 in the namespace that declares `x`'s type. So a library's functions on its own types
@@ -268,7 +268,7 @@ Workaround: name the namespace, `rest::text(cx, ...)`.
 
 ### The regex module has no anchors, so JSON Schema's pattern can't be checked
 
-Found on `a6249a4`, task 003. Status: open; still refused on `46356c2`
+Found on `a6249a4`. Status: open; still refused on `46356c2`
 
 `regex::compile` refuses `^`, `$`, `\A` and `\z`, as `stdlib.md` documents. JSON
 Schema's `pattern` is an ECMA-262 regex that matches anywhere in the string, so schemas

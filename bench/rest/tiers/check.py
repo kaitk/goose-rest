@@ -1,4 +1,4 @@
-"""Checks a server's answers on goose-rest's own tiers (task 010) before its
+"""Checks a server's answers on goose-rest's own tiers before its
 load runs, as goose-http's bench/rest/check.py does for tiers A to D.
 
     python3 bench/rest/tiers/check.py PORT TIER [DATADIR]    (TIER: f, r, or m)

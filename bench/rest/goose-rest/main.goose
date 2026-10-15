@@ -1,4 +1,4 @@
-// goose-http's task 021 REST server on goose-rest (task 010): the same routes,
+// goose-http's REST benchmark server on goose-rest: the same routes,
 // records, and JSON as goose-http's bench/rest/goose at e27ab21, served through
 // rest::serve, an http::router chain per tier, rest's extractors, its bearer
 // middleware, and rest::fail with each tier's error shape (error_body below).

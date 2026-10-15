@@ -1,4 +1,4 @@
-"""Writes goose-rest's tier R sources from github.txt (task 010):
+"""Writes goose-rest's tier R sources from github.txt:
 
     python3 bench/rest/tiers/github_goose.py
 

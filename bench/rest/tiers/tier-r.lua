@@ -1,4 +1,4 @@
--- wrk's requests for tier R (task 010): every route of github.txt, the
+-- wrk's requests for tier R:every route of github.txt, the
 -- GitHub API's 203, in a fixed shuffled order that each thread starts at a
 -- different place in, each parameter's value its name and the route's number,
 -- as check.py requests them. Unpipelined; writes carry an empty body.

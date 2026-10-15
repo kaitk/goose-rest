@@ -1,4 +1,4 @@
-// Task 007's server: 60 routes shaped like a real API, an if chain over
+// bench/routes.sh's if chain: 60 routes shaped like a real API, an if chain over
 // http::router grouped under prefix scopes, each route answering "ok". Its
 // first route is GET /health and its last GET /v1/reports/exports/:id/download.
 //

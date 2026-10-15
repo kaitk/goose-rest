@@ -5,14 +5,11 @@ Goose differs, at no cost over the hand-written `http::router` if chain wherever
 language allows. Routing, extractors, middleware, errors, per-worker state, and JSON are
 the framework. A generator that writes types, readers, writers, and a router from an
 OpenAPI document is an optional layer on top; a program without a schema uses all of
-the rest. The design started as goose-http's task 023 and moved here (2026-10-13).
-The work is in `tasks/`.
+the rest.
 
 Scope (2026-10-13): a general framework, not one shaped by an application. Snowtime
 native, and a porting kit for Goose like the Rust one Snowtime's port started, are later
 uses that inform the design ([Later uses](#later-uses)); neither is built here.
-
-Everything below is proposed unless marked decided, and the snippets are sketches.
 
 ## How Goose shapes it
 
@@ -59,7 +56,7 @@ From the spec at `a6249a4` (2026-10-12), each checked by a spike
 
 ## The generator
 
-Proposed (2026-10-13). Optional: it writes what a program would otherwise write by hand,
+Optional: it writes what a program would otherwise write by hand,
 from an OpenAPI document. Its model is Elysia 2, the `kiana` branch of
 `elysiajs/elysia`, read at `c91f61f` (2026-10-11). Its design, from `src/`:
 
@@ -110,16 +107,14 @@ numbers with handlers. Handlers keep the shape of the hand-written framework: mi
 and extractors stay blocks in the handler.
 
 Whether the router is worth it is measured, not assumed. The serialize and template
-modes of goose-http's task 021 split the JSON writer's cost from the HTTP layer's, which
-bounds what generated writers can save. A hand-written if chain at 60 routes bounds what
-a generated router can save. If the if chain costs little next to the rest of a request,
-the generator writes the types and their readers and writers, and the routes stay a
-chain with prefix scopes.
+modes of goose-http's REST tiers split the JSON writer's cost from the HTTP layer's,
+which bounds what generated writers can save. A hand-written if chain at 60 routes
+bounds what a generated router can save.
 
-Decided (2026-10-13): the generator writes the router (task 008). At 60 routes in
-prefix scopes, the last route of a scope, a 404 inside one, and a 405 each cost about
-6,000 instructions a request more than one route, because each `http::on` scans the
-path again from its start (task 007). The if chain stays the API without a schema.
+Decided (2026-10-13): the generator writes the router. At 60 routes in prefix scopes,
+the last route of a scope, a 404 inside one, and a 405 each cost about 6,000
+instructions a request more than one route, because each `http::on` scans the path
+again from its start (`bench/routes.sh`). The if chain stays the API without a schema.
 
 ### The contract: OpenAPI, optionally written in TypeScript
 
@@ -135,7 +130,7 @@ JSON Schema.
 The subset grows with use. It starts with objects, arrays, strings with length and
 format, integers and numbers with bounds, enums, nullable fields, and `$ref`. A
 construct outside the subset is a generator error, not silently dropped. The
-[generator reference](../generator.md) lists the subset as built (task 003, 2026-10-13).
+[generator reference](../generator.md) lists the subset as built.
 `pattern` waits on anchors in Goose's `regex`
 ([findings](../goose-findings.md#the-regex-module-has-no-anchors-so-json-schemas-pattern-cant-be-checked)).
 
@@ -144,7 +139,7 @@ so goose-rest itself needs no JavaScript toolchain. A schema format of goose-res
 (TypeSpec, or Goose struct declarations with annotations) was set aside: each would be
 another language beside OpenAPI.
 
-Decided (2026-10-13), implemented (2026-10-14, task 011): an optional TypeScript helper
+Decided (2026-10-13), implemented (2026-10-14): an optional TypeScript helper
 for writing that JSON, `ts/api.mts`. JSON is JavaScript notation, so a TypeScript file
 holding the document as an object literal reads almost as the JSON does, and adds what
 JSON lacks: comments, shared fragments as constants, and functions for repeated shapes.
@@ -164,7 +159,7 @@ schemas for each input and output (`src/server/<domain>/<domain>.schemas.ts`), a
 conformance tests over HTTP that any backend must pass. Its Rust port keeps the
 TypeScript app as the source of the contract, and a Goose port would too. A contract
 exported from those schemas, or written beside them in the helper, keeps both backends
-on one definition. Decided (2026-10-13, task 011):
+on one definition. Decided (2026-10-13):
 
 - The helper lives here, in `ts/`, until the subset settles: the commit that teaches the
   generator a keyword changes the helper's types and their tests with it.
@@ -174,7 +169,7 @@ on one definition. Decided (2026-10-13, task 011):
   refuses what falls outside the subset. Where the export succeeds and the backends
   still differ, as with transforms such as `v.trim()` and valibot's `maxLength`
   counting UTF-16 units where JSON Schema counts code points, the conformance tests are
-  the check. Task 011 lists the lossy cases.
+  the check.
 
 ### Goose's data model in generated code
 
@@ -193,7 +188,7 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
   reason. The reader records where each nested object or array starts, skips it, and
   reads it inside the struct literal, so it too is built at its destination. A struct
   built into a local and then returned costs no copy: the compiler builds it at the
-  caller's destination (task 003, 2026-10-13).
+  caller's destination (2026-10-13).
 - Keys dispatch on `match key.len`, then compare bytes. `key == "name"` already compares
   lengths first (§4.5), so the generator doesn't add `key.len == 4 &&`.
 - Recursion can't keep growable data across a recursive call, so a recursive schema (a
@@ -204,10 +199,10 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
 
 ## Usage
 
-The API below follows task 015's decisions (2026-10-14). The examples are sketches;
-the [tutorial](../tutorial.md) quotes programs the test suite builds and requests.
+The examples are sketches; the [tutorial](../tutorial.md) quotes programs the test
+suite builds and requests.
 
-Decided (2026-10-14, task 015 A and F): the context is `Cx<S, A, R>`, with the
+Decided (2026-10-14): the context is `Cx<S, A, R>`, with the
 request's state, the worker's state, and the router's type. `rest::routes` supplies
 `http::Router`; outside its block, including a WAKE, the context has `rest::NoRouter`.
 Calls that match a route or read its parameters therefore fail to compile without a
@@ -215,30 +210,29 @@ router. A generated-only server builds none. `routes` builds a local context bec
 its router cannot outlive its block (§9.2). A typed route helper names
 `type Cx = rest::Cx<St, App, http::Router>;`.
 
-Decided (2026-10-14, task 015 B): `rest::serve(cfg, app[, fresh])` puts the worker's
+Decided (2026-10-14): `rest::serve(cfg, app[, fresh])` puts the worker's
 state by reference in `cx.app` and starts `cx.state` from `fresh`. This removes a
 state argument from handlers, security checks, resume functions, and `dispatch`,
 with no measured cost. With request state alone, the program passes a `rest::NoState`
 placeholder by reference. `rest::serve_one(text[, app[, fresh]])` has the same state
 forms, with an optional `http::Config` after `fresh`.
 
-Decided (2026-10-14, task 015): `rest::routes` does not open `rest::route`. Opening a
+Decided (2026-10-14): `rest::routes` does not open `rest::route`. Opening a
 route for every request costs more to save one line. The program opens one around
 the code that can fail; generated dispatch opens each of its own routes.
 
-Decided (2026-10-14, task 015 C): `rest::empty(cx, status)` answers without a body.
+Decided (2026-10-14): `rest::empty(cx, status)` answers without a body.
 It makes a 204 one call and preserves HTTP's framing: 204 and 304 have no
 `Content-Length`, and other statuses have `Content-Length: 0`.
 
-Decided (2026-10-14, task 015 D): `timed` reserves 12 bytes for the duration in
+Decided (2026-10-14): `timed` reserves 12 bytes for the duration in
 `Server-Timing: app;dur=` before its block, then fills them in place. Trailing spaces
 are valid field whitespace, and no response bytes move. CORS checks for a preflight
 only on OPTIONS and appends its common fields. `bearer_token` uses `http::bearer`,
 which checks token68. These changes reduce the measured middleware cost without
-changing how blocks compose. [Task 015](../../tasks/015-plan-api-back.md) records
-the measurements and their setup.
+changing how blocks compose. `bench/stack.sh` measures it.
 
-Decided (2026-10-14, task 015 E): response fields use `http::NO_TYPE` and
+Decided (2026-10-14): response fields use `http::NO_TYPE` and
 `http::JSON`, and each job's reply size comes from `http::mail_slot_size`.
 These replace copies of HTTP's constants and a slot size threaded through the
 context. `rest::text` keeps its own fields, `text/plain; charset=utf-8`: `http::TEXT`
@@ -279,7 +273,7 @@ fn handle(cx) {
 }
 ```
 
-Built (task 006): `timed` and `cors` add their fields to every answer inside them, the
+Built: `timed` and `cors` add their fields to every answer inside them, the
 route's errors included, so they go outside `rest::route`, and answer what they refuse
 themselves. Checks that fail, `rest::bearer` and the program's own, go inside it.
 `rest::scope` narrows the router to a prefix, and `rest::otherwise` answers 404, 405,
@@ -287,7 +281,7 @@ and OPTIONS across scopes from the routes it passed.
 
 ### Inlining
 
-Decided (2026-10-13, task 006), from `test/inline_route.goose`'s C. A handler behind
+Decided (2026-10-13), from `test/inline_route.goose`'s C. A handler behind
 middleware compiles to one C function, the handler, with the middleware, the route,
 and the code that fails inlined into it, and each early answer a jump. Three rules keep
 it so:
@@ -308,7 +302,7 @@ it so:
 `fn rest::from_request(cx, v: const app::ProjectCreate?) -> app::ProjectCreate` (spike
 01), and `Project` a `fn format(out: u8[>..]&, p: const Project&)` in its own namespace.
 
-Decided (2026-10-13, task 005): `take<T>` returns the value, and `from_request` gets a
+Decided (2026-10-13): `take<T>` returns the value, and `from_request` gets a
 null `const T?` whose type picks the overload. A `from_request(cx, v: T&)` that fills
 a default `T` can't build a `T` holding `u8[]` fields, which can't be assigned after
 construction (spike 05). A returned `T` is built at the caller's destination. The block
@@ -338,7 +332,7 @@ leaves through `return ... from rest::route`, so a helper several calls down can
 doesn't compile (spike 03). `Failure`'s code is an owned `u8[]` built with `str()`, and
 a field name the generator writes is a literal; a slice of the request can't travel
 with the return ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)).
-Decided (2026-10-13, task 004): the first answer wins. A failure after the handler began
+Decided (2026-10-13): the first answer wins. A failure after the handler began
 a response leaves that response, because `route` can't shrink the write buffer while a
 slice of the request is live (spec §5.1).
 
@@ -363,8 +357,7 @@ fn profile(cx, s: Session) -> const Profile& {
 }
 ```
 
-`cx.state.profile` is a `rest::Once<Profile>`, which starts each request undone (task
-005).
+`cx.state.profile` is a `rest::Once<Profile>`, which starts each request undone.
 
 `cx.state` is `goose-http`'s per-request state `S`: fixed-size, kept in a `reusable`
 pool slot (§5.4), and reset per request. The worker's application state is `cx.app`.
@@ -414,8 +407,7 @@ makes in review and the build needs no generator, or generate it in its build.
 ```
 
 The generator writes plain Goose, read and debugged like any other file, never edited.
-The types, readers, and writers are built (task 003); this is its output for
-`ProjectCreate` and the router (task 008), shortened, and the
+This is its output for `ProjectCreate` and the router, shortened, and the
 [reference](../generator.md) has the rest.
 
 ```goose
@@ -517,7 +509,7 @@ fn dispatch(cx) {
 }
 ```
 
-Built (task 005): each object also gets a `fn rest::from_request` that reads the JSON
+Each object also gets a `fn rest::from_request` that reads the JSON
 body, and an operation with query, header, or cookie parameters gets a struct of them,
 `<OperationId>Params`, with its own `from_request`. The router reads both with
 `rest::take` and passes them to the handler after the path parameters.
@@ -531,9 +523,9 @@ keyword, because the reader's error is a slice and the key is a slice of the req
 
 ### Waiting on another thread
 
-Checked by spike 06; built by task 009 in `waiting.goose`, whose header and
-`examples/waiting/` show the API as built: `rest::ask`, `rest::woken`, `rest::answer`,
-and `rest::relay`. `rest::wanted` (task 017) tells the other thread whether the route
+Checked by spike 06; built in `waiting.goose`, whose header and `examples/waiting/`
+show the API: `rest::ask`, `rest::woken`, `rest::answer`, and `rest::relay`.
+`rest::wanted` tells the other thread whether the route
 still waits, so it can skip the work of a client that has gone. Goose can't store a function to call later, so the
 per-request state holds a fixed-mode enum of what each waiting route needs, and the app
 writes a case function per variant. The compiler dispatches on the tag and checks that
@@ -559,7 +551,9 @@ fn resume(w: Waiting.Report, cx) {
 
 The job crosses as a `to_bytes` image and is read back with `from_bytes`, which verifies
 it (§12). The mailbox carries bytes in fixed-size slots (256 bytes by default; a longer
-message returns `TOO_LONG`). A reply larger than a slot comes in pieces of at most a
+message returns `TOO_LONG`), as goose-http's
+[mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
+explains. A reply larger than a slot comes in pieces of at most a
 slot; `rest::relay` sends each as a chunk and calls `http::later` again until the last.
 The job carries the slot size, and the sender retries a piece that finds the box full.
 A program whose
@@ -603,8 +597,8 @@ Nothing blocks the design; three checks need a workaround, which the design take
 |---|---|---|
 | Overload chosen by type parameter (01) | Works in one namespace. Across namespaces `from_request` isn't found: a generic body looks names up where it's defined (§11.1), and Goose has no argument-dependent lookup. | The app declares `fn rest::from_request(cx, v: const app::Session?) -> app::Session`, and the generator writes the same form. `T` is given explicitly. |
 | Early exit from middleware blocks (02) | Works. A 401 skips the inner blocks and the handler, and a `return` in a block returns from the handler. A middleware's own `return` leaves only the middleware, so code after the middleware call still runs. | A middleware rejects with `rest::fail`, not `return`, so the whole route unwinds. |
-| `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Built so in `runtime.goose` (task 004); spike 03 still uses `u8[..32]`. |
-| Inlining to straight-line C (04) | Works. Nested middleware and `route` collapse into one C function, each early answer a `goto`. Passing a block on by name, `run(F)`, inlined nothing on that path until Goose `b6377db`. | Library HOFs wrote `run() { F() }` until then; `rest::route` passes `F` on by name again. `route` is goose-rest's own, not `exception::try`: it answers the failure, and it's `inline fn` ([findings](../goose-findings.md#a-function-called-once-isnt-inlined-past-a-size)). |
+| `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Built so in `runtime.goose`. |
+| Inlining to straight-line C (04) | Works. Nested middleware and `route` collapse into one C function, each early answer a `goto`, also when a block is passed on by name, `run(F)`. | `rest::route` passes `F` on by name. `route` is goose-rest's own, not `exception::try`: it answers the failure, and it's `inline fn` ([findings](../goose-findings.md#a-function-called-once-isnt-inlined-past-a-size)). |
 | Filling `u8[]` fields from JSON (05) | Can't fill them key by key; collecting slices, then building once, costs no copy. | Readers collect, then build once ([above](#gooses-data-model-in-generated-code)). |
 | Resuming a waiting route (06) | Works, under `http::serve` too. The job crosses as a `to_bytes` image, `Waiting` lives in the per-request state, and a `WAKE` event dispatches to one case function per variant. A missing case fails to compile, with an error that doesn't name it ([findings](../goose-findings.md#a-case-function-call-missing-a-variant-doesnt-name-it)). | Replies larger than a slot come in pieces ([above](#waiting-on-another-thread)). |
 | The `format` hook from `rest::json` (07) | Works with no workaround, for nested types and types in a third namespace, beside `rest`'s own `format`. A type with no overload renders as `app::Session { 1, 2 }`, not JSON, and compiles. | `rest::json` calls `format`. The generator writes an overload per schema type, strings through `json::format_string`. |
@@ -628,7 +622,7 @@ builds. Most of the work of a Goose Snowtime is in the table:
 | Unicode normalization | unicode-normalization | Tables and code, pure Goose |
 | OAuth sign-in | Outbound HTTPS | An HTTP client and TLS, neither of which exists |
 | Passkeys | WebAuthn, COSE, ECDSA P-256 | Crypto, pure Goose or C |
-| TLS and ACME | rustls | goose-http's task 014 |
+| TLS and ACME | rustls | goose-http's planned TLS |
 | Pages | The app's server bundle in V8 | Stays outside Goose: a proxy to the existing renderer |
 | Auth library | better-auth-rs | Ported by hand, against the conformance tests |
 
@@ -641,4 +635,5 @@ types, readers, and a router.
 
 CORS, sessions, and middleware are left to a framework by `goose-http`'s scope
 (README). A template engine, an ORM, and WebSocket aren't part of the framework.
-OpenAPI is its input, not something it writes.
+The generator reads OpenAPI as its input. Writing an OpenAPI document from the routes,
+as Elysia's openapi plugin does, is planned for later (2026-10-15).

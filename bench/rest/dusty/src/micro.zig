@@ -1,4 +1,4 @@
-// goose-rest's own tiers (task 010), whose spec is goose-rest's
+// goose-rest's own tiers, whose spec is goose-rest's
 // bench/rest/tiers/check.py:
 //
 //   F  the bun-http-framework-benchmark's three routes: f_routes

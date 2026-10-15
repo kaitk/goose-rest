@@ -11,7 +11,8 @@
 // type can't: that a $ref names a component, that required names a property,
 // and that a path parameter is in its template. The generator stays the check
 // for values and names: cycles, identifiers, collisions, and number ranges.
-// Task 011 lists which of the two refuses what.
+// ts/test/reject.mts and ts/test/generator.mts show which of the two refuses
+// what.
 
 // Annotations, which any schema may carry and the generator ignores.
 export type Annotations = {

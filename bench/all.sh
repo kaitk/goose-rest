@@ -15,15 +15,17 @@
 #      tiers F, R, and M, on goose-http alone and goose-rest.
 #   7. As root: goose-http's bench/instructions.sh, and bench/rest.sh count.
 #
-# About 2 h 30 min on the desktop. The results go to goose-http's
-# bench/results/, under one time stamp, and this session's log, step times,
-# and environment to build/bench-all/<stamp>-<machine>/. Nothing is
+# About 2 h 30 min on the desktop. Under one time stamp, goose-http's own
+# runs go to its bench/results/, the REST run to this repository's
+# bench/results/, and this session's log, step times, and environment to
+# build/bench-all/<stamp>-<machine>/. Nothing is
 # committed: the write-up is a separate step.
 #
 # Settings, from the environment, beside each script's own:
 #   GOOSE        the Goose compiler for both repositories (default: the
 #                pinned release, scripts/goose.sh)
-#   GOOSE_HTTP   goose-http's checkout, ../goose-http
+#   GOOSE_HTTP   a goose-http checkout on main, which the session also tests,
+#                benchmarks, and writes results into (required)
 #   RATE_A, RATE_B, RATE_C   tiers A to C's fixed rates, 100000, 24000, and
 #                1700, the full run of 2026-10-13's: step 1's default would
 #                set them from Goose alone, and its cells couldn't be compared
@@ -36,7 +38,7 @@
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-gh=$(cd "${GOOSE_HTTP:-$root/../goose-http}" && pwd)
+gh=$(cd "${GOOSE_HTTP:?bench/all.sh: set GOOSE_HTTP to a goose-http checkout}" && pwd)
 . "$root/scripts/goose.sh"
 GOOSE=$(cd "$(dirname "$GOOSE")" && pwd)/$(basename "$GOOSE")
 machine=${MACHINE:-$(hostname -s)}
@@ -117,7 +119,7 @@ session() {
         echo "goose: $(goose_version), $GOOSE, sha256 $(sha256sum <"$GOOSE" | cut -d' ' -f1)"
         echo "gcc: $(gcc --version | head -1)"
         echo "rates: A $RATE_A, B $RATE_B, C $RATE_C; reuse: ${REUSE:-none}"
-        echo "results: $results/$stamp-$machine, $stamp-$machine-files, $stamp-rest-$machine"
+        echo "results: $results/$stamp-$machine, $stamp-$machine-files; $root/bench/results/$stamp-rest-$machine"
     } | tee "$log/env.txt"
 
     step "goose-http tests"
@@ -145,7 +147,7 @@ session() {
     step "goose-rest bench/rest.sh run"
     export SERVERS="goose-uring goose-epoll goose-uring-rest goose-epoll-rest"
     export EXTRA="goose-uring-rest goose-epoll-rest"
-    (cd "$root" && OUT="$results/$stamp-rest-$machine" bench/rest.sh run)
+    (cd "$root" && OUT="$root/bench/results/$stamp-rest-$machine" bench/rest.sh run)
     unset SERVERS EXTRA
 
     step "goose-http bench/instructions.sh"

@@ -1,8 +1,9 @@
 #!/bin/sh
-# Task 010's benchmark: goose-http's task 021 tiers A to D through its own
-# bench/rest.sh, with goose-rest, Axum, actix-web, and dusty with a route per
-# path beside goose-http alone, and goose-rest's tiers F, R, and M
-# (bench/rest/tiers) run here the same way.
+# The REST benchmark (docs/benchmarks.md): goose-http's REST tiers A to D
+# through its own bench/rest.sh, with goose-rest, Axum, actix-web, and dusty
+# with a route per path beside goose-http alone, and goose-rest's tiers F, R,
+# and M (bench/rest/tiers) run here the same way. Results go to
+# bench/results/<date>-rest-<machine>/ unless OUT names another directory.
 #
 #   bench/rest.sh build   goose-http's bench/rest.sh build, then this
 #                         repository's servers into goose-http's build/rest:
@@ -41,7 +42,8 @@
 # MACHINE, DATA, OUT):
 #   GOOSE        the compiler, for both repositories' builds (default: the
 #                pinned release, scripts/goose.sh)
-#   GOOSE_HTTP   goose-http's checkout, ../goose-http, at the pin rest.goose names
+#   GOOSE_HTTP   a goose-http checkout at the pin rest.goose names (default:
+#                a clone at the pin in build/, scripts/goose-http.sh)
 #   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-rest
 #                goose-epoll-rest axum actix-web dusty-routes dusty hyper
 #   EXTRA        tiers F, R, and M: goose-uring-rest goose-epoll-rest axum
@@ -51,7 +53,8 @@
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-gh=$(cd "${GOOSE_HTTP:-$root/../goose-http}" && pwd)
+. "$root/scripts/goose-http.sh"
+gh=$GOOSE_HTTP
 cache=${CACHE:-$HOME/.cache/goose-http-bench}
 . "$root/scripts/goose.sh"
 bin=$gh/build/rest
@@ -256,7 +259,7 @@ EOF
 fi
 
 # run: tiers A to D through goose-http's bench/rest.sh, into OUT.
-out=${OUT:-$gh/bench/results/$(date -u +%Y-%m-%dT%H%M)-rest-$machine}
+out=${OUT:-$root/bench/results/$(date -u +%Y-%m-%dT%H%M)-rest-$machine}
 export OUT=$out MACHINE=$machine
 mkdir -p "$out"
 log=$out

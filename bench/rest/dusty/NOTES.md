@@ -1,8 +1,9 @@
 # dusty-routes
 
-`dusty-routes` serves goose-http's task 021 REST tiers A to D, and goose-rest's tiers F,
-R, and M (`bench/rest/tiers/`), on dusty, with a route per path on dusty's router, for
-task 010. It starts from goose-http's `bench/rest/dusty` (the catch-all `dusty` entry):
+`dusty-routes` serves goose-http's REST tiers A to D, and goose-rest's tiers F, R, and
+M (`bench/rest/tiers/`), on dusty, with a route per path on dusty's router, for
+goose-rest's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
+[bench/README.md](../../README.md)). It starts from goose-http's `bench/rest/dusty` (the catch-all `dusty` entry):
 its records, its handlers, its multipart reader, and its pins, dusty `ae164fa`, zio
 0.19.1, and Zig 0.16.0. The Zig project is `rest_dusty_routes`; the binary keeps the
 name `rest-dusty`, so goose-http's `bench/rest.sh` starts either the same way:
@@ -89,8 +90,7 @@ silicon). On macOS, build for the native target. `.gitignore` covers an in-place
   for its length.
 - **Early answers.** A tier D answer before the body's end (415, or a multipart 400) is
   sent after the handler reads and drops the rest of the body. `discardRemaining` on
-  dusty's body reader doesn't return once the body has ended, as goose-http's task 021
-  records.
+  dusty's body reader doesn't return once the body has ended.
 
 Tiers A to D's responses carry `Content-Type: application/json`, set as a field as
 goose-http's entry sets it. Tiers F and R's carry dusty's `text/plain; charset=UTF-8`
@@ -98,7 +98,7 @@ and `application/json; charset=UTF-8`.
 
 ## What differs from the catch-all entry besides routing
 
-Task 010 pairs this entry with goose-http's catch-all `dusty` to price dusty's router.
+The REST benchmark pairs this entry with goose-http's catch-all `dusty` to price dusty's router.
 Besides the router, the two differ in:
 
 - **Middleware dispatch.** `Server` and `Date`, tier B's origin check, and tiers C and

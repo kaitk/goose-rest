@@ -1,5 +1,5 @@
 // What tsc refuses: each keyword, type, format, and shape outside the subset
-// (task 011). Each case is a document that is valid but for one construct,
+// in turn. Each case is a document that is valid but for one construct,
 // and tsc fails on an unused @ts-expect-error, so the run fails as soon as
 // tsc accepts one of them. What only the generator refuses is in
 // generator.mts.

@@ -1,5 +1,5 @@
 // What the generator refuses and tsc accepts: cycles, names, and values,
-// which types can't check (task 011). Each document here type-checks, and
+// which types can't check. Each document here type-checks, and
 // scripts/test.sh writes each to JSON and checks that the generator refuses it
 // with the error given. Run, this prints one case a line: the error, a tab,
 // and the document.

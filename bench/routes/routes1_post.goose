@@ -1,4 +1,4 @@
-// Task 007's baseline: routes60.goose's server with only its route
+// bench/routes.sh's baseline:routes60.goose's server with only its route
 // POST /v1/reports/exports/:id/cancel, so that a GET of that path, answered
 // 405 with Allow: POST, is compared on the same request and response bytes.
 //

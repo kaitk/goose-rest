@@ -1,6 +1,6 @@
 #!/bin/sh
-# Task 015: instructions per request for a JSON body and for the middleware
-# stack, on macOS, beside bench/routes.sh's routers. The server is task 010's
+# Instructions per request for a JSON body and for the middleware stack, on
+# macOS, beside bench/routes.sh's routers. The server is the REST benchmark's
 # (bench/rest/goose-rest/main.goose); the requests are bench/stack/pipelined.lua's:
 #
 #   json   tier F, POST /json read with rest::take
@@ -18,9 +18,9 @@
 #   bench/stack.sh   (RUNS 3, D 10, PORT 29282)
 #
 # GOOSE names the compiler (default: the pinned release, scripts/goose.sh).
-# REST_DATA names the
-# datasets goose-http's bench/rest.sh build writes (default:
-# ../goose-http/build/rest). Prints one line per run.
+# REST_DATA names the datasets goose-http's bench/rest.sh build writes
+# (default: build/rest in the goose-http checkout scripts/goose-http.sh finds).
+# Prints one line per run.
 set -eu
 export LC_ALL=C
 
@@ -31,7 +31,11 @@ bin=$root/build/stack
 runs=${RUNS:-3}
 d=${D:-10}
 port=${PORT:-29282}
-data=${REST_DATA:-$root/../goose-http/build/rest}
+if [ -z "${REST_DATA:-}" ]; then
+    . "$root/scripts/goose-http.sh"
+    REST_DATA=$GOOSE_HTTP/build/rest
+fi
+data=$REST_DATA
 tmp=$(mktemp -d)
 tpid=
 trap '[ -z "$tpid" ] || pkill -INT -P "$tpid" 2>/dev/null; rm -rf "$tmp"' EXIT
