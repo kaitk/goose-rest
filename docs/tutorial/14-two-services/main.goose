@@ -160,7 +160,7 @@ thread_fn mailer(box: http::Box) {
 thread_fn worker(cfg: http::Config, to_db: http::MailAddress, to_mailer: http::MailAddress) {
     var app = App { db: to_db, mailer: to_mailer };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::woken(cx) {
+        if rest::resumed(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
         } else {
             handle(cx);

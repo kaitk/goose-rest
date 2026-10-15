@@ -534,7 +534,7 @@ keyword, because the reader's error is a slice and the key is a slice of the req
 ### Waiting on another thread
 
 Checked by spike 06; built in `waiting.goose`, whose header shows the API:
-`rest::ask`, `rest::woken`, `rest::answer`, and `rest::relay`. `rest::wanted` tells the
+`rest::ask`, `rest::resumed`, `rest::answer`, and `rest::relay`. `rest::wanted` tells the
 other thread whether the route still waits, so it can skip the work of a client that has
 gone. Goose can't store a function to call later, so the per-request state holds a
 fixed-mode enum of what each waiting route needs, and the app writes a case function per

@@ -263,6 +263,45 @@ Workaround: goose-rest's functions that take a block are `inline fn` (`route`,
 the code that fails all fold into the handler, which may stay one function of its own
 (`test/inline_route.goose`).
 
+### A function called once can't be kept out of line
+
+Found on `ac759c3` (`v2026.1`). Status: open
+
+The inverse of the entry above. A function with one call site is inlined whatever its
+size, unless the call is in a guard's `else` or an arm that ends in a `return`, `break`,
+or `abort` (implementation notes, "Inlining"); and the C compiler inlines a static
+function with one caller unless Goose declares it `GS_NOINLINE`. A call that is rare
+but not on such an arm can't be kept out of line. Expected: a way to ask for it, as
+Rust's `#[inline(never)]` or C's `noinline`. Below, `rare` is inlined into `main`'s
+loop at `-O2`, and the C has `main_g` alone:
+
+    import std;
+    import os;
+
+    fn rare(buf: u8[>..]&, id: i64) {
+        if id == 0 { buf.append(str("v", id, "0")); }
+        // ... the same for 1 to 15
+        if id == 16 { buf.append(str("v", id, "16")); }
+    }
+
+    fn main() {
+        var b: u8[>..] = [];
+        for i in args().len {
+            b.push('.');
+            if i > 100 { rare(b, i); }
+        }
+        print(b);
+    }
+
+goose-rest meets it in `rest::serve`: the calls after a request's first, for bodies and
+responses in pieces, go through one function, `on_later`, so that the program's handler
+has one copy there. goose-http's loop calls `serve`'s block once in each of its places,
+and Goose inlines `on_later` into each, the request path's included. A `while` with a
+`break` around the call isn't taken as cold either.
+
+Workaround: none. The request path holds the handler twice, as it did before `on_later`,
+when the second copy was the one for a gathered body.
+
 ### UFCS doesn't reach the namespace of the receiver's type
 
 Found on `46356c2`. Status: open

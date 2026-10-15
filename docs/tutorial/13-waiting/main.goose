@@ -22,7 +22,7 @@ thread_fn worker(cfg: http::Config, to: http::MailAddress) {
     var conn = db::open(DELAY_MS);
     var app = App { conn: conn, db: to };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::woken(cx) {
+        if rest::resumed(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
         } else {
             handle(cx);

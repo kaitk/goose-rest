@@ -282,5 +282,5 @@ is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 `Content-Length`. The response has no `Date` or `Server` field
 ([tutorial](tutorial/09-testing.md)). `serve_one` runs no loop: a route that calls
 `rest::ask` sends its job, or gets 503 for a full box, but no reply comes, so the
-handler never runs with `rest::woken` and the answer is 500
+handler never runs with `rest::resumed` and the answer is 500
 ([tutorial](tutorial/16-testing.md)).

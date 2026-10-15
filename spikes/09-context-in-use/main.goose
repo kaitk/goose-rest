@@ -26,7 +26,7 @@ struct ReportJob { id: i64 }
 struct ReportReply { tasks: i64 }
 
 fn handle(cx) {
-    if rest::woken(cx) {
+    if rest::resumed(cx) {
         rest::route(cx) { resume(cx.state.waiting, cx); };
     } else {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {

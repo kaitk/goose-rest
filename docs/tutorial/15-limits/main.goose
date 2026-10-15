@@ -203,7 +203,7 @@ thread_fn reports(box: http::Box) {
 thread_fn worker(cfg: http::Config, app: App) {
     var a = app;
     let e = rest::serve(cfg, a, St { .. }) { cx =>
-        if rest::woken(cx) {
+        if rest::resumed(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
         } else {
             handle(cx);

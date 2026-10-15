@@ -68,6 +68,14 @@ fn test_requests() {
          "fail");
     same(status_of(rest::serve_one("GET / HTTP/1.1\r\n\r\n") { cx => }), "HTTP/1.1 500 Internal Server Error",
          "no answer");
+    // A failure with a response open cuts it short: no error inside it, no
+    // last chunk.
+    let cut = rest::serve_one("GET / HTTP/1.1\r\n\r\n") { cx =>
+        http::begin(cx.out, 200, -1);
+        http::send(cx.out, "abc");
+        rest::fail(cx, 500, "broken");
+    };
+    same(body_of(cut), "3\r\nabc\r\n", "cut short");
 }
 
 fn main() {

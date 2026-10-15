@@ -153,12 +153,13 @@ enum Waiting {
 struct St { waiting: Waiting = Waiting.None }
 ```
 
-When the reply comes, the handler runs again, and `rest::woken` sends it to a case
-function per variant, `resume`. The compiler checks that every variant has one:
+When the reply comes, the handler runs again, and `rest::resumed`, true for every call
+after the request's first, sends it to a case function per variant, `resume`. The
+compiler checks that every variant has one:
 
 ```rust
     let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::woken(cx) {
+        if rest::resumed(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
         } else {
             handle(cx);

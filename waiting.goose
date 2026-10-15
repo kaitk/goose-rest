@@ -9,7 +9,7 @@
 //
 //   var app = rest::NoState { .. };
 //   rest::serve(cfg, app, St { .. }) { cx =>
-//       if rest::woken(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }
+//       if rest::resumed(cx) { rest::route(cx) { resume(cx.state.waiting, cx); }; } else { handle(cx); }
 //   };
 //
 // The job crosses in a rest::Ask, with the address the reply goes to and
@@ -49,8 +49,10 @@ fn ask<J>(cx, to: http::MailAddress, tag: i32, job: J, w, ms: i64 = 5000) {
     }
 }
 
-// Whether the handler is called for a reply, not a request.
-fn woken(cx) -> bool { cx.kind == http::WAKE }
+// Whether the handler is called after a request's first call: for a reply
+// (http::WAKE), or for a later event of a route that reads, sends, or
+// upgrades in pieces (pieces.goose), with cx.kind saying which.
+fn resumed(cx) -> bool { cx.kind != http::REQUEST }
 
 // The job a message holds, as rest::ask sent it, and whether it is one.
 fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {

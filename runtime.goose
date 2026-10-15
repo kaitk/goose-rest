@@ -11,10 +11,12 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 // application's per-request state, which goose-http keeps in the
 // connection's slot and starts from fresh for each request, the worker's
 // state, app, which every request of the worker shares, and scratch for
-// what the extractors decode, which lasts until the handler returns. When a
-// route that asked another thread resumes (rest::woken), kind is
-// http::WAKE, and reply, tag, and more hold the reply (waiting.goose); req
-// is then empty.
+// what the extractors decode, which lasts until the handler returns. kind
+// is the event the handler is called for: http::REQUEST for a request, and
+// for each later call (rest::resumed) the event's, such as http::WAKE when
+// a route that asked another thread gets its reply, with reply, tag, and
+// more holding it (waiting.goose), or http::BODY with a piece in body
+// (pieces.goose). req is empty after REQUEST.
 // router is the http::Router of rest::routes' block, R, and a NoRouter
 // elsewhere, so that rest::on and the calls that read a matched route take
 // only the context routes gives its block, or the program doesn't compile.
@@ -29,8 +31,8 @@ struct Cx<S, A, R> {
     reply: const u8[:] = "",
     tag: i32 = 0,
     more: bool = false,
-    // The connection's body gathering, under serve; null elsewhere.
-    gather: Gather? = null,
+    // The request's exchange, under serve; null elsewhere.
+    ex: Exchange? = null,
     router: R&,
 }
 
@@ -49,7 +51,7 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     var r = http::router(cx.req);
     var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
-                       kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, gather: cx.gather,
+                       kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, ex: cx.ex,
                        router: r };
     F(&c);   // a block given the local itself gets a copy of it
 }
@@ -60,35 +62,50 @@ struct NoState { unused: bool = false }
 // The most bytes of a body rest::body takes unless a route says otherwise.
 let BODY_LIMIT = 1024 * 1024;
 
-// A body that didn't come with its head, gathered for the route that asked
-// for it with rest::body: a run of the worker's spill from at, of cap bytes,
-// that holds the head rebuilt (head bytes) and then the body so far.
-struct Gather {
+// What a route asked serve for past its first call, Exchange.mode's bits:
+// the body gathered whole (rest::body), its pieces (rest::receive), MORE for
+// a response it sends in pieces (rest::begin, rest::file), and the bytes of
+// a connection it upgraded (rest::upgrade).
+let GATHERING: u8 = 1;
+let RECEIVING: u8 = 2;
+let SENDING: u8 = 4;
+let UPGRADED: u8 = 8;
+
+// What serve keeps of a request past the handler's first call. A body
+// gathered for rest::body is a run of the worker's spill from at, of cap
+// bytes, that holds the head rebuilt (head bytes) and then the body so
+// far; a body received in pieces counts its bytes so far in len.
+struct Exchange {
     pending: bool = false,   // the body hasn't come whole
-    limit: i64 = 0,          // the first rest::body's limit, 0 before it
+    mode: u8 = 0,
+    limit: i64 = 0,          // the first rest::body's or rest::receive's limit, 0 before it
     at: i64 = 0,
     len: i64 = 0,
     cap: i64 = 0,
     head: i64 = 0,
 }
 
-// goose-http's state for each request: the program's, and the gathering.
-struct Slot<S> { state: S, body: Gather = Gather { .. } }
+// goose-http's state for each request: the program's, and the exchange's.
+struct Slot<S> { state: S, ex: Exchange = Exchange { .. } }
 
 // Serves cfg with goose-http's loop, calling H(cx) for each request, and again
-// when a route that asked another thread gets its reply (waiting.goose), with
-// app, the worker's state, in cx.app, and the per-request state, starting
-// from fresh, in cx.state. A body that doesn't come with its head is gathered
-// when a route asks for it (rest::body), and H runs again once it's whole.
-// Each worker calls serve, so the spill, a local of this call, is that
-// worker's own.
+// for each later event a route asked for: a reply from another thread
+// (waiting.goose), or a piece of a body, room to send more, or an upgraded
+// connection's bytes (pieces.goose). app, the worker's state, is in cx.app,
+// and the per-request state, starting from fresh, in cx.state. A body that
+// doesn't come with its head is gathered when a route asks for it
+// (rest::body), and H runs again once it's whole. Each worker calls serve,
+// so the spill, a local of this call, is that worker's own.
 //
 //   var app = App { .. };
 //   rest::serve(cfg, app) { cx => handle(cx) };
 fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        on_event(ev, st, app, out, spill) { cx => H(cx) };
+        let mark = on_event(ev, st, app, out, spill) { cx => H(cx) };
+        // Here, not in on_event: a function holding a call given a block
+        // that stays a call isn't inlined.
+        if st.ex.mode != 0 { on_later(ev, st, app, out, spill, mark) { cx => H(cx) }; }
     };
 }
 
@@ -97,7 +114,8 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
 fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        on_event(ev, st, app, out, spill) { cx => H(cx) };
+        let mark = on_event(ev, st, app, out, spill) { cx => H(cx) };
+        if st.ex.mode != 0 { on_later(ev, st, app, out, spill, mark) { cx => H(cx) }; }
     };
 }
 
@@ -121,63 +139,164 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
     return serve_epoll(cfg, none, NoState { .. }) { cx => H(cx) };
 }
 
-// What serve does with each of goose-http's events: H(cx) at REQUEST, at the
-// first message of a reply, and at the END of a gathered body; the later
-// pieces of a reply relay sends on itself; and 504 when a reply doesn't come
-// in time. A reply cut short by its time limit leaves the response open, and
-// goose-http closes the connection.
-inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&) {
+// What serve does with each of goose-http's events: H(cx) at REQUEST and at
+// the first message of a reply; the later pieces of a reply relay sends on
+// itself; and 504 when a reply doesn't come in time. A reply cut short by its
+// time limit leaves the response open, and goose-http closes the connection.
+// Returns out.buf.len from before its call to H, or -1 for none, for
+// on_later, which the caller then calls for a route that reads, sends, or
+// upgrades (Exchange.mode).
+inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&) -> i64 {
     if ev.kind == http::WAKE && (ev.tag & REPLY_CONT) != 0 {
         relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
-    } else if ev.kind == http::TIMEOUT {
+        return -1;
+    }
+    if ev.kind == http::TIMEOUT {
         if !out.stream.open { write_error(out, st.state, 504, "timeout", "", -1, ""); }
-    } else if ev.kind == http::REQUEST || ev.kind == http::WAKE {
+        return -1;
+    }
+    var mark: i64 = -1;
+    if ev.kind == http::REQUEST || ev.kind == http::WAKE {
         var scratch: u8[>..] = [];
         let wake = ev.kind == http::WAKE;
-        st.body.pending = !wake && !ev.whole;
-        let mark = out.buf.len;
+        st.ex.pending = !wake && !ev.whole;
+        mark = out.buf.len;
         var none = NoRouter { .. };
         var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: out, state: st.state,
                                       app: app, scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
                                       tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0,
-                                      gather: st.body, router: none };
+                                      ex: st.ex, router: none };
         H(cx);
-        if st.body.pending && st.body.limit > 0 {
-            if out.buf.len == mark { gather_head(st.body, ev.req, spill); } else { st.body.limit = 0; }
-        }
-    } else if st.body.limit > 0 {
-        if ev.kind == http::BODY {
-            guard gather_piece(st.body, ev.data, spill) else {
-                release(st.body, spill);
-                out.keep_alive = false;
-                write_error(out, st.state, 413, "payload_too_large", "", -1, "");
-                return;
-            }
-        } else if ev.kind == http::END {
-            on_whole(st, app, out, spill) { cx => H(cx) };
-        } else if ev.kind == http::CLOSED {
-            release(st.body, spill);
-        }
+    }
+    return mark;
+}
+
+// on_later's kind for the call with a gathered body, which H gets as
+// http::REQUEST.
+let GATHERED: u8 = 254;
+
+// The calls to H that follow a route's rest::body, receive, begin, file, or
+// upgrade (Exchange.mode): one for ev, when it comes after the request's
+// first call, and then those each call leads to, as a body that came whole
+// passed on as a BODY and an END, or CLOSED for a route that ended early.
+// mark is out.buf.len from before on_event's call to H for ev, a REQUEST or
+// a WAKE, or -1 for none. Its loop calls H at one place, since the
+// program's handler is inlined at each call to H. Goose still inlines
+// on_later where it's called once, as goose-http's loop calls serve's block
+// once in each place: no Goose construct keeps it out of line
+// (docs/goose-findings.md).
+fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&, mark: i64) {
+    var k = if mark >= 0 { after(ev, st, out, spill, ev.kind, mark) } else { arrived(ev, st, out, spill) };
+    while k != http::NO_EVENT {
+        let before = out.buf.len;
+        let gathered = k == GATHERED;
+        if gathered { st.ex.pending = false; }
+        let g = st.ex;
+        let head = head_of(ev.req, gathered, g, spill);
+        var scratch: u8[>..] = [];
+        var none = NoRouter { .. };
+        // CLOSED's answer goes nowhere: the response has ended, or been cut.
+        var sink: u8[>..] = [];
+        var keep = out.keep_alive;
+        var stream = out.stream;
+        let o = if k == http::CLOSED {
+            http::Reply { buf: sink, common: "", keep_alive: keep, minor: out.minor, head: out.head, stream: stream,
+                          fd: out.fd }
+        } else {
+            out
+        };
+        var cx = Cx<S, A, NoRouter> { req: head,
+                                      body: if gathered { spill[g.at + g.head..g.at + g.len] }
+                                            else if k == http::BODY { ev.data } else { "" },
+                                      out: o, state: st.state, app: app, scratch: scratch,
+                                      kind: if gathered { http::REQUEST } else { k }, ex: st.ex, router: none };
+        H(cx);
+        k = after(ev, st, out, spill, k, before);
     }
 }
 
-// H(cx) for a gathered body, with the head parsed again from its copy.
-inline fn on_whole<S, A, H>(st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&) {
-    let g = st.body;
-    let req, status = http::parse(spill[g.at..g.at + g.head], g.head, g.len);
-    st.body.pending = false;
-    var scratch: u8[>..] = [];
-    var none = NoRouter { .. };
-    var cx = Cx<S, A, NoRouter> { req: req, body: spill[g.at + g.head..g.at + g.len], out: out, state: st.state,
-                                  app: app, scratch: scratch, kind: http::REQUEST, gather: st.body,
-                                  router: none };
-    H(cx);
-    release(st.body, spill);
+// What on_later calls H with for ev, an event after the request's first
+// call, http::NO_EVENT for nothing, and what serve does itself: a gathered
+// body's pieces, and the limit of one gathered or received. Past its limit
+// a body gets 413 and the connection closes, as http::body_within does.
+fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&) -> u8 {
+    let x .= st.ex;
+    let k = ev.kind;
+    if x.mode & GATHERING != 0 {
+        if k == http::BODY {
+            guard gather_piece(x, ev.data, spill) else {
+                release(x, spill);
+                out.keep_alive = false;
+                write_error(out, st.state, 413, "payload_too_large", "", -1, "");
+                return http::NO_EVENT;
+            }
+        } else if k == http::END {
+            return GATHERED;
+        } else if k == http::CLOSED {
+            release(x, spill);
+        }
+        return http::NO_EVENT;
+    }
+    if k == http::CLOSED { return k; }
+    if k == http::BODY && (x.mode & RECEIVING) != 0 {
+        x.len += ev.data.len;
+        guard x.len <= x.limit else {
+            out.keep_alive = false;
+            if out.stream.open {
+                out.stream.open = false;
+            } else {
+                write_error(out, st.state, 413, "payload_too_large", "", -1, "");
+            }
+            return http::CLOSED;
+        }
+        return k;
+    }
+    if (k == http::BODY && (x.mode & UPGRADED) != 0) || (k == http::END && (x.mode & RECEIVING) != 0) ||
+       (k == http::MORE && (x.mode & SENDING) != 0) {
+        return k;
+    }
+    return http::NO_EVENT;
+}
+
+// What follows a call to H for k, which wrote out.buf from before: the
+// gathering rest::body left the route for, the BODY and END of a body that
+// came whole, or CLOSED for a route that answered before its body's END or
+// that rest::route cut short (route), as the end of its exchange.
+fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, k: u8, before: i64) -> u8 {
+    let x .= st.ex;
+    if k == http::CLOSED {
+        x.mode = 0;
+        return http::NO_EVENT;
+    }
+    if (x.mode & GATHERING) != 0 {
+        guard k == GATHERED else {
+            if out.buf.len == before { gather_head(x, ev.req, spill); } else { x.mode &= ~GATHERING; }
+            return http::NO_EVENT;
+        }
+        release(x, spill);
+    }
+    let open = out.stream.open;
+    if k == http::END { x.mode &= ~RECEIVING; }
+    if (x.mode & (SENDING | UPGRADED)) != 0 && !open { return http::CLOSED; }
+    if (x.mode & RECEIVING) != 0 {
+        if out.buf.len > before && !open { return http::CLOSED; }
+        if !x.pending && k == http::REQUEST { return if ev.data.len > 0 { http::BODY } else { http::END }; }
+        if !x.pending && k == http::BODY { return http::END; }
+    }
+    return http::NO_EVENT;
+}
+
+// The head of the request H is called for: req, or for a gathered body, the
+// head parsed again from its copy in the spill.
+fn head_of(req: const http::Request&, gathered: bool, x: const Exchange&, spill: const u8[:]) -> http::Request {
+    guard gathered else { return req; }
+    let r, status = http::parse(spill[x.at..x.at + x.head], x.head, x.len);
+    return r;
 }
 
 // Starts g's run with the head rebuilt from req, whose bytes goose-http
 // reuses once its handler returns.
-fn gather_head(g: Gather&, req: const http::Request&, spill: u8[>..]&) {
+fn gather_head(g: Exchange&, req: const http::Request&, spill: u8[>..]&) {
     var head: u8[>..] = [];
     head.append(req.method);
     head.push(' ');
@@ -192,7 +311,7 @@ fn gather_head(g: Gather&, req: const http::Request&, spill: u8[>..]&) {
 }
 
 // Appends data to g's run, growing it, unless the body would pass g's limit.
-fn gather_piece(g: Gather&, data: const u8[:], spill: u8[>..]&) -> bool {
+fn gather_piece(g: Exchange&, data: const u8[:], spill: u8[>..]&) -> bool {
     let n = g.len + data.len;
     guard n - g.head <= g.limit else { return false; }
     if n > g.cap {
@@ -206,25 +325,33 @@ fn gather_piece(g: Gather&, data: const u8[:], spill: u8[>..]&) -> bool {
     return true;
 }
 
-fn release(g: Gather&, spill: u8[>..]&) {
+// Frees g's run of the spill, and stops gathering.
+fn release(g: Exchange&, spill: u8[>..]&) {
     if g.cap > 0 { spill.free_slice(spill[g.at..g.at + g.cap]); }
-    g = Gather { .. };
+    g.at = 0;
+    g.len = 0;
+    g.cap = 0;
+    g.head = 0;
+    g.mode &= ~GATHERING;
 }
 
 // The request's body, of at most limit bytes: a longer one fails the route
 // with 413 payload_too_large. The first call's limit holds for the request.
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
-// runs twice up to its first rest::body.
+// runs twice up to its first rest::body. After rest::receive, 500
+// body_read_in_pieces.
 fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
-    var g .= cx.gather;
+    var g .= cx.ex;
     guard g else {
         if cx.body.len > limit { fail(cx, 413, "payload_too_large"); }
         return cx.body;
     }
+    guard (g.mode & RECEIVING) == 0 else { fail(cx, 500, "body_read_in_pieces"); }
     if g.limit == 0 { g.limit = limit; }
     if g.pending {
         if !cx.req.chunked && cx.req.body > g.limit { fail(cx, 413, "payload_too_large"); }
+        g.mode |= GATHERING;
         return [Failure { status: 0, at: -1, code: "", detail: "", challenge: "" }] from attempt;
     }
     if cx.body.len > g.limit { fail(cx, 413, "payload_too_large"); }
@@ -243,8 +370,10 @@ inline fn attempt<F>() -> Failure[] {
 }
 
 // Runs F, the route's handler, and answers the failure if it or anything it
-// calls fails. The first answer wins: a failure after the handler began a
-// response leaves that response as it is. route can't take it back, since
+// calls fails. The first answer wins: a failure after the handler wrote an
+// answer leaves it as it is, and one with a response open, its head sent,
+// cuts it short: the response stays unended and the connection closes, so
+// the client sees it end early. route can't take an answer back, since
 // shrinking the write buffer is refused while a slice of the request is live
 // (spec §5.1: a parameter's slices may point into any array of their type).
 inline fn route<F>(cx) {
@@ -252,7 +381,11 @@ inline fn route<F>(cx) {
     let failed = attempt(F);
     for f in failed {
         // Status 0 is rest::body leaving to gather the body, unanswered.
-        if cx.out.buf.len == mark && f.status != 0 {
+        if f.status == 0 {
+        } else if cx.out.stream.open {
+            cx.out.stream.open = false;
+            cx.out.keep_alive = false;
+        } else if cx.out.buf.len == mark {
             write_error(cx.out, cx.state, f.status, f.code, f.detail, f.at, "", f.challenge);
         }
     }

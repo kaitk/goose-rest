@@ -20,7 +20,7 @@ fn main() {
     var live: bool[>..] = [];
     var a = app::App { projects: projects, live: live, db: http::MailAddress { .. } };
     rest::serve(http::Config { .. }, a, app::St { .. }) { cx =>
-        if rest::woken(cx) { rest::route(cx) { resume(cx); }; }
+        if rest::resumed(cx) { rest::route(cx) { resume(cx); }; }
         else if cx.req.method == "TRACE" { outside(cx); }
         // The generated dispatch alone: app::get_project's helper reads :id.
         else { api::dispatch(cx); }
