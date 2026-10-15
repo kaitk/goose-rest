@@ -14,6 +14,9 @@ details, while some of its costs over goose-http are still being worked on.
 [Architecture](docs/architecture/README.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)
 
+goose-rest is a working name: the repository, and with it the import path
+`github.com/kaitk/goose-rest`, may be renamed before a stable release.
+
 ## Status
 
 goose-rest builds wherever goose-http does: Linux, macOS, and Windows. Its examples also
@@ -166,11 +169,6 @@ Against goose-http's REST server, which serves the same routes without a framewo
 Against Rust and Zig frameworks: to be measured. Meanwhile, goose-http's
 [REST APIs](https://github.com/kaitk/goose-http#rest-apis) compare the layer underneath
 with xitca-web, dusty, hyper, and tokio.
-
-## Name
-
-goose-rest is a working name. The repository may be renamed before a stable release,
-and the import path, `github.com/kaitk/goose-rest`, with it.
 
 ## Credits
 
