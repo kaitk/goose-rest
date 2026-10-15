@@ -1,6 +1,6 @@
 // docs/tutorial/13-waiting.md and 16-testing.md: the service's use cases,
-// called as plain functions on a job, and the routes up to their ask,
-// answered without a socket or threads. scripts/test.sh runs it through
+// called as plain functions on a job, and the routes and their case
+// functions, answered without a socket or threads. scripts/test.sh runs it through
 // TinyCC:
 //
 //   goose docs/tutorial/13-waiting/test.goose
@@ -48,8 +48,10 @@ fn main() {
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
     var app = App { conn: c, db: http::address(box, 0) };
-    fn answer(text: const u8[:]) -> u8[>..] {
-        return rest::serve_one(text, app, St { .. }) { cx => handle(cx) };
+    fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
+        return rest::serve_one(text, app, St { .. }, wakes) { cx =>
+            if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }
+        };
     }
 
     // A route that doesn't wait is answered whole, and one that waits is
@@ -70,6 +72,19 @@ fn main() {
         expect(service::assign(c, a.job), 200, "");
     };
     assert(n == 1 && assignee(c, 4) == 2);
+
+    // The case functions, given the replies the service would send. Each
+    // route still sends its job, so the test empties the box after them.
+    let done = rest::value_bytes(service::AssignReply { .. });
+    expect(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { data: done }]),
+           "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 23\r\n\r\n{\"task\":5,\"assignee\":2}");
+    let missing = rest::value_bytes(service::AssignReply { status: 404, code: "task_not_found" });
+    expect(body_of(answer(put("/v1/projects/1/tasks/9/assignee?user=2", user1), [rest::Wake { data: missing }])),
+           "{\"error\":\"task_not_found\"}");
+    assert(http::mail_take(box) { key, tag, bytes => } == 2);
+    expect(body_of(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { timeout: true }])),
+           "{\"error\":\"timeout\"}");
+    assert(http::mail_take(box) { key, tag, bytes => } == 1);
 
     // Two jobs fill the box's two slots, and the next route finds it full.
     answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1));

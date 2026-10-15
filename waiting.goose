@@ -96,10 +96,15 @@ fn reply(a, data: const u8[:], tag: i32 = 0) -> bool {
 
 // Replies v, a flat value, as reply does, for rest::read_reply.
 fn reply_value(a, v, tag: i32 = 0) -> bool {
+    return reply(a, value_bytes(v), tag);
+}
+
+// The bytes reply_value sends of v, a flat value, which read_reply reads.
+fn value_bytes(v) -> u8[>..] {
     var one = [v];
     var image: u8[>..] = [];
     one.to_bytes(image);
-    return reply(a, image, tag);
+    return image;
 }
 
 // The flat value reply_value sent, and whether the reply is one. A value

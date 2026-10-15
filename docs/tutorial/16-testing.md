@@ -11,13 +11,16 @@ what the other can't:
 | A route's checks before it asks, a route that doesn't wait | `rest::serve_one` | Yes |
 | The job a route sends | `serve_one`, with a box of the test's own | Through the reply |
 | 503 for a full box | `serve_one`, with that box full | Yes |
-| The answer from a reply, a reply in pieces, two services in turn | No | Yes |
-| 504 for a late reply, a client that has gone | No | Yes, with timing |
+| A case function's answer to a reply, a reply in pieces, two services in turn | `serve_one`, given each reply | Yes |
+| 504 for a wait that ends | `serve_one`, given the timeout | Yes, with timing |
+| A reply that comes late, a client that has gone, the service's thread at work | No | Yes, with timing |
 
-`serve_one` runs a route up to its `rest::ask`, and no further: it has no loop to bring
-a reply back, nor a timer to end a wait. The case functions that answer from a reply,
-`rest::relay`, and the limits that need time or a closed connection are tested over
-HTTP.
+`serve_one` runs a route up to its `rest::ask`. Given the reply the service would send,
+it calls the handler again with it, as `rest::serve` does, so the case function answers.
+The test plays the service: no thread runs, and nothing waits. Test each case function
+this way, one reply per answer it gives. Test over HTTP what needs real threads and
+time: that the service replies at all, a reply after the route's wait has ended, and a
+client that goes while its job waits.
 
 ## The use cases, as plain calls
 
@@ -49,12 +52,16 @@ thread to open, send to, or take from
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
     var app = App { conn: c, db: http::address(box, 0) };
-    fn answer(text: const u8[:]) -> u8[>..] {
-        return rest::serve_one(text, app, St { .. }) { cx => handle(cx) };
+    fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
+        return rest::serve_one(text, app, St { .. }, wakes) { cx =>
+            if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }
+        };
     }
 ```
 
-The per-request state, `St { .. }`, is what `rest::ask` keeps its `Waiting` variant in.
+The block is the one `main.goose`'s worker gives `rest::serve`. The per-request state,
+`St { .. }`, is what `rest::ask` keeps its `Waiting` variant in, and `wakes` holds the
+replies the [next section](#the-case-functions-given-a-reply) gives.
 A route that doesn't wait is answered whole, as is one that fails before it asks:
 
 ```rust
@@ -64,8 +71,8 @@ A route that doesn't wait is answered whole, as is one that fails before it asks
 ```
 
 A route that asks sends its job to the box, and the handler returns without an answer.
-`serve_one` then answers 500, as it does for any block that writes no answer, so the test
-checks the job instead: it takes the job from the box, reads it with `rest::asked`, as the
+Given no reply, `serve_one` then answers 500, as it does for any block that writes no
+answer, so the test checks the job instead: it takes the job from the box, reads it with `rest::asked`, as the
 service does, and passes it to the use case:
 
 ```rust
@@ -90,6 +97,36 @@ job. The box has two slots, so two asks fill it, and the next route gets the 503
     expect(body_of(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1))), "{\"error\":\"unavailable\"}");
 ```
 
+## The case functions, given a reply
+
+A `rest::Wake` is what the service would send back: `data`, a reply's bytes, with its
+`tag`, or `timeout: true` for a wait that ends without one. `rest::value_bytes` gives a
+flat value's bytes, as `rest::reply_value` sends them. `serve_one` takes the wakes in
+order, one for each `rest::ask` the route makes, so a route that waits on two services in
+turn gets two:
+
+```rust
+    let done = rest::value_bytes(service::AssignReply { .. });
+    expect(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { data: done }]),
+           "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 23\r\n\r\n{\"task\":5,\"assignee\":2}");
+    let missing = rest::value_bytes(service::AssignReply { status: 404, code: "task_not_found" });
+    expect(body_of(answer(put("/v1/projects/1/tasks/9/assignee?user=2", user1), [rest::Wake { data: missing }])),
+           "{\"error\":\"task_not_found\"}");
+    assert(http::mail_take(box) { key, tag, bytes => } == 2);
+    expect(body_of(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { timeout: true }])),
+           "{\"error\":\"timeout\"}");
+```
+
+The database isn't touched: the reply says task 5 was assigned, and the test checks
+what the case function makes of that, the `Waiting` variant's task and assignee in the
+answer. Each route still sends its job, so the test empties the box before the box's
+two slots fill.
+
+A reply longer than a message of the worker's box, `Config.mail_size` bytes, comes in
+pieces, as `rest::reply` sends it. Pass the program's `http::Config` as `serve_one`'s
+last argument to split a reply as the server does: `rest::relay` sends the pieces on as
+chunks, and `rest::read_reply` can't read a value from them.
+
 `scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; to run one on its own, use
 `goose docs/tutorial/13-waiting/test.goose`.
 
@@ -98,7 +135,7 @@ job. The box has two slots, so two asks fill it, and the next route gets the 503
 Each of part two's programs has a `requests.sh` and an `expected.txt`, which
 `scripts/test-examples.sh` runs as [Testing without sockets](09-testing.md#the-whole-server)
 describes: it builds the program, starts it with its service threads, and compares
-each `METHOD PATH STATUS BODY` line. These are the tests of what happens after the ask:
+each `METHOD PATH STATUS BODY` line. These test the routes with their services running:
 [`13-waiting`](13-waiting/requests.sh) has each of the service's answers in the error
 shape, [`14-two-services`](14-two-services/requests.sh) a reply in four pieces and a
 route that waits on two services in turn, and [`15-limits`](15-limits/requests.sh) the

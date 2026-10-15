@@ -343,6 +343,9 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
 | `rest::serve_one(text, app) { cx => ... }` | The same, with the worker's state by reference in `cx.app` |
 | `rest::serve_one(text, app, fresh, cfg) { cx => ... }` | The same, with `fresh` as the per-request state and `cfg`'s limits; `cfg` is optional |
+| `rest::serve_one(text, app, fresh, wakes, cfg) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
+| `rest::Wake { data, tag, timeout }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, or with `timeout: true`, the end of the wait |
+| `rest::value_bytes(v)` | The bytes `rest::reply_value` sends of `v`, a flat value, for a `Wake`'s `data` |
 
 A body that doesn't fit in `cfg.max_head` with its head comes in pieces of
 `cfg.max_head` bytes: gathered as the server gathers it, so the block runs again once
@@ -354,7 +357,13 @@ client closes at once. A request goose-http refuses gets its
 refusal, and a block that writes no answer gets 500. An HTTP/1.1 request without `Host`
 is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 `Content-Length`. The response has no `Date` or `Server` field
-([tutorial](tutorial/09-testing.md)). `serve_one` runs no loop: a route that calls
-`rest::ask` sends its job, or gets 503 for a full box, but no reply comes, so the
-handler never runs with `rest::resumed` and the answer is 500
+([tutorial](tutorial/09-testing.md)).
+
+A route that calls `rest::ask` sends its job, or gets 503 for a full box. `serve_one`
+then calls the handler again with the wait's `Wake`, as `rest::serve` calls it when the
+reply comes: as `http::WAKE`, in pieces of `cfg.mail_size` bytes with the tags
+`rest::reply` gives them, or as the timeout's 504. A piece that comes once the route
+no longer waits is dropped. A wait with no `Wake` left ends the exchange: the answer is
+what the route wrote, or 500 for nothing. No thread runs and no time passes, so a reply
+that comes late, or a client that goes while its job waits, is tested over HTTP
 ([tutorial](tutorial/16-testing.md)).

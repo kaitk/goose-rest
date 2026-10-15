@@ -18,8 +18,29 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 // (rest::begin) is taken to its end, H called with http::MORE as for a
 // client that keeps up. An HTTP/1.1 request
 // without Host is given "Host: localhost". A request goose-http refuses gets
-// its refusal, and H that doesn't answer 500, as from the server.
+// its refusal, and H that doesn't answer 500, as from the server. A route
+// that waits (rest::ask) gets no reply here: see the serve_one below.
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = http::Config { .. }) -> u8[>..] {
+    return serve_one(text, app, fresh, [], cfg) { cx => H(cx) };
+}
+
+// What serve_one gives a route that waits, in place of the thread it asked:
+// data with tag, as rest::reply sends them, or with timeout, the end of the
+// wait, which rest::ask answers with 504. A flat value's data is
+// rest::value_bytes of it.
+struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false }
+
+// serve_one, with wakes for the waits of the route, one each, in order: H is
+// called again with each, as serve calls it with a reply that comes, in
+// pieces of cfg.mail_size bytes, or with the timeout. A piece that comes
+// once the route no longer waits is dropped, as serve drops it. A wait with
+// no wake left ends the exchange with what the route wrote so far, or 500
+// if nothing.
+//
+//   let reply = rest::value_bytes(service::AssignReply { .. });
+//   let out = rest::serve_one(text, app, St { .. }, [rest::Wake { data: reply }]) { cx => handle(cx) };
+fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:],
+                      cfg: http::Config = http::Config { .. }) -> u8[>..] {
     var out: u8[>..] = [];
     let full = with_host(text);
     let req, status = http::parse(full, cfg.max_head, cfg.max_body, cfg.max_line, cfg.max_fields);
@@ -58,17 +79,46 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
     // keeps up. A MORE that neither sends nor ends closes the connection, as
     // the loop closes it, and so does an upgraded connection's client here.
     let none = http::Event { kind: http::MORE, req: req, data: "", whole: false, trailers: "" };
-    while stream.open && !stream.waiting {
-        let before = out.len;
-        stream.moved = false;
-        let raw = stream.framing == http::Framing.Raw;
-        if !raw {
-            deliver(none, st, app, reply, spill) { cx => H(cx) };
+    let gone = http::Request { .. };
+    let piece = max(cfg.mail_size as i64, 1);
+    var next = 0;
+    loop {
+        while stream.open && !stream.waiting {
+            let before = out.len;
+            stream.moved = false;
+            let raw = stream.framing == http::Framing.Raw;
+            if !raw {
+                deliver(none, st, app, reply, spill) { cx => H(cx) };
+            }
+            if raw || (out.len == before && !stream.moved && stream.open && !stream.waiting) {
+                deliver(http::Event { kind: http::CLOSED, req: req, data: "", whole: false, trailers: "" },
+                        st, app, reply, spill) { cx => H(cx) };
+                break;
+            }
         }
-        if raw || (out.len == before && !stream.moved && stream.open && !stream.waiting) {
-            deliver(http::Event { kind: http::CLOSED, req: req, data: "", whole: false, trailers: "" },
+        guard stream.waiting && next < wakes.len else { break; }
+        let w = wakes[next];
+        next++;
+        if w.timeout {
+            stream.waiting = false;
+            stream.rearm = false;
+            deliver(http::Event { kind: http::TIMEOUT, req: gone, data: "", whole: false, trailers: "" },
                     st, app, reply, spill) { cx => H(cx) };
-            break;
+            continue;
+        }
+        var at = 0;
+        var tag = w.tag & REPLY_TAG;
+        while stream.waiting {
+            let end = min(at + piece, w.data.len);
+            let more = end < w.data.len;
+            stream.waiting = false;
+            stream.rearm = false;
+            deliver(http::Event { kind: http::WAKE, req: gone, data: w.data[at..end], whole: false, trailers: "",
+                                  tag: if more { tag | REPLY_MORE } else { tag } },
+                    st, app, reply, spill) { cx => H(cx) };
+            guard more else { break; }
+            at = end;
+            tag = REPLY_CONT;
         }
     }
     if out.len == 0 { http::refuse(out, 500, ""); }

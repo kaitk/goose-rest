@@ -216,7 +216,8 @@ state by reference in `cx.app` and starts `cx.state` from `fresh`. This removes 
 state argument from handlers, security checks, resume functions, and `dispatch`,
 with no measured cost. With request state alone, the program passes a `rest::NoState`
 placeholder by reference. `rest::serve_one(text[, app[, fresh]])` has the same state
-forms, with an optional `http::Config` after `fresh`.
+forms, with an optional `http::Config` after `fresh`, and after `fresh` the replies of
+a route that waits, `rest::Wake`s, which stand in for its service (2026-10-15).
 
 Decided (2026-10-14): `rest::routes` does not open `rest::route`. Opening a
 route for every request costs more to save one line. The program opens one around
