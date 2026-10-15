@@ -139,6 +139,50 @@ fn query_bool(cx, name: const u8[:]) -> bool, bool {
     return bool_of(cx, v, name), true;
 }
 
+// The field name of an application/x-www-form-urlencoded body, decoded with
+// '+' as a space, and whether the body has it; the first, if it repeats. The
+// key is compared as sent. The body is read with rest::body, so a route runs
+// twice up to its first form call when the body is gathered. 415 for a body
+// of another media type. cx is a reference, since the value can be a slice of
+// cx.body.
+fn form<S, A, R>(cx: Cx<S, A, R>&, name: const u8[:]) -> const u8[:], bool {
+    guard http::has_type(cx.req, "application/x-www-form-urlencoded") else { fail(cx, 415, "unsupported_media_type"); }
+    let v, found = form_of(body(cx), name);
+    guard found else { return v, false; }
+    return decoded(cx, v, true, name), true;
+}
+
+// The value of body's first pair whose key is name, still encoded, and
+// whether it has one, as http::query_of finds a query's. http::each_form
+// can't hand a value out: it gives "" for a pair without '=', a static
+// string, which a slice of the body can't be rebound to (spec §9.2).
+fn form_of(body: const u8[:], name: const u8[:]) -> const u8[:], bool {
+    var rest = body;
+    loop {
+        let amp = position(rest, '&');
+        let pair = if amp >= 0 { rest[..amp] } else { rest };
+        let eq = position(pair, '=');
+        let k = if eq >= 0 { pair[..eq] } else { pair };
+        if k == name && pair.len > 0 { return if eq >= 0 { pair[eq + 1..] } else { pair[pair.len..] }, true; }
+        guard amp >= 0 else { return rest[..0], false; }
+        rest = rest[amp + 1..];
+    }
+}
+
+// The form field name as an integer, and whether the body has it.
+fn form_int(cx, name: const u8[:]) -> i64, bool {
+    let v, found = form(cx, name);
+    guard found else { return 0, false; }
+    return int_of(cx, v, name), true;
+}
+
+// The form field name as true or false, and whether the body has it.
+fn form_bool(cx, name: const u8[:]) -> bool, bool {
+    let v, found = form(cx, name);
+    guard found else { return false, false; }
+    return bool_of(cx, v, name), true;
+}
+
 // The header field name's value, its name compared ignoring case, and
 // whether the request has it; the first, if it repeats.
 fn header(cx, name: const u8[:]) -> const u8[:], bool {

@@ -1,7 +1,8 @@
 // The extractors, byte for byte: path, query, header, and cookie
 // parameters, each failure's answer, rest::take through a program's own
 // from_request and through the one the generator writes for api::Project,
-// which reads the JSON body, and rest::once.
+// which reads the JSON body, form fields through rest::serve_one, and
+// rest::once.
 // scripts/test-unit.sh runs this through TinyCC.
 import std;
 import json;
@@ -152,6 +153,50 @@ fn test_take() {
          str("{\"error\":\"invalid_body\",\"detail\":\"trailing input\",\"at\":", PROJECT.len + 1, "}"));
 }
 
+let FORM = "Content-Type: application/x-www-form-urlencoded; charset=utf-8\r\n";
+
+// What rest::serve_one answers to a form body with the text of what F
+// extracted.
+fn form_says<F>(content_type: const u8[:], body: const u8[:]) -> u8[>..] {
+    return rest::serve_one(post(content_type, body)) { cx => rest::text(cx, 200, str(F(cx))); };
+}
+
+fn test_form() {
+    let b = "name=wild+goose%21&n=3&on=true&n=4&empty&bad=x&esc=%zz";
+    same(body_of(form_says(FORM, b) { cx =>
+        let name, has_name = rest::form(cx, "name");
+        let n, has_n = rest::form_int(cx, "n");
+        let on, has_on = rest::form_bool(cx, "on");
+        let e, has_e = rest::form(cx, "empty");
+        let none, has_none = rest::form(cx, "none");
+        str(name, "|", n, "|", on, has_on, "|", e, has_e, "|", none, has_none)
+    }), "wild goose!|3|truetrue|true|false");
+    same(body_of(form_says(FORM, b) { cx => let v, has = rest::form_int(cx, "bad"); v }), bad("bad: integer"));
+    same(body_of(form_says(FORM, b) { cx => let v, has = rest::form_bool(cx, "n"); v }), bad("n: boolean"));
+    same(body_of(form_says(FORM, b) { cx => let v, has = rest::form(cx, "esc"); v }), bad("esc: encoding"));
+    same(body_of(form_says(FORM, b) { cx => let v, has = rest::form(cx, "none"); rest::require(cx, "none", has); v }),
+         bad("none: required"));
+    same(body_of(form_says("Content-Type: application/x-www-form-urlencoded\r\n", "a=1") { cx =>
+        let v, has = rest::form_int(cx, "a"); v
+    }), "1");
+    let out = form_says("Content-Type: application/json\r\n", "a=1") { cx => let v, has = rest::form(cx, "a"); v };
+    same(out, str("HTTP/1.1 415 Unsupported Media Type\r\nContent-Type: application/json\r\nContent-Length: 34\r\n\r\n",
+                  "{\"error\":\"unsupported_media_type\"}"));
+    same(status_of(form_says("", "a=1") { cx => let v, has = rest::form(cx, "a"); v }),
+         "HTTP/1.1 415 Unsupported Media Type");
+    // A body past the read buffer is gathered, and the route runs again.
+    var long = str("pad=");
+    for i in 20000 { long.push('x'); }
+    long.append("&name=last");
+    var runs = 0;
+    same(body_of(form_says(FORM, long) { cx =>
+        runs++;
+        let v, has = rest::form(cx, "name");
+        v
+    }), "last");
+    assert(runs == 2);
+}
+
 fn test_once() {
     same(body_of(says(get("/")) { cx =>
         var total = 0;
@@ -167,6 +212,7 @@ fn main() {
     test_query();
     test_header_and_cookie();
     test_take();
+    test_form();
     test_once();
     print("test_extract: ok");
 }

@@ -8,7 +8,7 @@ req POST /v1/projects -H "$auth" -H "$json" -d '{"name": "goose"}'
 req POST /v1/projects -H "$auth" -H "$json" -d '{"name": "gander"}'
 req POST /v1/projects -H "$auth" -H "$json" -d '{"name": ""}'
 req POST /v1/projects -H "Authorization: Bearer wrong" -H "$json" -d '{"name": "x"}'
-req POST /v1/projects -H "$auth" -d 'name=x'
+req POST /v1/projects -H "$auth" -H 'Content-Type: text/plain' -d 'name=x'
 # Bodies past the read buffer, gathered before the route reads them.
 big=$(printf '{"name": "big"%20000s}' '')
 req POST /v1/projects -H "$auth" -H "$json" -d "$big"
@@ -32,3 +32,10 @@ req GET /v1/nope
 req GET /nope
 req GET /health -H 'Origin: https://evil.example'
 req OPTIONS /v1/projects -H 'Origin: https://app.example' -H 'Access-Control-Request-Method: POST'
+# A project from a form, which curl's -d sends as
+# application/x-www-form-urlencoded, and a form past the read buffer.
+req POST /v1/projects -H "$auth" -d 'name=wild+goose%21&name=ignored'
+req POST /v1/projects -H "$auth" -d 'name='
+req POST /v1/projects -H "$auth" -d 'title=x'
+req POST /v1/projects -H "$auth" -d 'name=%zz'
+req POST /v1/projects -H "$auth" -d "$(printf 'pad=%20000s&name=long' '' | tr ' ' x)"

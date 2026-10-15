@@ -7,6 +7,7 @@
 //   curl -s localhost:8080/v1/projects
 //   curl -s -H 'Authorization: Bearer secret' -H 'Content-Type: application/json' \
 //        -d '{"name": "goose"}' localhost:8080/v1/projects
+//   curl -s -H 'Authorization: Bearer secret' -d 'name=wild+goose' localhost:8080/v1/projects
 import std;
 import os;
 import json;
@@ -64,6 +65,16 @@ fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
     rest::json_body(cx) { r, scratch => read_create(r, scratch) }
 }
 
+// What POST /v1/projects takes as a form, name=..., checked as read_create
+// checks the JSON.
+fn form_create(cx) -> ProjectCreate {
+    let name, has_name = rest::form(cx, "name");
+    rest::require(cx, "name", has_name);
+    let n = rest::code_points(name);
+    if n < 1 || n > 64 { rest::fail_param(cx, "name: length"); }
+    return ProjectCreate { name: name };
+}
+
 // The longest logo PUT /v1/projects/:id/logo takes. Other routes keep
 // rest::body's 1 MB, and http::Config's max_body is raised to this, the most
 // any route takes.
@@ -107,7 +118,8 @@ fn projects(cx) {
     } else if rest::on(cx, "POST", "/projects") {
         rest::bearer(cx) { token =>
             guard token == cx.app.token else { rest::invalid_token(cx); }
-            let body = rest::take<ProjectCreate>(cx);
+            let form = http::has_type(cx.req, "application/x-www-form-urlencoded");
+            let body = if form { form_create(cx) } else { rest::take<ProjectCreate>(cx) };
             let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
             rest::json(cx, 201, p);
         };

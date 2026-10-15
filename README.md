@@ -30,7 +30,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#context-and-routes)). |
 | 🟢 | Scopes | Prefixes, each with its own middleware. |
 | 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#extractors)). |
-| 🟡 | Forms | Whole form bodies through goose-http's `http::form_value`; no extractor or multipart support. |
+| 🟡 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool` ([reference](docs/reference.md#extractors)). Multipart forms have no extractor yet: read them with goose-http's `http::each_part`. |
 | 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
 | 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
 | 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#errors)). |
@@ -118,7 +118,7 @@ programs to start from, each built and tested with HTTP requests:
 
 | Example | What it shows |
 |---|---|
-| [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, middleware, and a 4 MB upload alongside the 1 MB default |
+| [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, a JSON or form body, middleware, and a 4 MB upload alongside the 1 MB default |
 | [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 

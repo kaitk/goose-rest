@@ -91,11 +91,23 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::param_int(cx, "id")` | the path parameter as an `i64` | `id: integer` |
 | `rest::query(cx, "q")` | the query parameter, decoded with `+` as a space, and whether it's there | |
 | `rest::query_int(cx, "page")`, `rest::query_bool(cx, "all")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `page: integer`, `all: boolean` |
+| `rest::form(cx, "name")` | the field of an `application/x-www-form-urlencoded` body, decoded with `+` as a space, and whether it's there | `name: encoding`; 415 `unsupported_media_type` for another media type |
+| `rest::form_int(cx, "n")`, `rest::form_bool(cx, "on")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `n: integer`, `on: boolean` |
 | `rest::header(cx, "X-Request-Id")`, `rest::cookie(cx, "sid")` | the value, and whether it's there | |
 | `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
 | `rest::require(cx, "q", found)` | | `q: required` |
 | `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
 | `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default) | 413 `payload_too_large` |
+
+A query parameter, form field, or cookie that repeats gives its first value, and its
+name is compared as sent, without decoding it.
+
+The form extractors read the body with `rest::body`, so the body is gathered as below,
+and accept a Content-Type with parameters, such as
+`application/x-www-form-urlencoded; charset=utf-8`. A route that takes a form over
+1 MB calls `rest::body(cx, limit)` before the first form extractor. Multipart forms
+have no extractor; goose-http's `http::each_part` reads them
+([goose-http's API](https://github.com/kaitk/goose-http/blob/main/docs/api.md)).
 
 A program that builds its own `http::Router` can still pass it explicitly to
 `rest::param(cx, r, name)`, `rest::param_int(cx, r, name)`, and `rest::otherwise(cx, r)`.
@@ -111,8 +123,8 @@ goose-http hands a body to the handler with its head when both fit its read buff
 ([goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies)).
 `rest::body` reads a longer one too: at its first call, the route leaves
 without an answer, `rest::serve` gathers the body up to the limit, and then calls the
-handler again with the body whole. The code before a route's first `rest::body`, or
-`rest::take` of a JSON type, therefore runs twice for such a body, and must not change
+handler again with the body whole. The code before a route's first `rest::body`,
+`rest::take` of a JSON type, or form extractor therefore runs twice for such a body, and must not change
 state before it; an answer there, such as a 401, ends the request ungathered. A `Content-Length` over the limit is refused with 413 before
 the body is sent, and a chunked body once it passes the limit. The first call's limit
 holds for the request, so a route that takes a JSON body over 1 MB calls `rest::body`
@@ -152,8 +164,8 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 | 403 | `origin_not_allowed` | `rest::cors`: an `Origin` it doesn't list |
 | 404 | `not_found` | `rest::otherwise`: no route's path matched |
 | 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
-| 413 | `payload_too_large` | `rest::body`, and `rest::take` of a schema type: a body over the limit |
-| 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type |
+| 413 | `payload_too_large` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body over the limit |
+| 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded` |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,

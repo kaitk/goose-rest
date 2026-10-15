@@ -22,3 +22,8 @@ GET /v1/nope 404 {"error":"not_found"}
 GET /nope 404 {"error":"not_found"}
 GET /health 403 {"error":"origin_not_allowed"}
 OPTIONS /v1/projects 204
+POST /v1/projects 201 {"id":5,"name":"wild goose!"}
+POST /v1/projects 400 {"error":"invalid_parameter","detail":"name: length"}
+POST /v1/projects 400 {"error":"invalid_parameter","detail":"name: required"}
+POST /v1/projects 400 {"error":"invalid_parameter","detail":"name: encoding"}
+POST /v1/projects 201 {"id":6,"name":"long"}
