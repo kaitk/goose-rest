@@ -4,7 +4,7 @@ Checks an open question in [the architecture doc](../../docs/architecture/README
 time, in whatever order the JSON gives them? Or does in-place construction (spec
 §4.2-4.3) force it to collect the values first and build the struct once?
 
-Goose commit: `bc3c1f1`, with the same output as on `a6249a4`.
+Goose: release `v2026.1` (`ac759c3`), with the same output as on `bc3c1f1` and `a6249a4`.
 
 ```sh
 GOOSE=<build>/goose

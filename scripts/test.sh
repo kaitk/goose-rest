@@ -14,13 +14,15 @@
 # rest::route, or the functions that fail, all inlined into the handler: only
 # the handler and library leaves stay functions.
 #
-# GOOSE names the compiler (default: goose on PATH), and TSC the TypeScript
-# compiler's command (default: tsc on PATH), such as "npx -p typescript tsc".
-# JS names the runtime that runs the helper (default: node, or else bun).
+# GOOSE names the compiler (default: the pinned release, scripts/goose.sh),
+# and TSC the TypeScript compiler's command (default: tsc on PATH), such as
+# "npx -p typescript tsc". JS names the runtime that runs the helper
+# (default: node, or else bun).
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-goose=${GOOSE:-goose}
+. "$root/scripts/goose.sh"
+goose=$GOOSE
 TSC=${TSC:-tsc}
 JS=${JS:-$(command -v node || command -v bun || echo node)}
 

@@ -11,7 +11,7 @@ Spike 01 found that a generic body resolves names where it's defined (spec §11.
 type-directed exception: the overload is looked up in the namespace that declares the
 type, then globally (§3.7). This spike checks that the compiler does so.
 
-Goose commit: `bc3c1f1`, with the same output as on `a6249a4`.
+Goose: release `v2026.1` (`ac759c3`), with the same output as on `bc3c1f1` and `a6249a4`.
 
 ```sh
 GOOSE=<build>/goose

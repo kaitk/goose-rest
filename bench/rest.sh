@@ -39,6 +39,8 @@
 # Settings, from the environment, beside goose-http's bench/rest.sh's own
 # (SERVER_CPUS, CLIENT_CPUS, CLIENT_THREADS, RUNS, DURATION, WARMUP, PORT,
 # MACHINE, DATA, OUT):
+#   GOOSE        the compiler, for both repositories' builds (default: the
+#                pinned release, scripts/goose.sh)
 #   GOOSE_HTTP   goose-http's checkout, ../goose-http, at the pin rest.goose names
 #   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-rest
 #                goose-epoll-rest axum actix-web dusty-routes dusty hyper
@@ -51,6 +53,7 @@ set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 gh=$(cd "${GOOSE_HTTP:-$root/../goose-http}" && pwd)
 cache=${CACHE:-$HOME/.cache/goose-http-bench}
+. "$root/scripts/goose.sh"
 bin=$gh/build/rest
 data=${DATA:-$gh/build/rest}
 tiers=$root/bench/rest/tiers
@@ -68,7 +71,7 @@ build)
     # OWN=1 builds only this repository's servers, as on macOS, where
     # goose-http's build can't run; the datasets must be in DATA already.
     [ "${OWN:-}" = 1 ] || "$gh/bench/rest.sh" build
-    goose=${GOOSE:-goose}
+    goose=$GOOSE
     "$goose" "$root/gen/main.goose" -- gen "$root/bench/rest/goose-rest/github.json" -o "$bin/github_gen.goose" >/dev/null
     cmp -s "$bin/github_gen.goose" "$root/bench/rest/goose-rest/github_gen.goose" ||
         { echo "bench/rest.sh: github_gen.goose is stale; regenerate it (scripts/test.sh)"; exit 1; }
@@ -267,7 +270,7 @@ else
         echo "cpu: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) logical CPUs"
         echo "server cpus: $server_cpus, workers: $workers, client cpus: $client_cpus, client threads: $threads"
         echo "duration: $duration s, warm-up: $warmup s, runs: $runs"
-        echo "goose-http: $(git -C "$gh" rev-parse --short HEAD), goose: $(git -C "$gh/../goose" rev-parse --short HEAD)"
+        echo "goose-http: $(git -C "$gh" rev-parse --short HEAD), goose: $(goose_version)"
         echo "cc: $(${CC:-cc} --version | head -1)"
         echo "rustc: $(rustc --version), zig: $(${ZIG:-zig} version)"
         echo "wrk: $(wrk -v 2>&1 | head -1)"

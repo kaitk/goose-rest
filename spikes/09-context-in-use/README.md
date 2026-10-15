@@ -20,7 +20,7 @@ changes it:
 comes back as a WAKE, so the output is fixed. `api_gen.goose` is `goose-rest gen`'s from
 `api.json`. `refused.goose` holds the calls the context's type refuses.
 
-Goose commit: `bc3c1f1`. goose-http: `v0.3.1`. goose-rest: task 015's prototype, A
+Goose: release `v2026.1` (`ac759c3`), with the same output as on `bc3c1f1`. goose-http: `v0.3.1`. goose-rest: task 015's prototype, A
 with the router's type in the context, `Cx<S, A, R>`, and B.
 
 ```sh

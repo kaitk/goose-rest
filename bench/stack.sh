@@ -17,14 +17,16 @@
 #
 #   bench/stack.sh   (RUNS 3, D 10, PORT 29282)
 #
-# GOOSE names the compiler (default: goose on PATH). REST_DATA names the
+# GOOSE names the compiler (default: the pinned release, scripts/goose.sh).
+# REST_DATA names the
 # datasets goose-http's bench/rest.sh build writes (default:
 # ../goose-http/build/rest). Prints one line per run.
 set -eu
 export LC_ALL=C
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-goose=${GOOSE:-goose}
+. "$root/scripts/goose.sh"
+goose=$GOOSE
 bin=$root/build/stack
 runs=${RUNS:-3}
 d=${D:-10}

@@ -138,7 +138,7 @@ explained yet.
 
 | What | Pin | Why |
 |---|---|---|
-| Goose compiler | `aardappel/goose` `bc3c1f1` (`master`, 2026-10-14) | The language and stdlib change often; this move adds only a logo |
+| Goose compiler | `aardappel/goose` release `v2026.1` (`ac759c3`, 2026-10-15), which the scripts fetch ([setup](docs/development.md#set-up-the-goose-compiler)) | An official release builds the same on every platform; a commit is pinned only for a fix not yet released |
 | goose-http | `kaitk/goose-http` `v0.3.1`, commit `faead67` (2026-10-14) | Includes live mailbox keys and the fix that keeps them live through WAKE |
 
 Move each pin in its own commit, with the spikes and tests rerun

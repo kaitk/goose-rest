@@ -9,10 +9,11 @@
 # host. Docker Desktop has both, and elsewhere tonistiigi/binfmt installs
 # them.
 #
-# GOOSE names a Linux build of the compiler in its checkout that runs in
-# ubuntu:26.04 for amd64. Without it, the script builds one into
-# build/goose-linux from GOOSE_SRC's HEAD (default ../goose), unless the one
-# there is from that commit already. GOOSE_HTTP names a goose-http checkout:
+# GOOSE names a Linux build of the compiler that runs in ubuntu:26.04 for
+# amd64, beside its stdlib or in its checkout. Without it, the script uses the
+# pinned release's linux-x64 archive (scripts/goose.sh), or with GOOSE_COMMIT
+# that commit, built in the amd64 container into build/aarch64/goose/.
+# GOOSE_HTTP names a goose-http checkout:
 # with it, the script also cross-builds that checkout's examples/device at
 # its HEAD and prints its peak RSS on one worker, for comparison.
 set -eu
@@ -37,29 +38,23 @@ FROM ubuntu:26.04
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq liburing2 curl >/dev/null
 EOF
 
-# The compiler: GOOSE's, or one built from a copy of GOOSE_SRC's HEAD, which
-# leaves that checkout as it is.
+# The compiler: GOOSE's, the release's, or GOOSE_COMMIT's built in the
+# container. Its own root keeps that build apart from a host one of the same
+# commit in build/.
 if [ -z "${GOOSE:-}" ]; then
-    src=${GOOSE_SRC:-$root/../goose}
-    commit=$(git -C "$src" rev-parse HEAD)
-    copy=$root/build/goose-linux
-    if [ "$(cat "$copy/COMMIT" 2>/dev/null)" != "$commit" ]; then
-        echo "building the Goose compiler for Linux at ${commit%"${commit#???????}"} into $copy"
-        rm -rf "$copy"
-        mkdir -p "$copy"
-        git -C "$src" archive "$commit" | tar -x -C "$copy"
-        docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -v "$copy:$copy" -w "$copy" \
-            goose-rest-cross-aarch64 sh -c '
-set -eu
-cmake -S . -B build-linux -DCMAKE_BUILD_TYPE=Release >build-linux.log 2>&1 &&
-    cmake --build build-linux -j "$(nproc)" >>build-linux.log 2>&1 ||
-    { tail -40 build-linux.log; echo "FAIL: the Goose compiler does not build"; exit 1; }'
-        echo "$commit" >"$copy/COMMIT"
+    if [ -n "${GOOSE_COMMIT:-}" ]; then
+        mkdir -p "$out/goose"
+        GOOSE=$(docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -v "$root:$root" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+            -e root="$out/goose" -e GOOSE_COMMIT -e HOME="$out" goose-rest-cross-aarch64 \
+            sh "$root/scripts/goose.sh")
+    else
+        GOOSE=$(GOOSE_ASSET=linux-x64 "$root/scripts/goose.sh")
     fi
-    GOOSE=$copy/build-linux/goose
 fi
 goose=$(cd "$(dirname "$GOOSE")" && pwd)/$(basename "$GOOSE")
-# The compiler finds its stdlib in its checkout, which the container mounts.
+# The compiler finds its stdlib beside it or in its checkout, which the
+# container mounts.
 checkout=$(dirname "$(dirname "$goose")")
 
 # goose-http's device, from a copy of the checkout's HEAD under build/.

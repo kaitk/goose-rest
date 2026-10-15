@@ -8,16 +8,17 @@
 # setup.sh, where it has one, is sourced before the example starts, to set
 # its environment.
 #
-# GOOSE names the compiler (default: goose on PATH). BIN is where the
-# examples are built and their output goes (default: build/examples), and
-# PREBUILT=1 runs the ones already there, as scripts/test-aarch64.sh does on
-# a machine without the compiler. RSS=1 prints each example's peak RSS on
-# Linux, once it answers and after its requests. The examples listen on
-# 127.0.0.1, from port 18081 up.
+# GOOSE names the compiler (default: the pinned release, scripts/goose.sh).
+# BIN is where the examples are built and their output goes (default:
+# build/examples), and PREBUILT=1 runs the ones already there without a
+# compiler, as scripts/test-aarch64.sh does on a machine that has none.
+# RSS=1 prints each example's peak RSS on Linux, once it answers and after its
+# requests. The examples listen on 127.0.0.1, from port 18081 up.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-goose=${GOOSE:-goose}
+[ -n "${PREBUILT:-}" ] || . "$root/scripts/goose.sh"
+goose=${GOOSE:-}
 out=${BIN:-$root/build/examples}
 mkdir -p "$out"
 

@@ -9,42 +9,76 @@ The spikes have run on macOS (2026-10-13) and WSL2 Linux (2026-10-14).
 
 | Tool | macOS (2026-10-13) | For |
 |---|---|---|
-| Goose compiler | `bc3c1f1`, the pin in `README.md` | everything |
+| Goose compiler | release `v2026.1`, fetched by `scripts/goose.sh` into `build/` ([below](#set-up-the-goose-compiler)) (2026-10-15) | everything |
 | OS | macOS 26.3.1, Apple M1 Pro | |
 | C compiler | Apple clang 21.0.0 (`clang-2100.0.123.102`) | `goose build`, and reading the generated C (spike 04) |
 | Node or Bun, TypeScript (optional) | Node 24.14.1, Bun 1.4.2, TypeScript 7.0.2 through npx or bunx (2026-10-14) | the TypeScript helper's tests |
 
 ## Set up the Goose compiler
 
-The spikes and scripts run the compiler that `GOOSE` names, or `goose` on `PATH` without
-it, so the checkout can live anywhere; this page puts it next to this repository, at
-`../goose`. Leave it on the pinned commit and don't edit it (`AGENTS.md`).
+The scripts use the Goose release pinned in `scripts/goose.sh` (`v2026.1`, 2026-10-15)
+unless told otherwise. The first script that needs the compiler downloads the release's
+archive for the platform from
+[the releases page](https://github.com/aardappel/goose/releases), checks its SHA-256,
+and unpacks it into `build/goose-v2026.1-<platform>/`; later runs reuse it. Run
+`scripts/goose.sh` to fetch it and print the compiler's path, for running a spike or
+the compiler by hand:
+
+```sh
+GOOSE=$(scripts/goose.sh)
+```
+
+The release needs the C library's headers on Linux and the Xcode command line tools on
+macOS ([Goose's README](https://github.com/aardappel/goose#install-a-release)). Linux on
+arm64 has no release archive, so there the script builds the release's tag from source,
+as `GOOSE_COMMIT` does below. `scripts/goose.sh` is goose-http's, copied: keep the two
+the same.
+
+Use another compiler only when the release can't do the job, such as a Goose fix not yet
+released. Two settings choose one, and the first set wins:
+
+| Setting | Compiler |
+|---|---|
+| `GOOSE` | The binary it names, such as a checkout's build or a release unpacked elsewhere. |
+| `GOOSE_COMMIT` | That commit of `aardappel/goose`, cloned into `build/goose-<commit>/` and built with CMake (and Ninja if installed) on first use. Give the full 40-hex hash; a shallow fetch can't resolve an abbreviated one. |
+
+`bench/rest.sh` and `bench/all.sh` record which one ran in `env.txt`: the release's tag,
+or a checkout's commit. Both pass `GOOSE` on to goose-http's scripts, so the two
+repositories build with the same compiler.
+
+To build a checkout by hand, clone it anywhere, build it with CMake, and point `GOOSE` at
+its build. Don't edit it (`AGENTS.md`). goose-http's development.md covers Windows.
 
 ```sh
 git clone -o upstream https://github.com/aardappel/goose.git ../goose
-git -C ../goose checkout bc3c1f1
 cmake -S ../goose -B ../goose/build-macos -DCMAKE_BUILD_TYPE=Release
 cmake --build ../goose/build-macos -j
 export GOOSE=$PWD/../goose/build-macos/goose
 ```
 
-On Linux, name the build directory `build-linux`. goose-http's development.md covers
-Windows.
-
 ### Move the pin
 
-The Goose repository changes daily. Fetch it at the start of a session, and move the pin
-in its own commit once the spikes still give their recorded results:
+The pin is a Goose release. At the start of a session, check for a newer one:
 
 ```sh
-git -C ../goose fetch upstream
-git -C ../goose log --oneline HEAD..upstream/master
-git -C ../goose checkout upstream/master
-cmake --build ../goose/build-macos -j
+gh release list -R aardappel/goose --limit 3
 ```
 
-Then rerun each spike as its README says, update the commit and verdict there, and
-update the pin in `README.md` and the table above.
+To move to a new release, update `goose_release` and the four archives' SHA-256 sums in
+`scripts/goose.sh`, as goose-http does in the same file. GitHub lists each asset's
+digest:
+
+```sh
+gh api repos/aardappel/goose/releases/tags/<tag> -q '.assets[] | "\(.name) \(.digest)"'
+```
+
+Then run `scripts/test.sh`, which reruns every spike against its recorded output, update
+the commit and verdict in each spike's README, and update the pin in `README.md` and the
+table above, in its own commit.
+
+Pin a commit only when a Goose fix that this repository needs isn't in a release yet:
+set `GOOSE_COMMIT` in the scripts' environment, record the commit in the README's Pins
+table with the reason, and return to a release once one includes the fix.
 
 ### Move the goose-http pin
 
@@ -117,11 +151,18 @@ Goose traps met while writing the generator and its tests (2026-10-13):
   is enough (`write_value` and `write_one`).
 
 ```sh
-GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
+scripts/test.sh
 ```
 
-The first run fetches goose-http at its pin into `~/.goose/pkg`, so it needs network
-access; later runs don't. Both scripts write only into `build/`, which git ignores.
+The first run fetches the Goose release into `build/` and goose-http at its pin into
+`~/.goose/pkg`, so it needs network access; later runs don't. `GOOSE` and
+`GOOSE_COMMIT` pass through to the scripts it runs. Both scripts write only into
+`build/`, which git ignores.
+
+goose-rest has no `.build` sidecar, so nothing excludes `build/` from the package, as
+goose-http's `http.build` must: there, the unpacked release's stdlib `extern fn`s would
+enter the package's JIT library and fail to link. goose-rest's package has no C and no
+`extern fn`, and the suite passes with the release unpacked in `build/` (2026-10-15).
 
 ### Run the TypeScript helper's tests
 
@@ -133,8 +174,8 @@ isn't installed. Without `tsc`, it prints `skipped` and goes on. With Node or Bu
 installed and no `tsc`, npx or bunx fetches one for the run:
 
 ```sh
-TSC="npx -y -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
-TSC="bunx -p typescript tsc" GOOSE=$PWD/../goose/build-macos/goose scripts/test.sh
+TSC="npx -y -p typescript tsc" scripts/test.sh
+TSC="bunx -p typescript tsc" scripts/test.sh
 ```
 
 Node and Bun run the `.mts` files directly, stripping their types; Node needs 22.18 or
@@ -149,7 +190,7 @@ Validated (2026-10-14): WSL2 Ubuntu 26.04.1, Clang 21.1.8, Node 24.14.1, and
 TypeScript 7.0.2. Select the Ubuntu distribution explicitly from PowerShell:
 
 ```powershell
-wsl -d Ubuntu -e bash -lc 'cd <repository-path-in-WSL> && GOOSE_CC=clang GOOSE=<compiler-path> TSC="npx -y -p typescript tsc" scripts/test.sh'
+wsl -d Ubuntu -e bash -lc 'cd <repository-path-in-WSL> && GOOSE_CC=clang TSC="npx -y -p typescript tsc" scripts/test.sh'
 ```
 
 Keep the actual paths in git-ignored `CLAUDE.local.md`. Put Linux Node and npx first
@@ -163,21 +204,9 @@ The Ubuntu distribution runs as `root`. Without a global Git identity there, Git
 records the author as `root@<hostname>`, so set `user.name` and `user.email` in WSL
 before committing from it (2026-10-14).
 
-A pin can be built without changing the sibling compiler checkout. Archive the
-fetched commit into an ignored directory and build there:
-
-```sh
-mkdir -p build/goose-current
-git -C ../goose archive upstream/master | tar -x -C build/goose-current
-cmake -S build/goose-current -B build/goose-current/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build/goose-current/build
-GOOSE=$PWD/build/goose-current/build/goose TSC="npx -y -p typescript tsc" scripts/test.sh
-```
-
-The move from `46356c2` to `bc3c1f1` adds only a logo; compiler and stdlib sources
-are unchanged. The full suite and each spike were rerun from that archived build.
-Goose at `bc3c1f1` has no `--version` option, so name an archived compiler by its
-source commit and the binary's SHA-256 (2026-10-14).
+Goose `v2026.1` has no `--version` option, so `scripts/goose.sh`'s `goose_version` names
+a compiler by its release directory or its checkout's commit, and `bench/all.sh` adds
+the binary's SHA-256 (2026-10-15).
 
 ## Run the examples on arm64
 
@@ -190,16 +219,17 @@ same name, and goose-http's
 covers cross compilers, Yocto SDKs, and the checks to run on a board.
 
 ```sh
-GOOSE_SRC=../goose GOOSE_HTTP=../goose-http scripts/test-aarch64.sh
+GOOSE_HTTP=../goose-http scripts/test-aarch64.sh
 ```
 
 The cross-build needs a Linux build of the Goose compiler that runs in that amd64
-container. With `GOOSE` unset, the script makes one: it copies `GOOSE_SRC`'s HEAD with
-`git archive` into `build/goose-linux`, builds it there with CMake in the container,
-and records the commit in `build/goose-linux/COMMIT`. It rebuilds only when that commit
-changes, and leaves the checkout itself untouched. With `GOOSE_HTTP` set, it also
-cross-builds goose-http's `examples/device` from a copy of that checkout's HEAD under
-`build/aarch64/goose-http`, and prints its peak RSS on one worker, for comparison.
+container. With `GOOSE` unset, the script uses the pinned release's `linux-x64` archive,
+which `scripts/goose.sh` fetches on any host, macOS included. With `GOOSE_COMMIT`, it
+builds that commit in the amd64 container instead, into `build/aarch64/goose/`, apart
+from a host build of the same commit. A `GOOSE` of its own must be a Linux x86-64 build
+that runs on Ubuntu 26.04, beside its stdlib or in its checkout. With `GOOSE_HTTP` set,
+it also cross-builds goose-http's `examples/device` from a copy of that checkout's HEAD
+under `build/aarch64/goose-http`, and prints its peak RSS on one worker, for comparison.
 
 `scripts/test-examples.sh` takes the switches the script needs: `BIN`, where the
 examples are; `PREBUILT=1`, to run them without building; and `RSS=1`, to print each
@@ -211,8 +241,9 @@ What the setup met (2026-10-14, Docker Desktop 29.8.2 on an Apple M1 Pro):
   amd64 one under Rosetta. On an x86-64 host it's the reverse: the checks run under
   qemu, whose own memory adds to each RSS.
 - The compiler fetches goose-http with git into `build/aarch64/goose-home`, and git
-  refuses the mounted directory ("detected dubious ownership"). The script sets
-  `safe.directory` through `GIT_CONFIG_*` variables.
+  refuses the mounted directory ("detected dubious ownership"), as it refuses the clone
+  of a `GOOSE_COMMIT` build there (2026-10-15). The script sets `safe.directory` through
+  `GIT_CONFIG_*` variables for both.
 - Docker's seccomp profile blocks `io_uring_setup`, so `rest::serve` runs on goose-http's
   emulated ring over epoll there.
 
@@ -221,6 +252,7 @@ What the setup met (2026-10-14, Docker Desktop 29.8.2 on an Apple M1 Pro):
 Each spike under `spikes/` is a root file that TinyCC runs in process:
 
 ```sh
+GOOSE=$(scripts/goose.sh)
 $GOOSE spikes/02-middleware-exit/main.goose
 ```
 
@@ -243,7 +275,7 @@ divided by the requests (goose-http's development.md, "macOS"). Docker Desktop's
 exposes no hardware counters, so `perf` can't run there either.
 
 ```sh
-GOOSE=$PWD/../goose-upstream/build-macos/goose bench/routes.sh
+bench/routes.sh
 ```
 
 A full run takes about 5 minutes. To check a change to goose-rest's request path
@@ -251,7 +283,7 @@ quickly, run only its servers, once, at a tenth of the requests, in about 20 s, 
 then do a full run for the numbers you record:
 
 ```sh
-GOOSE=$PWD/../goose-upstream/build-macos/goose SERVERS="gen60 hand60" RUNS=1 N=200000 bench/routes.sh
+SERVERS="gen60 hand60" RUNS=1 N=200000 bench/routes.sh
 ```
 
 `bench/stack.sh` counts a JSON body and the middleware stack the same way, with wrk
@@ -260,7 +292,7 @@ datasets goose-http's `bench/rest.sh build` writes, in `../goose-http/build/rest
 unless `REST_DATA` names another folder.
 
 ```sh
-GOOSE=$PWD/../goose-upstream/build-macos/goose bench/stack.sh
+bench/stack.sh
 ```
 
 A Docker container gives req/s but no instruction counts, for the reason above. These
@@ -300,8 +332,8 @@ builds with `ONLY=goose`, `bench/rest.sh check`, goose-http's `bench/run.sh` and
 `bench/instructions.sh` and `bench/rest.sh count`. It stops at the first failure, and
 took about 2 h 30 min on the Linux desktop (2026-10-14). Its checks need:
 
-- `GOOSE` set to the compiler, and goose-http's checkout in `GOOSE_HTTP`
-  (`../goose-http`).
+- goose-http's checkout in `GOOSE_HTTP` (`../goose-http`). Both repositories build
+  with the pinned release, or with the compiler `GOOSE` or `GOOSE_COMMIT` names.
 - Root, or `sudo` without a password.
 - Both checkouts clean and at `origin/main`, so push or pull first, and goose-http's
   code the same as at the tag `rest.goose` pins.

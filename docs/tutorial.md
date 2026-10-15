@@ -998,7 +998,7 @@ every example for aarch64 in an amd64 container and runs their checks in an arm6
 printing each one's peak RSS:
 
 ```sh
-GOOSE_SRC=../goose GOOSE_HTTP=../goose-http scripts/test-aarch64.sh
+GOOSE_HTTP=../goose-http scripts/test-aarch64.sh
 ```
 
 There, `examples/device` peaked at 4,728 kB on one worker (task 013 has how it was

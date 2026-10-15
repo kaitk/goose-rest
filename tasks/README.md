@@ -50,4 +50,4 @@ and decides task 008. Task 009 follows spike 06 and task 004. Task 010 benchmark
 Task 014 follows tasks 008 and 009. Task 015 can start at any point; what it needs from
 goose-http waits on that package's task 027. Task 016, the tutorial, follows task 015's
 merge. Task 017 is built; its limits section in task 016's tutorial waits on that
-tutorial.
+tutorial. Task 018 follows goose-http's task 034, and waits only on a WSL run.

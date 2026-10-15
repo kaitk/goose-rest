@@ -27,13 +27,15 @@
 #
 #   bench/routes.sh   (RUNS 3, N 2000000, PORT 29281, SERVERS all)
 #
-# GOOSE names the compiler (default: goose on PATH). SERVERS, such as
-# "gen60 hand60", runs only those servers' cases. Prints one line per run.
+# GOOSE names the compiler (default: the pinned release, scripts/goose.sh).
+# SERVERS, such as "gen60 hand60", runs only those servers' cases. Prints one
+# line per run.
 set -eu
 export LC_ALL=C
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-goose=${GOOSE:-goose}
+. "$root/scripts/goose.sh"
+goose=$GOOSE
 bin=$root/build/routes
 runs=${RUNS:-3}
 n=${N:-2000000}

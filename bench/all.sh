@@ -21,7 +21,8 @@
 # committed: the write-up is a separate step.
 #
 # Settings, from the environment, beside each script's own:
-#   GOOSE        the Goose compiler; required
+#   GOOSE        the Goose compiler for both repositories (default: the
+#                pinned release, scripts/goose.sh)
 #   GOOSE_HTTP   goose-http's checkout, ../goose-http
 #   RATE_A, RATE_B, RATE_C   tiers A to C's fixed rates, 100000, 24000, and
 #                1700, the full run of 2026-10-13's: step 1's default would
@@ -36,7 +37,7 @@ set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 gh=$(cd "${GOOSE_HTTP:-$root/../goose-http}" && pwd)
-: "${GOOSE:?bench/all.sh: set GOOSE to the Goose compiler}"
+. "$root/scripts/goose.sh"
 GOOSE=$(cd "$(dirname "$GOOSE")" && pwd)/$(basename "$GOOSE")
 machine=${MACHINE:-$(hostname -s)}
 stamp=$(date -u +%Y-%m-%dT%H%M)
@@ -113,7 +114,7 @@ session() {
         echo "cpu: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) logical CPUs"
         command -v wsl.exe >/dev/null && echo "wsl: $(wsl.exe --version | iconv -f UTF-16LE -t UTF-8 | tr -d '\r' | head -1)"
         echo "goose-rest: $(git -C "$root" rev-parse --short HEAD), goose-http: $(git -C "$gh" rev-parse --short HEAD) (code as $ref)"
-        echo "goose: $GOOSE, sha256 $(sha256sum <"$GOOSE" | cut -d' ' -f1)"
+        echo "goose: $(goose_version), $GOOSE, sha256 $(sha256sum <"$GOOSE" | cut -d' ' -f1)"
         echo "gcc: $(gcc --version | head -1)"
         echo "rates: A $RATE_A, B $RATE_B, C $RATE_C; reuse: ${REUSE:-none}"
         echo "results: $results/$stamp-$machine, $stamp-$machine-files, $stamp-rest-$machine"
