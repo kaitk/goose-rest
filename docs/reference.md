@@ -326,8 +326,9 @@ response cut short.
 `http::Config`'s `max_body` caps `rest::body_in_pieces`'s limit as it caps `rest::body`'s. A
 piece of about 16 KB at each `MORE` keeps within `Config.max_queued`
 ([goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses)).
-While a route waits on another thread, an upgraded connection's bytes keep coming as
-`BODY`. A WebSocket's framing isn't provided: a package on top of
+A route that upgraded can't yet ask another thread (`rest::ask`): the client's bytes
+during the wait go to the ask's case function, and the upgrade's isn't called again
+after the reply. A WebSocket's framing isn't provided: a package on top of
 `rest::upgrade` can add it. The tutorial builds an upload with `body_in_pieces`
 ([page 11](tutorial/11-bodies-in-pieces.md)), and an export and downloads with `begin`
 and `file` ([page 12](tutorial/12-long-responses.md));
