@@ -1,8 +1,8 @@
 # 021: Cut the latency of reads beside uploads
 
-Status: in-progress (asked for 2026-10-15; cause found on macOS 2026-10-15, the Linux
-check and the fix still to do). Shares its cause with task 020, so it blocks v0.1.0 with
-it, after task 023 (2026-10-15).
+Status: in-progress (asked for 2026-10-15; cause found and fixed on macOS 2026-10-15,
+the Linux check still to do). Shares its cause with task 020, so it blocks v0.1.0 with
+it (2026-10-15).
 
 With uploads running, tier C's reads at a fixed 1,700 a second reach a p99 of 20.4-28.1
 ms on goose-rest's io_uring loop against 4.8-7.5 ms on goose-http alone, and 13.8-16.1 ms
@@ -76,3 +76,11 @@ program can make with `rest::body`, listed with its gotcha note in task 020's fi
 
 On Linux, check that the stall matches the epoll loop's 13.8-16.1 ms p99, and whether
 io_uring's larger body pieces change it.
+
+## The fix (2026-10-15)
+
+Tier D's import and attachment routes now read their bodies piece by piece, with
+`rest::body_in_pieces` (task 020, "Fix 2"). On macOS, the polls' p99 beside uploads
+went from 24.4 to 21.0 ms, against goose-http's 21.7, and the upload rate from 892 to
+962 a second, goose-http's. The Linux rerun, the first and third criteria, says whether
+the stall is gone there.

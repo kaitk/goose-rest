@@ -1,7 +1,7 @@
 # 020: Find where goose-rest's memory goes
 
-Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fix 1 done
-on macOS 2026-10-15, the Linux rerun and fixes 2 and 3 still to do). Blocks v0.1.0, after task 023 (2026-10-15).
+Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fixes 1 and 2
+done on macOS 2026-10-15, the Linux rerun and fix 3 still to do). Blocks v0.1.0, after task 023 (2026-10-15).
 
 At saturation on io_uring, goose-rest holds 2.0-6.7 times goose-http's peak RSS: 33 MB
 against 12 on tier A, 96 against 30 on B, 140 against 71 on C, and 387 against 58 on C
@@ -345,3 +345,88 @@ rerun settles it, with 1, 2, and 4 workers.
 
 Not done here: uploads (tier D), whose roughly 240 MiB of spill is fix 2, and the Linux
 rerun.
+
+## Fix 2 (2026-10-15)
+
+Tier D's import and attachment routes in `bench/rest/goose-rest/main.goose` now read
+their bodies with `rest::body_in_pieces`. Each piece goes to the same CSV and multipart
+readers as before, which goose-http's server also uses, and the route answers at the
+`END`. A malformed multipart body is answered at its `END`, as goose-http's server
+answers it. The batch and the form routes, of at most 1 MB and 64 KB, still gather
+their bodies with `rest::body`, as goose-http's server gathers them.
+
+What a body's reading keeps between pieces is a `Spool` in the worker's pool, as in
+goose-http's server, and its index in the per-request state (`Heavy.spool`). In the
+state itself, the spool's 8 KB of text fields and the `http::Multipart` would make
+every connection's slot about 10 KB larger, whatever its route. The spool is released at
+the `END`, or at `CLOSED` when the client goes, a chunked body passes its limit, or the
+route fails before the `END`.
+
+### Answers
+
+goose-http's `bench/rest/check.py` passes tiers A to D on the new server, `LOOP=epoll`,
+4 workers. On tier D, it covers each import and attachment sent whole, in 64 KB chunks,
+and in small chunks; malformed CSV and multipart bodies; a missing file; 415; and 413
+for a `Content-Length` and for a chunked body past the limit, followed by an import
+that still succeeds. `bench/rest/tiers/check.py` passes tier M.
+
+### How this was measured
+
+As in [Fix 1](#fix-1-2026-10-15): Apple M1 Pro, 10 cores, 32 GB, macOS 26.3.1 (Darwin
+25.3.0), goose-http's epoll loop on kqueue (`LOOP=epoll`), not Linux. Pinned Goose
+`v2026.1`, `goose build --standalone`, Apple clang 21.0.0. Datasets from goose-http's
+`bench/rest/gen.goose`.
+
+- Servers: goose-rest's server before (`94ed2a4`, after fix 1) and after this change,
+  and goose-http's `bench/rest/goose/rest.goose` at `v0.3.2` with its `mallopt` call
+  removed. Each with `TIER=d`, `JSON=serialize`, `WORKERS=4`.
+- Uploads: each cell a fresh server under `/usr/bin/time -l`, whose "maximum resident
+  set size" is the peak. Idle RSS is `ps -o rss` 3 s after the server listens, and end
+  RSS the same just before it stops. wrk 4.2.0, `-t 1 -c 32`, `tier-d.lua uploads`,
+  5 s warm-up then 15 s.
+- Reads beside uploads, task 021's workload: a fresh server; tier C's
+  `/api/v2/schedule/version` poll at 1,700 requests/s with oha 1.16.0 (`-q 1700
+  --latency-correction -c 64`, 15 s), alone, or after 5 s of the uploads above and
+  beside them.
+- 3 rounds, interleaved by round, then server. The tables show medians, with the
+  rounds' range in brackets where it matters. The machine wasn't kept idle, and a
+  subagent editing docs ran beside the first rounds.
+
+### Results
+
+Uploads, RSS in MiB:
+
+| Server | idle | end | peak |
+|---|---:|---:|---:|
+| goose-http | 53.2 | 54.8 | 71.3 |
+| goose-rest before | 53.4 | 281.4 [274.0-308.8] | 281.4 [274.0-308.8] |
+| goose-rest after | 51.9 | 53.5 | 69.9 |
+
+Uploads, rate and latency:
+
+| Server | Requests/s | p50 | p99 |
+|---|---:|---:|---:|
+| goose-http | 962 (940-963) | 19.8 ms | 110.7 ms |
+| goose-rest before | 892 (868-921) | 23.9 ms | 118.3 ms [114.6-157.4] |
+| goose-rest after | 962 (946-967) | 19.6 ms | 108.2 ms |
+
+The poll's latency beside the uploads:
+
+| Server | p50 | p99 | p99.9 |
+|---|---:|---:|---:|
+| goose-http | 8.8 ms | 21.7 ms | 37.6 ms [33.6-41.5] |
+| goose-rest before | 8.5 ms | 24.4 ms | 30.4 ms |
+| goose-rest after | 8.4 ms | 21.0 ms | 25.7 ms [23.6-27.7] |
+
+Every poll got 200, at the full 1,700/s, on every server and round.
+
+The spill is gone: goose-rest's upload peak falls by 211 MiB, to 1.4 MiB below
+goose-http's, and RSS no longer grows under the uploads (end RSS 1.6 MiB above idle,
+against goose-http's 1.6). The upload rate is goose-http's, where it was 7% lower, and
+the polls' p99 beside the uploads is goose-http's, where it was 2.7 ms higher.
+
+The poll alone varies between rounds on every server, p99 from 0.7 to 6.5 ms, so these
+runs don't separate the servers there. Task 021's stall, a p99 of 13.8-28.1 ms
+beside uploads against goose-http's 0.40-7.5 ms, was measured on Linux. On macOS, the polls beside the
+uploads were within 3 ms of goose-http's before this change. The Linux rerun says
+whether the stall is gone.

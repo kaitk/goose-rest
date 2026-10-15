@@ -43,8 +43,7 @@
 // TIER picks the dataset to load, tier A's by default. JSON=template answers
 // from each record's JSON, written once at startup, with the per-request
 // values added, where the default writes each response's JSON from the
-// records. Tier D's answers are written the one way, as each is new. Its
-// bodies come whole, gathered by rest::body.
+// records. Tier D's answers are written the one way, as each is new.
 import std;
 import os;
 import json;
@@ -1958,10 +1957,21 @@ fn prebuild_heavy() {
     note_at.push(note_json.len);
 }
 
-// Tiers C and D's per-request state. Its error_body writes {"error",
+// Tier D's routes that read their body in pieces (Heavy.waiting).
+enum Waiting {
+    None,
+    Import,
+    Attachment,
+}
+
+// Tiers C and D's per-request state: a tier D route's Waiting variant, and
+// the spool it reads into (spools), or -1. Its error_body writes {"error",
 // "status"}, with the code each status has in the clinic's API, whatever
 // code goose-rest or a route gave.
-struct Heavy { unused: bool = false }
+struct Heavy {
+    waiting: Waiting = Waiting.None,
+    spool: i64 = -1,
+}
 
 fn rest::error_body(body: u8[>..]&, st: const Heavy&, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
     let name = if status == 400 { "bad_request" } else if status == 401 { "unauthorized" }
@@ -2147,9 +2157,9 @@ fn heavy(cx, buf: u8[>..]&, writes: bool) {
             rest::json_bytes(cx, 200, buf);
         };
     } else if writes && http::on(r, "POST", "/api/v3/imports") {
-        authed(cx) { import_csv(cx, buf); };
+        authed(cx) { import_csv(cx); };
     } else if writes && http::on(r, "POST", "/api/v3/attachments") {
-        authed(cx) { attach(cx, buf); };
+        authed(cx) { attach(cx); };
     } else if writes && http::on(r, "POST", "/api/v3/bookings/batch") {
         authed(cx) { batch(cx, buf); };
     } else if writes && http::on(r, "POST", "/api/v3/forms") {
@@ -2161,10 +2171,10 @@ fn heavy(cx, buf: u8[>..]&, writes: bool) {
 
 // Tier D, writes with large bodies, under /api/v3, served beside tier C's
 // reads for the mixed run. Each answer is computed from the body alone, and
-// the data doesn't change. Every body is gathered whole by rest::body, up to
-// its route's limit, and then read: the CSV and the multipart body through
-// the same piece-at-a-time readers goose-http's server feeds as the body
-// arrives, here given the whole body as one piece.
+// the data doesn't change. The CSV and the multipart body are read in pieces
+// as they arrive, through rest::body_in_pieces, as goose-http's server reads
+// them; the batch and the form, of at most 1 MB and 64 KB, are gathered
+// whole by rest::body.
 
 let IMPORT_LIMIT: i64 = 16 * 1024 * 1024;
 let BATCH_LIMIT: i64 = 1024 * 1024;
@@ -2351,11 +2361,27 @@ fn format_cents(out: u8[>..]&, v: i64) {
     digits(out, a % 100, 2);
 }
 
-// POST /imports: the CSV's rows, and each column's count and sum.
-fn import_csv(cx, buf: u8[>..]&) {
+// POST /imports: the CSV's rows, and each column's count and sum. Its
+// pieces go to resume(Waiting.Import).
+fn import_csv(cx) {
     typed(cx, "text/csv");
-    var c = Csv { .. };
-    csv_piece(c, rest::body(cx, IMPORT_LIMIT));
+    rest::body_in_pieces(cx, IMPORT_LIMIT, Waiting.Import);
+    cx.state.spool = spools.alloc_index(Spool { .. });
+}
+
+fn resume(w: Waiting.Import, cx) {
+    if cx.kind == http::BODY {
+        csv_piece(spools[cx.state.spool].csv, cx.body);
+    } else if cx.kind == http::END {
+        var buf: u8[>..] = [];
+        import_answer(cx, spools[cx.state.spool].csv, buf);
+        release(cx);
+    } else if cx.kind == http::CLOSED {
+        release(cx);
+    }
+}
+
+fn import_answer(cx, c: Csv&, buf: u8[>..]&) {
     csv_end(c);
     guard c.bad == 0 else {
         format(buf, "{\"error\":\"bad_csv\",\"record\":", c.bad, "}");
@@ -2428,10 +2454,13 @@ fn join(sp: Spool&, data: const u8[:]) {
     sp.len = n;
 }
 
-fn release(k: i64) {
+fn release(cx) {
+    let k = cx.state.spool;
+    guard k >= 0 else { return; }
     let sp .= spools[k];
     if sp.cap > 0 { spill.free_slice(spill[sp.at..sp.at + sp.cap]); }
     spools.free(k);
+    cx.state.spool = -1;
 }
 
 fn part_head(sp: Spool&, fields: const u8[:]) {
@@ -2524,22 +2553,37 @@ fn attach_piece(sp: Spool&, data: const u8[:]) {
     if !ok { sp.failed = true; }
 }
 
-// POST /attachments: the text fields, and the file's size and Adler-32. The
-// spool is released before the route answers, as rest::fail leaves at once.
-fn attach(cx, buf: u8[>..]&) {
+// POST /attachments: the text fields, and the file's size and Adler-32. Its
+// pieces go to resume(Waiting.Attachment). A route that fails after
+// rest::body_in_pieces gets CLOSED, which releases the spool.
+fn attach(cx) {
     typed(cx, "multipart/form-data");
-    let body = rest::body(cx, IMPORT_LIMIT);
-    let k = spools.alloc_index(Spool { .. });
-    let status = attach_answer(spools[k], cx.req, body, buf);
-    release(k);
-    guard status != 400 else { bad_request(cx); }
-    rest::json_bytes(cx, status, buf);
+    rest::body_in_pieces(cx, IMPORT_LIMIT, Waiting.Attachment);
+    cx.state.spool = spools.alloc_index(Spool { .. });
+    guard http::start_multipart(cx.req, spools[cx.state.spool].parts) else { bad_request(cx); }
 }
 
+// A malformed body is answered at its END, as goose-http's server answers
+// it. The spool is released before the route answers, as rest::fail leaves
+// at once.
+fn resume(w: Waiting.Attachment, cx) {
+    if cx.kind == http::BODY {
+        attach_piece(spools[cx.state.spool], cx.body);
+    } else if cx.kind == http::END {
+        var buf: u8[>..] = [];
+        let status = attach_answer(spools[cx.state.spool], buf);
+        release(cx);
+        guard status != 400 else { bad_request(cx); }
+        rest::json_bytes(cx, status, buf);
+    } else if cx.kind == http::CLOSED {
+        release(cx);
+    }
+}
+
+fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+
 // The multipart body's answer into buf, and its status.
-fn attach_answer(sp: Spool&, req: const http::Request&, body: const u8[:], buf: u8[>..]&) -> i32 {
-    guard http::start_multipart(req, sp.parts) else { return 400; }
-    attach_piece(sp, body);
+fn attach_answer(sp: Spool&, buf: u8[>..]&) -> i32 {
     guard !sp.failed && http::multipart_done(sp.parts) else { return 400; }
     guard sp.files > 0 else {
         buf.append("{\"error\":\"invalid\",\"errors\":[{\"field\":\"file\",\"message\":\"is required\"}]}");
@@ -2896,6 +2940,10 @@ fn tier_b(cx) {
 }
 
 fn tier_c(cx, writes: bool) {
+    if rest::resumed(cx) {
+        rest::route(cx) { resume(cx.state.waiting, cx); };
+        return;
+    }
     var buf: u8[>..] = [];
     rest::route(cx) { heavy(cx, buf, writes); };
 }
