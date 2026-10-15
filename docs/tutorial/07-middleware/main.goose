@@ -12,6 +12,16 @@ inline fn tenant<F>(cx) {
     F(id);
 }
 
+// The routes that need the token and a tenant: one level for a scope.
+inline fn member_routes<F>(cx) {
+    rest::route(cx) {
+        rest::bearer(cx) { token =>
+            guard token == "secret" else { rest::invalid_token(cx); }
+            tenant(cx) { id => F(id); };
+        };
+    };
+}
+
 fn handle(cx) {
     // Outside every route, so that its errors get the timing and CORS fields too.
     rest::timed(cx) {
@@ -33,6 +43,9 @@ fn handle(cx) {
                             admin(cx);
                         };
                     };
+                } else if rest::scope(cx, "/v2") {
+                    // The token and a tenant, as the member_routes stack.
+                    member_routes(cx) { id => v1(cx, id); };
                 } else {
                     rest::otherwise(cx);
                 }

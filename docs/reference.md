@@ -62,6 +62,8 @@ can have its own, and a public route none.
 `timed` and `cors` go outside `rest::route`, so that the errors it answers get their
 fields; `bearer` and anything else that fails goes inside it. A request has one route:
 routes nested in routes don't inline ([architecture](architecture/README.md#inlining)).
+A program's own `inline fn` can nest several middleware and pass its block on, so a scope
+has one level: [A stack of your own](tutorial/07-middleware.md#a-stack-of-your-own).
 
 Which answers get the fields:
 

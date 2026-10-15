@@ -9,3 +9,6 @@ req GET /admin/reindex -H 'Authorization: Bearer secret'
 req GET /v1/projects -H 'X-Tenant: acme' -H 'Origin: https://app.example'
 req GET /health -H 'Origin: https://evil.example'
 req OPTIONS /admin/reindex -H 'Origin: https://app.example' -H 'Access-Control-Request-Method: POST'
+req GET /v2/projects
+req GET /v2/projects -H 'Authorization: Bearer secret'
+req GET /v2/projects -H 'Authorization: Bearer secret' -H 'X-Tenant: acme'

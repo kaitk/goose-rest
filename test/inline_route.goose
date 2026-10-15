@@ -1,10 +1,13 @@
 // A handler behind goose-rest's middleware, rest::timed, rest::cors, a
 // prefix scope, and rest::bearer, around rest::route and a failure two calls
-// below it. scripts/test.sh compiles it with -O2 and checks that the C holds
-// no function of the middleware's, route's, or the helpers that fail: all of
-// it is inlined into handle, each early answer a jump, as in spike 04. handle
-// itself stays a function, as a function given a large block does
-// (docs/goose-findings.md).
+// below it, written out under /v1 and as a stack calling a stack under /v2:
+// member_routes calls signed_in_routes, and the token passes through both
+// blocks.
+// scripts/test.sh compiles it with -O2 and checks that the C holds no
+// function of the middleware's, route's, the stacks', or the helpers that
+// fail: all of it is inlined into handle, each early answer a jump, as in
+// spike 04. handle itself stays a function, as a function given a large block
+// does (docs/goose-findings.md).
 import std;
 import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../";
@@ -24,33 +27,54 @@ fn load(cx, user: i64, id: i64) -> Item {
     return it;
 }
 
-fn handle(cx) {
+inline fn signed_in_routes<F>(cx) {
+    rest::route(cx) {
+        rest::bearer(cx) { token => F(token); };
+    };
+}
+
+inline fn member_routes<F>(cx) {
     rest::timed(cx, false) {
         rest::cors(cx, rest::Cors { origins: "https://a.example", .. }) {
-            rest::routes(cx) { cx =>
-                if rest::scope(cx, "/v1") {
-                    rest::route(cx) {
-                        rest::bearer(cx) { token =>
-                            let user = rest::int_of(cx, token, "token");
-                            if rest::on(cx, "GET", "/items/:id") {
-                                rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id")));
-                            } else {
-                                rest::otherwise(cx);
-                            }
-                        };
+            signed_in_routes(cx) { token => F(token); };
+        };
+    };
+}
+
+fn handle(cx) {
+    rest::routes(cx) { cx =>
+        if rest::scope(cx, "/v1") {
+            rest::cors(cx, rest::Cors { origins: "https://a.example", .. }) {
+                rest::route(cx) {
+                    rest::bearer(cx) { token =>
+                        let user = rest::int_of(cx, token, "token");
+                        if rest::on(cx, "GET", "/items/:id") {
+                            rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id")));
+                        } else {
+                            rest::otherwise(cx);
+                        }
                     };
+                };
+            };
+        } else if rest::scope(cx, "/v2") {
+            member_routes(cx) { token =>
+                let user = rest::int_of(cx, token, "token");
+                if rest::on(cx, "GET", "/items/:id") {
+                    rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id")));
                 } else {
                     rest::otherwise(cx);
                 }
             };
-        };
+        } else {
+            rest::otherwise(cx);
+        }
     };
 }
 
 fn main() {
     var out: u8[>..] = [];
-    for id in ["4", "0", "5"] {
-        let text = str("GET /v1/items/", id, " HTTP/1.1\r\nHost: x\r\nOrigin: https://a.example\r\n",
+    for target in ["/v1/items/4", "/v1/items/0", "/v1/items/5", "/v2/items/4", "/v2/items/0", "/v2/items/5"] {
+        let text = str("GET ", target, " HTTP/1.1\r\nHost: x\r\nOrigin: https://a.example\r\n",
                        "Authorization: Bearer 1\r\n\r\n");
         let req, status = http::parse(text);
         var keep = true;

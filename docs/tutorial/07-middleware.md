@@ -26,6 +26,7 @@ fn handle(cx) {
                             admin(cx);
                         };
                     };
+                    ...
                 } else {
                     rest::otherwise(cx);
                 }
@@ -70,6 +71,51 @@ a size threshold. A block of routes immediately exceeds that threshold, so a pla
 inlined too. `inline fn` folds the middleware into the handler, which compiles to one
 C function with a jump for each early answer
 ([architecture](../architecture/README.md#inlining)).
+
+## A stack of your own
+
+Each middleware adds a level around every scope's routes, written again at each scope.
+A stack is an `inline fn` that nests the middleware and passes its own block on, so each
+scope has one level however many middleware the stack holds. The program's
+`member_routes` stack, for the routes a tenant's signed-in members use, holds the
+route, the token check, and `tenant`:
+
+```rust
+inline fn member_routes<F>(cx) {
+    rest::route(cx) {
+        rest::bearer(cx) { token =>
+            guard token == "secret" else { rest::invalid_token(cx); }
+            tenant(cx) { id => F(id); };
+        };
+    };
+}
+```
+
+A scope uses it as one level:
+
+```rust
+                } else if rest::scope(cx, "/v2") {
+                    // The token and a tenant, as the member_routes stack.
+                    member_routes(cx) { id => v1(cx, id); };
+```
+
+The call compiles to the same code as the nesting written out, one C function with a
+jump for each early answer. A stack can call another stack, and a block can take an
+argument, as `F(id)` does.
+
+A stack is code, not a value. A block is a compile-time argument, so a program can't
+build a list of middleware at run time, as Actix's `wrap` or Tower's `Layer` does.
+
+A stack keeps the rules of the nesting it replaces:
+
+- Middleware that adds fields to every answer, such as `timed` and `cors`, goes outside
+  `rest::route`, and middleware that can fail goes inside it.
+- A request opens one `rest::route`. A stack says whether it opens it, as `member_routes` does,
+  and code inside the route that a stack opens opens none.
+- A stack is an `inline fn`. A plain `fn` that takes a block of routes stays a call and
+  keeps the middleware around it out of line.
+
+## Middleware with a schema
 
 With a schema, wrap `dispatch` in middleware, as [`05-schema`](05-schema/main.goose)
 does with `timed`:

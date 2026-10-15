@@ -8,3 +8,6 @@ GET /admin/reindex 405 {"error":"method_not_allowed"}
 GET /v1/projects 200 the projects of acme
 GET /health 403 {"error":"origin_not_allowed"}
 OPTIONS /admin/reindex 204
+GET /v2/projects 401 {"error":"unauthenticated"}
+GET /v2/projects 400 {"error":"tenant_required"}
+GET /v2/projects 200 the projects of acme

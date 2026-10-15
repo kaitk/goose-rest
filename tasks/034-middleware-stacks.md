@@ -1,6 +1,6 @@
 # 034: Middleware stacks of the program's own
 
-Status: todo (asked for 2026-10-15)
+Status: in-progress (2026-10-15; the generator question open)
 
 Middleware composes by nesting blocks, so each one a program adds takes every handler a
 level deeper: timing, CORS, the route, a token, a tenant, and a rate limit make six
@@ -9,7 +9,7 @@ them and passes its own block on gives the program one name for the whole stack,
 each scope one level:
 
 ```rust
-inline fn api<F>(cx) {
+inline fn member_routes<F>(cx) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
             rest::route(cx) {
@@ -22,7 +22,7 @@ inline fn api<F>(cx) {
     };
 }
 
-api(cx) { token => projects(cx, token); };
+member_routes(cx) { token => projects(cx, token); };
 ```
 
 This works today, and costs what the nesting written out does: spike 04 found that a
@@ -40,16 +40,24 @@ a call and keeps what's around it out of line.
 
 ## Acceptance criteria
 
-- [ ] `test/inline_route.goose` covers a stack calling a stack, two levels, whose block
+- [x] `test/inline_route.goose` covers a stack calling a stack, two levels, whose block
       takes an argument, and its check still finds one handler function in the C
-- [ ] Tutorial page 7 has a section on a stack of the program's own: the example, why
+- [x] Tutorial page 7 has a section on a stack of the program's own: the example, why
       (one level per scope, however many middleware), and the three rules above
-- [ ] Page 7 gives the naming convention, so a call reads as what holds inside it
-      (2026-10-15): a middleware of the program's own is named for that, an adjective
-      or participle, as `rest::timed` is (`authed`, `tenanted`, `limited`); a stack is
-      named for the part of the API it serves, a noun (`public`, `api`, `admin`,
-      `partner`); a block's parameter for what it is given (`token`, `tenant`). Page
-      7's `tenant` becomes `tenanted`, and the example's stack is `api`
-- [ ] The reference's "Middleware" section points to it
+- Moved to task 035 (2026-10-15): the naming convention, with verbs for middleware
+  rather than participles such as `authed`
+- [x] The reference's "Middleware" section points to it
 - [ ] Open, recorded here when decided: whether the generator takes a program's stack
       per OpenAPI security scheme, rather than nesting fixed calls per operation
+
+## Found (2026-10-15)
+
+A middleware used at two call sites keeps its plain helpers as calls. With `rest::timed`
+at two places in `test/inline_route.goose`, `rest::fill_timing` stayed a function: Goose
+inlines a plain function by itself only where it's called once or is small, and it's
+neither an `inline fn` nor called once then. The handler stays one function, and the
+helper fails nowhere, so the architecture's rules hold, at a call per timed answer. The
+test keeps `timed` at one place, so its check that `fill_timing` is inlined still
+guards the common case. A program with `timed` in two stacks gets the call; making
+`fill_timing` an `inline fn` would remove it, at the cost of its code at each place.
+Not measured.
