@@ -39,3 +39,42 @@ fn receive<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
     x.mode |= RECEIVING;
     cx.state.waiting = w;
 }
+
+// Begins a response sent in pieces, with status, a Content-Type of
+// content_type unless it's empty, and a body of length bytes, or -1 for one
+// of a length not known yet, chunked. w goes in cx.state.waiting, and the
+// handler is called again with http::MORE each time the client has taken
+// what was sent, and sends the next piece with rest::send, until rest::end.
+// A piece of about 16 KB each time keeps within Config.max_queued. A
+// handler that neither sends nor ends at MORE closes the connection. The
+// handler gets http::CLOSED once if the response ends otherwise: when the
+// client goes, or when the route fails with it open, which cuts it short
+// (rest::route). A HEAD request, or a status without a body, gets the head
+// alone, and no calls. Begun after rest::receive, the pieces of the body
+// still come, then MORE once it has ended.
+fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], length: i64, w) {
+    http::begin(cx.out, status, length);
+    if content_type.len > 0 { http::field(cx.out, "Content-Type", content_type); }
+    if cx.out.head || cx.out.stream.bodyless {
+        http::end(cx.out);
+        return;
+    }
+    cx.state.waiting = w;
+    var x .= cx.ex;
+    guard x else { return; }
+    x.mode |= SENDING;
+}
+
+// Sends data, the next piece of the response rest::begin began, or bytes as
+// they are on a connection rest::upgrade took.
+fn send(cx, data: const u8[:]) { http::send(cx.out, data); }
+
+// Ends the response rest::begin began, with trailers when it's chunked
+// (http::end), or closes a connection rest::upgrade took. The route has
+// finished: it gets no more calls, CLOSED included.
+fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
+    http::end(cx.out, trailers);
+    var x .= cx.ex;
+    guard x else { return; }
+    x.mode = 0;
+}

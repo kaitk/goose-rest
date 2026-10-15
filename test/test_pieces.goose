@@ -1,12 +1,14 @@
 // Bodies read in pieces with rest::receive, through rest::serve_one: whole
 // and in pieces, the limit, a failure or an answer before the END, a client
-// that hangs up, and rest::body beside it. scripts/test-unit.sh runs this
-// through TinyCC.
+// that hangs up, and rest::body beside it; and responses sent in pieces with
+// rest::begin, chunked and with a length, for HEAD, cut short by a failure,
+// and begun while the body is read. scripts/test-unit.sh runs this through
+// TinyCC.
 import std;
 import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../";
 
-enum Waiting { None, Upload }
+enum Waiting { None, Upload, Export { rows: i64 }, Echo }
 
 struct St { waiting: Waiting = Waiting.None, size: i64 = 0 }
 
@@ -118,9 +120,86 @@ fn test_body_beside() {
     same(l2, "C ", "body after receive's calls");
 }
 
+// A row at each MORE, up to w.rows, and then the end; row 2 of 99 fails.
+fn resume(w: Waiting.Export, cx) {
+    if cx.kind == http::MORE {
+        cx.state.size++;
+        format(cx.app.log, "M", cx.state.size, " ");
+        if w.rows == 99 && cx.state.size == 2 { rest::fail(cx, 500, "broken"); }
+        rest::send(cx, str("row", cx.state.size, "\n"));
+        if cx.state.size == w.rows { rest::end(cx); }
+    } else if cx.kind == http::CLOSED {
+        cx.app.log.append("C ");
+    }
+}
+
+// Sends each piece of the body back as it comes.
+fn resume(w: Waiting.Echo, cx) {
+    if cx.kind == http::BODY {
+        format(cx.app.log, "B", cx.body.len, " ");
+        rest::send(cx, cx.body[..min(cx.body.len, 4)]);
+    } else if cx.kind == http::END {
+        cx.app.log.append("E ");
+        rest::end(cx);
+    } else if cx.kind == http::CLOSED {
+        cx.app.log.append("C ");
+    }
+}
+
+// A response of rows rows, with a Content-Length of length, or chunked.
+fn rows_of(text: const u8[:], rows: i64, length: i64 = -1) -> u8[>..], u8[>..] {
+    var log: u8[>..] = [];
+    var app = App { log: log };
+    let out = rest::serve_one(text, app, St { .. }) { cx =>
+        if rest::resumed(cx) {
+            resume(cx.state.waiting, cx);
+        } else {
+            rest::begin(cx, 200, "text/csv", length, Waiting.Export { rows: rows });
+        }
+    };
+    return out, log;
+}
+
+fn test_begin() {
+    let get = "GET /export HTTP/1.1\r\n\r\n";
+    let chunked, l1 = rows_of(get, 3);
+    same(status_of(chunked), "HTTP/1.1 200 OK", "chunked");
+    same(body_of(chunked), "5\r\nrow1\n\r\n5\r\nrow2\n\r\n5\r\nrow3\n\r\n0\r\n\r\n", "chunked's body");
+    same(l1, "M1 M2 M3 ", "chunked's calls");
+    let sized, l2 = rows_of(get, 2, 10);
+    same(sized, "HTTP/1.1 200 OK\r\nContent-Length: 10\r\nContent-Type: text/csv\r\n\r\nrow1\nrow2\n", "sized");
+    same(l2, "M1 M2 ", "sized's calls");
+    // HEAD: the head alone, and no calls.
+    let head, l3 = rows_of("HEAD /export HTTP/1.1\r\n\r\n", 3);
+    same(head, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: text/csv\r\n\r\n", "HEAD");
+    same(l3, "", "HEAD's calls");
+    // A failure with the response open cuts it short, then CLOSED.
+    let cut, l4 = rows_of(get, 99);
+    same(body_of(cut), "5\r\nrow1\n\r\n", "cut short");
+    same(l4, "M1 M2 C ", "cut short's calls");
+}
+
+// A response begun while the body is read: each piece's first bytes back.
+fn test_echo() {
+    var log: u8[>..] = [];
+    var app = App { log: log };
+    let out = rest::serve_one(post("", 20000), app, St { .. }) { cx =>
+        if rest::resumed(cx) {
+            resume(cx.state.waiting, cx);
+        } else {
+            rest::receive(cx, 1 << 20, Waiting.Echo);
+            rest::begin(cx, 200, "text/plain", -1, Waiting.Echo);
+        }
+    };
+    same(body_of(out), "4\r\nabcd\r\n4\r\ncdef\r\n4\r\nefgh\r\n0\r\n\r\n", "echo");
+    same(log, "B8192 B8192 B3616 E ", "echo's calls");
+}
+
 fn main() {
     test_receive();
     test_ending_early();
     test_body_beside();
+    test_begin();
+    test_echo();
     print("test_pieces: ok");
 }

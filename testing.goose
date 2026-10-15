@@ -14,7 +14,9 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 // it, so H runs again once it's whole if it called rest::body, or passed on
 // to a route that called rest::receive. A body shorter than its
 // Content-Length is a client that hung up midway: its pieces come, then
-// http::CLOSED in place of http::END. An HTTP/1.1 request
+// http::CLOSED in place of http::END. A response sent in pieces
+// (rest::begin) is taken to its end, H called with http::MORE as for a
+// client that keeps up. An HTTP/1.1 request
 // without Host is given "Host: localhost". A request goose-http refuses gets
 // its refusal, and H that doesn't answer 500, as from the server.
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = http::Config { .. }) -> u8[>..] {
@@ -51,6 +53,23 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
         }
         deliver(http::Event { kind: if short { http::CLOSED } else { http::END }, req: req, data: "",
                               whole: false, trailers: "" }, st, app, reply, spill) { cx => H(cx) };
+    }
+    // MORE while a response is open, as the loop calls it for a client that
+    // keeps up. A MORE that neither sends nor ends closes the connection, as
+    // the loop closes it, and so does an upgraded connection's client here.
+    let none = http::Event { kind: http::MORE, req: req, data: "", whole: false, trailers: "" };
+    while stream.open && !stream.waiting {
+        let before = out.len;
+        stream.moved = false;
+        let raw = stream.framing == http::Framing.Raw;
+        if !raw {
+            deliver(none, st, app, reply, spill) { cx => H(cx) };
+        }
+        if raw || (out.len == before && !stream.moved && stream.open && !stream.waiting) {
+            deliver(http::Event { kind: http::CLOSED, req: req, data: "", whole: false, trailers: "" },
+                    st, app, reply, spill) { cx => H(cx) };
+            break;
+        }
     }
     if out.len == 0 { http::refuse(out, 500, ""); }
     return out;
