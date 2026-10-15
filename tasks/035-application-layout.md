@@ -35,7 +35,17 @@ they know laid out, rather than a new one.
    store, by what the data is (task 027).
 5. **Errors.** One shape, and each domain's codes in one place.
 6. **Naming.** Files, rules, `Waiting` variants, case functions, and stacks.
-7. **Testing.** Rules as plain calls, routes with `rest::serve_one` (replies included),
+7. **Data access, once goose-rest has database helpers and transactions** (2026-10-15).
+   minupatsient-api's pattern: per feature `routes`, `Service`, `Dao`, and
+   `Validations`, and in `common/<entity>/` what several features use; a DAO function
+   is one query and takes the transaction, and a service function opens one
+   transaction and combines DAO calls with it. In goose-rest a worker doesn't block, so
+   the database is a service thread the route asks: a service function is one job on
+   that thread, run in one transaction, so a transaction never spans a worker's wait,
+   and "service" keeps the meaning it has in goose-rest, the thread a route asks.
+   Validation runs in the route, before the ask. The DAO layer's name is open: `dao`,
+   or `queries` as snowtime calls its own, one query per function.
+8. **Testing.** Rules as plain calls, routes with `rest::serve_one` (replies included),
    and a few tests over HTTP.
 
 ## Acceptance criteria
@@ -47,3 +57,5 @@ they know laid out, rather than a new one.
 - [ ] Each convention given once, with its reason, and linked from the mechanism page
       it builds on (page 7 links its naming, page 8 its state, page 16 its testing)
 - [ ] The index lists the part, and the README's tutorial link mentions it
+- [ ] Later, once goose-rest has database helpers and transactions: the data-access
+      page (point 7), with the DAO layer's name decided
