@@ -31,7 +31,10 @@ scripts work around.
 
 The REST servers live under `rest/`:
 
-- `goose-rest/`: goose-http's REST tier server, ported onto goose-rest.
+- `goose-rest/`: goose-http's REST tier server at goose-http's pin, ported onto
+  goose-rest: its routes, extractors, and middleware are goose-rest's, and it loads,
+  hands over, and holds its records as goose-http's server does, its prebuilt JSON in
+  goose-http's shared store.
 - `axum/` and `actix-web/`, with `rust-app/` the records and JSON they share.
 - `dusty/`: dusty with a route per path.
 - `tiers/`: goose-rest's own tiers F, R, and M, with their checker, loads, and summary.
