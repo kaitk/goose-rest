@@ -45,11 +45,11 @@ pass their tests on arm64 Linux.
 | 🟢 | Bearer tokens | 401 with `WWW-Authenticate`, and the token for your check. |
 | 🟢 | Server-Timing and access log | One middleware, or the timing alone. |
 | 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#middleware)). |
-| ⚪ | JWT | The bearer middleware hands your check the token. |
-| ⚪ | Sessions | |
-| ⚪ | Compression | goose-http compresses responses. |
-| ⚪ | Rate limiting | |
-| ⚪ | Default headers | |
+| ⚪ | JWT | No verifier yet; the bearer middleware hands your own check the token. |
+| ⚪ | Sessions | No session store yet; read the cookie with `rest::cookie`. |
+| ⚪ | Compression | No middleware yet; goose-http compresses responses. |
+| ⚪ | Rate limiting | No limiter yet; goose-http's limits and timeouts per connection apply. |
+| ⚪ | Default headers | No middleware yet; add fields to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
 
 ## Quick start
 
