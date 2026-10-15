@@ -32,7 +32,8 @@ what a page shows is what the code does.
 13. [Work that waits](13-waiting.md): a database behind a service, `rest::ask`, `rest::answer_value`
 14. [Two services, or a reply in pieces](14-two-services.md): `rest::relay`, a case function that asks again
 15. [Limits](15-limits.md): 504, 503, a client that has gone, a slow client, a job the client polls
-16. [Embedded Linux](16-embedded-linux.md): one worker and small limits on a board
+16. [Testing the application](16-testing.md): use cases as plain calls, routes up to their ask, timing over HTTP
+17. [Embedded Linux](17-embedded-linux.md): one worker and small limits on a board
 
 ## Where to go next
 

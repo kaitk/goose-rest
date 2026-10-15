@@ -201,4 +201,7 @@ it, so the block runs again once it's whole. A request goose-http refuses gets i
 refusal, and a block that writes no answer gets 500. An HTTP/1.1 request without `Host`
 is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 `Content-Length`. The response has no `Date` or `Server` field
-([tutorial](tutorial/09-testing.md)).
+([tutorial](tutorial/09-testing.md)). `serve_one` runs no loop: a route that calls
+`rest::ask` sends its job, or gets 503 for a full box, but no reply comes, so the
+handler never runs with `rest::woken` and the answer is 500
+([tutorial](tutorial/16-testing.md)).

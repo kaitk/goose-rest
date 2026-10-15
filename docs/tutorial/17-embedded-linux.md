@@ -1,4 +1,4 @@
-# 16. Embedded Linux
+# 17. Embedded Linux
 
 goose-rest is Goose with no C of its own, so a program cross-builds for an embedded Linux
 board as goose-http's do, with `goose build --cc` and the board's C cross compiler.
@@ -33,4 +33,4 @@ that was measured.
 
 ---
 
-[Index](README.md) · Previous: [15. Limits](15-limits.md)
+[Index](README.md) · Previous: [16. Testing the application](16-testing.md)
