@@ -30,7 +30,13 @@ use tower_http::limit::RequestBodyLimitLayer;
 use crate::extract::{self as ex, ContentType, R, bearer, drain};
 
 pub fn routes() -> Router {
-    let not_found = || async { R(writes::not_found()) };
+    // route_layer's drain doesn't reach the fallbacks, so they read the body
+    // themselves before the 404.
+    let not_found = |body: Body| async move {
+        let mut stream = body.into_data_stream();
+        while let Some(Ok(_)) = stream.next().await {}
+        R(writes::not_found())
+    };
     let limited = |route: MethodRouter, limit: usize| -> MethodRouter {
         route.layer::<_, Infallible>(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(limit))
     };

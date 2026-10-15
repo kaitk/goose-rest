@@ -102,6 +102,9 @@ How tier D reads each body:
   this way on some runs: after tier B's 403s for a missing Origin, tier D's 401s and
   415s, and an attachment whose last chunk multer, stopping at the close delimiter,
   never read. The drain costs a shared stream and a lock per body frame on those routes.
+  `route_layer` doesn't wrap the fallbacks, so tier D's 404s read the body themselves:
+  without that, `check.py d` failed every run on Linux after `POST /api/v3/nothing`
+  (2026-10-15).
 - The attachment route feeds multer, the parser axum's `Multipart` extractor wraps, from
   `Body::into_data_stream`, rather than use `Multipart`; the answers are the same.
 - `Query` refuses a repeated key with a 400 (serde_urlencoded's duplicate field), where
