@@ -39,7 +39,7 @@ they know laid out, rather than a new one.
    store, by what the data is (task 027).
 5. **Errors.** One shape, and each domain's codes in one place.
 6. **Naming.** The files of a domain by their kind, the same in every domain and in
-   `common/`; and the names inside them: types, routes, rules, services, data-access
+   `common/`; and the names inside them: structs, routes, rules, services, data-access
    functions, `Waiting` variants, case functions, and stacks.
 7. **Data access, once goose-rest has database helpers and transactions** (2026-10-15).
    Two layers per domain, and in `common/` for shared entities. A data-access function
@@ -93,8 +93,8 @@ name shape of its own, so a call chain shows the layer:
 | Structs | noun, and `<Verb>Input` | `Project`, `CreateInput` |
 | `Waiting` variant | domain and operation | `Waiting.ProjectCreate` |
 
-Open: whether `rest::scope` matches a parameter in a prefix (`/organizations/:id`) and
-can hand it to `resolve_organization`, or `member_routes` reads the segment itself;
+Open: `rest::scope` matches literal prefixes only, so the member audience's
+`/organizations/:id` waits on task 036, or `member_routes` reads the segment itself;
 and whether a domain's entry is `routes` or `handle`, beside the stacks' `_routes`.
 
 Later, in the generator (may become its own task): with one schema for the application,
