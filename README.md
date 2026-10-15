@@ -52,7 +52,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#middleware)). |
 | ⚪ | JWT | No built-in verifier; use your own with the bearer middleware. |
 | ⚪ | Sessions | No session store yet; read cookies with `rest::cookie`. |
-| ⚪ | Compression | No middleware yet; goose-http compresses responses. |
+| 🟢 | Compression | gzip, deflate, and zstd by `Accept-Encoding`, in an optional module; streamed answers aren't compressed ([reference](docs/reference.md#compression)). |
 | ⚪ | Rate limiting | No limiter yet; goose-http's per-connection limits and timeouts apply. |
 | ⚪ | Default headers | No middleware yet; add headers to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
 
@@ -120,6 +120,7 @@ programs to start from, each built and tested with HTTP requests:
 |---|---|
 | [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, a JSON or form body, middleware, and a 4 MB upload alongside the 1 MB default |
 | [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
+| [`compress/`](examples/compress/main.goose) | Answers compressed by `Accept-Encoding`, with the optional `rest.compression` module |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 
 ## Concepts

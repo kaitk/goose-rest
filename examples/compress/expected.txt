@@ -1,0 +1,12 @@
+GET /health 200 ok
+GET /v1/events/7 200 {"id":7,"level":"info","message":"disk check on node-7"}
+GET /v1/events?limit=2 200 [{"id":1,"level":"info","message":"disk check on node-1"},{"id":2,"level":"info","message":"disk check on node-2"}]
+GET /v1/events?limit=x 400 {"error":"invalid_parameter","detail":"limit: integer"}
+GET /v1/nope 404 {"error":"not_found"}
+GET /v1/events?limit=100 200 encoding=none vary=Accept-Encoding sent=5793 body=1564805783/5793
+GET /v1/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=492 body=1564805783/5793
+GET /v1/events?limit=100 200 encoding=deflate vary=Accept-Encoding sent=480 body=1564805783/5793
+GET /v1/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=492 body=1564805783/5793
+GET /v1/events/7 200 encoding=none vary=Accept-Encoding sent=56 body=2088668682/56
+GET /v1/events/0 404 encoding=none vary=Accept-Encoding sent=27 body=1177042288/27
+GET /nope 404 encoding=none vary=Accept-Encoding sent=21 body=401450075/21

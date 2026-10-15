@@ -49,6 +49,7 @@ can have its own, and a public route none.
 |---|---|
 | `rest::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` with a 12-byte duration field padded with trailing spaces, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `rest::timed(cx, false)` skips the log. |
 | `rest::cors(cx, rest::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
+| `rest::compressed(cx) { cx => ... }` | Compresses the answers inside, errors included, by the request's `Accept-Encoding`, with goose-http's gzip, deflate, and zstd. An optional module: [Compression](#compression). |
 | `rest::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `rest::invalid_token(cx)` refuses one. `rest::bearer_token(cx)` returns it, for a generated router's security check. |
 | `rest::scope(cx, "/v1")` | Whether the path starts with the prefix at a segment boundary; `rest::on` calls inside match the rest. `rest::otherwise(cx)` answers 404, 405, and OPTIONS across scopes. |
 
@@ -61,6 +62,52 @@ An answer written later, when a waiting route resumes, gets neither middleware's
 after the response is written, so the body doesn't move. Both `timed` and `cors` take
 the context by reference. CORS looks for a preflight's request-method field only on
 OPTIONS. `bearer_token` uses `http::bearer` and requires a token68 bearer token.
+
+### Compression
+
+`rest::compressed` is in the module `rest.compression`, which `rest` doesn't import, so
+a program without it builds without goose-compress. To use it, declare goose-compress in
+the root file at the commit goose-http's `compression.goose` names, and import the
+module:
+
+```rust
+import http from "github.com/kaitk/goose-http@v0.3.1";
+import compress from "github.com/kaitk/goose-compress@2c7df270b88ed8a00e2d73b6f84d50908cf5a558";
+import rest from "github.com/kaitk/goose-rest@<commit>";
+import rest.compression;
+
+fn handle(cx) {
+    rest::timed(cx) {
+        rest::compressed(cx) { cx =>
+            rest::routes(cx) { cx => ... };
+        };
+    };
+}
+```
+
+The block gets its own context, as `rest::routes`'s does. Its answer goes to a buffer of
+its own, and `compressed` then copies it to the response, compressed as goose-http's
+`http::respond_compressed` would compress it: in the coding `Accept-Encoding` weighs
+highest, zstd before gzip before deflate at equal weights, with `Content-Encoding`, the
+compressed `Content-Length`, and `Vary: Accept-Encoding`. `rest::compressed(cx,
+http::Compression { level: 6, .. })` sets goose-http's options: `min_size` (1024 bytes),
+`level` and `zstd_level` (1), and `zstd` (offered).
+
+| Answer | Gets |
+|---|---|
+| `rest::json`, `json_bytes`, `text`, and errors, of `min_size` bytes or more | Compressed, with `Vary` |
+| Shorter, HEAD, 206, or to a request that takes no coding | `Vary` alone |
+| A type `http::compressible` refuses, such as `image/png`; one with a `Content-Encoding` already | As written |
+| Without a body (`rest::empty`, 204, 304) | As written |
+| Begun with `http::begin` and sent in pieces, such as `rest::relay`'s reply in pieces | As written, uncompressed |
+
+Put `compressed` outside `rest::route`, so that the route's errors are compressed, and
+inside `timed`, which then logs the compressed size. CORS and other fields added inside
+it are kept. An answer written after the block returns, when a waiting route resumes,
+is compressed only if the resumed handler runs inside `compressed` too. Each answer
+inside is copied once, compressed or not: the response buffer can't shrink while a
+handler holds the request. Request bodies sent with a `Content-Encoding` aren't
+decoded.
 
 Declare your own middleware that takes a block as `inline fn`, as goose-rest's own are:
 

@@ -19,10 +19,12 @@ runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error s
 extract.goose     the extractors: parameters, headers, cookies, take, once
 middleware.goose  CORS, bearer, timed, and scope
 waiting.goose     ask another thread, and resume with its reply
+compression.goose rest::compressed, a module rest doesn't import (goose-compress)
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
-examples/         JSON APIs with and without a schema, waiting on a thread, and a device
+examples/         JSON APIs with and without a schema, waiting on a thread, compressed
+                  answers, and a device
 test/             unit tests, test_*.goose, each a root file; test/gen/ golden files
 spikes/           language checks the design relies on, one folder each with a README
 bench/            benchmark servers, scripts, and results (bench/README.md)

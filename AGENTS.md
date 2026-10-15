@@ -114,6 +114,10 @@ reference each spike's README names. A root that declares goose-http at another 
 than `rest.goose` gets a warning, and from another source an error, so a test can't
 point at a local goose-http checkout instead.
 
+`compression.goose`, the programs that import it, and `docs/reference.md` declare
+goose-compress at the commit the pinned goose-http's `compression.goose` names. When
+the new goose-http names another, change it in the same commit (2026-10-15).
+
 ## Generated code
 
 - Generated `_gen.goose` files are never edited by hand. Change the generator or the
