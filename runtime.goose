@@ -340,14 +340,14 @@ fn release(g: Exchange&, spill: u8[>..]&) {
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
 // runs twice up to its first rest::body. After rest::receive, 500
-// body_read_in_pieces.
+// body_already_read.
 fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     var g .= cx.ex;
     guard g else {
         if cx.body.len > limit { fail(cx, 413, "payload_too_large"); }
         return cx.body;
     }
-    guard (g.mode & RECEIVING) == 0 else { fail(cx, 500, "body_read_in_pieces"); }
+    guard (g.mode & RECEIVING) == 0 else { fail(cx, 500, "body_already_read"); }
     if g.limit == 0 { g.limit = limit; }
     if g.pending {
         if !cx.req.chunked && cx.req.body > g.limit { fail(cx, 413, "payload_too_large"); }

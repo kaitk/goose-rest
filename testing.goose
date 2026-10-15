@@ -10,8 +10,11 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 // rest::route: the status line, the fields, and the body, without Date or
 // Server. app is the worker's state, fresh the per-request state, and cfg the
 // limits goose-http applies. A body that doesn't fit in cfg.max_head with
-// its head comes in pieces and is gathered as serve gathers it, so H runs
-// again once it's whole if it called rest::body. An HTTP/1.1 request
+// its head comes in pieces of cfg.max_head bytes: gathered as serve gathers
+// it, so H runs again once it's whole if it called rest::body, or passed on
+// to a route that called rest::receive. A body shorter than its
+// Content-Length is a client that hung up midway: its pieces come, then
+// http::CLOSED in place of http::END. An HTTP/1.1 request
 // without Host is given "Host: localhost". A request goose-http refuses gets
 // its refusal, and H that doesn't answer 500, as from the server.
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = http::Config { .. }) -> u8[>..] {
@@ -27,7 +30,8 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
         assert(false);
     }
     let body = full[req.len..min(full.len, req.len + req.body)];
-    let whole = body.len <= cfg.max_head - req.len;
+    let short = body.len < req.body;
+    let whole = !short && body.len <= cfg.max_head - req.len;
     var keep = req.keep_alive;
     var stream = http::Stream { .. };
     var st = Slot<S> { state: fresh };
@@ -37,15 +41,16 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
     deliver(http::Event { kind: http::REQUEST, req: req, data: if whole { body } else { "" }, whole: whole,
                           trailers: "" }, st, app, reply, spill) { cx => H(cx) };
     if !whole {
+        // goose-http drops the rest of a body once the route has answered.
         var at = 0;
-        while at < body.len {
+        while at < body.len && (out.len == 0 || stream.open) {
             let end = min(at + cfg.max_head, body.len);
             deliver(http::Event { kind: http::BODY, req: req, data: body[at..end], whole: false, trailers: "" },
                     st, app, reply, spill) { cx => H(cx) };
             at = end;
         }
-        deliver(http::Event { kind: http::END, req: req, data: "", whole: false, trailers: "" },
-                st, app, reply, spill) { cx => H(cx) };
+        deliver(http::Event { kind: if short { http::CLOSED } else { http::END }, req: req, data: "",
+                              whole: false, trailers: "" }, st, app, reply, spill) { cx => H(cx) };
     }
     if out.len == 0 { http::refuse(out, 500, ""); }
     return out;
