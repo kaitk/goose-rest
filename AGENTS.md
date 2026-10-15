@@ -34,7 +34,10 @@ incidents) in `docs/known-issues.md`, not in agent memory, so the next agent fin
 them. Docs and commits name no people: date a decision or a request
 (`(2026-10-13)`), and describe the setup without anyone's machine, checkouts, or home
 directory. What only one machine needs, such as where its Goose checkout is, goes in
-`CLAUDE.local.md`, which git ignores. Benchmark results still name their machine.
+`CLAUDE.local.md`, which git ignores. Benchmark results still name their machine. The
+docs and scripts must work for a developer on a clean machine without LLM tools:
+`CLAUDE.local.md` holds conveniences, never a step the setup needs, and a script fetches
+what it needs or says how to get it, rather than assume a sibling checkout (2026-10-15).
 
 ## Writing
 
