@@ -60,6 +60,10 @@ Ubuntu or Debian:
 sudo apt-get install -y git curl gcc libc6-dev liburing-dev
 ```
 
+`GOOSE_COMMIT` and Linux on arm64, which has no Goose release archive, build Goose from
+source, with `sudo apt-get install -y cmake g++` too. Both sets passed the suite on a
+clean `ubuntu:26.04` for arm64 (2026-10-15).
+
 On macOS, the Xcode command line tools (`xcode-select --install`) have all of them. On
 Windows, run the tests in WSL ([below](#windows-through-wsl)). goose-http's guide has
 each platform in full
