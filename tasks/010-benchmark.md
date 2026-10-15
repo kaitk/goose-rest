@@ -106,6 +106,93 @@ interleaved runs:
   (`http::authorization`, `http::field_in`) for the bearer token and Origin, and in
   reading the clock twice (`mach_absolute_time`).
 
+## Goose servers on Linux (2026-10-14 and 2026-10-15)
+
+goose-rest against goose-http alone, before any framework's run. `bench/all.sh`
+measured tiers A to D in session `2026-10-14T2039`; it stopped before tiers F, R, and
+M, whose checker rejected Server-Timing's trailing spaces (fixed in `e44f653`). They
+ran on 2026-10-15 from the same binaries:
+
+```sh
+SERVERS="goose-uring goose-epoll goose-uring-rest goose-epoll-rest" \
+    EXTRA="goose-uring-rest goose-epoll-rest" bench/rest.sh run   # A to D, 2026-10-14
+SERVERS=none EXTRA="goose-uring-rest goose-epoll-rest" STEPS=none bench/rest.sh run
+bench/rest.sh count
+```
+
+The desktop, machine name Tiamat: AMD Ryzen 7 5800X3D, 16 logical CPUs, WSL2 kernel
+6.18.54.1-microsoft-standard-WSL2, gcc 15.2.0. goose-rest `b1226e4` (A to D) and
+`e44f653` (F, R, M; the same server code), goose-http `de19e3b` (code as `v0.3.1`),
+Goose compiler built from `bc3c1f1` (`env.txt` says `46356c2`, which differs only by a
+logo). 4 workers on CPUs 0-3; wrk 4.1.0 with 8 threads and 256 connections on CPUs
+4-15; 3 interleaved runs of 15 s after 5 s of warm-up, a fresh server per cell,
+medians. The summaries:
+[A to D](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-14T2039-rest-Tiamat/summary.md),
+[F, R, M](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-14T2039-rest-Tiamat-frm/summary-extra.md),
+and [counts](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-14T2039-rest-Tiamat-frm/count.txt).
+
+Tiers A to C at saturation, req/s, goose-rest against goose-http alone on the same
+loop:
+
+| Tier | JSON | io_uring: goose-http | goose-rest | epoll: goose-http | goose-rest |
+|---|---|---:|---:|---:|---:|
+| A | serialize | 598 K | 585 K (-2.2%) | 444 K | 436 K (-1.8%) |
+| A | template | 603 K | 594 K (-1.5%) | 467 K | 452 K (-3.2%) |
+| B | serialize | 315 K | 279 K (-11.2%) | 244 K | 224 K (-8.2%) |
+| B | template | 394 K | 387 K (-1.8%) | 291 K | 287 K (-1.3%) |
+| C | serialize | 62.4 K | 53.4 K (-14.4%) | 60.9 K | 52.0 K (-14.6%) |
+| C | template | 147 K | 142 K (-3.1%) | 137 K | 133 K (-3.1%) |
+
+Tiers F, R, and M, req/s and CPU per request:
+
+| Tier | Request | io_uring | epoll |
+|---|---|---:|---:|
+| F | `GET /`: goose-http's router, then goose-rest | 517 K, 514 K (-0.7%) | 405 K, 401 K (-1.0%) |
+| F | `GET /id/{id}?name=` | 509 K, 504 K (-1.1%) | 396 K, 389 K (-1.7%) |
+| F | `POST /json` | 440 K, 434 K (-1.4%) | 345 K, 341 K (-1.2%) |
+| R | 203 routes: if chain, generated router | 325 K, 458 K (+41%) | 259 K, 362 K (+39%) |
+| M | tier A, then with the stack | 578 K, 489 K (-15.3%), 6.9 → 8.2 µs | 432 K, 354 K (-18.1%), 9.3 → 11.3 µs |
+
+`count.sh`'s user instructions per request: one worker on CPU 0, the epoll loop,
+h2load with 256 connections and 16 requests in flight on each, 10 million requests,
+one run per case:
+
+| Case | goose-http alone | goose-rest |
+|---|---:|---:|
+| Tier A `GET /api/items/1`, 200 | 4,061 | 4,239 |
+| Tier A `GET /api/me` without a user, 401 | 4,047 | 4,517 |
+| Tier A `GET /nothing`, 404 | 2,569 | 3,144 |
+| Tier M `GET /api/items/1` without a token, 401 | | 5,830 |
+| Tier F `GET /` | 2,376 (bare) | 2,278 |
+| Tier F `GET /id/1?name=bun` | 2,956 (bare) | 3,204 |
+| Tier R, route 1, `GET /authorizations`: if chain, generated | | 3,168, 2,852 |
+| Tier R, route 201, `GET /user/keys/id201`: if chain, generated | | 38,422, 3,299 |
+
+- Where routing and middleware are the work, goose-rest costs 0.7-3.2% of goose-http's
+  rate: tiers A, F, and the templated tiers. A tier A item costs 178 instructions more.
+- Serialized B and C lose 8-15%, and tier C serialized takes 74.9 µs of CPU per request
+  against 64.2. The templated tiers, whose JSON is prebuilt, lose 1.3-3.1%, so the
+  loss is in serializing. goose-http's tier server looks for a string's escapes with
+  std's `find_any` before calling `json::format_string`, which made its B and C 11-23%
+  faster (its `b03a446`); goose-rest's tier server (`bench/rest/goose-rest/main.goose`)
+  calls `json::format_string` on every string. That is the likely cause; it isn't
+  measured yet.
+- goose-rest holds 2.0-6.7 times goose-http's peak memory at saturation on io_uring: 33
+  MB against 12 on A, 96 against 30 on B, 140 against 71 on C, and 387 against 58 on C
+  with templates. Uploads alone: 385-422 MB against 69-70, at 992-993 uploads a second
+  against 1,120-1,128.
+- Reads beside uploads, tier C at 1,700 a second: p99 20.4-28.1 ms on goose-uring-rest
+  against 4.8-7.5 ms on goose-http alone, and 13.8-16.1 ms on goose-epoll-rest against
+  0.40-1.35 ms. Alone, the reads' p99 is 0.14-0.96 ms on all four.
+- The generated router serves tier R 39-41% faster than the if chain, which pays about
+  175 instructions per route it passes, 35,100 more at route 201.
+- Tier M's stack costs 15-18% of tier A's rate and 1,313 instructions on a 401, against
+  tier A's 401.
+- goose-rest's 401 and 404 cost 470 and 575 instructions more than goose-http's, and
+  answer with a JSON body where goose-http's server sends none.
+- Tier F's `/id` costs 248 more than goose-http's router and query; goose-rest's `/`
+  costs 98 fewer.
+
 ## Acceptance criteria
 
 - [x] goose-rest answers errors in a shape the program chooses
@@ -123,7 +210,8 @@ interleaved runs:
 - [x] Tiers F, R, and M served by every framework, each with a checker
 - [ ] Measured against goose-http alone with goose-http's `bench/rest.sh`, wrapped by
       goose-rest's `bench/rest.sh`, which runs tiers F, R, and M itself, after task 012
-      so both Goose servers share the application code
-- [ ] Instruction counts from `count.sh`
+      so both Goose servers share the application code (the Goose servers on
+      2026-10-14 and 2026-10-15, above; the frameworks not yet)
+- [x] Instruction counts from `count.sh` (Linux, 2026-10-15, above)
 - [ ] Results in `docs/results.md`, with how they were measured, losses as plainly as
       wins, and a summary in the README

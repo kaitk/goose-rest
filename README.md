@@ -26,7 +26,7 @@ Start with the [tutorial](docs/tutorial.md); the [docs](#docs) table lists the r
 | 🟢 | TypeScript helper | `ts/api.mts`: write the OpenAPI document in TypeScript, and `tsc` rejects what the generator doesn't support as you type it; cycles, names, and number values stay the generator's checks ([reference](docs/generator.md#write-it-in-typescript)) |
 | 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
 | 🟢 | Waiting on another thread | `rest::ask`, resuming through the program's `Waiting` enum, replies of any size in pieces (`waiting.goose`, `examples/waiting/`) |
-| 🟡 | Benchmark | Against goose-http alone, Axum, actix-web, and dusty on goose-http's REST tiers and three of its own, F, R, and M (`bench/rest.sh`); the servers pass their checks, and the runs wait on the Linux desktop (task 010) |
+| 🟡 | Benchmark | Against goose-http alone on the Linux desktop: within 0.7-3.2% of its rate where routing and middleware are the work, 8-15% behind on serialized JSON, with 2-7 times its memory ([below](#benchmarks)). Axum, actix-web, and dusty pass their checks and wait for their run (task 010) |
 
 ## Layout
 
@@ -89,6 +89,38 @@ argument starts each request's `cx.state`. Hand-written routes use
 `api::dispatch(cx)`, and its handlers and security checks take `cx` without a state
 argument. The [reference](docs/reference.md#context-and-routes) covers
 `Cx<S, A, R>`, `rest::NoRouter`, `rest::empty`, and fixed-width Server-Timing.
+
+## Benchmarks
+
+Ryzen 7 5800X3D, WSL2 kernel 6.18.54.1, 4 workers on CPUs 0-3, wrk 4.1.0 with 8 threads
+and 256 connections on CPUs 4-15, 3 runs of 15 s after 5 s of warm-up, medians;
+goose-rest `b1226e4` and `e44f653` (the same server code), goose-http `v0.3.1`, Goose
+`bc3c1f1`, on 2026-10-14 and 2026-10-15. The frameworks haven't run yet, so the
+comparison is with goose-http's own REST server, which serves the same routes without a
+framework. Every table, the counts, and every loss:
+[task 010](tasks/010-benchmark.md#goose-servers-on-linux-2026-10-14-and-2026-10-15);
+goose-http's tables against Rust and Zig servers:
+[benchmarks.md](https://github.com/kaitk/goose-http/blob/main/docs/benchmarks.md); the
+raw runs: [A to D](https://github.com/kaitk/goose-http/tree/main/bench/results/2026-10-14T2039-rest-Tiamat)
+and [F, R, M](https://github.com/kaitk/goose-http/tree/main/bench/results/2026-10-14T2039-rest-Tiamat-frm).
+
+| Workload, io_uring loop | goose-rest | goose-http alone | Where goose-rest stands |
+|---|---:|---:|---|
+| Tier A, items of 0.2 KB | 585 K/s | 598 K/s | 2.2% behind |
+| Tier B, a time tracker, serialized | 279 K/s | 315 K/s | 11% behind |
+| Tier C, a clinic, serialized | 53.4 K/s | 62.4 K/s | 14% behind |
+| Tier C, templates | 142 K/s | 147 K/s | 3.1% behind |
+| Tier F, `GET /id/{id}?name=` | 504 K/s | 509 K/s | 1.1% behind |
+| Tier R, 203 GitHub routes | 458 K/s generated, 325 K/s if chain | | The generated router 41% faster than the if chain |
+| Tier M, tier A with CORS, a bearer check, and Server-Timing | 489 K/s | | 15% below tier A |
+| Uploads, alone | 993/s | 1,120/s | 11% behind |
+| Reads p99 beside uploads, tier C at 1,700/s | 20-28 ms | 4.8-7.5 ms | 4 times slower |
+| Peak RSS, tiers A / C / C templates | 33 / 140 / 387 MB | 12 / 71 / 58 MB | 2-7 times more |
+
+The serialized tiers' loss is in writing JSON: goose-rest's tier server calls
+`json::format_string` on every string, where goose-http's skips strings without escapes
+after a 16-byte `find_any` scan. The memory and the reads beside uploads aren't
+explained yet.
 
 ## Docs
 
