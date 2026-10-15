@@ -51,9 +51,9 @@ Task 014 follows tasks 008 and 009. Task 015 can start at any point; what it nee
 goose-http waits on that package's task 027. Tasks 016, the tutorial, and 017 are done.
 Task 018 follows goose-http's task 034, and waits only on a WSL run. Task 023, bodies and
 responses in pieces, is built with the tutorial's pages 11 and 12, and waits only on
-instruction counts measured on Linux. Task 020, the extra memory, is next and blocks
-v0.1.0 (2026-10-15): its benchmark server's data first, then the upload tier on
-`rest::body_in_pieces`, which also settles task 021. Tasks 027, a helper for read-only
+instruction counts measured on Linux. Task 020, the extra memory, and task 021, the reads
+beside uploads, block v0.1.0 (2026-10-15): both are fixed, and wait only on a rerun on
+Linux. Tasks 027, a helper for read-only
 data every worker shares, 028, a body of known length gathered at its exact size, and
 029, a per-worker budget for bodies being gathered, come from it. Task 025, the middleware's fields on answers
 written after the request, and task 026, the architecture doc's split, follow. Task

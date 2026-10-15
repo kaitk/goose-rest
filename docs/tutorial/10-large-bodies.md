@@ -102,9 +102,12 @@ the request. To accept a JSON body over 1 MB, call `rest::body` with the require
 before `rest::take`, as generated routes do for `x-body-limit`.
 
 The worker holds each body it gathers until the route returns, so the limit also bounds
-the memory used for that body by each connection importing at the same time. A body too large for that, such as an
-attachment of any size, is read in pieces as it arrives:
-[the next page](11-bodies-in-pieces.md).
+the memory used for that body by each connection importing at the same time. The
+worker keeps that memory after the request, for the bodies it gathers next: the most it
+has gathered at once stays with it for its life. The route then reads the whole body in
+one call, and the worker answers no other request meanwhile. A body too large for that,
+such as an attachment of any size, or an import of many megabytes, is read in pieces as
+it arrives: [the next page](11-bodies-in-pieces.md).
 
 ---
 

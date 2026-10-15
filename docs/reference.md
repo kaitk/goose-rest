@@ -170,7 +170,7 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
 | `rest::require(cx, "q", found)` | | `q: required` |
 | `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
-| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default) | 413 `payload_too_large` |
+| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default); a larger one in pieces with `rest::body_in_pieces` ([later calls](#later-calls)) | 413 `payload_too_large` |
 
 A query parameter, form field, or cookie that repeats gives its first value, and its
 name is compared as sent, without decoding it.

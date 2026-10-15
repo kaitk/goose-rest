@@ -1,7 +1,7 @@
 # 020: Find where goose-rest's memory goes
 
-Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fixes 1 and 2
-done on macOS 2026-10-15, the Linux rerun and fix 3 still to do). Blocks v0.1.0, after task 023 (2026-10-15).
+Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fixes 1 to 3
+done 2026-10-15, the Linux rerun still to do). Blocks v0.1.0 (2026-10-15).
 
 At saturation on io_uring, goose-rest holds 2.0-6.7 times goose-http's peak RSS: 33 MB
 against 12 on tier A, 96 against 30 on B, 140 against 71 on C, and 387 against 58 on C
@@ -430,3 +430,17 @@ runs don't separate the servers there. Task 021's stall, a p99 of 13.8-28.1 ms
 beside uploads against goose-http's 0.40-7.5 ms, was measured on Linux. On macOS, the polls beside the
 uploads were within 3 ms of goose-http's before this change. The Linux rerun says
 whether the stall is gone.
+
+## Fix 3 (2026-10-15)
+
+Notes where a reader would make each mistake in "Mistakes in the program":
+
+- Records loaded in `main`: tutorial page 1, "Workers and `main`", and page 8, "Per
+  worker", say that data loaded before the workers start is copied into every worker,
+  and point to goose-http's shared store. Task 027's helper can replace the pointer.
+- Strings in fixed-capacity fields: page 8, "Per worker", and `docs/generator.md`, below
+  its types table, say a limited array takes its full capacity, and to keep many
+  records' strings as ranges into one byte array.
+- Uploads gathered whole: page 10, "Three limits", says the worker keeps a gathered
+  body's memory after the request and answers nothing else while the route reads it,
+  and the reference's `rest::body` row points to `rest::body_in_pieces`.

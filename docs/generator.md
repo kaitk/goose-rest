@@ -107,6 +107,12 @@ document the same way, with paths. Rust's schemars writes optional values in the
 | `"type": ["T", "null"]` | `<field>_null: bool` before the field |
 | `"anyOf": [<schema>, {"type": "null"}]`, in either order, with annotations and `"default": null` beside it | the schema, nullable, as above; pydantic and schemars write optional values this way |
 
+A limited array takes its full capacity whatever the string's length, so a field of
+`maxLength: 200` takes 800 bytes. That suits a request's body, which lives for the
+request. A program that keeps many records of a generated type, as a cache, keeps
+their strings as ranges into one byte array instead
+([tutorial](tutorial/08-state.md#per-worker)).
+
 Each kind takes these keywords besides `type`:
 
 | Kind | Keywords |
