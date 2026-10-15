@@ -16,7 +16,8 @@ details, while some of its costs over goose-http are still being worked on.
 
 ## Status
 
-What a framework such as actix-web or Elysia offers, and where goose-rest is.
+goose-rest builds wherever goose-http does: Linux, macOS, and Windows. Its examples also
+pass their tests on arm64 Linux.
 
 🟢 works · 🟡 partial · ⚪ not yet · 🔴 out of scope
 
@@ -44,14 +45,11 @@ What a framework such as actix-web or Elysia offers, and where goose-rest is.
 | 🟢 | Bearer tokens | 401 with `WWW-Authenticate`, and the token for your check. |
 | 🟢 | Server-Timing and access log | One middleware, or the timing alone. |
 | 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#middleware)). |
-| ⚪ | JWT | Not yet. |
-| ⚪ | Sessions | Not yet. |
-| ⚪ | Compression | Not yet; goose-http compresses responses. |
-| ⚪ | Rate limiting | Not yet. |
-| ⚪ | Default headers | Not yet. |
-
-It builds wherever goose-http does: Linux, macOS, and Windows. Its examples
-cross-build for arm64 Linux and pass their tests there under Docker.
+| ⚪ | JWT | The bearer middleware hands your check the token. |
+| ⚪ | Sessions | |
+| ⚪ | Compression | goose-http compresses responses. |
+| ⚪ | Rate limiting | |
+| ⚪ | Default headers | |
 
 ## Quick start
 
