@@ -14,8 +14,8 @@ details, while some of its costs over goose-http are still being worked on.
 [Architecture](docs/architecture/README.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)
 
-goose-rest is a working name: the repository, and with it the import path
-`github.com/kaitk/goose-rest`, may be renamed before a stable release.
+*Note: goose-rest is a working name, and the repository may be renamed before a stable
+release.*
 
 ## Status
 
