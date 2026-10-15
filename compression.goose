@@ -1,17 +1,17 @@
 // rest::compressed, the answers of a block of routes compressed by the
 // request's Accept-Encoding, with goose-http's http.compression. Only a
 // program that imports this module needs goose-compress, which its root file
-// declares at the commit goose-http's compression.goose names:
+// declares at the tag goose-http's compression.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@v0.3.1";
-//   import compress from "github.com/kaitk/goose-compress@2c7df270b88ed8a00e2d73b6f84d50908cf5a558";
-//   import rest from "github.com/kaitk/goose-rest@<commit>";
+//   import http from "github.com/kaitk/goose-http@v0.3.2";
+//   import compress from "github.com/kaitk/goose-compress@v0.1.0";
+//   import rest from "github.com/kaitk/goose-rest@<tag>";
 //   import rest.compression;
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.1";
-import compress from "github.com/kaitk/goose-compress@2c7df270b88ed8a00e2d73b6f84d50908cf5a558";
+import http from "github.com/kaitk/goose-http@v0.3.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.0";
 import http.compression;
 
 // Runs F(c), c being cx with its answer written to a buffer of its own, then

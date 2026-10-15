@@ -1,7 +1,7 @@
 // Unit tests for the package, and that it reaches goose-http at its pin.
 // scripts/test-unit.sh runs them through TinyCC.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.1";
+import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../";
 
 fn test_path_of() {

@@ -54,7 +54,7 @@ A program's root file declares both packages, each at a release tag, goose-http 
 one goose-rest's release imports:
 
 ```text
-import http from "github.com/kaitk/goose-http@v0.3.1";
+import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "github.com/kaitk/goose-rest@v0.0.1";
 ```
 

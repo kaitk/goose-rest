@@ -3,8 +3,8 @@
 // scripts/test-unit.sh runs this through TinyCC; scripts/test-examples.sh
 // decompresses real answers of examples/plain.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.1";
-import compress from "github.com/kaitk/goose-compress@2c7df270b88ed8a00e2d73b6f84d50908cf5a558";
+import http from "github.com/kaitk/goose-http@v0.3.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.0";
 import rest from "../";
 import rest.compression;
 

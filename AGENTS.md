@@ -115,8 +115,8 @@ than `rest.goose` gets a warning, and from another source an error, so a test ca
 point at a local goose-http checkout instead.
 
 `compression.goose`, the programs that import it, and `docs/reference.md` declare
-goose-compress at the commit the pinned goose-http's `compression.goose` names. When
-the new goose-http names another, change it in the same commit (2026-10-15).
+goose-compress at the tag the pinned goose-http's `compression.goose` names. When the
+new goose-http names another, change it in the same commit (2026-10-15).
 
 ## Generated code
 

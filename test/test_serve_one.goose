@@ -3,7 +3,7 @@
 // without Host, and goose-http's refusals. scripts/test-unit.sh runs this
 // through TinyCC.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.1";
+import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../";
 
 fn same(got: const u8[:], want: const u8[:], what: const u8[:]) {

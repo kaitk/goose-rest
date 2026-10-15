@@ -67,13 +67,13 @@ OPTIONS. `bearer_token` uses `http::bearer` and requires a token68 bearer token.
 
 `rest::compressed` is in the module `rest.compression`, which `rest` doesn't import, so
 a program without it builds without goose-compress. To use it, declare goose-compress in
-the root file at the commit goose-http's `compression.goose` names, and import the
+the root file at the tag goose-http's `compression.goose` names, and import the
 module:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.3.1";
-import compress from "github.com/kaitk/goose-compress@2c7df270b88ed8a00e2d73b6f84d50908cf5a558";
-import rest from "github.com/kaitk/goose-rest@<commit>";
+import http from "github.com/kaitk/goose-http@v0.3.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.0";
+import rest from "github.com/kaitk/goose-rest@<tag>";
 import rest.compression;
 
 fn handle(cx) {

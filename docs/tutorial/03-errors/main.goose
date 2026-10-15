@@ -3,7 +3,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@v0.3.1";
+import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../../../";
 
 // The per-request state. This program keeps nothing in it: its type picks

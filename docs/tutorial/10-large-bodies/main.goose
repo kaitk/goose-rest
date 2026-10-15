@@ -9,7 +9,7 @@
 import std;
 import os;
 import csv;
-import http from "github.com/kaitk/goose-http@v0.3.1";
+import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../../../";
 
 // The most bytes an import takes: past the 8 KB read buffer, and below the
