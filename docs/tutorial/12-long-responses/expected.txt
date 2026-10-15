@@ -1,0 +1,13 @@
+GET /health 200 ok
+GET /v1/projects/1/tasks.csv 200 transfer-encoding: chunked lines=2001 first=id,title,assignee last=2000,Task 2000,grace
+GET /v1/projects/2/tasks.csv 200 id,title,assignee
+2001,Name it,grace
+2002,Ship it,ada
+GET /v1/projects/9/tasks.csv 404 {"error":"project_not_found"}
+GET /v1/projects/1/tasks.csv 200 transfer-encoding: chunked lines=2001 first=id,title,assignee last=2000,Task 2000,grace
+GET /v1/projects/1/files/plans.txt 200 content-length: 220000 lines=20000 first=line 00001 last=line 20000
+GET /v1/projects/1/files/plans.txt 206 line 00002
+GET /v1/projects/1/files/plans.txt 416
+GET /v1/projects/1/files/plans.txt 304
+GET /v1/projects/1/files/missing.txt 404 {"error":"file_not_found"}
+GET /v1/projects/1/files/a%5Cb 400 {"error":"bad_path"}

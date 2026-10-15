@@ -1,0 +1,12 @@
+GET /health 200 ok
+POST /v1/projects/1/attachments 201 {"project":1,"id":1,"size":19}
+POST /v1/projects/1/attachments 201 {"project":1,"id":2,"size":2000000}
+POST /v1/projects/9/attachments 404 {"error":"project_not_found"}
+POST /v1/projects/2/attachments 413 {"error":"payload_too_large"}
+POST /v1/projects/2/attachments 413 {"error":"payload_too_large"}
+POST /v1/projects/1/attachments 000
+files: 1-1 1-2 
+POST /v1/projects/1/attachments/form 201 {"project":1,"id":5,"size":30000,"note":"Floor plans"}
+POST /v1/projects/1/attachments/form 415 {"error":"unsupported_media_type"}
+POST /v1/projects/1/attachments/form 400 {"error":"invalid_multipart"}
+files: 1-1 1-2 1-5 

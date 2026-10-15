@@ -33,8 +33,8 @@ GET /v1/projects/2/tasks 200 [{"id":6,"title":"Name it","assignee":2}]
 ```
 
 The worker holds one piece at a time, however long the reply. The service writes the
-whole reply first, so it holds all of it; a reply too large for that waits for responses
-sent in pieces, which goose-rest can't do yet.
+whole reply first, so it holds all of it. Data too large for that is made a piece at a
+time as the client takes it ([long responses](12-long-responses.md)).
 
 ## Two services in turn
 

@@ -27,8 +27,8 @@ what a page shows is what the code does.
 ## Part two: bodies, waits, and limits
 
 10. [Large bodies](10-large-bodies.md): `rest::body`, a CSV import gathered whole up to a limit
-11. Bodies read as they arrive: TBD, goose-rest can't read a body in pieces yet
-12. Long responses and files: TBD, goose-rest can't send a response in pieces yet
+11. [Bodies read as they arrive](11-bodies-in-pieces.md): `rest::receive`, attachments of any size, a multipart form
+12. [Long responses and files](12-long-responses.md): `rest::begin`, `rest::send`, an export in pieces, `rest::file`
 13. [Work that waits](13-waiting.md): a database behind a service, `rest::ask`, `rest::answer_value`
 14. [Two services, or a reply in pieces](14-two-services.md): `rest::relay`, a case function that asks again
 15. [Limits](15-limits.md): 504, 503, a client that has gone, a slow client, a job the client polls
@@ -41,7 +41,8 @@ what a page shows is what the code does.
 - [Generator](../generator.md): what the generator reads, what it writes, what it
   refuses, and how the router matches.
 - [`examples/`](../../examples/): complete programs to start from, without a schema
-  (`plain`), from one (`schema`), and on a board (`device`).
+  (`plain`), from one (`schema`), on a board (`device`), and an upgraded connection
+  (`upgrade`).
 - [Architecture](../architecture/README.md): why goose-rest is shaped this way, from
   Actix and Elysia, and where Goose made it differ.
 - [goose-http's patterns](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md):

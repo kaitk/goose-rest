@@ -103,10 +103,10 @@ route that takes a JSON body over 1 MB calls `rest::body` with its limit before
 
 The worker holds each body it gathers until the route returns, so a limit is also the
 memory each connection importing at once can take. A body too large for that, such as an
-attachment of any size, is read in pieces as it arrives, which goose-rest can't do yet
-(page 11, to come).
+attachment of any size, is read in pieces as it arrives:
+[the next page](11-bodies-in-pieces.md).
 
 ---
 
 [Index](README.md) · Previous: [9. Testing without sockets](09-testing.md) · Next:
-[13. Work that waits](13-waiting.md)
+[11. Bodies read as they arrive](11-bodies-in-pieces.md)

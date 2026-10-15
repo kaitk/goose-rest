@@ -224,5 +224,5 @@ still waits once. A route that waits on two services in turn needs more than one
 
 ---
 
-[Index](README.md) · Previous: [10. Large bodies](10-large-bodies.md) · Next:
+[Index](README.md) · Previous: [12. Long responses and files](12-long-responses.md) · Next:
 [14. Two services, or a reply in pieces](14-two-services.md)
