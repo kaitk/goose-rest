@@ -4,7 +4,7 @@ The projects get attachments: photos, scans, and exports, up to 1 GB each. No wo
 hold a body that large, and a worker holds every body it gathers until its route
 returns ([page 10](10-large-bodies.md)). So an attachment is read as it arrives, a piece
 at a time, and each piece goes to a file before the next comes. The worker holds one
-piece, however large the attachment is. How goose-http reads a body this way:
+piece, however large the attachment is. For how goose-http reads a body this way, see
 [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
 
 ## The route receives, and resumes for each piece
@@ -32,8 +32,8 @@ fn attach(cx, project: i64) {
 `rest::body_in_pieces` reads nothing itself: it accepts the body or refuses it, and says where
 its pieces go. The code before and after it runs once: unlike `rest::body`, it leaves
 the route only when it refuses the body. No piece comes before the route has
-returned, even for a body that came with its head, so the route can still set what
-the pieces need after the call, as `part_path` here.
+returned, even for a body that came with its head, so after the call the route can still set the state
+needed to handle the pieces, such as `part_path` here.
 
 The handler is then called again for each piece of the body, and `rest::resumed` sends
 each call to the variant's case function, as for a reply from a service. `cx.kind`
@@ -76,7 +76,7 @@ fn store(cx, bytes: const u8[:]) {
 ```
 
 What the route keeps between pieces goes in the per-request state, which starts fresh
-for each request: the file's path and the bytes so far. What doesn't change, such as
+for each request: the file's path and the number of bytes received so far. What doesn't change, such as
 the project, goes in the variant:
 
 ```rust
@@ -88,8 +88,8 @@ enum Waiting {
 }
 ```
 
-A body that fits the read buffer with its head comes the same way, as one `BODY` and
-the `END`, so the route has one path for every size:
+A body that fits alongside its head in the read buffer comes the same way, as one `BODY`
+and the `END`, so the route handles every size the same way:
 
 ```text
 POST /v1/projects/1/attachments 201 {"project":1,"id":1,"size":19}         whole, as one piece
@@ -112,8 +112,8 @@ let SMALL_LIMIT: i64 = 64 * 1024;
 ```
 
 A body whose `Content-Length` is over the limit fails at `rest::body_in_pieces` with 413,
-before the client sends it. A chunked body has no length, so goose-rest counts it as it
-comes, and past the limit answers 413 and closes the connection. `http::Config`'s
+before the client sends it. A chunked body has no length, so goose-rest counts its bytes as they
+arrive, and answers 413 and closes the connection when it passes the limit. `http::Config`'s
 `max_body` still caps every route, so `main` raises it to the largest limit, as
 [page 10](10-large-bodies.md#three-limits) explains:
 
@@ -126,7 +126,7 @@ releases what the state holds then: here, the `.part` file. That happens when:
 
 - the client goes before the body has all come;
 - a chunked body passes the limit;
-- the route fails at a piece, as for a disk that's full, or answers before the `END`.
+- the route fails while handling a piece, such as when the disk is full, or answers before the `END`.
 
 After `CLOSED`, the route gets no more pieces. A failure at a piece is answered at once,
 in the error shape, and goose-http drops the rest of the body. A route that answers at
@@ -143,7 +143,7 @@ files: 1-1 1-2                                                      its .part fi
 ## A multipart form
 
 A browser uploads a file with a form: `multipart/form-data`, its fields and files in
-parts. goose-http's `http::each_part` reads one a piece at a time, with an
+parts. goose-http's `http::each_part` reads a multipart form a piece at a time, with an
 `http::Multipart` in the state that holds what a piece leaves unfinished. The route
 starts it, or answers 415 for a body of another type:
 

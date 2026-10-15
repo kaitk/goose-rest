@@ -91,11 +91,11 @@ fn handle(cx) {
 }
 ```
 
-The block gets its own context, as `rest::routes`'s does. Its answer goes to a buffer of
-its own, and `compressed` then copies it to the response, compressed as goose-http's
-`http::respond_compressed` would compress it: in the coding `Accept-Encoding` weighs
-highest, zstd before gzip before deflate at equal weights, with `Content-Encoding`, the
-compressed `Content-Length`, and `Vary: Accept-Encoding`.
+The block gets its own context, as the block passed to `rest::routes` does. Its answer goes
+to a separate buffer, and `compressed` then copies it to the response, compressing it as
+goose-http's `http::respond_compressed` would: using the coding with the highest
+`Accept-Encoding` weight, zstd before gzip before deflate at equal weights, with
+`Content-Encoding`, the compressed `Content-Length`, and `Vary: Accept-Encoding`.
 
 A second argument, goose-http's `http::Compression`, sets the levels and which codings
 are offered, as [`examples/compress`](../examples/compress/main.goose)'s `/archive` does:
@@ -115,14 +115,14 @@ let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
 | `zstd` | `true` | whether zstd is offered |
 | `min_size` | 1024 | the shortest body compressed, in bytes |
 
-gzip and deflate can't be turned off, and the server has no order of its own: the
-request's `Accept-Encoding` weights pick the coding, with zstd before gzip before
-deflate where they're equal.
+gzip and deflate can't be turned off. The server follows the
+request's `Accept-Encoding` weights when choosing the coding, with zstd before gzip before
+deflate when the weights are equal.
 
 | Answer | Gets |
 |---|---|
 | `rest::json`, `json_bytes`, `text`, and errors, of `min_size` bytes or more | Compressed, with `Vary` |
-| Shorter, HEAD, 206, or to a request that takes no coding | `Vary` alone |
+| Shorter, HEAD, 206, or for a request that accepts no coding | `Vary` alone |
 | A type `http::compressible` refuses, such as `image/png`; one with a `Content-Encoding` already | As written |
 | Without a body (`rest::empty`, 204, 304) | As written |
 | Begun and sent in pieces: `rest::begin`, `rest::file`, `rest::relay`'s reply in pieces, `http::begin` | As written, uncompressed |
@@ -175,9 +175,9 @@ returns. Otherwise the extractor returns the request's own bytes.
 A query parameter, form field, or cookie that repeats gives its first value, and its
 name is compared as sent, without decoding it.
 
-The form extractors read the body with `rest::body`, so the body is gathered as below,
-and accept a Content-Type with parameters, such as
-`application/x-www-form-urlencoded; charset=utf-8`. A route that takes a form over
+The form extractors read the body with `rest::body`, which gathers it as described below.
+They accept a Content-Type with parameters, such as
+`application/x-www-form-urlencoded; charset=utf-8`. A route that accepts a form over
 1 MB calls `rest::body(cx, limit)` before the first form extractor. Multipart forms
 have no extractor; goose-http's `http::each_part` reads them
 ([goose-http's API](https://github.com/kaitk/goose-http/blob/main/docs/api.md)), a
@@ -233,15 +233,15 @@ rest::serve(cfg, app, St { .. }) { cx =>
 };
 ```
 
-`cx.kind` says which event it is, and `cx.req` is empty: a variant carries what of the
-request its route needs, and the per-request state its progress.
+`cx.kind` says which event it is, and `cx.req` is empty. A variant carries the request
+data its route needs, and the per-request state holds the route's progress.
 
 | The route called | The case function gets `cx.kind` | goose-rest handles |
 |---|---|---|
 | `rest::ask` | `http::WAKE`, the reply in `cx.reply` | `TIMEOUT`: 504 `timeout` |
 | `rest::body_in_pieces` | `http::BODY` per piece, in `cx.body`; then `http::END`; or `http::CLOSED` | the limit: 413 |
 | `rest::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
-| `rest::file` | `http::MORE`; `http::CLOSED`, both for `rest::send_file` | 304, 206, 416, and `HEAD`: no calls |
+| `rest::file` | `http::MORE`; `http::CLOSED`, both for `rest::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
 | `rest::upgrade` | `http::BODY` per arrival; `http::CLOSED` | |
 | `rest::relay` | none | the reply's later pieces |
 
@@ -249,17 +249,17 @@ request its route needs, and the per-request state its progress.
 case function releases what the state holds, such as a file. It comes once, to a route
 that called `body_in_pieces`, `begin`, `file`, or `upgrade`, when the client goes, when a body
 passes its limit, when the route answers or fails before a body's `END`, or when it
-fails with its response begun. What it writes goes nowhere. A route that answers at the
-`END`, or calls `rest::end`, gets none, and nor does one that only asked.
+fails with its response begun. Anything the case function writes is discarded. A route that answers at the
+`END`, or calls `rest::end`, gets none, nor does one that only asked.
 
-A failure with a response begun can't be answered: its head has gone. `rest::route`
+A failure after a response has begun can't be answered: its head has already been sent. `rest::route`
 leaves the response unended, goose-http closes the connection, and the client sees the
 response cut short.
 
 | Call | Does | Fails with |
 |---|---|---|
 | `rest::body_in_pieces(cx, limit, w)` | The body in pieces as they arrive, up to `limit` bytes. A body that came whole with its head comes as one `BODY` and the `END`, and an empty one as the `END` alone. The code around it runs once. | 413 `payload_too_large` for a `Content-Length` over `limit`, before the body is sent; a chunked body past it gets 413 and the connection closes. 500 `body_already_read` after `rest::body`, and `rest::body` after it. 500 `not_served` outside `rest::serve` and `serve_one`. |
-| `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. Begun while a body is read, the pieces still come, then `MORE`. | |
+| `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. | |
 | `rest::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `rest::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
 | `rest::file(cx, path, body, w, content_type)` | `http::serve_file`'s answer, with `ETag`, `Last-Modified`, and `Accept-Ranges`, and a type by `path`'s extension when `content_type` is empty. `body`, an `http::FileBody` in the per-request state, holds what's left to send. | 404 `file_not_found`, 403 `forbidden`, 500 `file_unreadable` |

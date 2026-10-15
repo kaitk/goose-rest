@@ -2,15 +2,15 @@
 
 This tutorial builds a projects API with goose-rest, one step per page. It assumes you
 know another web framework, such as Actix, Axum, Express, or FastAPI, and have read
-[Goose, by example](https://github.com/aardappel/goose/blob/master/docs/tutorial.md),
-or will alongside this. It covers what differs from those frameworks; the
-[reference](../reference.md) and the [generator reference](../generator.md) have the
-exact rules.
+[Goose, by example](https://github.com/aardappel/goose/blob/master/docs/tutorial.md)
+or will read it alongside this tutorial. It focuses on how goose-rest differs from those
+frameworks; the [reference](../reference.md) and the [generator reference](../generator.md)
+give the exact rules.
 
 Each page's code is a program in the folder of the same name. `scripts/test.sh` builds
-each one, sends it the requests in its `requests.sh`, and compares the answers with its
-`expected.txt`, and every Goose and JSON block on a page is quoted from a program, so
-what a page shows is what the code does.
+each program, sends it the requests in its `requests.sh`, and compares the answers with
+its `expected.txt`. Every Goose and JSON block on a page is quoted from a program, so
+what the page shows matches what the code does.
 
 ## Part one: the basics
 
@@ -18,7 +18,7 @@ what a page shows is what the code does.
 2. [Routes, path, query, and headers](02-routes.md): `rest::on`, `rest::param`, `rest::query`
 3. [Answers and errors](03-errors.md): `rest::json`, `rest::fail`, the error shape
 4. [JSON bodies](04-json.md): `rest::take`, `rest::json_body`, generated readers
-5. [The API from a schema](05-schema.md): `goose-rest gen`, `api::dispatch`, hand-written routes beside it
+5. [The API from a schema](05-schema.md): `goose-rest gen`, `api::dispatch`, and hand-written routes alongside the generated router
 6. [The schema in TypeScript, Python, or Rust](06-schema-languages.md): `api.json` from code
 7. [Middleware and scopes](07-middleware.md): `rest::timed`, `rest::cors`, `rest::bearer`, your own
 8. [State](08-state.md): `cx.app`, `cx.state`, `rest::once`
@@ -43,12 +43,11 @@ what a page shows is what the code does.
 - [`examples/`](../../examples/): complete programs to start from, without a schema
   (`plain`), from one (`schema`), on a board (`device`), and an upgraded connection
   (`upgrade`).
-- [Architecture](../architecture/README.md): why goose-rest is shaped this way, from
-  Actix and Elysia, and where Goose made it differ.
+- [Architecture](../architecture/README.md): the ideas goose-rest takes from Actix and
+  Elysia, and how Goose shapes the design.
 - [goose-http's patterns](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md):
-  how the loop reads, sends, and waits, under every page of part two.
+  how the event loop reads, sends, and waits, underpinning every page of part two.
 
-Clients come from the same `api.json`: standard OpenAPI tools, such as
-[OpenAPI Generator](https://openapi-generator.tech/), write a Python or C client from
-it, or one in most other languages, so the contract the server is generated from is
-also the client's.
+Clients can be generated from the same `api.json`. Standard OpenAPI tools, such as
+[OpenAPI Generator](https://openapi-generator.tech/), generate clients in Python, C,
+and most other languages, so the server and client use the same contract.

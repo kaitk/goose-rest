@@ -39,7 +39,7 @@ pass their tests on arm64 Linux.
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
 | 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#later-calls)). |
-| 🟡 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, and `rest::begin` sends a response in pieces as the client takes them ([reference](docs/reference.md#later-calls)). Events sent over time, such as Server-Sent Events, not yet. |
+| 🟡 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, and `rest::begin` sends a response in pieces as the client takes them ([reference](docs/reference.md#later-calls)). Events sent over time, such as Server-Sent Events, are not supported yet. |
 | 🔴 | WebSocket | Currently out of scope, as in goose-http; `rest::upgrade` hands an upgraded connection's bytes to the route ([reference](docs/reference.md#later-calls)). |
 
 ### Middleware
@@ -52,7 +52,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#middleware)). |
 | ⚪ | JWT | No built-in verifier; use your own with the bearer middleware. |
 | ⚪ | Sessions | No session store yet; read cookies with `rest::cookie`. |
-| 🟢 | Compression | gzip, deflate, and zstd by `Accept-Encoding`, in an optional module; streamed answers aren't compressed ([reference](docs/reference.md#compression)). |
+| 🟢 | Compression | gzip, deflate, and zstd according to `Accept-Encoding`, in an optional module; streamed answers aren't compressed ([reference](docs/reference.md#compression)). |
 | ⚪ | Rate limiting | No limiter yet; goose-http's per-connection limits and timeouts apply. |
 | ⚪ | Default headers | No middleware yet; add headers to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
 
@@ -120,8 +120,8 @@ programs to start from, each built and tested with HTTP requests:
 |---|---|
 | [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, a JSON or form body, middleware, and a 4 MB upload alongside the 1 MB default |
 | [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
-| [`compress/`](examples/compress/main.goose) | Answers compressed by `Accept-Encoding`, with the optional `rest.compression` module: goose-http's defaults, and a scope with levels of its own and no zstd |
-| [`upgrade/`](examples/upgrade/main.goose) | An upgraded connection with `rest::upgrade`: a 101, then the client's bytes echoed back until the server closes, or the client goes first |
+| [`compress/`](examples/compress/main.goose) | Answers compressed according to `Accept-Encoding`, with the optional `rest.compression` module: goose-http's defaults, and a scope with its own compression levels and no zstd |
+| [`upgrade/`](examples/upgrade/main.goose) | An upgraded connection with `rest::upgrade`: a 101, then the client's bytes echoed back until the server closes the connection, or the client closes it first |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 
 ## Concepts

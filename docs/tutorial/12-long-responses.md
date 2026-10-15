@@ -3,8 +3,8 @@
 A project's tasks can be exported as CSV, and its files downloaded. Either can be larger
 than a worker should build whole: the worker holds a response it builds until the client
 has taken all of it, and a slow client takes a long time. So these go in pieces, each
-made or read when the client has taken the one before. How goose-http sends a response
-this way:
+made or read when the client has taken the one before. For how goose-http sends a response
+this way, see
 [goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses).
 
 ## An export, made as the client takes it
@@ -40,7 +40,7 @@ fn resume(w: Waiting.Export, cx) {
 
 `tasks_csv` appends up to 500 rows to `piece`, starting at the task `cx.state.next`, and
 returns where the next piece starts, or -1 after the last row. So the call that sends the
-last rows also ends the response. Where the export has got to goes in the request's
+last rows also ends the response. The export's progress goes in the request's
 state:
 
 ```rust
@@ -64,7 +64,7 @@ GET /v1/projects/1/tasks.csv 200 transfer-encoding: chunked lines=2001     read 
 A case function that neither sends nor ends at `MORE` makes goose-http close the
 connection. The case function gets `http::CLOSED` once if the response ends otherwise:
 when the client goes, or when the route fails with the response begun. Its head has
-gone, so the failure can't be answered in the error shape: `rest::route` leaves the
+already been sent, so the failure can't be answered in the error shape: `rest::route` leaves the
 response unended and the connection closes, and the client sees it cut short. The
 export holds nothing to release, so it ignores `CLOSED`. A `HEAD` request gets the head
 alone, and no calls.
@@ -90,8 +90,8 @@ fn download(cx, project: i64) {
 }
 ```
 
-The open file and what's left to send of it are an `http::FileBody`, `body`, kept in the
-state, so a program that serves no files keeps none. The case function hands each call
+The open file and what's left to send are held in an `http::FileBody`, `body`, in the
+state, so a program that serves no files keeps no file state. The case function hands each call
 to `rest::send_file`, which sends the next piece of up to 64 KB at each `MORE`, ends
 the response after the last, and closes the file at `CLOSED`:
 

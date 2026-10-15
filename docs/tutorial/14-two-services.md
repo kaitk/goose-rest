@@ -1,15 +1,16 @@
 # 14. Two services, or a reply in pieces
 
-One job per route covers a use case one service can do alone. Two cases need more: a
-reply too long for one message, and a route that waits on one service, then on another.
-Both use the same `Waiting` enum and case functions as [the previous page](13-waiting.md).
+One job per route covers a use case that one service can handle alone. Two cases need
+more: a reply too large for one message, and a route that waits on one service and then
+another. Both use the same `Waiting` enum and case functions as
+[the previous page](13-waiting.md).
 
 ## A reply in pieces
 
 A project's tasks, as JSON, can be longer than a message. The service replies with
-`rest::reply`, which sends a reply longer than the worker's messages in pieces. From
+`rest::reply`, which sends a reply longer than the worker's message size in pieces. From
 [`14-two-services`](14-two-services/main.goose), whose worker takes messages of 64
-bytes, so that a project's tasks come in several:
+bytes, so that a project's tasks arrive in several pieces:
 
 ```rust
             if tag == TASKS {
@@ -18,9 +19,9 @@ bytes, so that a project's tasks come in several:
                 if ok { rest::reply(a, tasks_json(c, a.job)); }
 ```
 
-The route's case function is called for each piece. `rest::relay` sends the first as
-the start of a chunked response, and each one after it as a chunk, waiting again until
-the last:
+The route's case function runs for each piece. `rest::relay` starts a chunked response
+with the first piece and sends each subsequent piece as a chunk, waiting again until
+the final piece arrives:
 
 ```rust
 // Called for each piece of the reply: rest::relay sends the first, and the
@@ -38,9 +39,9 @@ time as the client takes it ([long responses](12-long-responses.md)).
 
 ## Two services in turn
 
-Inviting a user to a project adds a member in the database, then sends an email through
-a mailer, a service of its own. Neither can do both: the route waits on one, then on
-the other, a state with a `Waiting` variant each:
+Inviting a user to a project adds a member to the database, then sends an email through
+a separate mailer service. Neither service can do both, so the route waits on one and
+then the other, using a `Waiting` variant for each step:
 
 ```rust
 enum Waiting {
@@ -82,12 +83,12 @@ POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}
 |---|---|
 | One service, a reply that fits a message | One job, one case function ([Work that waits](13-waiting.md)) |
 | One service, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
-| Two services in turn | A `Waiting` variant per wait, each case function asking the next |
+| Two services in turn | A `Waiting` variant per wait; the first case function requests work from the next service |
 
-Each wait has its own time limit, and each can find a box full, so a route that waits
-twice can fail at either: the second wait's 503 comes after the first service's work is
-done. Where the second step can come later, such as an email, a service can send it on
-by itself, and the route waits once.
+Each wait has its own time limit, and each request can encounter a full mailbox, so a
+route that waits twice can fail at either step. A 503 at the second step comes after the
+first service has finished its work. If the second step can happen later, such as
+sending an email, the service can forward the work itself and the route waits only once.
 
 ---
 

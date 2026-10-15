@@ -1,14 +1,14 @@
 # 15. Limits
 
-Every wait is bounded: a route waits for a time limit, a service's box holds a fixed
-number of jobs, and a worker holds a fixed number of waiting routes. This page shows
-what a client gets at each limit, and what the service does for a client that has gone.
-[goose-http's limits](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits)
-covers the loop's side: its bounds, a slow client, and what a wait holds.
+Every wait is bounded: a route waits up to a time limit, a service's mailbox holds a
+fixed number of jobs, and a worker holds a fixed number of waiting routes. This page
+shows what the client receives at each limit and what the service does when a client
+stops waiting. [goose-http's limits](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits)
+explains the event-loop side: its bounds, slow clients, and the resources held by a wait.
 
-[`15-limits`](15-limits/main.goose) asks a database for a project's summary, with
-`ms` to make the query take that much longer, as a slow one would. Its route waits at
-most 200 ms, and the database's box holds two jobs:
+[`15-limits`](15-limits/main.goose) requests a project's summary from the database. The
+`ms` parameter adds that many milliseconds to simulate a slow query. The route waits
+at most 200 ms, and the database's mailbox holds two jobs:
 
 ```rust
 // The longest a route waits for the database, in milliseconds.
@@ -23,8 +23,9 @@ let WAIT_MS: i64 = 200;
 
 ## 504 for a late reply
 
-`rest::ask` takes the time limit last, 5 seconds by default. Past it, the route answers
-504 `timeout`, and the worker drops the reply when it comes:
+The last argument to `rest::ask` is the time limit, which defaults to 5 seconds. When
+the limit expires, the route answers 504 `timeout` and the worker drops the reply
+when it arrives:
 
 ```rust
         rest::ask(cx, cx.app.db, SUMMARY, job, Waiting.Summary, WAIT_MS);
@@ -34,14 +35,14 @@ let WAIT_MS: i64 = 200;
 GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
 ```
 
-A job can't be stopped from outside. The database goes on with the 500 ms query, and
-its reply finds nobody waiting.
+A job can't be stopped from outside. The database continues the 500 ms query, but no
+route is waiting for its reply.
 
 ## 503 for a full box
 
-While the database works on one job, the next ones wait in its box. A job that finds
-the box full isn't sent: `rest::ask` answers 503 `unavailable` at once, rather than
-queue work the database won't reach in time:
+While the database processes one job, subsequent jobs wait in its mailbox. If the
+mailbox is full, the job isn't sent: `rest::ask` immediately answers 503
+`unavailable` rather than queuing work the database won't reach in time:
 
 ```text
 GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
@@ -56,9 +57,10 @@ several service threads, each with its own box, and send each job to one of them
 
 ## A client that has gone
 
-A client can go while its job waits or runs: its connection closes, or its wait times
-out. `rest::still_wanted(a)` says whether the route still waits, so the service skips a job
-nobody waits for, and `rest::reply_value` returns false once the route has gone:
+A client can stop waiting while its job is queued or running: its connection closes,
+or its wait times out. `rest::still_wanted(a)` says whether the route is still waiting,
+so the service skips a job nobody waits for. `rest::reply_value` returns false once
+the route has gone:
 
 ```rust
             if tag == SUMMARY {
@@ -73,15 +75,15 @@ nobody waits for, and `rest::reply_value` returns false once the route has gone:
                 }
 ```
 
-The two clients that gave up had their jobs skipped, and the reply to the 504's route
-was dropped:
+The jobs for the two clients that gave up were skipped, and the reply to the route
+that answered 504 was dropped:
 
 ```text
 GET /v1/gone 200 {"skipped":2,"dropped":1}
 ```
 
-`rest::still_wanted` is a snapshot: a client can still go before the reply. A long job checks
-it between its steps, as well as before it starts.
+`rest::still_wanted` is a snapshot: the client can stop waiting before the reply is sent.
+A long job checks it between steps as well as before starting.
 
 ## A slow client
 
@@ -123,8 +125,8 @@ GET /v1/reports/1 200 {"id":1,"project":1,"state":"running"}
 GET /v1/reports/1 200 {"id":1,"project":1,"state":"done","tasks":5}
 ```
 
-The reports here live in the thread's memory, and go when the server stops. Reports a
-client must find after a restart belong in the database.
+These reports live in the thread's memory and are lost when the server stops. Reports
+that clients must find after a restart belong in the database.
 
 ---
 

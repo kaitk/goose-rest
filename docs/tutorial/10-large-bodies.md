@@ -1,15 +1,15 @@
 # 10. Large bodies
 
-The projects get tasks, imported from a spreadsheet as CSV: thousands of lines, past the
+The projects get tasks, imported from a spreadsheet as CSV: thousands of lines, beyond the
 8 KB that goose-http reads a request into. goose-rest gathers such a body whole, up to a
-limit the route sets, and then calls the route with it. How goose-http reads a body,
-and the other ways it can: [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
+limit the route sets, and then calls the route with it. For how goose-http reads a body
+and the other ways to read one, see [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
 
 ## Gathered whole, up to a limit
 
-A body that fits the read buffer with its head comes to the handler whole. A longer one
-is gathered only when a route asks for it, with `rest::body(cx, limit)`, or with
-`rest::take` of a JSON type, which calls `rest::body` with its default of 1 MB. From
+A body that fits alongside its head in the read buffer reaches the handler whole. A longer
+body is gathered only when a route asks for it with `rest::body(cx, limit)` or
+`rest::take` of a JSON type. The latter calls `rest::body` with its default of 1 MB. From
 [`10-large-bodies`](10-large-bodies/main.goose):
 
 ```rust
@@ -50,13 +50,13 @@ POST /v1/projects/1/tasks/import 400 {"error":"invalid_csv"}
 
 ## The code before `rest::body` runs twice
 
-At a route's first `rest::body` or `rest::take`, for a body that hasn't all arrived, the
-route leaves without answering. `rest::serve` reads the body up to the limit, then calls
-the handler again with the body whole. So the code before that first call runs twice for
-a long body, and must not change state.
+If the body hasn't all arrived when a route first calls `rest::body` or `rest::take`,
+the route leaves without answering. `rest::serve` reads the body up to the limit, then
+calls the handler again with the body whole. Code before that first call therefore runs
+twice for a long body and must not change state.
 
-A check there is fine, and an answer there ends the request without reading the body.
-The import's route finds the project and checks the `Content-Type` before `rest::body`,
+A check before that call is fine, and an answer there ends the request without reading
+the body. The import route finds the project and checks the `Content-Type` before `rest::body`,
 so an import into a project that doesn't exist gets its 404 before any of its 13 KB is
 read:
 
@@ -73,8 +73,8 @@ fn project(cx) -> i64 {
 }
 ```
 
-The tasks are added after `rest::body`, in the run that has the body, so they're added
-once.
+Tasks are added after `rest::body`, during the run with the complete body, so each task
+is added only once.
 
 ## Three limits
 
@@ -86,8 +86,8 @@ Three limits apply, and the smallest wins:
 | A generated route's | `x-body-limit` on its `requestBody`, in bytes | the same |
 | The server's | `http::Config`'s `max_body`, 1 MB by default | goose-http's 413, without a body, before any route runs |
 
-The import takes up to 256 KB, under the server's 1 MB, so the program keeps the
-default. A route that takes more raises `max_body` to its limit, as
+The import accepts up to 256 KB, below the server's 1 MB limit, so the program keeps
+the default. A route that accepts more raises `max_body` to its limit, as
 [`05-schema`](05-schema/main.goose) does for its 2 MB uploads:
 
 ```rust
@@ -96,13 +96,13 @@ default. A route that takes more raises `max_body` to its limit, as
 
 `api::MAX_BODY` is the largest `x-body-limit` in the schema, or 1 MB.
 
-A body whose `Content-Length` is over the limit is refused before it's sent, and a
-chunked one once it passes the limit. The first call's limit holds for the request, so a
-route that takes a JSON body over 1 MB calls `rest::body` with its limit before
-`rest::take`, as a generated route does for its `x-body-limit`.
+A body whose `Content-Length` exceeds the limit is rejected before it is sent; a
+chunked body is rejected once it exceeds the limit. The first call sets the limit for
+the request. To accept a JSON body over 1 MB, call `rest::body` with the required limit
+before `rest::take`, as generated routes do for `x-body-limit`.
 
-The worker holds each body it gathers until the route returns, so a limit is also the
-memory each connection importing at once can take. A body too large for that, such as an
+The worker holds each body it gathers until the route returns, so the limit also bounds
+the memory used for that body by each connection importing at the same time. A body too large for that, such as an
 attachment of any size, is read in pieces as it arrives:
 [the next page](11-bodies-in-pieces.md).
 

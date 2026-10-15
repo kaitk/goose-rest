@@ -1,8 +1,8 @@
 # 16. Testing the application
 
-Part two's application is tested from two sides, as part one's is
-([Testing without sockets](09-testing.md)): inside, in-process through TinyCC, with no
-socket or thread, and outside, against the running server over HTTP. Each side reaches
+Part two's application is tested in two ways, as part one's is
+([Testing without sockets](09-testing.md)): in-process through TinyCC, with no
+socket or thread, and against the running server over HTTP. Each approach covers
 what the other can't:
 
 | What | Without sockets | Over HTTP |
@@ -21,8 +21,8 @@ HTTP.
 
 ## The use cases, as plain calls
 
-A service's use case is a function of a connection and a job, so a test calls it as it
-is, on the [`db`](db/db.goose) package with no delay per statement. From
+A service's use case is a function that takes a connection and a job, so a test calls
+it directly, using the [`db`](db/db.goose) package with no delay per statement. From
 [`13-waiting/test.goose`](13-waiting/test.goose), after the call that assigns task 3,
 which [Work that waits](13-waiting.md#why-one-job-per-route) shows:
 
@@ -37,8 +37,8 @@ This is where a use case's rules are tested, each in microseconds, without a req
 
 ## The routes, up to their ask
 
-The routes and their case functions are in [`app.goose`](13-waiting/app.goose), apart
-from `main`, so that the test imports them as `main.goose` does. The worker's state
+The routes and their case functions are in [`app.goose`](13-waiting/app.goose), separate
+from `main`, so the test can import them as `main.goose` does. The worker's state
 holds the service's address, and the test gives it a box of its own. A box needs no
 thread to open, send to, or take from
 ([mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)):
@@ -64,9 +64,9 @@ A route that doesn't wait is answered whole, as is one that fails before it asks
 ```
 
 A route that asks sends its job to the box, and the handler returns without an answer.
-`serve_one` then answers 500, as it does for any block that writes none, so the test
-checks the job instead: it takes it from the box, reads it with `rest::asked`, as the
-service does, and gives it to the use case:
+`serve_one` then answers 500, as it does for any block that writes no answer, so the test
+checks the job instead: it takes the job from the box, reads it with `rest::asked`, as the
+service does, and passes it to the use case:
 
 ```rust
     let user1 = "X-User: 1\r\n";
@@ -90,7 +90,7 @@ job. The box has two slots, so two asks fill it, and the next route gets the 503
     expect(body_of(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1))), "{\"error\":\"unavailable\"}");
 ```
 
-`scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; one runs alone as
+`scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; to run one on its own, use
 `goose docs/tutorial/13-waiting/test.goose`.
 
 ## The running server
@@ -110,10 +110,10 @@ between requests.
 
 ### What the timing-dependent cases rely on
 
-The limits are timing: a wait that ends, a box that is full while the database is busy,
-and a client that goes before its job starts. [`15-limits`](15-limits/requests.sh)
-makes each one hold with set delays, wide enough that the time curl takes to start
-doesn't matter:
+These limit tests depend on timing: a wait expires, a box fills while the database is busy,
+and a client disconnects before its job starts. [`15-limits`](15-limits/requests.sh)
+uses fixed delays to produce each condition, with enough margin that the time curl takes
+to start doesn't matter:
 
 ```sh
 # The database takes 500 ms, past the route's 200: 504. It goes on with the
@@ -140,19 +140,19 @@ GET /v1/gone 200 {"skipped":2,"dropped":1}
 - **504.** The job takes 520 ms, its 500 ms and a 20 ms statement, and the route waits
   200, so the 504 holds however fast the machine is.
 - **503.** The database works on the first job for 520 ms from its start, and the four
-  requests must all reach the worker within them. Their fixed waits are 300 ms: the
-  504's 200, and the two clients' 50 each. That leaves about 200 ms for starting curl
+  requests must all reach the worker within that time. Their fixed waits total 300 ms:
+  200 for the 504, and 50 for each of the two clients. That leaves about 200 ms for starting curl
   four times. This is the narrowest margin.
 - **A client that has gone.** `-m 0.05` gives up at 50 ms, well before the route's
   200, so its connection closes while its job waits in the box. A client that waited
-  for the 504 instead would keep the next requests past the 520 ms.
+  for the 504 instead would delay the next requests until after the 520 ms.
 - **The counts.** `sleep 1` lets the database finish the first job, about 100 ms after
   the 503, and skip the two that wait, before `/v1/gone` reads its counts.
 
 The reports at the end work the same way: a report runs for 500 ms, so a request right
 after the `POST` finds it running, and one after `sleep 1` finds it done. On a machine
 slow enough to break these margins, raise `ms=500` and the sleeps together, and keep
-the route's wait, `WAIT_MS`, below the job.
+the route's wait, `WAIT_MS`, below the job's whole time: its `ms` and the 20 ms statement.
 
 ---
 

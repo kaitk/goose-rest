@@ -1,15 +1,15 @@
 # 13. Work that waits
 
-The projects move into a database. Its driver blocks: a query sends a statement, and the
-call returns when the rows come back. This page runs the queries first in the route,
-then on a service thread that owns the connection, and shows why the second is the one
-to use.
+The projects now move into a database. Its driver blocks: a query sends a statement,
+and the call returns when the rows come back. This page first runs queries in the route,
+then moves them to a service thread that owns the connection, showing why the service
+thread is the recommended approach.
 
-The database here is the tutorial's own [`db`](db/db.goose): rows in memory, read and
-written by the statements the pages run, each of which sleeps 20 ms as a query over a
-network would. Its calls read like a Rust driver's, such as sqlx's: a connection, a
-statement with bound parameters, and rows read into structs. A real driver can take its
-place without changing the pages.
+The database here is the tutorial's own [`db`](db/db.goose): in-memory rows read and
+written by the statements used in these pages. Each statement sleeps for 20 ms to
+simulate a query over a network. Its calls resemble those of a Rust driver such as
+sqlx: a connection, a statement with bound parameters, and rows read into structs.
+A real driver can replace it without changing the pages.
 
 ## In the route
 
@@ -25,16 +25,16 @@ the route. From [`13-waiting`](13-waiting/app.goose):
         rest::json(cx, 200, project_of(p));
 ```
 
-A worker is one thread that serves thousands of connections, one call at a time, so
-while this query waits, every other connection on the worker waits too: 20 ms here,
-for each of them. A worker also has its own copy of the program's state, so each worker
-needs a connection of its own, and none can see another's transaction.
+A worker is a single thread serving thousands of connections, one call at a time.
+While this query waits, every other connection on the worker waits too: 20 ms here for
+each connection. Each worker also has its own copy of the program's state, so it needs
+its own database connection and cannot see another worker's transaction.
 
 ## Behind a service
 
-Work that waits goes to a thread of the program's own, a *service*, which owns the
-connections. A route sends it one job by message, and returns; the worker serves its
-other connections, and calls the handler again when the reply comes:
+Work that waits goes to a dedicated thread in the program: a *service* that owns the
+database connections. A route sends it a job by message and returns. The worker serves
+its other connections, then calls the handler again when the reply arrives:
 
 ```mermaid
 sequenceDiagram
@@ -59,20 +59,19 @@ sequenceDiagram
     W->>C: 200 {"task":3,"assignee":2}
 ```
 
-The worker never blocks on the database, so the service can take its time. It's a
-thread that does nothing else, and its calls block as long as the statements take: a
-slow query holds up only the jobs queued behind it, not the worker's connections. What
-bounds it is the route's side, how long the route waits and how many jobs its box
-holds ([Limits](15-limits.md)).
+The worker never blocks on the database. The service thread does nothing else, and its
+calls block for as long as the statements take: a slow query holds up only the jobs
+queued behind it, not the worker's connections. The limits apply on the route's side:
+how long the route waits and how many jobs the service's box holds ([Limits](15-limits.md)).
 goose-http's [slow work](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#slow-work)
 shows the same exchange at the loop's level, with its time limit, and
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
-how messages cross.
+explains how messages cross between threads.
 
-The job names a whole use case, and the service does it start to end, with plain
-blocking calls, as an Axum or Express handler's body would. Assigning a task checks the
-project, that the user asking is a member, and that the assignee is one, then updates
-the task: four statements in one transaction. From
+The job represents a complete use case, which the service performs from start to finish
+with plain blocking calls, as the body of an Axum or Express handler would. Assigning
+a task checks that the project exists and that both the requesting user and the
+assignee are members, then updates the task: four statements in one transaction. From
 [`service.goose`](13-waiting/service.goose):
 
 ```rust
@@ -101,7 +100,7 @@ fn assign(c: db::Conn&, j: AssignJob) -> AssignReply {
 ```
 
 A reply that carries an error's status and code lets the route answer it in the one
-error shape. The job and its reply are flat structs: they cross between threads as
+error shape. The job and its reply are flat structs passed between threads as
 bytes, in messages of `Config.mail_size` bytes, 256 by default.
 
 ```rust
@@ -120,8 +119,8 @@ with `rest::reply_value`:
 
 ## The route asks, and resumes
 
-The route reads and checks the request, then asks once with `rest::ask`: the service's
-address, the job's tag, the job, and what the route needs when the reply comes. From
+The route reads and validates the request, then calls `rest::ask` once, passing the
+service address, the job tag, the job, and the state needed when the reply arrives. From
 [`app.goose`](13-waiting/app.goose), which holds the routes apart from `main` so that
 a test can import them:
 
@@ -138,9 +137,9 @@ a test can import them:
         rest::ask(cx, cx.app.db, service::ASSIGN, job, Waiting.Assign { task: job.task, assignee: assignee });
 ```
 
-Goose has no `async`, and can't keep a closure to call later, so what the route needs
-when it resumes goes in a variant of the program's `Waiting` enum, which `rest::ask`
-keeps in the request's state:
+Goose has no `async` and can't store a closure to call later. Instead, the state the
+route needs when it resumes goes in a variant of the program's `Waiting` enum.
+`rest::ask` stores this in the request state:
 
 ```rust
 // What each route that waits needs when its reply comes.
@@ -184,8 +183,8 @@ PUT /v1/projects/1/tasks/3/assignee?user=3 409 {"error":"assignee_not_a_member"}
 PUT /v1/projects/1/tasks/6/assignee?user=2 404 {"error":"task_not_found"}
 ```
 
-`main` opens the service's box, starts its thread, and turns waiting on, which is off
-until `Config.mail_slots` and `max_waiting` are set:
+`main` opens the service's mailbox, starts its thread, and enables waiting. Waiting is
+disabled until `Config.mail_slots` and `max_waiting` are set:
 
 ```rust
     let box, e = http::mail_open(64, 256);
@@ -216,11 +215,11 @@ because:
     assert(assignee(c, 3) == 2);
 ```
 
-What it costs: the job and its reply cross as flat values, the HTTP layer and the use
-cases live in different functions, and a check that needs the database before the
-route, such as a session looked up by its cookie, goes in the job, so that the route
-still waits once. A route that waits on two services in turn needs more than one wait:
-[the next page](14-two-services.md).
+The trade-offs are that jobs and replies must cross thread boundaries as flat values,
+and the HTTP layer and use cases live in separate functions. Checks that need the
+database before the route's work, such as looking up a session by its cookie, go in the
+job so the route still waits only once. A route using two services in sequence needs
+more than one wait: [the next page](14-two-services.md).
 
 ---
 
