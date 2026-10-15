@@ -388,7 +388,7 @@ there are none); the status line and the fields stay goose-rest's:
 fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const u8[:],
                     detail: const u8[:], at: i64) {
     body.append("{\"error\":");
-    json::format_string(body, code);
+    http::json_string(body, code);
     body.append(",\"status\":");
     format(body, status);
     body.push('}');

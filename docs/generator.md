@@ -29,7 +29,7 @@ goose-rest: api.json: #/components/schemas/A/properties/c/pattern: not supported
 A program imports the file by its module name, so name it `<name>_gen.goose`, not
 `<name>.gen.goose`: an import is identifiers separated by dots, and a dot in a file
 name reads as a directory (spec §11.1). The file imports `json`, and `rest` when a
-check or the router needs it, and `http` with a router, so the
+check or the router needs it, and `http` with a router or a string field to write, so the
 program's root declares goose-rest and goose-http ([README](../README.md#quick-start)). It doesn't import the
 handlers' module: the root does, wherever the module lives, and the router's qualified
 calls find it.
@@ -204,7 +204,8 @@ type's empty value without building it, so a string that fails `maxLength` never
 overruns its field.
 
 The writer writes the declared fields only, in the schema's order, each key and its
-punctuation a constant: `out.append(",\"name\":")`. It leaves out an optional field whose
+punctuation a constant: `out.append(",\"name\":")`, and each string through
+`http::json_string`. It leaves out an optional field whose
 `has_` is false, and writes `null` for one whose `_null` is true. Where the fields before
 a key may all have been left out, the writer checks the last byte for the object's `{`
 to know whether a comma is due.

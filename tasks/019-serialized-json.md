@@ -1,6 +1,7 @@
 # 019: Close the serialized JSON loss against goose-http
 
-Status: todo (asked for 2026-10-15)
+Status: in-progress (asked for 2026-10-15; the package's half is done, and the
+benchmark half waits on the Linux run)
 
 On tiers B and C serialized, goose-rest's tier server loses 8-15% to goose-http's, and
 tier C takes 74.9 µs of CPU per request against 64.2
@@ -39,10 +40,24 @@ and the examples call `http::json_string`, so no code in either repository calls
 `json::format_string` for a string; every `_gen.goose` regenerated. It starts after the test migrations (this repository's task
 038, goose-http's task 041), which reorganize the tests it changes (2026-10-15).
 
+## Done (2026-10-15)
+
+goose-http v0.3.3's `http::json_string` has the scan, and its output equals
+`json::format_string`'s. With the pin at v0.3.3, every JSON string goose-rest writes goes
+through it: the generator's writers (`gen/emit.goose`, which also imports `http` into a
+generated file with a string field to write), `rest::error_body` (`runtime.goose`), the
+tutorial's and the best practices' programs, `examples/plain`, the runtime's tests, and
+the tier server, whose private `json_string` and `JSON_ESCAPES` are gone. Every
+`_gen.goose` was regenerated: only the call and the import changed, and no expected
+output did. The tier server passes goose-http's `check.py` on tiers A to D and
+`bench/rest/tiers/check.py` on F, R, and M on macOS. Spike 07 keeps
+`json::format_string`: it checks the language, and imports no goose-http.
+
 ## Acceptance criteria
 
 - [ ] The cause is measured, with instruction counts on tier B or C's serialized routes
-- [ ] The fix is in the generated writers or the package, so programs get it, and
+      (waits on the Linux run)
+- [x] The fix is in the generated writers or the package, so programs get it, and
       `scripts/test.sh` passes
 - [ ] Tiers B and C serialized rerun on Linux against goose-http alone, recorded in
-      `docs/benchmarks.md`
+      `docs/benchmarks.md` (waits on the Linux run)

@@ -2,7 +2,6 @@
 // type of its per-request state.
 import std;
 import os;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 
@@ -13,12 +12,12 @@ struct St { unused: bool = false }
 fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:],
                     detail: const u8[:], at: i64) {
     body.append("{\"error\":{\"code\":");
-    json::format_string(body, code);
+    http::json_string(body, code);
     body.append(",\"status\":");
     format(body, status);
     if detail.len > 0 {
         body.append(",\"message\":");
-        json::format_string(body, detail);
+        http::json_string(body, detail);
     }
     body.append("}}");
 }

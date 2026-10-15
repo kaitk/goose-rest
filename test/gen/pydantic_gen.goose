@@ -4,6 +4,7 @@ namespace api;
 
 import std;
 import json;
+import http;
 import rest;
 
 // #/components/schemas/Settings/properties/mode
@@ -85,7 +86,7 @@ fn format(out: u8[>..]&, v: const Owner&) {
         if v.email_null {
             out.append("null");
         } else {
-            json::format_string(out, v.email);
+            http::json_string(out, v.email);
         }
     }
     out.push('}');
@@ -227,7 +228,7 @@ fn read_settings_tags(r: json::Reader&, scratch: u8[>..]&) -> u8[][>..] {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const Settings&) {
     out.append("{\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     out.append(",\"brightness\":");
     json::format_int(out, v.brightness);
     if v.has_interval_ms {
@@ -252,7 +253,7 @@ fn format(out: u8[>..]&, v: const Settings&) {
     out.push('[');
     for e_, i_ in v.tags {
         if i_ > 0 { out.push(','); }
-        json::format_string(out, e_);
+        http::json_string(out, e_);
     }
     out.push(']');
     out.push('}');

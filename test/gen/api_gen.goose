@@ -4,6 +4,7 @@ namespace api;
 
 import std;
 import json;
+import http;
 import rest;
 
 // #/components/schemas/Status
@@ -137,10 +138,10 @@ fn read_project_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const ProjectCreate&) {
     out.append("{\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     if v.has_color {
         out.append(",\"color\":");
-        json::format_string(out, v.color);
+        http::json_string(out, v.color);
     }
     if v.has_status {
         out.append(",\"status\":");
@@ -222,13 +223,13 @@ fn format(out: u8[>..]&, v: const Owner&) {
     out.append("{\"id\":");
     json::format_int(out, v.id);
     out.append(",\"email\":");
-    json::format_string(out, v.email);
+    http::json_string(out, v.email);
     if v.has_display_name {
         out.append(",\"displayName\":");
         if v.display_name_null {
             out.append("null");
         } else {
-            json::format_string(out, v.display_name);
+            http::json_string(out, v.display_name);
         }
     }
     out.push('}');
@@ -498,7 +499,7 @@ fn format(out: u8[>..]&, v: const Project&) {
     out.append("{\"id\":");
     json::format_int(out, v.id);
     out.append(",\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     out.append(",\"status\":");
     format(out, v.status);
     if v.has_budget {
@@ -528,7 +529,7 @@ fn format(out: u8[>..]&, v: const Project&) {
     out.push('[');
     for e_, i_ in v.tags {
         if i_ > 0 { out.push(','); }
-        json::format_string(out, e_);
+        http::json_string(out, e_);
     }
     out.push(']');
     if v.has_scores {
@@ -541,18 +542,18 @@ fn format(out: u8[>..]&, v: const Project&) {
         out.push(']');
     }
     out.append(",\"createdAt\":");
-    json::format_string(out, v.created_at);
+    http::json_string(out, v.created_at);
     if v.has_due_on {
         out.append(",\"dueOn\":");
         if v.due_on_null {
             out.append("null");
         } else {
-            json::format_string(out, v.due_on);
+            http::json_string(out, v.due_on);
         }
     }
     if v.has_ref {
         out.append(",\"ref\":");
-        json::format_string(out, v.ref);
+        http::json_string(out, v.ref);
     }
     if v.has_kind {
         out.append(",\"kind\":");
@@ -568,7 +569,7 @@ fn format(out: u8[>..]&, v: const Project&) {
     }
     if v.has_type_ {
         out.append(",\"type\":");
-        json::format_string(out, v.type_);
+        http::json_string(out, v.type_);
     }
     out.push('}');
 }

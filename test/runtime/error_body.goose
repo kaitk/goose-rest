@@ -1,7 +1,6 @@
 // A program's rest::error_body overload for its per-request state, which
 // shapes every error answer: a failure's and rest::otherwise's.
 import std;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../";
 import expect from "../";
@@ -13,7 +12,7 @@ struct Shaped { unused: bool = false }
 fn rest::error_body(body: u8[>..]&, st: const Shaped&, status: i32, code: const u8[:], detail: const u8[:],
                     at: i64) {
     body.append("{\"error\":");
-    json::format_string(body, code);
+    http::json_string(body, code);
     body.append(",\"status\":");
     format(body, status);
     body.push('}');

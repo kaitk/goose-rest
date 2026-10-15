@@ -2,12 +2,12 @@
 namespace settings;
 
 import std;
-import json;
+import http;
 
 struct Settings { user: i64, time_zone: const u8[:] }
 
 fn format(out: u8[>..]&, s: const Settings&) {
     out.append("{\"time_zone\":");
-    json::format_string(out, s.time_zone);
+    http::json_string(out, s.time_zone);
     out.push('}');
 }

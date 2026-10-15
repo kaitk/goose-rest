@@ -10,7 +10,6 @@
 //   curl -s -F note=Plans -F file=@plans.pdf localhost:8080/v1/projects/1/attachments/form
 import std;
 import os;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 
@@ -52,7 +51,7 @@ fn format(out: u8[>..]&, a: const Attached&) {
     format(out, "{\"project\":", a.project, ",\"id\":", a.id, ",\"size\":", a.size);
     if a.note.len > 0 {
         out.append(",\"note\":");
-        json::format_string(out, a.note);
+        http::json_string(out, a.note);
     }
     out.push('}');
 }

@@ -7,7 +7,6 @@
 //   curl -s localhost:8080/holidays
 import std;
 import os;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 
@@ -15,9 +14,9 @@ struct Holiday { date: const u8[:], name: const u8[:] }
 
 fn format(out: u8[>..]&, h: const Holiday&) {
     out.append("{\"date\":");
-    json::format_string(out, h.date);
+    http::json_string(out, h.date);
     out.append(",\"name\":");
-    json::format_string(out, h.name);
+    http::json_string(out, h.name);
     out.push('}');
 }
 

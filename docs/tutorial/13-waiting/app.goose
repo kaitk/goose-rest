@@ -1,7 +1,6 @@
 // The routes and their case functions, apart from main so that test.goose
 // can import them.
 import std;
-import json;
 import http;
 import rest;
 import db;
@@ -11,7 +10,7 @@ struct Project { id: i64, name: u8[..64], owner: i64 }
 
 fn format(out: u8[>..]&, p: const Project&) {
     format(out, "{\"id\":", p.id, ",\"name\":");
-    json::format_string(out, p.name);
+    http::json_string(out, p.name);
     format(out, ",\"owner\":", p.owner, "}");
 }
 

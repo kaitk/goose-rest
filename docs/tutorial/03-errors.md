@@ -22,10 +22,14 @@ fn format(out: u8[>..]&, p: const Project&) {
     out.append("{\"id\":");
     format(out, p.id);
     out.append(",\"name\":");
-    json::format_string(out, p.name);
+    http::json_string(out, p.name);
     out.push('}');
 }
 ```
+
+`http::json_string` writes a string as JSON: quoted, with the bytes JSON requires
+escaped. It checks 16 bytes at a time for a byte to escape, so write strings with it
+rather than with `json::format_string`, whose output is the same.
 
 A type without its own `format` still compiles, but is written in Goose's default
 format, such as `app::Session { 1, 2 }`, which isn't JSON. Strings use the standard
@@ -63,12 +67,12 @@ struct St { unused: bool = false }
 fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:],
                     detail: const u8[:], at: i64) {
     body.append("{\"error\":{\"code\":");
-    json::format_string(body, code);
+    http::json_string(body, code);
     body.append(",\"status\":");
     format(body, status);
     if detail.len > 0 {
         body.append(",\"message\":");
-        json::format_string(body, detail);
+        http::json_string(body, detail);
     }
     body.append("}}");
 }

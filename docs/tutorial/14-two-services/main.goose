@@ -8,7 +8,6 @@
 //   curl -s -X POST 'localhost:8080/v1/projects/1/members?user=3'
 import std;
 import os;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 import db from "../db/";
@@ -96,7 +95,7 @@ fn tasks_json(c: db::Conn&, j: TasksJob) -> u8[>..] {
     for t, i in ts {
         if i > 0 { out.push(','); }
         format(out, "{\"id\":", t.id, ",\"title\":");
-        json::format_string(out, t.title);
+        http::json_string(out, t.title);
         format(out, ",\"assignee\":", t.assignee, "}");
     }
     out.push(']');

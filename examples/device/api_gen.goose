@@ -84,7 +84,7 @@ fn read_status(r: json::Reader&, scratch: u8[>..]&) -> Status {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const Status&) {
     out.append("{\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     out.append(",\"temp_mc\":");
     if v.temp_mc_null {
         out.append("null");
@@ -169,7 +169,7 @@ fn read_settings(r: json::Reader&, scratch: u8[>..]&) -> Settings {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const Settings&) {
     out.append("{\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     out.append(",\"brightness\":");
     json::format_int(out, v.brightness);
     out.append(",\"interval_ms\":");
@@ -236,9 +236,9 @@ fn read_firmware_upload(r: json::Reader&, scratch: u8[>..]&) -> FirmwareUpload {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const FirmwareUpload&) {
     out.append("{\"version\":");
-    json::format_string(out, v.version);
+    http::json_string(out, v.version);
     out.append(",\"image\":");
-    json::format_string(out, v.image);
+    http::json_string(out, v.image);
     out.push('}');
 }
 
@@ -310,11 +310,11 @@ fn read_firmware(r: json::Reader&, scratch: u8[>..]&) -> Firmware {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const Firmware&) {
     out.append("{\"version\":");
-    json::format_string(out, v.version);
+    http::json_string(out, v.version);
     out.append(",\"bytes\":");
     json::format_int(out, v.bytes);
     out.append(",\"crc32\":");
-    json::format_string(out, v.crc32);
+    http::json_string(out, v.crc32);
     out.push('}');
 }
 

@@ -2,7 +2,6 @@
 // scope, the extractors, and answers in JSON.
 import std;
 import os;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 
@@ -19,7 +18,7 @@ fn format(out: u8[>..]&, p: const Project&) {
     out.append("{\"id\":");
     format(out, p.id);
     out.append(",\"name\":");
-    json::format_string(out, p.name);
+    http::json_string(out, p.name);
     out.push('}');
 }
 

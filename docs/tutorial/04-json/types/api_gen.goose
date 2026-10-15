@@ -4,6 +4,7 @@ namespace api;
 
 import std;
 import json;
+import http;
 import rest;
 
 // #/components/schemas/Project
@@ -75,10 +76,10 @@ fn format(out: u8[>..]&, v: const Project&) {
     out.append("{\"id\":");
     json::format_int(out, v.id);
     out.append(",\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     if v.has_color {
         out.append(",\"color\":");
-        json::format_string(out, v.color);
+        http::json_string(out, v.color);
     }
     out.push('}');
 }
@@ -144,10 +145,10 @@ fn read_project_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
 // Writes only the declared fields, each key's bytes a constant.
 fn format(out: u8[>..]&, v: const ProjectCreate&) {
     out.append("{\"name\":");
-    json::format_string(out, v.name);
+    http::json_string(out, v.name);
     if v.has_color {
         out.append(",\"color\":");
-        json::format_string(out, v.color);
+        http::json_string(out, v.color);
     }
     out.push('}');
 }

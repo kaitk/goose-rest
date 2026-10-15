@@ -1,5 +1,5 @@
 // goose-http's REST benchmark server on goose-rest: the same routes,
-// records, and JSON as goose-http's bench/rest/goose at v0.3.2, served through
+// records, and JSON as goose-http's bench/rest/goose at v0.3.3, served through
 // rest::serve, an http::router chain per tier, rest's extractors, its bearer
 // middleware, and rest::fail with each tier's error shape (error_body below).
 // It loads the generator's dataset files (goose-http's bench/rest/gen.goose)
@@ -71,23 +71,6 @@ fn keep(s: const u8[:]) -> Str {
 }
 
 fn view(s: Str) -> const u8[:] { text[s.at..s.at + s.len] }
-
-// The bytes a JSON string escapes.
-let JSON_ESCAPES = json_escapes_set();
-
-fn json_escapes_set() -> ByteSet {
-    var m = [false; 256];
-    for i in 256 { m[i] = i < 32 || i == '"' || i == '\\'; }
-    return byte_set(m);
-}
-
-// json::format_string, but find_any looks for a byte to escape 16 bytes at a
-// time. std's byte loop takes a third of tier C's cycles, and up to 7% more of
-// them when the binary's layout puts it across a cache line (task 033).
-fn json_string(out: u8[>..]&, s: const u8[:]) {
-    if find_any(s, JSON_ESCAPES) < 0 { out.push('"'); out.append(s); out.push('"'); }
-    else { json::format_string(out, s); }
-}
 
 fn intern(s: const u8[:]) -> u8 {
     for w, i in words { if view(w) == s { return i as u8; } }
@@ -225,9 +208,9 @@ fn item_open(out: u8[>..]&, it: Item) {
     out.append("{\"id\":");
     format(out, it.id);
     out.append(",\"name\":");
-    json_string(out, view(it.name));
+    http::json_string(out, view(it.name));
     out.append(",\"category\":");
-    json_string(out, word(it.category));
+    http::json_string(out, word(it.category));
     out.append(",\"price\":");
     format(out, it.price);
     out.append(",\"quantity\":");
@@ -235,7 +218,7 @@ fn item_open(out: u8[>..]&, it: Item) {
     out.append(if it.active { ",\"active\":true,\"tags\":[" } else { ",\"active\":false,\"tags\":[" });
     for t, i in it.tags {
         if i > 0 { out.push(','); }
-        json_string(out, word(t));
+        http::json_string(out, word(t));
     }
     out.append("],\"rating\":{\"score\":");
     format(out, it.score);
@@ -248,11 +231,11 @@ fn user_open(out: u8[>..]&, u: User) {
     out.append("{\"id\":");
     format(out, u.id);
     out.append(",\"name\":");
-    json_string(out, view(u.name));
+    http::json_string(out, view(u.name));
     out.append(",\"email\":");
-    json_string(out, view(u.email));
+    http::json_string(out, view(u.email));
     out.append(",\"plan\":");
-    json_string(out, word(u.plan));
+    http::json_string(out, word(u.plan));
 }
 
 fn prebuild() {
@@ -542,7 +525,7 @@ fn iso_or_null(out: u8[>..]&, ms: i64) {
 }
 
 fn string_or_null(out: u8[>..]&, s: const u8[:]) {
-    if s.len == 0 { out.append("null"); } else { json_string(out, s); }
+    if s.len == 0 { out.append("null"); } else { http::json_string(out, s); }
 }
 
 // A string member, or null as empty.
@@ -777,11 +760,11 @@ fn load_entries(dir: const u8[:]) {
 
 fn session_open(out: u8[>..]&, p: Person) {
     out.append("{\"user\":{\"id\":");
-    json_string(out, p.id);
+    http::json_string(out, p.id);
     out.append(",\"name\":");
-    json_string(out, view(p.name));
+    http::json_string(out, view(p.name));
     out.append(",\"email\":");
-    json_string(out, view(p.email));
+    http::json_string(out, view(p.email));
     out.append(",\"image\":");
     string_or_null(out, view(p.image));
     out.append("},\"signedInAt\":");
@@ -791,30 +774,30 @@ fn session_open(out: u8[>..]&, p: Person) {
         let o = orgs[m.org];
         if i > 0 { out.push(','); }
         out.append("{\"id\":");
-        json_string(out, o.id);
+        http::json_string(out, o.id);
         out.append(",\"name\":");
-        json_string(out, view(o.name));
+        http::json_string(out, view(o.name));
         out.append(",\"slug\":");
-        json_string(out, view(o.slug));
+        http::json_string(out, view(o.slug));
         out.append(",\"issueLinks\":");
         string_or_null(out, view(o.links));
         out.append(",\"role\":");
-        json_string(out, word(m.role));
+        http::json_string(out, word(m.role));
         out.push('}');
     }
     out.append("],\"activeOrganizationId\":");
-    json_string(out, orgs[p.active].id);
+    http::json_string(out, orgs[p.active].id);
     let s = p.settings;
     out.append(",\"settings\":{\"timeZone\":");
-    json_string(out, word(s.time_zone));
+    http::json_string(out, word(s.time_zone));
     out.append(",\"weekStart\":");
-    json_string(out, word(s.week_start));
+    http::json_string(out, word(s.week_start));
     out.append(",\"locale\":");
-    json_string(out, word(s.locale));
+    http::json_string(out, word(s.locale));
     out.append(",\"theme\":");
-    json_string(out, word(s.theme));
+    http::json_string(out, word(s.theme));
     out.append(",\"timerLayout\":");
-    json_string(out, word(s.timer_layout));
+    http::json_string(out, word(s.timer_layout));
     out.append(",\"showSummary\":");
     json::format_bool(out, s.show_summary);
     out.append(",\"compactRows\":");
@@ -822,21 +805,21 @@ fn session_open(out: u8[>..]&, p: Person) {
     out.append(",\"wideTimer\":");
     json::format_bool(out, s.wide_timer);
     out.append(",\"timerView\":");
-    json_string(out, word(s.timer_view));
+    http::json_string(out, word(s.timer_view));
     out.append(",\"calendarWeekend\":");
     json::format_bool(out, s.calendar_weekend);
     out.append(",\"appIcon\":");
-    json_string(out, word(s.app_icon));
+    http::json_string(out, word(s.app_icon));
     out.append(",\"sceneCollection\":");
-    json_string(out, word(s.scene_collection));
+    http::json_string(out, word(s.scene_collection));
     out.append(",\"scenePin\":");
     string_or_null(out, word(s.scene_pin));
     out.append(",\"sceneBackground\":");
     json::format_bool(out, s.scene_background);
     out.append(",\"sceneStrength\":");
-    json_string(out, word(s.scene_strength));
+    http::json_string(out, word(s.scene_strength));
     out.append(",\"surfaces\":");
-    json_string(out, word(s.surfaces));
+    http::json_string(out, word(s.surfaces));
     out.append(",\"sceneWeather\":");
     json::format_bool(out, s.scene_weather);
     out.append(",\"sceneIntro\":");
@@ -844,29 +827,29 @@ fn session_open(out: u8[>..]&, p: Person) {
     out.append(",\"sceneTagline\":");
     json::format_bool(out, s.scene_tagline);
     out.append(",\"durationFormat\":");
-    json_string(out, word(s.duration_format));
+    http::json_string(out, word(s.duration_format));
     out.append(",\"dateFormat\":");
-    json_string(out, word(s.date_format));
+    http::json_string(out, word(s.date_format));
     out.append(",\"timeFormat\":");
-    json_string(out, word(s.time_format));
+    http::json_string(out, word(s.time_format));
     out.append(",\"copyDurationPattern\":");
-    json_string(out, word(s.copy_pattern));
+    http::json_string(out, word(s.copy_pattern));
     out.append(",\"copyDurationControl\":");
-    json_string(out, word(s.copy_control));
+    http::json_string(out, word(s.copy_control));
     out.append(",\"country\":");
     string_or_null(out, word(s.country));
     let f = p.fill;
     out.append("},\"fill\":{\"date\":");
-    json_string(out, word(f.date));
+    http::json_string(out, word(f.date));
     out.append(",\"timerStartedAt\":");
     if f.timer_started >= 0 { format(out, f.timer_started); } else { out.append("null"); }
     out.append(",\"today\":");
-    json_string(out, word(f.today));
+    http::json_string(out, word(f.today));
     out.append(",\"lastWorkingDay\":");
     if f.last_day == 0 { out.append("null"); }
     else {
         out.append("{\"date\":");
-        json_string(out, word(f.last_day));
+        http::json_string(out, word(f.last_day));
         out.append(",\"filled\":");
         json::format_bool(out, f.last_day_filled);
         out.push('}');
@@ -890,11 +873,11 @@ fn session_open(out: u8[>..]&, p: Person) {
 // that a PATCH writes another description between the two.
 fn entry_head(out: u8[>..]&, e: Entry) {
     out.append("{\"id\":");
-    json_string(out, e.id);
+    http::json_string(out, e.id);
     out.append(",\"organizationId\":");
-    json_string(out, orgs[e.org].id);
+    http::json_string(out, orgs[e.org].id);
     out.append(",\"userId\":");
-    json_string(out, people[e.user].id);
+    http::json_string(out, people[e.user].id);
     out.append(",\"projectId\":");
     string_or_null(out, if e.project >= 0 { projects[e.project].id } else { "" });
     out.append(",\"description\":");
@@ -912,7 +895,7 @@ fn entry_tail_open(out: u8[>..]&, e: Entry) {
 
 fn entry_full(out: u8[>..]&, e: Entry, description: const u8[:], stopped: i64) {
     entry_head(out, e);
-    json_string(out, description);
+    http::json_string(out, description);
     entry_tail_open(out, e);
     iso_or_null(out, stopped);
     out.push('}');
@@ -920,9 +903,9 @@ fn entry_full(out: u8[>..]&, e: Entry, description: const u8[:], stopped: i64) {
 
 fn project_full(out: u8[>..]&, p: Project) {
     out.append("{\"id\":");
-    json_string(out, p.id);
+    http::json_string(out, p.id);
     out.append(",\"name\":");
-    json_string(out, view(p.name));
+    http::json_string(out, view(p.name));
     out.append(",\"color\":");
     string_or_null(out, word(p.color));
     out.append(",\"archivedAt\":");
@@ -930,7 +913,7 @@ fn project_full(out: u8[>..]&, p: Project) {
     out.append(if p.has_entries { ",\"hasEntries\":true,\"teamIds\":[" } else { ",\"hasEntries\":false,\"teamIds\":[" });
     for t, i in p.teams {
         if i > 0 { out.push(','); }
-        json_string(out, t);
+        http::json_string(out, t);
     }
     out.append("]}");
 }
@@ -938,15 +921,15 @@ fn project_full(out: u8[>..]&, p: Project) {
 // GET /timer's answer for a running entry: the entry and its project.
 fn timer_full(out: u8[>..]&, e: Entry) {
     entry_head(out, e);
-    json_string(out, view(e.description));
+    http::json_string(out, view(e.description));
     entry_tail_open(out, e);
     out.append("null,\"project\":");
     if e.project < 0 { out.append("null}"); return; }
     let p = projects[e.project];
     out.append("{\"id\":");
-    json_string(out, p.id);
+    http::json_string(out, p.id);
     out.append(",\"name\":");
-    json_string(out, view(p.name));
+    http::json_string(out, view(p.name));
     out.append(",\"color\":");
     string_or_null(out, word(p.color));
     out.append("}}");
@@ -970,7 +953,7 @@ fn prebuild_snow() {
         entry_at.push(entry_json.len);
         entry_head(entry_json, e);
         entry_desc.push(entry_json.len);
-        json_string(entry_json, view(e.description));
+        http::json_string(entry_json, view(e.description));
         entry_tail.push(entry_json.len);
         entry_tail_open(entry_json, e);
         iso_or_null(entry_json, e.stopped);
@@ -988,7 +971,7 @@ fn snow_entry(out: u8[>..]&, i: i64) {
 fn snow_entry_as(out: u8[>..]&, i: i64, description: const u8[:]) {
     if template {
         http::store_append(tpl.entry, entry_at[i], entry_desc[i], out);
-        json_string(out, description);
+        http::json_string(out, description);
         http::store_append(tpl.entry, entry_tail[i], entry_at[i + 1], out);
     } else {
         let e = entries[i];
@@ -1197,15 +1180,15 @@ fn start_timer(cx, u: i64, m: Member, buf: u8[>..]&) {
     guard entry_index(id) < 0 else { rest::fail(cx, 409, "entry_id_taken"); }
     let now = now_ms();
     buf.append("{\"started\":{\"id\":");
-    json_string(buf, id);
+    http::json_string(buf, id);
     buf.append(",\"organizationId\":");
-    json_string(buf, orgs[m.org].id);
+    http::json_string(buf, orgs[m.org].id);
     buf.append(",\"userId\":");
-    json_string(buf, p.id);
+    http::json_string(buf, p.id);
     buf.append(",\"projectId\":");
     string_or_null(buf, project);
     buf.append(",\"description\":");
-    json_string(buf, description);
+    http::json_string(buf, description);
     buf.append(",\"ticket\":");
     string_or_null(buf, ticket);
     buf.append(",\"startedAt\":");
@@ -1244,11 +1227,11 @@ fn stop_timer(cx, u: i64, buf: u8[>..]&) {
         guard started > now - DAY && started <= now + MINUTE && entry_index(id) < 0
             else { rest::fail(cx, 404, "timer_not_running"); }
         buf.append("{\"id\":");
-        json_string(buf, id);
+        http::json_string(buf, id);
         buf.append(",\"organizationId\":");
-        json_string(buf, orgs[p.active].id);
+        http::json_string(buf, orgs[p.active].id);
         buf.append(",\"userId\":");
-        json_string(buf, p.id);
+        http::json_string(buf, p.id);
         buf.append(",\"projectId\":null,\"description\":\"\",\"ticket\":null,\"startedAt\":");
         iso_or_null(buf, started);
         buf.append(",\"stoppedAt\":");
@@ -1680,10 +1663,10 @@ fn staff_ref(out: u8[>..]&, s: i64, title: bool) {
     out.append("{\"id\":");
     format(out, s + 1);
     out.append(",\"name\":");
-    json_string(out, view(staffers[s].name));
+    http::json_string(out, view(staffers[s].name));
     if title {
         out.append(",\"title\":");
-        json_string(out, view(staffers[s].title));
+        http::json_string(out, view(staffers[s].title));
     }
     out.push('}');
 }
@@ -1692,9 +1675,9 @@ fn client_ref(out: u8[>..]&, c: i64) {
     out.append("{\"id\":");
     format(out, c + 1);
     out.append(",\"name\":");
-    json_string(out, view(clients[c].name));
+    http::json_string(out, view(clients[c].name));
     out.append(",\"code\":");
-    json_string(out, clients[c].code);
+    http::json_string(out, clients[c].code);
     out.push('}');
 }
 
@@ -1706,9 +1689,9 @@ fn lines_full(out: u8[>..]&, lines: Line[:]) {
         out.append("{\"id\":");
         format(out, l.id);
         out.append(",\"code\":");
-        json_string(out, s.code);
+        http::json_string(out, s.code);
         out.append(",\"name\":");
-        json_string(out, view(s.name));
+        http::json_string(out, view(s.name));
         out.append(",\"minutes\":");
         format(out, s.minutes);
         out.append(",\"price\":");
@@ -1734,7 +1717,7 @@ fn booking_full(out: u8[>..]&, i: i64) {
     out.append(",\"encounter\":{\"id\":");
     format(out, b.visit + 1);
     out.append(",\"status\":");
-    json_string(out, word(v.status));
+    http::json_string(out, word(v.status));
     out.append(",\"start\":");
     iso_or_null(out, v.start);
     out.append(",\"end\":");
@@ -1745,21 +1728,21 @@ fn booking_full(out: u8[>..]&, i: i64) {
     for m, k in b.reminders {
         if k > 0 { out.push(','); }
         out.append("{\"channel\":");
-        json_string(out, word(m.channel));
+        http::json_string(out, word(m.channel));
         out.append(",\"kind\":");
-        json_string(out, word(m.kind));
+        http::json_string(out, word(m.kind));
         out.append(",\"status\":");
-        json_string(out, word(m.status));
+        http::json_string(out, word(m.status));
         out.append(",\"at\":");
         iso_or_null(out, m.at);
         out.push('}');
     }
     out.append("],\"status\":");
-    json_string(out, word(b.status));
+    http::json_string(out, word(b.status));
     out.append(",\"source\":");
-    json_string(out, word(b.source));
+    http::json_string(out, word(b.source));
     out.append(",\"note\":");
-    if b.noted { json_string(out, view(b.note)); } else { out.append("null"); }
+    if b.noted { http::json_string(out, view(b.note)); } else { out.append("null"); }
     out.append(",\"createdAt\":");
     iso_or_null(out, b.created);
     out.append(",\"updatedAt\":");
@@ -1778,11 +1761,11 @@ fn shift_full(out: u8[>..]&, i: i64) {
     out.append(",\"end\":");
     iso_or_null(out, s.end);
     out.append(",\"kind\":");
-    json_string(out, word(s.kind));
+    http::json_string(out, word(s.kind));
     out.append(",\"room\":{\"id\":");
     format(out, s.room);
     out.append(",\"name\":");
-    json_string(out, word(s.room_name));
+    http::json_string(out, word(s.room_name));
     out.append("},\"note\":");
     string_or_null(out, view(s.note));
     out.push('}');
@@ -1793,36 +1776,36 @@ fn client_full(out: u8[>..]&, i: i64) {
     out.append("{\"id\":");
     format(out, i + 1);
     out.append(",\"name\":");
-    json_string(out, view(c.name));
+    http::json_string(out, view(c.name));
     out.append(",\"code\":");
-    json_string(out, c.code);
+    http::json_string(out, c.code);
     out.append(",\"born\":");
-    json_string(out, c.born);
+    http::json_string(out, c.born);
     out.append(",\"phone\":");
-    json_string(out, c.phone);
+    http::json_string(out, c.phone);
     out.append(",\"email\":");
-    json_string(out, view(c.email));
+    http::json_string(out, view(c.email));
     out.append(",\"address\":{\"street\":");
-    json_string(out, view(c.street));
+    http::json_string(out, view(c.street));
     out.append(",\"city\":");
-    json_string(out, word(c.city));
+    http::json_string(out, word(c.city));
     out.append(",\"postcode\":");
-    json_string(out, c.postcode);
+    http::json_string(out, c.postcode);
     out.append("},\"preferences\":{\"channel\":");
-    json_string(out, word(c.channel));
+    http::json_string(out, word(c.channel));
     out.append(",\"language\":");
-    json_string(out, word(c.language));
+    http::json_string(out, word(c.language));
     out.append("},\"flags\":[");
     for f, k in c.flags {
         if k > 0 { out.push(','); }
-        json_string(out, word(f));
+        http::json_string(out, word(f));
     }
     out.append("],\"emergencyContact\":{\"name\":");
-    json_string(out, view(c.contact));
+    http::json_string(out, view(c.contact));
     out.append(",\"phone\":");
-    json_string(out, c.contact_phone);
+    http::json_string(out, c.contact_phone);
     out.append(",\"relation\":");
-    json_string(out, word(c.relation));
+    http::json_string(out, word(c.relation));
     out.append("},\"consents\":{\"sms\":");
     json::format_bool(out, c.sms);
     out.append(",\"email\":");
@@ -1842,7 +1825,7 @@ fn note_body(out: u8[>..]&, n: Note) {
     out.append(",\"author\":");
     staff_ref(out, n.author, true);
     out.append(",\"text\":");
-    json_string(out, view(n.text));
+    http::json_string(out, view(n.text));
     out.append(",\"at\":");
     iso_or_null(out, n.at);
     out.push('}');
@@ -1879,11 +1862,11 @@ fn visit_head(out: u8[>..]&, i: i64) {
     out.append(",\"staff\":");
     staff_ref(out, v.staff, true);
     out.append(",\"status\":");
-    json_string(out, word(v.status));
+    http::json_string(out, word(v.status));
     out.append(",\"kind\":");
-    json_string(out, word(v.kind));
+    http::json_string(out, word(v.kind));
     out.append(",\"priority\":");
-    json_string(out, word(v.priority));
+    http::json_string(out, word(v.priority));
     out.append(",\"start\":");
     iso_or_null(out, v.start);
     out.append(",\"end\":");
@@ -1893,7 +1876,7 @@ fn visit_head(out: u8[>..]&, i: i64) {
     out.append(",\"codes\":[");
     for c, k in v.codes {
         if k > 0 { out.push(','); }
-        json_string(out, c);
+        http::json_string(out, c);
     }
     out.append("],\"notes\":{");
 }
@@ -2886,7 +2869,7 @@ recursive fn write_node(out: u8[>..]&, n: json::Node&) {
         Bool b => json::format_bool(out, b.v),
         Int i => json::format_int(out, i.v),
         Num x => json::format_number(out, x.v),
-        Str s => json::format_string(out, s.s),
+        Str s => http::json_string(out, s.s),
         Arr a => {
             out.push('[');
             var first = true;
@@ -2903,7 +2886,7 @@ recursive fn write_node(out: u8[>..]&, n: json::Node&) {
             json::each(n) { c =>
                 if !first { out.push(','); }
                 first = false;
-                json::format_string(out, c.key);
+                http::json_string(out, c.key);
                 out.push(':');
                 write_node(out, c);
             };

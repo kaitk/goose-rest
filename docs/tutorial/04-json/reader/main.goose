@@ -12,7 +12,7 @@ fn format(out: u8[>..]&, p: const Project&) {
     out.append("{\"id\":");
     format(out, p.id);
     out.append(",\"name\":");
-    json::format_string(out, p.name);
+    http::json_string(out, p.name);
     out.push('}');
 }
 

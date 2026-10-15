@@ -910,10 +910,10 @@ fn write_error(out: http::Reply, st, status: i32, code: const u8[:], detail: con
 // code: const u8[:], detail: const u8[:], at: i64).
 fn error_body(body: u8[>..]&, st, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
     body.append("{\"error\":");
-    json::format_string(body, code);
+    http::json_string(body, code);
     if detail.len > 0 {
         body.append(",\"detail\":");
-        json::format_string(body, detail);
+        http::json_string(body, detail);
     }
     if at >= 0 {
         body.append(",\"at\":");

@@ -6,7 +6,6 @@
 //   goose build -o build/projects docs/tutorial/05-schema/main.goose
 import std;
 import os;
-import json;
 import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 import .api_gen;
@@ -20,7 +19,7 @@ struct Upload { name: const u8[:], bytes: i64 }
 
 fn format(out: u8[>..]&, u: const Upload&) {
     out.append("{\"name\":");
-    json::format_string(out, u.name);
+    http::json_string(out, u.name);
     format(out, ",\"bytes\":", u.bytes, "}");
 }
 
