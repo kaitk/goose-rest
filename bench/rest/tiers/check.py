@@ -115,7 +115,8 @@ def tier_m(port, data):
         status, r, body = s.ask(method, path, headers=headers)
         if status != want and not (want == "2xx" and 200 <= status < 300):
             fail(f"{method} {path} {headers}: {status} {body[:200]!r}, want {want}")
-        timing = r.getheader("server-timing") or ""
+        # A field value's trailing whitespace isn't part of it (RFC 9110, 5.5).
+        timing = (r.getheader("server-timing") or "").strip()
         if not re.fullmatch(r"app;dur=[0-9]+(\.[0-9]+)?", timing):
             fail(f"{method} {path}: Server-Timing {timing!r}")
         if "Origin" in headers and r.getheader("access-control-allow-origin") != ORIGIN:

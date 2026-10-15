@@ -9,10 +9,11 @@
 #   2. Both repositories' scripts/test.sh.
 #   3. The Goose builds alone: goose-http's bench/build.sh and this
 #      repository's bench/rest.sh build, with ONLY=goose.
-#   4. goose-http's bench/run.sh and bench/files.sh on its Goose builds.
-#   5. This repository's bench/rest.sh check and run: goose-http's tiers A to
-#      D and tiers F, R, and M, on goose-http alone and goose-rest.
-#   6. As root: goose-http's bench/instructions.sh, and bench/rest.sh count.
+#   4. This repository's bench/rest.sh check, failing on any FAIL.
+#   5. goose-http's bench/run.sh and bench/files.sh on its Goose builds.
+#   6. This repository's bench/rest.sh run: goose-http's tiers A to D and
+#      tiers F, R, and M, on goose-http alone and goose-rest.
+#   7. As root: goose-http's bench/instructions.sh, and bench/rest.sh count.
 #
 # About 2 h 30 min on the desktop. The results go to goose-http's
 # bench/results/, under one time stamp, and this session's log, step times,
@@ -127,16 +128,22 @@ session() {
     (cd "$gh" && ONLY=goose bench/build.sh)
     (cd "$root" && ONLY=goose bench/rest.sh build)
 
+    # Before any long run: check prints a failure without failing itself.
+    step "goose-rest bench/rest.sh check"
+    export SERVERS="goose-uring goose-epoll goose-uring-rest goose-epoll-rest"
+    export EXTRA="goose-uring-rest goose-epoll-rest"
+    (cd "$root" && bench/rest.sh check) | tee "$log/check.txt"
+    ! grep -q FAIL "$log/check.txt" || { echo "bench/all.sh: a server fails its checks"; return 1; }
+    unset SERVERS EXTRA
+
     step "goose-http bench/run.sh"
     (cd "$gh" && SERVERS="goose goose-uring" OUT="$results/$stamp-$machine" bench/run.sh)
     step "goose-http bench/files.sh"
     (cd "$gh" && SERVERS="goose goose-uring goose-uring-epoll" OUT="$results/$stamp-$machine-files" bench/files.sh)
 
-    step "goose-rest bench/rest.sh check"
+    step "goose-rest bench/rest.sh run"
     export SERVERS="goose-uring goose-epoll goose-uring-rest goose-epoll-rest"
     export EXTRA="goose-uring-rest goose-epoll-rest"
-    (cd "$root" && bench/rest.sh check)
-    step "goose-rest bench/rest.sh run"
     (cd "$root" && OUT="$results/$stamp-rest-$machine" bench/rest.sh run)
     unset SERVERS EXTRA
 
