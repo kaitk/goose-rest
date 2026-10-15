@@ -40,9 +40,9 @@ too. It has no `Date` or `Server` header. `serve_one` behaves like the server:
 
 The test imports `api_gen.goose` and `app.goose`, just as `main.goose` does, so it can't
 import `main.goose` itself. Keep the handlers outside the file containing `main`.
-[`test/test_router.goose`](../../test/test_router.goose) uses the same approach to compare
-the generated router with an `if` chain of the same 60 routes.
-[`test/test_serve_one.goose`](../../test/test_serve_one.goose) counts how many times a
+[`test/router/same_as_chain.goose`](../../test/router/same_as_chain.goose) uses the same
+approach to compare the generated router with an `if` chain of the same 60 routes.
+[`test/serve_one/bodies.goose`](../../test/serve_one/bodies.goose) counts how many times a
 route runs for a large body.
 
 ## The whole server

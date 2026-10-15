@@ -25,7 +25,9 @@ gen/              goose-rest gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
 examples/         JSON APIs with and without a schema, waiting on a thread, compressed
                   answers, and a device
-test/             unit tests, test_*.goose, each a root file; test/gen/ golden files
+test/             tests by area, test/<area>/<name>.goose, with golden files in
+                  test/expected/ and the runner, run_tests.py; test/gen/ the
+                  generator's golden files
 spikes/           language checks the design relies on, one folder each with a README
 bench/            benchmark servers, scripts, and results (bench/README.md)
 scripts/          test scripts, and the Goose and goose-http setup and pin scripts
@@ -84,19 +86,16 @@ which git ignores.
 
 ### Run every test
 
-`scripts/test.sh` runs every test and stops at the first failure:
+`scripts/test.sh` runs every test and stops at the first step that fails:
 
-1. `goose check` on each root file under `test/`. `rest.goose` isn't checked on its own:
-   `goose check` refuses a file without `main` ("program needs exactly one global fn
-   main()"), so the tests' roots check it.
-2. `scripts/test-unit.sh`, which runs each `test/test_*.goose` through TinyCC. Each test
-   asserts what it tests and exits nonzero on the first failed `assert`.
-3. The generator on each schema under `test/gen/`, `examples/`, and `docs/tutorial/`,
+1. `test/run_tests.py`, which runs the tests under `test/<area>/` and reports every
+   failure among them ([below](#run-the-tests-by-area)).
+2. The generator on each schema under `test/gen/`, `examples/`, and `docs/tutorial/`,
    whose output must match the golden `_gen.goose` beside it byte for byte. A change to
    the generator regenerates them ([generator.md](generator.md#tests)).
    Then the TypeScript helper's tests, where `tsc` is installed
    ([below](#run-the-typescript-helpers-tests)).
-4. `scripts/test-examples.sh`, which builds each example under `examples/` and each
+3. `scripts/test-examples.sh`, which builds each example under `examples/` and each
    tutorial program under `docs/tutorial/`, serves it on `127.0.0.1` from port 18081
    up, sends the requests its `requests.sh` lists with `curl`, and compares the answers
    with its `expected.txt`. A port in use there fails the run. A request that gives up,
@@ -105,14 +104,47 @@ which git ignores.
    database to count them, with a margin of 0.5 s. Then each tutorial program's `test.goose`,
    through TinyCC. `examples/device` reads its fake sysfs from `build/examples/` and
    takes paths of up to 1 KB ([known issues](known-issues.md#tests)).
-5. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
+4. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it ([below](#run-the-spikes)).
-6. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function, and
+5. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function, and
    `test/inline_route.goose`'s, whose middleware, route, and failing helpers must all be
    inlined into its handler.
 
-A test can import a module of the package by name once its root declares the package:
-`test/test_generator.goose` declares `import rest from "../";` and then imports
+### Run the tests by area
+
+The tests follow Goose's own convention ([decisions](decisions.md#tests)). Each
+`test/<area>/<name>.goose` with a `main` is a test: a small program that asserts what it
+checks and prints it. Its standard output must match `test/expected/<name>.out`, every
+nonblank line of `test/expected/<name>.stderr`, where there is one, must occur in its
+standard error, and `test/expected/<name>.aborts` marks a test that must exit nonzero. A
+file with `// error: <message>` lines is a fixture that must fail to compile with each
+message; `test/errors/` holds them. Any other file in an area, `common.goose`, holds what
+that area's tests share, and `test/expect.goose` what all of them share: `expect::same`,
+`expect::body_of`, and the like.
+
+`test/run_tests.py` needs Python 3 and nothing else. It checks every test and fixture in
+batches, a `goose --multi-test --check` per batch, then builds each test with
+`goose build` at `-O0` and at `-O2` and runs it in a directory of its own under
+`build/test/`, the tests in parallel. It reports every failure, with a unified diff for
+changed output, then a count per area:
+
+```sh
+python3 test/run_tests.py              # every test, about a minute
+python3 test/run_tests.py --jit        # through TinyCC, without a C compiler: seconds
+python3 test/run_tests.py router       # one area
+python3 test/run_tests.py cors -O 0    # one test, at one level
+python3 test/run_tests.py cors --bless # rewrite test/expected/cors.out from its output
+```
+
+`--bless` writes what each test printed to its golden file; review the change with
+`git diff test/expected/` before committing it. `-j` sets how many processes run at
+once, and `-v` prints the checks that passed too. The runner takes `GOOSE` and
+`GOOSE_COMMIT` as the scripts do, and `goose build` takes `GOOSE_CC`.
+
+A test's root declares the package as `import rest from "../../";`, and `test/` itself as
+`import expect from "../";`, which reaches `test/expect.goose` and, as
+`import expect.gen.api_gen;`, the generated modules under `test/gen/`. A root imports a
+module of the package by name once it declares the package: `test/generator/` imports
 `gen/gen.goose` as `import rest.gen.gen;`. Goose traps met while writing the generator
 and its tests are in [known issues](known-issues.md#goose).
 

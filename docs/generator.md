@@ -316,8 +316,8 @@ Each of these is an error at its JSON pointer:
 would, with two differences: a parameter is typed, so `/users/me/avatar` for
 `/users/{id}/avatar` is a 400 where the chain calls the handler with `id` `me`, and
 where a concrete path and a template both match a path, the concrete one wins, as
-OpenAPI says, where the chain takes whichever comes first. `test/test_router.goose`
-checks the rest byte for byte against such a chain.
+OpenAPI says, where the chain takes whichever comes first. `test/router/` checks the
+rest byte for byte against such a chain.
 
 1. An unknown method is 501, and a path with a dot-segment or an escaped control byte
    400, as `rest::otherwise` answers them.
@@ -363,10 +363,10 @@ failure: a path parameter that doesn't fit its schema is `400
 
 `test/gen/` holds schemas and the files the generator writes from them, the golden
 files. `scripts/test.sh` regenerates each and compares it byte for byte.
-`test/test_gen.goose` round-trips valid and invalid JSON through `test/gen/api_gen.goose`,
-`test/test_router.goose` runs `test/gen/routes_gen.goose` against an if chain of the same
-routes, with the handlers in `test/gen/app.goose`, and `test/test_generator.goose` checks
-each error above. After changing the generator, regenerate the golden files and read the
+`test/generated/` round-trips valid and invalid JSON through `test/gen/api_gen.goose`,
+`test/router/` runs `test/gen/routes_gen.goose` against an if chain of the same routes,
+with the handlers in `test/gen/app.goose`, and `test/generator/` checks each error above
+([development](development.md#run-the-tests-by-area)). After changing the generator, regenerate the golden files and read the
 diff:
 
 ```sh

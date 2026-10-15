@@ -1,5 +1,5 @@
 // The handlers test/gen/routes_gen.goose calls. Each answers 200 with its
-// operation's name and its path parameters, so that test_router.goose can
+// operation's name and its path parameters, so that test/router/ can
 // compare the generated router with an if chain byte for byte.
 namespace app;
 

@@ -1,7 +1,7 @@
 #!/bin/sh
-# Runs every test this repository has, and fails on the first failure: the
-# typecheck of each root file under test/, the unit tests through TinyCC
-# (scripts/test-unit.sh), the generator's output for each schema under
+# Runs every test this repository has, and fails on the first step that
+# fails: the tests under test/<area>/ (test/run_tests.py, which reports every
+# failure among them), the generator's output for each schema under
 # test/gen/, examples/, and docs/tutorial/ against its golden file, the
 # TypeScript helper's tests where tsc is installed (ts/), each example and
 # tutorial program served and requested (scripts/test-examples.sh), each
@@ -17,7 +17,8 @@
 # GOOSE names the compiler (default: the pinned release, scripts/goose.sh),
 # and TSC the TypeScript compiler's command (default: tsc on PATH), such as
 # "npx -p typescript tsc". JS names the runtime that runs the helper
-# (default: node, or else bun).
+# (default: node, or else bun), and PYTHON the one that runs
+# test/run_tests.py (default: python3, or else python).
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -25,23 +26,19 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 goose=$GOOSE
 TSC=${TSC:-tsc}
 JS=${JS:-$(command -v node || command -v bun || echo node)}
+PYTHON=${PYTHON:-$(command -v python3 || command -v python || echo python3)}
 
 step() {
     echo
     echo "== $*"
 }
 
-for f in "$root"/test/*.goose; do
-    step "check ${f#"$root"/}"
-    "$goose" check "$f"
-done
-
-step "test-unit.sh"
-"$root/scripts/test-unit.sh"
+step "test/run_tests.py"
+"$PYTHON" "$root/test/run_tests.py"
 
 # Golden files: what the generator writes from each schema must match the
-# committed source byte for byte. test_gen.goose, among the unit tests,
-# compiles one and round-trips JSON through it.
+# committed source byte for byte. test/generated/ compiles one and
+# round-trips JSON through it.
 mkdir -p "$root/build/gen"
 for f in "$root"/test/gen/*.json "$root"/examples/*/api.json \
          $(find "$root/docs/tutorial" -name api.json | sort) \
