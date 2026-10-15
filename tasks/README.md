@@ -50,6 +50,7 @@ and decides task 008. Task 009 follows spike 06 and task 004. Task 010 benchmark
 Task 014 follows tasks 008 and 009. Task 015 can start at any point; what it needs from
 goose-http waits on that package's task 027. Tasks 016, the tutorial, and 017 are done.
 Task 018 follows goose-http's task 034, and waits only on a WSL run. Task 023, bodies and
-responses in pieces, has an agreed proposal and writes the tutorial's pages 11 and 12;
-task 025, the middleware's fields on answers written after the request, follows it.
+responses in pieces, is built with the tutorial's pages 11 and 12, and waits only on
+instruction counts measured on Linux; task 025, the middleware's fields on answers
+written after the request, is next.
 Task 024, the tutorial's testing of part two's application, is done.

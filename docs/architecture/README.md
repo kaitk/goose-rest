@@ -344,7 +344,9 @@ a field name the generator writes is a literal; a slice of the request can't tra
 with the return ([findings](../goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)).
 Decided (2026-10-13): the first answer wins. A failure after the handler began
 a response leaves that response, because `route` can't shrink the write buffer while a
-slice of the request is live (spec §5.1).
+slice of the request is live (spec §5.1). Decided (2026-10-15): a failure with a response
+still open, begun in this call or an earlier one, leaves it unended and closes the
+connection, so that the client sees it cut short rather than an error inside it.
 
 ### Security
 
@@ -576,6 +578,31 @@ The job carries the slot size, and the sender retries a piece that finds the box
 A program whose
 replies all fit raises `Config.mail_size` instead. A route that never waits keeps
 nothing on the connection.
+
+Decided (2026-10-15): every call after a request's first goes through the same case
+functions, not only a reply. A route that reads its body in pieces (`rest::receive`),
+sends its response in pieces (`rest::begin`, `rest::file`), or takes an upgraded
+connection (`rest::upgrade`) gives a `Waiting` variant, as `rest::ask` does, and
+`rest::serve` calls the handler again for each event of the exchange, `rest::resumed`,
+with `cx.kind` saying which: `BODY`, `END`, `MORE`, or `CLOSED`, which comes once to a
+route that ended early, so that its case function releases what the state holds. Built
+in `pieces.goose`; the [reference](../reference.md#later-calls) has each call. One case
+function per variant handles every kind, rather than a name per kind: §8.2 needs an
+overload of each name for every variant, and a generic fallback beside them takes the
+whole enum, so the call never dispatches (checked on `v2026.1`). Goose can't keep a
+block to call at the next event (§7.6), so a block per call isn't possible either.
+
+goose-rest's bookkeeping for a request, `Exchange` in the connection's slot, has a
+`mode` with a bit for each of these, and the request path tests it once after the
+handler. The later calls go through one function, `on_later`, whose loop calls the
+handler at one place, since the program's handler is inlined at each call. Goose still
+inlines `on_later` into each of goose-http's calls of `serve`'s block, the request
+path's included, as it inlined the call for a gathered body before; no construct keeps
+it out of line ([findings](../goose-findings.md#a-function-called-once-cant-be-kept-out-of-line)).
+The file being sent, an `http::FileBody`, is in the program's state with a `Waiting`
+variant, not in goose-rest's slot, so that a program that serves no files keeps no
+bytes for one. A failure with a response begun leaves it unended, and goose-http closes
+the connection: its head has gone, so the first answer wins (["Handlers"](#handlers)).
 
 ### Main
 

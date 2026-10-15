@@ -1,6 +1,7 @@
 # 023: Read a body and send a response in pieces
 
-Status: todo (found 2026-10-15; proposal agreed 2026-10-15)
+Status: built (2026-10-15); instruction counts open (found 2026-10-15; proposal agreed
+2026-10-15)
 
 goose-rest gathers a request body whole, up to its limit (`rest::body`), and sends a
 response whole, but for `rest::relay`'s pieces of a service's reply. A route can't read
@@ -336,12 +337,40 @@ The proposal and its build plan are agreed, with these answers:
 ## Acceptance criteria
 
 - [x] The proposal is agreed, with the open questions answered (2026-10-15)
-- [ ] A route reads a body in pieces as they arrive, with a limit, inside `rest::route`,
+- [x] A route reads a body in pieces as they arrive, with a limit, inside `rest::route`,
       and gets `CLOSED` once when it ends early
-- [ ] A route sends a response in pieces as the loop calls for more, and a file
-- [ ] A route takes an upgraded connection's bytes under `rest::serve`
+- [x] A route sends a response in pieces as the loop calls for more, and a file
+- [x] A route takes an upgraded connection's bytes under `rest::serve`
 - [ ] Instruction counts of tiers A and M and the inlining checks show no change for a
       program that uses none of this, or the change is recorded and agreed
-- [ ] The tutorial's pages 11 and 12, each with a program `scripts/test.sh` builds and
+- [x] The tutorial's pages 11 and 12, each with a program `scripts/test.sh` builds and
       requests, and the index links them
-- [ ] The architecture doc, the reference, and the README's status rows say what works
+- [x] The architecture doc, the reference, and the README's status rows say what works
+
+## Built (2026-10-15)
+
+Built as proposed, with these differences found on the way:
+
+- `rest::send_file(cx, body)` is the case function's one call for a file: the file body
+  lives in the program's state (answer 2), so goose-rest can't send it on its own.
+- `on_later`, the function for the later calls, isn't kept out of line: Goose inlines a
+  function called once, and goose-http calls `serve`'s block once in each of its places,
+  so it lands in each, the request path's included
+  ([findings](../docs/goose-findings.md#a-function-called-once-cant-be-kept-out-of-line)).
+  The handler's calls per function are as before: in `bench/rest/goose-rest`'s server,
+  two in each `http::answer` (the request path), before and after, and 54 in all; the
+  second copy was the gathered body's before, and is `on_later`'s now.
+- The request path's C changes only by the test after the handler: `mode != 0` for
+  `pending && limit > 0`, compared with `-O2 -o` on `examples/plain`, `examples/schema`,
+  `test/inline_route.goose`, the tutorial's pages 10 and 13, and the tier server, on an
+  Apple M1 Pro, macOS 26 (Darwin 25.3.0), Goose `v2026.1`. `inline_route`'s check
+  passes, and its C differs only in names and in `rest::route`'s failure branch, which
+  now cuts an open response short. The calls added in steps 3 to 6 change no program
+  that doesn't use them: the C is the same apart from an error code's string.
+- Not measured: `bench/rest.sh count` needs Linux's perf counters. To close the open
+  criterion, run it on the machine of `docs/benchmarks.md`, at the commit before this
+  task's first and at its last, for tiers A and M, and compare the text section's size.
+- Left open: `rest.compression` doesn't compress a response sent in pieces (section 6:
+  its own `begin`, `send`, and `end`, with the `http::Compressed` in the program's
+  state); `TIMEOUT` to a route that began a response (answer 3); `rest::file` from
+  `http::open_precompressed`; tier D's server on `rest::receive` (step 9).
