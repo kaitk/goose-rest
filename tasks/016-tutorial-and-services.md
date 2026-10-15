@@ -5,8 +5,7 @@ Status: done (2026-10-15), but for pages 11 and 12, which wait on task 023
 `docs/tutorial.md` shows goose-rest a feature at a time. A program that does more than
 the simple cases needs to see the approaches this package takes, in the order it meets
 them, each section building on the last, as Actix's and Elysia's guides do. Task 015's
-review against two real APIs (snowtime-native, on SQLite, and the MinuPatsient API, on
-Postgres) found the approach a tutorial most needs and doesn't show yet: how a route that
+review against two real APIs (one on SQLite, one on Postgres) found the approach a tutorial most needs and doesn't show yet: how a route that
 waits on a database stays simple.
 
 This task writes that tutorial. How it's set up (one document or several, its programs,
