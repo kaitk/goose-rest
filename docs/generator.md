@@ -2,8 +2,9 @@
 
 `goose-rest gen` reads an OpenAPI 3.1 document and writes a Goose file with a struct, a
 JSON reader, and a JSON writer for each schema under `components.schemas`, and a router,
-`dispatch`, from its `paths` ([Paths](#paths)). The design and its reasons are in the
-[architecture doc](architecture/README.md#the-generator). This page is the reference:
+`dispatch`, from its `paths` ([Paths](#paths)). The design is in
+[Architecture](architecture.md#the-generator), and its reasons in
+[Decisions](decisions.md#the-generator). This page is the reference:
 what the generator reads, what it writes, and what it refuses.
 
 ## Run it
@@ -136,7 +137,7 @@ with null (above), `allOf`, `not`, `readOnly`, `writeOnly`, and OpenAPI 3.0's
   an annotation, and a cycle of `$ref`s.
 - An object that holds itself, directly or through other objects or arrays (a
   recursive schema). A struct can't hold itself, and a recursive reader can't keep its
-  slices across the call (architecture doc).
+  slices across the call ([decisions](decisions.md#gooses-data-model-in-generated-code)).
 - An array of arrays, a nullable array element, an object without `properties`, and
   enum values that aren't strings.
 - Bounds that leave no value, in a schema or a parameter's: `minLength` above `maxLength`, `minItems` above `maxItems`,

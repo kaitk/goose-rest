@@ -70,7 +70,7 @@ a size threshold. A block of routes immediately exceeds that threshold, so a pla
 `fn` remains a function call and prevents the surrounding middleware from being
 inlined too. `inline fn` folds the middleware into the handler, which compiles to one
 C function with a jump for each early answer
-([architecture](../architecture/README.md#inlining)).
+([architecture](../architecture.md#middleware-and-inlining)).
 
 ## A stack of your own
 

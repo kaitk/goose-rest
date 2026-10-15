@@ -117,7 +117,7 @@ The workflow is to change `api.json`, regenerate `api_gen.goose`, and let the co
 list the handlers to add or change. This repository commits both files so reviewers
 can see the generated code changes alongside the schema change. Your project can do
 the same and build without the generator, or generate `api_gen.goose` during the build
-([architecture](../architecture/README.md#with-a-schema)).
+([decisions](../decisions.md#with-a-schema)).
 
 The router first uses a `match` on the path's length for static paths, then walks the
 path segment by segment, checking literals before parameters. Its answers match

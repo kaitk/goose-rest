@@ -25,7 +25,7 @@ fn take<T>(cx) -> T {
 // The functions here that fail are kept small, and their work is in leaves
 // that return whether it succeeded. A function that fails and stays a call
 // needs its route's frame, which keeps the route, the middleware around it,
-// and the handler out of line (docs/architecture/README.md, "Inlining").
+// and the handler out of line (docs/architecture.md, "Middleware and inlining").
 
 // s with its escapes decoded, and with '+' as a space when plus is set: s
 // itself when it has neither, or else decoded onto cx.scratch, which the

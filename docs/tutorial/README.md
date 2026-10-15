@@ -43,7 +43,7 @@ what the page shows matches what the code does.
 - [`examples/`](../../examples/): complete programs to start from, without a schema
   (`plain`), from one (`schema`), on a board (`device`), and an upgraded connection
   (`upgrade`).
-- [Architecture](../architecture/README.md): the ideas goose-rest takes from Actix and
+- [Architecture](../architecture.md): the ideas goose-rest takes from Actix and
   Elysia, and how Goose shapes the design.
 - [goose-http's patterns](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md):
   how the event loop reads, sends, and waits, underpinning every page of part two.

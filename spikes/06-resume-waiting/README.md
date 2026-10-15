@@ -1,6 +1,6 @@
 # 06: Resuming a waiting route
 
-Checks the design's [waiting on another thread](../../docs/architecture/README.md#waiting-on-another-thread).
+Checks the design's [waiting on another thread](../../docs/decisions.md#waiting-on-another-thread).
 A route asks a database thread over goose-http's mailbox with a job sent as a `to_bytes`
 image. It keeps what it needs in a fixed-mode `Waiting` enum in the per-request state,
 and resumes at `WAKE` through one case function per variant. Also checks that a missing

@@ -30,7 +30,7 @@ spikes/           language checks the design relies on, one folder each with a R
 bench/            benchmark servers, scripts, and results (bench/README.md)
 scripts/          test scripts, and the Goose and goose-http setup and pin scripts
 docs/             the tutorial and its programs (docs/tutorial/), references, architecture,
-                  benchmarks, development setup, known issues, Goose findings
+                  decisions, benchmarks, development setup, known issues, Goose findings
 tasks/            task tracking (tasks/README.md)
 CHANGELOG.md      what each tag adds
 ```

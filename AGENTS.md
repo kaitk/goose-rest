@@ -7,7 +7,8 @@
   pages; every middleware, extractor, and error:
   `docs/reference.md`; what the generator reads, writes, and refuses:
   `docs/generator.md`
-- Architecture decisions: `docs/architecture/README.md`
+- Architecture decisions: `docs/decisions.md`, each dated with its reason and what it
+  rejected; how the package works as it is now, for users: `docs/architecture.md`
 - Current benchmark results, the tiers, and their pins: `docs/benchmarks.md`; the
   benchmark servers, scripts, and where results go: `bench/README.md`
 - Layout, the Goose release, toolchain, and local setup: `docs/development.md`
@@ -21,15 +22,16 @@
   Link to those rather than explain goose-http's mechanisms again. goose-http's task
   027 is still changing its API.
 - The model: Actix's `App`, scopes, extractors, and middleware, changed where Goose
-  differs (architecture doc).
+  differs (`docs/architecture.md`).
 - The generator's input: OpenAPI 3.1 and JSON Schema 2020-12, in the subset
-  the architecture doc names.
+  `docs/generator.md` lists.
 - The language: the pinned Goose release's `docs/tutorial.md`, `docs/goose_spec.md`,
   and `docs/stdlib.md`. Read the tutorial before writing Goose; check the spec before
   assuming a feature exists.
 
-Follow the recorded decisions; if a change contradicts one, update the doc in the same
-change or ask first. Record setup facts you find (paths, versions, install steps) in
+Follow the recorded decisions in `docs/decisions.md`; if a change contradicts one, record
+the new decision there, saying which it replaces, and update `docs/architecture.md`, in
+the same change, or ask first. Record setup facts you find (paths, versions, install steps) in
 `docs/development.md`, and environment traps (shell quirks, ports, encodings, dated
 incidents) in `docs/known-issues.md`, not in agent memory, so the next agent finds
 them. Docs and commits name no people: date a decision or a request

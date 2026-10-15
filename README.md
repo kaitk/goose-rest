@@ -12,7 +12,7 @@ remaining overhead over goose-http.
 
 [Tutorial](docs/tutorial/README.md) · [Reference](docs/reference.md) ·
 [Generator](docs/generator.md) · [Benchmarks](docs/benchmarks.md) ·
-[Architecture](docs/architecture/README.md) · [Development](docs/development.md) ·
+[Architecture](docs/architecture.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)
 
 *Note: goose-rest is a working name, and the repository may be renamed before a stable
@@ -148,10 +148,10 @@ flowchart LR
   thread sends it a
   [message](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
   and resumes when the reply arrives ([tutorial](docs/tutorial/13-waiting.md),
-  [why](docs/architecture/README.md#waiting-on-another-thread)).
+  [why](docs/architecture.md#waiting-on-a-service)).
 
 For differences from Actix and the reasons behind them, see the
-[architecture](docs/architecture/README.md#actix-and-where-goose-rest-differs).
+[architecture](docs/architecture.md#actix-and-where-goose-rest-differs).
 
 ## Benchmarks
 
@@ -217,4 +217,4 @@ The generator draws three ideas from Elysia 2, the `kiana` branch of
 - A response writer that copies only declared fields.
 
 Goose's compiler does at build time what Elysia generates at run time or in its AOT build
-([architecture](docs/architecture/README.md#the-generator)).
+([architecture](docs/architecture.md#the-generator)).

@@ -1,4 +1,4 @@
-// goose-rest: a REST framework on goose-http (docs/architecture/README.md). A
+// goose-rest: a REST framework on goose-http (docs/architecture.md). A
 // program declares both packages in its root file, goose-http at the release below:
 //
 //   import http from "github.com/kaitk/goose-http@v0.3.2";

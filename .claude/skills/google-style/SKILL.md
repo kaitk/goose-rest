@@ -46,7 +46,7 @@ meaning of the docs, so preserve them exactly:
 - Decided vs. proposed vs. open. Don't turn "we could" into "we do", or an open question
   into a settled one, for the sake of flow.
 - **must** (requirement), **should** (recommendation), **can** (option).
-- Implemented vs. planned. `architecture/` marks planned items; keep those markers.
+- Implemented vs. planned. `docs/decisions.md` marks planned items; keep those markers.
 - Numbers, versions, commands, file paths, and identifiers exactly as they are.
 
 If you find two docs that contradict each other, flag it rather than silently picking one
@@ -124,11 +124,11 @@ page. Check for these, and rewrite only when the pattern adds nothing:
 
 ## Repository conventions
 
-- **Where things go.** `docs/product.md`: scope. `docs/architecture/`: decisions and
+- **Where things go.** `docs/product.md`: scope. `docs/decisions.md`: decisions and
   their reasons. `docs/hosting.md`: platform limits. `docs/migrations.md`: how to change
   the schema. `datamodel/README.md`: the diagram workflow. `tasks/`: work items, in the
   format in `tasks/README.md`. Put each fact in one place and link to it from the others.
-- **Decisions come with reasons.** A decision in `architecture/` states what was chosen
+- **Decisions come with reasons.** A decision in `docs/decisions.md` states what was chosen
   and the reason in one or two sentences, including what was rejected when that matters.
   The reason is what lets a later reader tell whether the decision still holds.
 - **Change docs with the code.** A change that contradicts a recorded decision updates

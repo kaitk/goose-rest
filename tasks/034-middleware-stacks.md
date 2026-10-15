@@ -56,7 +56,7 @@ A middleware used at two call sites keeps its plain helpers as calls. With `rest
 at two places in `test/inline_route.goose`, `rest::fill_timing` stayed a function: Goose
 inlines a plain function by itself only where it's called once or is small, and it's
 neither an `inline fn` nor called once then. The handler stays one function, and the
-helper fails nowhere, so the architecture's rules hold, at a call per timed answer. The
+helper fails nowhere, so the inlining rules hold (`docs/architecture.md`), at a call per timed answer. The
 test keeps `timed` at one place, so its check that `fill_timing` is inlined still
 guards the common case. A program with `timed` in two stacks gets the call; making
 `fill_timing` an `inline fn` would remove it, at the cost of its code at each place.

@@ -193,7 +193,7 @@ fn download(cx, project: i64) {
 - A response begun at `REQUEST` gets the CORS fields and `Server-Timing` in its head,
   since `begin` runs inside the middleware. One begun later, such as at `END`, gets
   neither.
-- **Failure with the response open.** The first answer wins (architecture, "Handlers"),
+- **Failure with the response open.** The first answer wins (decisions, "Handlers"),
   and the head has gone. Proposed: `rest::route` writes no error into an open response.
   It leaves the response unended, which makes goose-http close the connection, so the
   client sees it cut short. The case function then gets `CLOSED`. Today `route` would

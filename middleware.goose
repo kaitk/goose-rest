@@ -1,7 +1,7 @@
 // Middleware: blocks around a group of routes, inlined into the handler
 // (spike 04), and prefix scopes over http::router. One rest::route takes a
 // request's failures: routes nested in routes keep each other out of line
-// (docs/architecture/README.md, "Inlining"). So middleware that adds fields
+// (docs/architecture.md, "Middleware and inlining"). So middleware that adds fields
 // to every answer, timed and cors, goes outside the route and answers what
 // it refuses itself, and checks that fail, as bearer, go inside it.
 namespace rest;

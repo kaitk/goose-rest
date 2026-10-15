@@ -56,7 +56,7 @@ beside uploads, block v0.1.0 (2026-10-15): both are fixed, and wait only on a re
 Linux. Tasks 027, a helper for read-only
 data every worker shares, 028, a body of known length gathered at its exact size, and
 029, a per-worker budget for bodies being gathered, come from it; 028 and 029 are done. Task 025, the middleware's fields on answers
-written after the request, and task 026, the architecture doc's split, follow. Task
+written after the request, and task 026, the architecture doc's split, are done. Task
 024, the tutorial's testing of part two's application, task 031, `serve_one` past
 `rest::ask`, task 033, ASCII strings sized in bytes, and task 030, responses in pieces
 under `rest::compressed`, are done. Task 032, timers for a route that began a response,
