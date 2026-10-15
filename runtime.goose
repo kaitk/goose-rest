@@ -435,8 +435,13 @@ fn head_of(req: const http::Request&, gathered: bool, x: const Exchange&, spill:
     return r;
 }
 
+// The run a chunked body's gathering starts with, which doubles as it fills.
+let CHUNKED_RUN = 16384;
+
 // Starts g's run with the head rebuilt from req, whose bytes goose-http
-// reuses once its handler returns.
+// reuses once its handler returns. A body with a Content-Length gets a run
+// of the head and the body's exact size, which never grows or moves; a
+// chunked one, of CHUNKED_RUN bytes.
 fn gather_head(g: Exchange&, req: const http::Request&, spill: u8[>..]&) {
     var head: u8[>..] = [];
     head.append(req.method);
@@ -447,16 +452,22 @@ fn gather_head(g: Exchange&, req: const http::Request&, spill: u8[>..]&) {
     head.append("\r\n");
     head.append(req.fields);
     head.append("\r\n");
+    let cap = if req.chunked { max(head.len, CHUNKED_RUN) } else { head.len + req.body };
+    let run = spill.alloc_slice(cap);
+    copy_into(run[..head.len], head);
+    g.at = spill.index_of(run[0]);
+    g.cap = cap;
     g.head = head.len;
-    gather_piece(g, head, spill);
+    g.len = head.len;
 }
 
-// Appends data to g's run, growing it, unless the body would pass g's limit.
+// Appends data to g's run, doubling it when it's full, unless the body would
+// pass g's limit.
 fn gather_piece(g: Exchange&, data: const u8[:], spill: u8[>..]&) -> bool {
     let n = g.len + data.len;
     guard n - g.head <= g.limit else { return false; }
     if n > g.cap {
-        let cap = max(max(n, g.cap * 2), 16384);
+        let cap = max(n, g.cap * 2);
         let run = spill.realloc_slice(spill[g.at..g.at + g.cap], cap);
         g.at = spill.index_of(run[0]);
         g.cap = cap;
