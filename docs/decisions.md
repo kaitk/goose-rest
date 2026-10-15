@@ -349,8 +349,13 @@ lay it out.
 - The repository's own runner, `test/run_tests.py` in Python as Goose's is, finds the
   tests, compiles them in batches with `goose --multi-test`, runs each as a process of
   its own and in parallel, and reports every failure without stopping at the first.
-  No runner is shared between repositories, as none is with Goose's.
-- Helpers the tests share are one imported module, not a copy in each test.
+  No runner is shared between repositories, as none is with Goose's. Here the
+  batches typecheck, and each test is built with `goose build`, since its program links
+  goose-http's C, which `goose build` compiles from goose-http's `http.build`
+  (2026-10-15).
+- Helpers the tests share are one imported module, `test/expect.goose`, not a copy in
+  each test; an area's own fixtures, such as its state types, go in that area's
+  `common.goose`.
 - An application laid out by domain keeps the same shape: `test/<domain>/` for each
   domain's tests, and a folder per scenario for its tests over HTTP.
 
