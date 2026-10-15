@@ -59,4 +59,5 @@ data every worker shares, 028, a body of known length gathered at its exact size
 written after the request, and task 026, the architecture doc's split, follow. Task
 024, the tutorial's testing of part two's application, is done. Tasks 030, responses in
 pieces under `rest::compressed`, 031, `serve_one` past `rest::ask`, and 032, timers for
-a route that began a response, can start at any point.
+a route that began a response, can start at any point, as can task 033, ASCII strings
+sized in bytes.
