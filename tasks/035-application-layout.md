@@ -19,7 +19,7 @@ they know laid out, rather than a new one.
 ## What the part settles
 
 1. **Layout, by domain** (2026-10-15). A folder per domain (or feature) holds all of
-   that domain's code: its types (structs), routes, services, and data access, each
+   that domain's code: its structs, routes, services, and data access, each
    kind in a file of the same name and place in every domain, so a reader finds a
    domain's routes or queries without looking. What several domains use goes in a
    `common/` folder laid out the same way, by the entity it serves; code starts in its
@@ -53,6 +53,56 @@ they know laid out, rather than a new one.
 8. **Testing.** Rules as plain calls, routes with `rest::serve_one` (replies included),
    and a few tests over HTTP.
 
+## Proposal: snowtime's API laid out this way (2026-10-15)
+
+snowtime's backend has eight domains (`auth`, `availability`, `entries`, `projects`,
+`reports`, `settings`, `teams`, `timer`) and three audiences, set by middleware order:
+public, signed in (`signedIn`), and a member of the organization in the path
+(`organization`, under `/organizations/:organizationId`). In goose-rest:
+
+```text
+app/
+  main.goose            workers and serve
+  dispatch.goose        audiences by scope, then each domain's routes
+  stacks.goose          public_routes, user_routes, member_routes
+  middleware.goose      authenticate, resolve_organization
+  common/
+    scope/              roles, and what a member may read
+    errors.goose        the error shape and the shared codes
+  projects/
+    structs.goose       Project, CreateInput, UpdateInput, ..., and the domain's enums
+    routes.goose        routes(cx, member), one function per route, its case functions
+    service.goose       the jobs on the database thread, one transaction each
+    dao.goose           one query per function
+  entries/  timer/  teams/  reports/  settings/  availability/  auth/
+                        the same files, as far as each needs them
+```
+
+Each domain is a namespace, so a name doesn't repeat its domain, and each layer has a
+name shape of its own, so a call chain shows the layer:
+
+| Kind | Shape | Examples |
+|---|---|---|
+| Stack | audience, singular, `_routes` | `public_routes`, `user_routes`, `member_routes` |
+| Middleware | verb | `authenticate`, `resolve_organization` |
+| Block parameter | what it's given | `user`, `member` |
+| A domain's entry | `routes` | `projects::routes(cx, member)` |
+| Route | the operation's verb | `list`, `create`, `archive`, `add_team` |
+| Service job | verb and noun | `create_project`, `archive_project` |
+| Data access | query verb and noun | `find_project`, `list_projects`, `insert_project` |
+| Structs | noun, and `<Verb>Input` | `Project`, `CreateInput` |
+| `Waiting` variant | domain and operation | `Waiting.ProjectCreate` |
+
+Open: whether `rest::scope` matches a parameter in a prefix (`/organizations/:id`) and
+can hand it to `resolve_organization`, or `member_routes` reads the segment itself;
+and whether a domain's entry is `routes` or `handle`, beside the stacks' `_routes`.
+
+Later, in the generator (may become its own task): with one schema for the application,
+write each domain's part into its folder. An operation's place is its OpenAPI `tags`,
+which many schemas already set; a schema's is the domain of the operations that use
+it, or `common/` for one that several domains use. An extension (`x-goose-domain`)
+only overrides that, and a configuration names the folders.
+
 ## Acceptance criteria
 
 - [ ] The tutorial gets a part of its own, after the mechanism pages, that says once
@@ -60,7 +110,7 @@ they know laid out, rather than a new one.
       fewer where they're short
 - [ ] Part two's application rebuilt in that layout, as the part's program, its answers
       the same as before and checked by `scripts/test.sh`
-- [ ] Each kind of code (types, routes, services, data access) has one file name and
+- [ ] Each kind of code (structs, routes, services, data access) has one file name and
       place in every domain and in `common/`, and the part gives them in one table
 - [ ] Each convention given once, with its reason, and linked from the mechanism page
       it builds on (page 7 links its naming, page 8 its state, page 16 its testing)
