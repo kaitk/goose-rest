@@ -1,5 +1,5 @@
 // Bodies and responses in pieces, and upgraded connections: a route that
-// reads its body as it arrives (receive), sends its response as the client
+// reads its body as it arrives (body_in_pieces), sends its response as the client
 // takes it, or takes the connection's bytes says so with a Waiting variant,
 // as rest::ask does, and serve calls the handler again for each event of
 // the exchange, rest::resumed, with cx.kind saying which (goose-http's
@@ -28,7 +28,7 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 // the body is sent; a chunked body past it gets 413 and the connection
 // closes. Config.max_body caps limit. 500 body_already_read after
 // rest::body, and 500 not_served outside serve and serve_one.
-fn receive<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
+fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
     var x .= cx.ex;
     guard x else { fail(cx, 500, "not_served"); }
     guard x.limit == 0 else { fail(cx, 500, "body_already_read"); }
@@ -50,7 +50,7 @@ fn receive<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
 // handler gets http::CLOSED once if the response ends otherwise: when the
 // client goes, or when the route fails with it open, which cuts it short
 // (rest::route). A HEAD request, or a status without a body, gets the head
-// alone, and no calls. Begun after rest::receive, the pieces of the body
+// alone, and no calls. Begun after rest::body_in_pieces, the pieces of the body
 // still come, then MORE once it has ended.
 fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], length: i64, w) {
     http::begin(cx.out, status, length);

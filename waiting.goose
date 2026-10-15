@@ -14,9 +14,9 @@
 //
 // The job crosses in a rest::Ask, with the address the reply goes to and
 // the size of a reply message, read with http::mail_slot_size. The thread
-// replies with rest::answer, in pieces
+// replies with rest::reply, in pieces
 // of at most that size, and rest::relay sends them on as they come; before
-// work worth skipping, rest::wanted says whether the route still waits. A route
+// work worth skipping, rest::still_wanted says whether the route still waits. A route
 // that never asks keeps nothing on the connection beyond its state.
 namespace rest;
 
@@ -29,7 +29,7 @@ let REPLY_TAG: i32 = 0x1FFFFFFF;
 let REPLY_CONT: i32 = 0x20000000;
 let REPLY_MORE: i32 = 0x40000000;
 
-// A job as it crosses to the thread that answers it.
+// A job as it crosses to the thread that replies to it.
 struct Ask<J> { reply: http::MailAddress = http::MailAddress { .. }, piece: i64 = 0, job: J }
 
 // Sends job, a flat value, with tag to the thread at to, and waits for its
@@ -64,8 +64,8 @@ fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {
 // Whether the route that asked a still waits for its reply: false once its
 // client has gone, its wait has timed out, or its worker has stopped. A
 // service checks it before work worth skipping. It's a snapshot: the route
-// can still go before the answer, which answer then reports.
-fn wanted(a) -> bool { http::mail_live(a.reply) }
+// can still go before the reply, which reply then reports.
+fn still_wanted(a) -> bool { http::mail_live(a.reply) }
 
 // Replies data, with tag, to the route that asked a, in pieces of at most
 // the size a carries. A piece that finds the box full is sent again after a
@@ -75,7 +75,7 @@ fn wanted(a) -> bool { http::mail_live(a.reply) }
 // as after its client closes or its wait times out; a send checks the key
 // before a slot, so the retry on a full box ends then too. A send already in
 // flight may still be accepted and dropped by the worker.
-fn answer(a, data: const u8[:], tag: i32 = 0) -> bool {
+fn reply(a, data: const u8[:], tag: i32 = 0) -> bool {
     let piece = max(a.piece, 1);
     var at = 0;
     var t = tag & REPLY_TAG;
@@ -94,18 +94,18 @@ fn answer(a, data: const u8[:], tag: i32 = 0) -> bool {
     }
 }
 
-// Replies v, a flat value, as answer does, for rest::reply_value.
-fn answer_value(a, v, tag: i32 = 0) -> bool {
+// Replies v, a flat value, as reply does, for rest::read_reply.
+fn reply_value(a, v, tag: i32 = 0) -> bool {
     var one = [v];
     var image: u8[>..] = [];
     one.to_bytes(image);
-    return answer(a, image, tag);
+    return reply(a, image, tag);
 }
 
-// The flat value answer_value sent, and whether the reply is one. A value
+// The flat value reply_value sent, and whether the reply is one. A value
 // whose image is larger than a reply message comes in pieces, which this
 // can't read: raise Config.mail_size to its size.
-fn reply_value<T>(cx) -> T, bool {
+fn read_reply<T>(cx) -> T, bool {
     var v = default<T>();
     guard !cx.more else { return v, false; }
     let ok = http::mail_value(cx.reply, v);

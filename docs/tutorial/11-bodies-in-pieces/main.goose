@@ -83,7 +83,11 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 // written a piece at a time.
 fn attach(cx, project: i64) {
     let id = cx.app.next;
-    rest::receive(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
+    // Reads nothing yet. A Content-Length over the limit gets 413, which leaves
+    // the route here; otherwise the body's pieces come later, to
+    // resume(Waiting.Attachment), once this route has returned.
+    rest::body_in_pieces(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
+    // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
@@ -123,18 +127,26 @@ fn keep(cx, project: i64, id: i64, note: const u8[:]) {
 // POST /v1/projects/:id/attachments/form: a multipart form of a note and a
 // file, the file written a piece at a time as attach writes one.
 fn attach_form(cx, project: i64) {
+    // Reads the Content-Type's boundary into the parser kept in the state.
     guard http::start_multipart(cx.req, cx.state.form) else { rest::fail(cx, 415, "unsupported_media_type"); }
+    // Then as attach does: the pieces come later, to resume(Waiting.Form).
     let id = cx.app.next;
-    rest::receive(cx, limit_of(project), Waiting.Form { project: project, id: id });
+    rest::body_in_pieces(cx, limit_of(project), Waiting.Form { project: project, id: id });
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
 
 fn resume(w: Waiting.Form, cx) {
     if cx.kind == http::BODY {
+        // A piece can end one part and start the next, or stop mid-head:
+        // each_part calls the block for what the piece completes, and keeps
+        // the rest in cx.state.form for the next piece.
         let ok = http::each_part(cx.state.form, cx.body) { part =>
             match part {
+                // A part begins: note it's the note, the file, or another.
                 Head h => form_part(cx, h.fields),
+                // Some of its content: the file's to disk, the note's to the
+                // state, up to 128 bytes.
                 Data d => {
                     if cx.state.part == FILE { store(cx, d.bytes); }
                     else if cx.state.part == NOTE { cx.state.note.append(d.bytes[..min(d.bytes.len, 128 - cx.state.note.len)]); }
@@ -145,6 +157,7 @@ fn resume(w: Waiting.Form, cx) {
         guard ok else { rest::fail(cx, 400, "invalid_multipart"); }
         guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
+        // The body has all come; a form cut short lacks its closing boundary.
         guard http::multipart_done(cx.state.form) else {
             delete_file(cx.state.part_path);
             rest::fail(cx, 400, "invalid_multipart");

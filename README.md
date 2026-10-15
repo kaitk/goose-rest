@@ -38,7 +38,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#testing)). |
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
-| 🟢 | Bodies in pieces | `rest::receive` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#later-calls)). |
+| 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#later-calls)). |
 | 🟡 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, and `rest::begin` sends a response in pieces as the client takes them ([reference](docs/reference.md#later-calls)). Events sent over time, such as Server-Sent Events, not yet. |
 | 🔴 | WebSocket | Currently out of scope, as in goose-http; `rest::upgrade` hands an upgraded connection's bytes to the route ([reference](docs/reference.md#later-calls)). |
 

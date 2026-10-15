@@ -79,7 +79,7 @@ fn report(cx) {
 fn resume(w: app::Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 fn resume(w: app::Waiting.Report, cx) {
-    let rep, ok = rest::reply_value<ReportReply>(cx);
+    let rep, ok = rest::read_reply<ReportReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     rest::text(cx, 200, str(cx.app.projects[w.id - 1].name, " has ", rep.tasks, " tasks"));
 }
@@ -94,7 +94,7 @@ thread_fn database(box: http::Box) {
                 let a, ok = rest::asked<ReportJob>(bytes);
                 if ok {
                     assert(a.piece == SLOT_SIZE);
-                    rest::answer_value(a, ReportReply { tasks: a.job.id * 3 });
+                    rest::reply_value(a, ReportReply { tasks: a.job.id * 3 });
                 }
             } else if tag == STOP {
                 running = false;

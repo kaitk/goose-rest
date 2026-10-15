@@ -10,7 +10,7 @@ this way:
 ## An export, made as the client takes it
 
 `rest::begin(cx, status, content_type, length, w)` starts the response, with a length of
--1 when it isn't known yet, which sends it chunked. Like `rest::receive`
+-1 when it isn't known yet, which sends it chunked. Like `rest::body_in_pieces`
 ([page 11](11-bodies-in-pieces.md)), it keeps a `Waiting` variant, `w`, in the state.
 The route can send the first piece at once with `rest::send`. From
 [`12-long-responses`](12-long-responses/main.goose):
@@ -38,7 +38,10 @@ fn resume(w: Waiting.Export, cx) {
 }
 ```
 
-Where the export has got to goes in the request's state:
+`tasks_csv` appends up to 500 rows to `piece`, starting at the task `cx.state.next`, and
+returns where the next piece starts, or -1 after the last row. So the call that sends the
+last rows also ends the response. Where the export has got to goes in the request's
+state:
 
 ```rust
 struct St {

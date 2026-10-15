@@ -3,6 +3,13 @@
 Status: built (2026-10-15); instruction counts open (found 2026-10-15; proposal agreed
 2026-10-15)
 
+`rest::receive`, as the proposal below names it, is `rest::body_in_pieces` (2026-10-15):
+"receive" read as if the call read the body, where it only accepts it and says where its
+pieces go. Rocket's `Data::open(limit)`, axum's `into_data_stream`, actix-web's
+`Payload`, and http.zig's `req.reader()` hand the handler a stream to pull from, which
+Goose can't keep, so a stream or reader name would mislead; the name pairs with
+`rest::body`, which gathers the body whole.
+
 goose-rest gathers a request body whole, up to its limit (`rest::body`), and sends a
 response whole, but for `rest::relay`'s pieces of a service's reply. A route can't read
 an attachment of any size as it arrives, or send an export, a file, or events in pieces

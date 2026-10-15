@@ -6,8 +6,8 @@ Both use the same `Waiting` enum and case functions as [the previous page](13-wa
 
 ## A reply in pieces
 
-A project's tasks, as JSON, can be longer than a message. The service answers them with
-`rest::answer`, which sends a reply longer than the worker's messages in pieces. From
+A project's tasks, as JSON, can be longer than a message. The service replies with
+`rest::reply`, which sends a reply longer than the worker's messages in pieces. From
 [`14-two-services`](14-two-services/main.goose), whose worker takes messages of 64
 bytes, so that a project's tasks come in several:
 
@@ -15,7 +15,7 @@ bytes, so that a project's tasks come in several:
             if tag == TASKS {
                 let a, ok = rest::asked<TasksJob>(bytes);
                 // In pieces of the worker's message size, 64 bytes here.
-                if ok { rest::answer(a, tasks_json(c, a.job)); }
+                if ok { rest::reply(a, tasks_json(c, a.job)); }
 ```
 
 The route's case function is called for each piece. `rest::relay` sends the first as
@@ -56,7 +56,7 @@ The first case function asks the second service, and waits again:
 ```rust
 // The database added the member: ask the mailer next, and wait again.
 fn resume(w: Waiting.Member, cx) {
-    let r, ok = rest::reply_value<MemberReply>(cx);
+    let r, ok = rest::read_reply<MemberReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::ask(cx, cx.app.mailer, SEND, MailJob { project: w.project, user: w.user },
@@ -64,7 +64,7 @@ fn resume(w: Waiting.Member, cx) {
 }
 
 fn resume(w: Waiting.Mail, cx) {
-    let r, ok = rest::reply_value<MailReply>(cx);
+    let r, ok = rest::read_reply<MailReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     rest::json(cx, 201, Invited { project: w.project, user: w.user, mail: r.id });
 }
@@ -81,7 +81,7 @@ POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}
 | The route needs | Shape |
 |---|---|
 | One service, a reply that fits a message | One job, one case function ([Work that waits](13-waiting.md)) |
-| One service, a longer reply | One job, `rest::answer` in pieces, and `rest::relay` |
+| One service, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
 | Two services in turn | A `Waiting` variant per wait, each case function asking the next |
 
 Each wait has its own time limit, and each can find a box full, so a route that waits

@@ -181,7 +181,7 @@ and accept a Content-Type with parameters, such as
 1 MB calls `rest::body(cx, limit)` before the first form extractor. Multipart forms
 have no extractor; goose-http's `http::each_part` reads them
 ([goose-http's API](https://github.com/kaitk/goose-http/blob/main/docs/api.md)), a
-piece at a time with `rest::receive` ([tutorial](tutorial/11-bodies-in-pieces.md#a-multipart-form)).
+piece at a time with `rest::body_in_pieces` ([tutorial](tutorial/11-bodies-in-pieces.md#a-multipart-form)).
 
 A program that builds its own `http::Router` can still pass it explicitly to
 `rest::param(cx, r, name)`, `rest::param_int(cx, r, name)`, and `rest::otherwise(cx, r)`.
@@ -239,7 +239,7 @@ request its route needs, and the per-request state its progress.
 | The route called | The case function gets `cx.kind` | goose-rest handles |
 |---|---|---|
 | `rest::ask` | `http::WAKE`, the reply in `cx.reply` | `TIMEOUT`: 504 `timeout` |
-| `rest::receive` | `http::BODY` per piece, in `cx.body`; then `http::END`; or `http::CLOSED` | the limit: 413 |
+| `rest::body_in_pieces` | `http::BODY` per piece, in `cx.body`; then `http::END`; or `http::CLOSED` | the limit: 413 |
 | `rest::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
 | `rest::file` | `http::MORE`; `http::CLOSED`, both for `rest::send_file` | 304, 206, 416, and `HEAD`: no calls |
 | `rest::upgrade` | `http::BODY` per arrival; `http::CLOSED` | |
@@ -247,7 +247,7 @@ request its route needs, and the per-request state its progress.
 
 `http::CLOSED` means that the exchange ended before the route finished, and that the
 case function releases what the state holds, such as a file. It comes once, to a route
-that called `receive`, `begin`, `file`, or `upgrade`, when the client goes, when a body
+that called `body_in_pieces`, `begin`, `file`, or `upgrade`, when the client goes, when a body
 passes its limit, when the route answers or fails before a body's `END`, or when it
 fails with its response begun. What it writes goes nowhere. A route that answers at the
 `END`, or calls `rest::end`, gets none, and nor does one that only asked.
@@ -258,7 +258,7 @@ response cut short.
 
 | Call | Does | Fails with |
 |---|---|---|
-| `rest::receive(cx, limit, w)` | The body in pieces as they arrive, up to `limit` bytes. A body that came whole with its head comes as one `BODY` and the `END`, and an empty one as the `END` alone. The code around it runs once. | 413 `payload_too_large` for a `Content-Length` over `limit`, before the body is sent; a chunked body past it gets 413 and the connection closes. 500 `body_already_read` after `rest::body`, and `rest::body` after it. 500 `not_served` outside `rest::serve` and `serve_one`. |
+| `rest::body_in_pieces(cx, limit, w)` | The body in pieces as they arrive, up to `limit` bytes. A body that came whole with its head comes as one `BODY` and the `END`, and an empty one as the `END` alone. The code around it runs once. | 413 `payload_too_large` for a `Content-Length` over `limit`, before the body is sent; a chunked body past it gets 413 and the connection closes. 500 `body_already_read` after `rest::body`, and `rest::body` after it. 500 `not_served` outside `rest::serve` and `serve_one`. |
 | `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. Begun while a body is read, the pieces still come, then `MORE`. | |
 | `rest::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `rest::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
@@ -266,12 +266,12 @@ response cut short.
 | `rest::send_file(cx, body)` | For the case function: at `MORE`, the next piece of up to 64 KB, and the end after the last; at `CLOSED`, closes the file. | |
 | `rest::upgrade(cx, protocol, w)` | `http::upgrade`'s 101. The client's bytes then come as `BODY`, with no `END` and no limit, and `rest::send` writes bytes as they are. `http::upgrade_of(cx.req)` is what the request asks to switch to. | |
 
-`http::Config`'s `max_body` caps `rest::receive`'s limit as it caps `rest::body`'s. A
+`http::Config`'s `max_body` caps `rest::body_in_pieces`'s limit as it caps `rest::body`'s. A
 piece of about 16 KB at each `MORE` keeps within `Config.max_queued`
 ([goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses)).
 While a route waits on another thread, goose-http reads none of an upgraded
 connection's bytes. A WebSocket's framing isn't provided: a package on top of
-`rest::upgrade` can add it. The tutorial builds an upload with `receive`
+`rest::upgrade` can add it. The tutorial builds an upload with `body_in_pieces`
 ([page 11](tutorial/11-bodies-in-pieces.md)), and an export and downloads with `begin`
 and `file` ([page 12](tutorial/12-long-responses.md));
 [`examples/upgrade`](../examples/upgrade/main.goose) echoes an upgraded connection.
@@ -297,11 +297,11 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 | 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
 | 403 | `forbidden` | `rest::file`: a file the program may not read |
 | 404 | `file_not_found` | `rest::file`: no file, or a directory, at the path |
-| 413 | `payload_too_large` | `rest::body`, `rest::receive`, `rest::take` of a schema type, and the form extractors: a body over the limit |
+| 413 | `payload_too_large` | `rest::body`, `rest::body_in_pieces`, `rest::take` of a schema type, and the form extractors: a body over the limit |
 | 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded` |
-| 500 | `body_already_read` | `rest::receive` after `rest::body`, or `rest::body` after `rest::receive` |
+| 500 | `body_already_read` | `rest::body_in_pieces` after `rest::body`, or `rest::body` after `rest::body_in_pieces` |
 | 500 | `file_unreadable` | `rest::file`: a file that couldn't be opened for another reason |
-| 500 | `not_served` | `rest::receive` with a context that `rest::serve` or `serve_one` didn't make |
+| 500 | `not_served` | `rest::body_in_pieces` with a context that `rest::serve` or `serve_one` didn't make |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
@@ -346,7 +346,7 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 
 A body that doesn't fit in `cfg.max_head` with its head comes in pieces of
 `cfg.max_head` bytes: gathered as the server gathers it, so the block runs again once
-it's whole, or passed to a route that called `rest::receive`. A body shorter than its
+it's whole, or passed to a route that called `rest::body_in_pieces`. A body shorter than its
 `Content-Length` is a client that hung up midway: its pieces come, then `http::CLOSED`
 in place of `http::END`. A response begun with `rest::begin` or `rest::file` is taken to
 its end, `http::MORE` at a time, as by a client that keeps up; an upgraded connection's

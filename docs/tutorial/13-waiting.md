@@ -54,7 +54,7 @@ sequenceDiagram
     W->>C2: 200 ok
     S->>D: update the task
     S->>D: commit
-    S->>W: rest::answer_value(reply)
+    S->>W: rest::reply_value(reply)
     Note over W: resume(Waiting.Assign)
     W->>C: 200 {"task":3,"assignee":2}
 ```
@@ -109,13 +109,13 @@ struct AssignJob { project: i64, task: i64, user: i64, assignee: i64 }
 struct AssignReply { status: i32 = 200, code: u8[..32] = "" }
 ```
 
-The service's thread takes each job from its box with `rest::asked<J>`, and answers
-with `rest::answer_value`:
+The service's thread takes each job from its box with `rest::asked<J>`, and replies
+with `rest::reply_value`:
 
 ```rust
             } else if tag == ASSIGN {
                 let a, ok = rest::asked<AssignJob>(bytes);
-                if ok { rest::answer_value(a, assign(c, a.job)); }
+                if ok { rest::reply_value(a, assign(c, a.job)); }
 ```
 
 ## The route asks, and resumes
@@ -169,7 +169,7 @@ compiler checks that every variant has one:
 
 ```rust
 fn resume(w: Waiting.Assign, cx) {
-    let r, ok = rest::reply_value<service::AssignReply>(cx);
+    let r, ok = rest::read_reply<service::AssignReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, Assigned { task: w.task, assignee: w.assignee });

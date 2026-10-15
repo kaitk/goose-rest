@@ -101,20 +101,20 @@ fn v1(cx) {
 fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 fn resume(w: Waiting.Summary, cx) {
-    let s, ok = rest::reply_value<Summary>(cx);
+    let s, ok = rest::read_reply<Summary>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     rest::json(cx, 200, s);
 }
 
 fn resume(w: Waiting.Gone, cx) {
-    let g, ok = rest::reply_value<Gone>(cx);
+    let g, ok = rest::read_reply<Gone>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     rest::json(cx, 200, g);
 }
 
 // The report has started: 202, and where to ask about it.
 fn resume(w: Waiting.Started, cx) {
-    let r, ok = rest::reply_value<Report>(cx);
+    let r, ok = rest::read_reply<Report>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     var body: u8[>..] = [];
     format(body, r);
@@ -124,7 +124,7 @@ fn resume(w: Waiting.Started, cx) {
 }
 
 fn resume(w: Waiting.Report, cx) {
-    let r, ok = rest::reply_value<Report>(cx);
+    let r, ok = rest::read_reply<Report>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, r);
@@ -139,17 +139,17 @@ thread_fn database(box: http::Box) {
         http::mail_take(box) { key, tag, bytes =>
             if tag == SUMMARY {
                 let a, ok = rest::asked<SummaryJob>(bytes);
-                if ok && !rest::wanted(a) {
+                if ok && !rest::still_wanted(a) {
                     gone.skipped++;
                 } else if ok {
                     if a.job.ms > 0 { sleep_ms(a.job.ms); }
                     let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [a.job.project]);
                     // False once the client has gone, as after its 504.
-                    if !rest::answer_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
+                    if !rest::reply_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
                 }
             } else if tag == GONE {
                 let a, ok = rest::asked<GoneJob>(bytes);
-                if ok { rest::answer_value(a, gone); }
+                if ok { rest::reply_value(a, gone); }
             } else if tag == STOP {
                 running = false;
             }
@@ -159,7 +159,7 @@ thread_fn database(box: http::Box) {
 }
 
 // The reports' thread: it takes a step of the report running between its
-// messages, so that it answers a client's question while a report runs.
+// messages, so that it replies to a client's question while a report runs.
 thread_fn reports(box: http::Box) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];
@@ -173,14 +173,14 @@ thread_fn reports(box: http::Box) {
                 let a, ok = rest::asked<StartJob>(bytes);
                 if ok {
                     let r .= all.push(Report { id: all.len + 1, project: a.job.project, .. });
-                    rest::answer_value(a, r);
+                    rest::reply_value(a, r);
                 }
             } else if tag == STATUS {
                 let a, ok = rest::asked<StatusJob>(bytes);
                 if ok && a.job.id >= 1 && a.job.id <= all.len {
-                    rest::answer_value(a, all[a.job.id - 1]);
+                    rest::reply_value(a, all[a.job.id - 1]);
                 } else if ok {
-                    rest::answer_value(a, Report { status: 404, code: "report_not_found", .. });
+                    rest::reply_value(a, Report { status: 404, code: "report_not_found", .. });
                 }
             } else if tag == STOP {
                 running = false;

@@ -63,7 +63,7 @@ struct NoState { unused: bool = false }
 let BODY_LIMIT = 1024 * 1024;
 
 // What a route asked serve for past its first call, Exchange.mode's bits:
-// the body gathered whole (rest::body), its pieces (rest::receive), MORE for
+// the body gathered whole (rest::body), its pieces (rest::body_in_pieces), MORE for
 // a response it sends in pieces (rest::begin, rest::file), and the bytes of
 // a connection it upgraded (rest::upgrade).
 let GATHERING: u8 = 1;
@@ -78,7 +78,7 @@ let UPGRADED: u8 = 8;
 struct Exchange {
     pending: bool = false,   // the body hasn't come whole
     mode: u8 = 0,
-    limit: i64 = 0,          // the first rest::body's or rest::receive's limit, 0 before it
+    limit: i64 = 0,          // the first rest::body's or rest::body_in_pieces's limit, 0 before it
     at: i64 = 0,
     len: i64 = 0,
     cap: i64 = 0,
@@ -175,7 +175,7 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
 // http::REQUEST.
 let GATHERED: u8 = 254;
 
-// The calls to H that follow a route's rest::body, receive, begin, file, or
+// The calls to H that follow a route's rest::body, body_in_pieces, begin, file, or
 // upgrade (Exchange.mode): one for ev, when it comes after the request's
 // first call, and then those each call leads to, as a body that came whole
 // passed on as a BODY and an END, or CLOSED for a route that ended early.
@@ -339,7 +339,7 @@ fn release(g: Exchange&, spill: u8[>..]&) {
 // with 413 payload_too_large. The first call's limit holds for the request.
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
-// runs twice up to its first rest::body. After rest::receive, 500
+// runs twice up to its first rest::body. After rest::body_in_pieces, 500
 // body_already_read.
 fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     var g .= cx.ex;

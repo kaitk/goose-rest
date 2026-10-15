@@ -12,7 +12,7 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 // limits goose-http applies. A body that doesn't fit in cfg.max_head with
 // its head comes in pieces of cfg.max_head bytes: gathered as serve gathers
 // it, so H runs again once it's whole if it called rest::body, or passed on
-// to a route that called rest::receive. A body shorter than its
+// to a route that called rest::body_in_pieces. A body shorter than its
 // Content-Length is a client that hung up midway: its pieces come, then
 // http::CLOSED in place of http::END. A response sent in pieces
 // (rest::begin) is taken to its end, H called with http::MORE as for a

@@ -58,10 +58,10 @@ thread_fn run(box: http::Box, delay_ms: i64) {
         http::mail_take(box) { key, tag, bytes =>
             if tag == PROJECT {
                 let a, ok = rest::asked<ProjectJob>(bytes);
-                if ok { rest::answer_value(a, project(c, a.job)); }
+                if ok { rest::reply_value(a, project(c, a.job)); }
             } else if tag == ASSIGN {
                 let a, ok = rest::asked<AssignJob>(bytes);
-                if ok { rest::answer_value(a, assign(c, a.job)); }
+                if ok { rest::reply_value(a, assign(c, a.job)); }
             } else if tag == STOP {
                 running = false;
             }

@@ -1,4 +1,4 @@
-// Bodies read in pieces with rest::receive, through rest::serve_one: whole
+// Bodies read in pieces with rest::body_in_pieces, through rest::serve_one: whole
 // and in pieces, the limit, a failure or an answer before the END, a client
 // that hangs up, and rest::body beside it; and responses sent in pieces with
 // rest::begin, chunked and with a length, for HEAD, cut short by a failure,
@@ -63,14 +63,14 @@ fn upload(text: const u8[:], limit: i64 = 1 << 20, both: const u8[:] = "") -> u8
             resume(cx.state.waiting, cx);
         } else {
             if both == "first" { rest::body(cx); }
-            rest::receive(cx, limit, Waiting.Upload);
+            rest::body_in_pieces(cx, limit, Waiting.Upload);
             if both == "after" { rest::body(cx); }
         }
     };
     return out, log;
 }
 
-fn test_receive() {
+fn test_body_in_pieces() {
     // A body that came with its head: one piece, then the END.
     let short, l1 = upload(post("", 100));
     same(body_of(short), "100", "whole");
@@ -113,12 +113,12 @@ fn test_ending_early() {
 
 fn test_body_beside() {
     let first, l1 = upload(post("", 100), 1 << 20, "first");
-    same(body_of(first), "{\"error\":\"body_already_read\"}", "receive after body");
-    same(l1, "", "receive after body's calls");
+    same(body_of(first), "{\"error\":\"body_already_read\"}", "body_in_pieces after body");
+    same(l1, "", "body_in_pieces after body's calls");
     let after, l2 = upload(post("", 100), 1 << 20, "after");
-    same(body_of(after), "{\"error\":\"body_already_read\"}", "body after receive");
+    same(body_of(after), "{\"error\":\"body_already_read\"}", "body after body_in_pieces");
     // The route failed before any piece: CLOSED alone.
-    same(l2, "C ", "body after receive's calls");
+    same(l2, "C ", "body after body_in_pieces's calls");
 }
 
 // A row at each MORE, up to w.rows, and then the end; row 2 of 99 fails.
@@ -188,7 +188,7 @@ fn test_echo() {
         if rest::resumed(cx) {
             resume(cx.state.waiting, cx);
         } else {
-            rest::receive(cx, 1 << 20, Waiting.Echo);
+            rest::body_in_pieces(cx, 1 << 20, Waiting.Echo);
             rest::begin(cx, 200, "text/plain", -1, Waiting.Echo);
         }
     };
@@ -245,7 +245,7 @@ fn test_file() {
 
 fn main() {
     test_file();
-    test_receive();
+    test_body_in_pieces();
     test_ending_early();
     test_body_beside();
     test_begin();

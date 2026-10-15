@@ -29,7 +29,10 @@ fn handle(cx) {
 }
 
 fn echo(cx) {
+    // Only a request that asks to switch to "echo"; any other gets 426.
     guard http::upgrade_of(cx.req) == "echo" else { rest::fail(cx, 426, "upgrade_required"); }
+    // Answers 101. From here the connection is the route's: the client's
+    // bytes come to resume(Waiting.Echo) as BODY, and rest::send writes raw.
     rest::upgrade(cx, "echo", Waiting.Echo);
 }
 
@@ -40,8 +43,10 @@ fn resume(w: Waiting.Echo, cx) {
     if cx.kind == http::BODY {
         cx.state.bytes += cx.body.len;
         rest::send(cx, cx.body);
+        // rest::end closes an upgraded connection.
         if find(cx.body, "bye") >= 0 { rest::end(cx); }
     } else if cx.kind == http::CLOSED {
+        // The client closed first; a route that ends gets no CLOSED.
         write_stderr(str("echo: the client closed after ", cx.state.bytes, " bytes\n"));
     }
 }

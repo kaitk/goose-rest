@@ -536,7 +536,7 @@ keyword, because the reader's error is a slice and the key is a slice of the req
 ### Waiting on another thread
 
 Checked by spike 06; built in `waiting.goose`, whose header shows the API:
-`rest::ask`, `rest::resumed`, `rest::answer`, and `rest::relay`. `rest::wanted` tells the
+`rest::ask`, `rest::resumed`, `rest::reply`, and `rest::relay`. `rest::still_wanted` tells the
 other thread whether the route still waits, so it can skip the work of a client that has
 gone. Goose can't store a function to call later, so the per-request state holds a
 fixed-mode enum of what each waiting route needs, and the app writes a case function per
@@ -580,7 +580,7 @@ replies all fit raises `Config.mail_size` instead. A route that never waits keep
 nothing on the connection.
 
 Decided (2026-10-15): every call after a request's first goes through the same case
-functions, not only a reply. A route that reads its body in pieces (`rest::receive`),
+functions, not only a reply. A route that reads its body in pieces (`rest::body_in_pieces`),
 sends its response in pieces (`rest::begin`, `rest::file`), or takes an upgraded
 connection (`rest::upgrade`) gives a `Waiting` variant, as `rest::ask` does, and
 `rest::serve` calls the handler again for each event of the exchange, `rest::resumed`,

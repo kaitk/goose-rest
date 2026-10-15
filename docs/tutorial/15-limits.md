@@ -35,7 +35,7 @@ GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
 ```
 
 A job can't be stopped from outside. The database goes on with the 500 ms query, and
-its answer finds nobody waiting.
+its reply finds nobody waiting.
 
 ## 503 for a full box
 
@@ -57,30 +57,30 @@ several service threads, each with its own box, and send each job to one of them
 ## A client that has gone
 
 A client can go while its job waits or runs: its connection closes, or its wait times
-out. `rest::wanted(a)` says whether the route still waits, so the service skips a job
-nobody waits for, and `rest::answer_value` returns false once the route has gone:
+out. `rest::still_wanted(a)` says whether the route still waits, so the service skips a job
+nobody waits for, and `rest::reply_value` returns false once the route has gone:
 
 ```rust
             if tag == SUMMARY {
                 let a, ok = rest::asked<SummaryJob>(bytes);
-                if ok && !rest::wanted(a) {
+                if ok && !rest::still_wanted(a) {
                     gone.skipped++;
                 } else if ok {
                     if a.job.ms > 0 { sleep_ms(a.job.ms); }
                     let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [a.job.project]);
                     // False once the client has gone, as after its 504.
-                    if !rest::answer_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
+                    if !rest::reply_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
                 }
 ```
 
-The two clients that gave up had their jobs skipped, and the answer to the 504's route
+The two clients that gave up had their jobs skipped, and the reply to the 504's route
 was dropped:
 
 ```text
 GET /v1/gone 200 {"skipped":2,"dropped":1}
 ```
 
-`rest::wanted` is a snapshot: a client can still go before the answer. A long job checks
+`rest::still_wanted` is a snapshot: a client can still go before the reply. A long job checks
 it between its steps, as well as before it starts.
 
 ## A slow client
@@ -97,7 +97,7 @@ A wait holds the connection, a timer, and a slot of `Config.max_waiting`, so a r
 that takes minutes doesn't fit one. It runs as a job: the route answers 202 with the
 job's state at once, and the client asks for it until it's done. A reports thread keeps
 each report's state, and takes a step of the one running between its messages, so that
-it answers while a report runs:
+it replies while a report runs:
 
 ```rust
 // A report's state, as GET /v1/reports/:id answers it.
@@ -107,7 +107,7 @@ struct Report { status: i32 = 200, code: u8[..32] = "", id: i64 = 0, project: i6
 ```rust
 // The report has started: 202, and where to ask about it.
 fn resume(w: Waiting.Started, cx) {
-    let r, ok = rest::reply_value<Report>(cx);
+    let r, ok = rest::read_reply<Report>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     var body: u8[>..] = [];
     format(body, r);

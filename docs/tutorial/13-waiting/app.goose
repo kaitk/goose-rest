@@ -77,14 +77,14 @@ fn v1(cx) {
 fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 fn resume(w: Waiting.Project, cx) {
-    let r, ok = rest::reply_value<service::ProjectReply>(cx);
+    let r, ok = rest::read_reply<service::ProjectReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, project_of(r.project));
 }
 
 fn resume(w: Waiting.Assign, cx) {
-    let r, ok = rest::reply_value<service::AssignReply>(cx);
+    let r, ok = rest::read_reply<service::AssignReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, Assigned { task: w.task, assignee: w.assignee });

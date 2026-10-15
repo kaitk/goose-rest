@@ -27,9 +27,9 @@ what a page shows is what the code does.
 ## Part two: bodies, waits, and limits
 
 10. [Large bodies](10-large-bodies.md): `rest::body`, a CSV import gathered whole up to a limit
-11. [Bodies read as they arrive](11-bodies-in-pieces.md): `rest::receive`, attachments of any size, a multipart form
+11. [Bodies read as they arrive](11-bodies-in-pieces.md): `rest::body_in_pieces`, attachments of any size, a multipart form
 12. [Long responses and files](12-long-responses.md): `rest::begin`, `rest::send`, an export in pieces, `rest::file`
-13. [Work that waits](13-waiting.md): a database behind a service, `rest::ask`, `rest::answer_value`
+13. [Work that waits](13-waiting.md): a database behind a service, `rest::ask`, `rest::reply_value`
 14. [Two services, or a reply in pieces](14-two-services.md): `rest::relay`, a case function that asks again
 15. [Limits](15-limits.md): 504, 503, a client that has gone, a slow client, a job the client polls
 16. [Testing the application](16-testing.md): use cases as plain calls, routes up to their ask, timing over HTTP

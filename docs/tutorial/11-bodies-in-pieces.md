@@ -9,7 +9,7 @@ piece, however large the attachment is. How goose-http reads a body this way:
 
 ## The route receives, and resumes for each piece
 
-`rest::receive(cx, limit, w)` takes the body in pieces, up to `limit` bytes. Like
+`rest::body_in_pieces(cx, limit, w)` takes the body in pieces, up to `limit` bytes. Like
 `rest::ask` ([page 13](13-waiting.md)), it keeps a `Waiting` variant in the request's
 state, `w`, and the route returns without an answer. From
 [`11-bodies-in-pieces`](11-bodies-in-pieces/main.goose):
@@ -19,15 +19,21 @@ state, `w`, and the route returns without an answer. From
 // written a piece at a time.
 fn attach(cx, project: i64) {
     let id = cx.app.next;
-    rest::receive(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
+    // Reads nothing yet. A Content-Length over the limit gets 413, which leaves
+    // the route here; otherwise the body's pieces come later, to
+    // resume(Waiting.Attachment), once this route has returned.
+    rest::body_in_pieces(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
+    // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
 ```
 
-The code before and after `rest::receive` runs once: unlike `rest::body`, it doesn't
-leave the route. `rest::receive` fails the route only when it refuses the body, so the
-id is taken once the body is accepted.
+`rest::body_in_pieces` reads nothing itself: it accepts the body or refuses it, and says where
+its pieces go. The code before and after it runs once: unlike `rest::body`, it leaves
+the route only when it refuses the body. No piece comes before the route has
+returned, even for a body that came with its head, so the route can still set what
+the pieces need after the call, as `part_path` here.
 
 The handler is then called again for each piece of the body, and `rest::resumed` sends
 each call to the variant's case function, as for a reply from a service. `cx.kind`
@@ -91,7 +97,7 @@ POST /v1/projects/1/attachments 201 {"project":1,"id":2,"size":2000000}    2 MB,
 POST /v1/projects/9/attachments 404 {"error":"project_not_found"}         not read
 ```
 
-The project is checked before `rest::receive`, so an attachment to one that doesn't
+The project is checked before `rest::body_in_pieces`, so an attachment to one that doesn't
 exist gets its 404 before any of the body is read.
 
 ## Limits, and ending early
@@ -105,7 +111,7 @@ let LARGE_LIMIT: i64 = 1 << 30;
 let SMALL_LIMIT: i64 = 64 * 1024;
 ```
 
-A body whose `Content-Length` is over the limit fails at `rest::receive` with 413,
+A body whose `Content-Length` is over the limit fails at `rest::body_in_pieces` with 413,
 before the client sends it. A chunked body has no length, so goose-rest counts it as it
 comes, and past the limit answers 413 and closes the connection. `http::Config`'s
 `max_body` still caps every route, so `main` raises it to the largest limit, as
@@ -152,9 +158,15 @@ file's to its `.part` file:
 ```rust
 fn resume(w: Waiting.Form, cx) {
     if cx.kind == http::BODY {
+        // A piece can end one part and start the next, or stop mid-head:
+        // each_part calls the block for what the piece completes, and keeps
+        // the rest in cx.state.form for the next piece.
         let ok = http::each_part(cx.state.form, cx.body) { part =>
             match part {
+                // A part begins: note it's the note, the file, or another.
                 Head h => form_part(cx, h.fields),
+                // Some of its content: the file's to disk, the note's to the
+                // state, up to 128 bytes.
                 Data d => {
                     if cx.state.part == FILE { store(cx, d.bytes); }
                     else if cx.state.part == NOTE { cx.state.note.append(d.bytes[..min(d.bytes.len, 128 - cx.state.note.len)]); }
@@ -165,6 +177,7 @@ fn resume(w: Waiting.Form, cx) {
         guard ok else { rest::fail(cx, 400, "invalid_multipart"); }
         guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
+        // The body has all come; a form cut short lacks its closing boundary.
         guard http::multipart_done(cx.state.form) else {
             delete_file(cx.state.part_path);
             rest::fail(cx, 400, "invalid_multipart");

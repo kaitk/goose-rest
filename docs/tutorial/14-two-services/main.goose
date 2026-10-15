@@ -74,7 +74,7 @@ fn resume(w: Waiting.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
 
 // The database added the member: ask the mailer next, and wait again.
 fn resume(w: Waiting.Member, cx) {
-    let r, ok = rest::reply_value<MemberReply>(cx);
+    let r, ok = rest::read_reply<MemberReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::ask(cx, cx.app.mailer, SEND, MailJob { project: w.project, user: w.user },
@@ -82,7 +82,7 @@ fn resume(w: Waiting.Member, cx) {
 }
 
 fn resume(w: Waiting.Mail, cx) {
-    let r, ok = rest::reply_value<MailReply>(cx);
+    let r, ok = rest::read_reply<MailReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     rest::json(cx, 201, Invited { project: w.project, user: w.user, mail: r.id });
 }
@@ -123,10 +123,10 @@ thread_fn database(box: http::Box) {
             if tag == TASKS {
                 let a, ok = rest::asked<TasksJob>(bytes);
                 // In pieces of the worker's message size, 64 bytes here.
-                if ok { rest::answer(a, tasks_json(c, a.job)); }
+                if ok { rest::reply(a, tasks_json(c, a.job)); }
             } else if tag == ADD_MEMBER {
                 let a, ok = rest::asked<MemberJob>(bytes);
-                if ok { rest::answer_value(a, add_member(c, a.job)); }
+                if ok { rest::reply_value(a, add_member(c, a.job)); }
             } else if tag == STOP {
                 running = false;
             }
@@ -147,7 +147,7 @@ thread_fn mailer(box: http::Box) {
                 if ok {
                     sleep_ms(DELAY_MS);
                     sent++;
-                    rest::answer_value(a, MailReply { id: sent });
+                    rest::reply_value(a, MailReply { id: sent });
                 }
             } else if tag == STOP {
                 running = false;
