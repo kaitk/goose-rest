@@ -60,4 +60,5 @@ written after the request, and task 026, the architecture doc's split, follow. T
 024, the tutorial's testing of part two's application, task 031, `serve_one` past
 `rest::ask`, and task 033, ASCII strings sized in bytes, are done. Tasks 030, responses
 in pieces under `rest::compressed`, and 032, timers for a route that began a response,
-can start at any point.
+can start at any point. Task 034, middleware stacks of the program's own, comes before
+task 035, the tutorial's part on one way to lay out an application, which names them.
