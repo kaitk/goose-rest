@@ -23,7 +23,7 @@ req GET /v1/nope
 coded GET '/v1/events?limit=100' -H 'Accept-Encoding: identity'
 coded GET '/v1/events?limit=100' -H 'Accept-Encoding: gzip'
 coded GET '/v1/events?limit=100' -H 'Accept-Encoding: deflate'
-coded GET '/v1/events?limit=100'
+coded GET '/v1/events?limit=100' -H 'Accept-Encoding: deflate, gzip'
 coded GET /v1/events/7 -H 'Accept-Encoding: gzip'
 coded GET /v1/events/0 -H 'Accept-Encoding: gzip'
 coded GET /nope -H 'Accept-Encoding: gzip'
