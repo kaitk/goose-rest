@@ -1,0 +1,24 @@
+// The teams' routes, under /organizations/:id/teams.
+namespace teams;
+
+import std;
+import http;
+import rest;
+import common.members.structs;
+import teams.structs;
+
+fn routes(cx, member: members::Member) {
+    if rest::on(cx, "GET", "") {
+        list(cx, member);
+    } else {
+        rest::otherwise(cx);
+    }
+}
+
+fn list(cx, member: members::Member) {
+    var mine: Team[>..] = [];
+    for t in cx.app.teams {
+        if t.organization == member.organization { mine.push(t); }
+    }
+    rest::json(cx, 200, mine);
+}

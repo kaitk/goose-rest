@@ -1,0 +1,65 @@
+// docs/best-practices/middleware.md: middleware named for what it does, in
+// middleware.goose, and a stack per audience, in stacks.goose, each scope
+// behind one stack.
+//
+//   goose build -o build/middleware docs/best-practices/middleware/main.goose
+//   build/middleware 8080
+//   curl -s -H 'Authorization: Bearer ada' localhost:8080/organizations/1/projects
+import std;
+import os;
+import http from "github.com/kaitk/goose-http@v0.3.2";
+import rest from "../../../";
+import stacks;
+
+fn handle(cx) {
+    rest::timed(cx) {
+        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+            rest::routes(cx) { cx =>
+                if rest::on(cx, "GET", "/health") {
+                    public_routes(cx) { rest::text(cx, 200, "ok"); };
+                } else if rest::scope(cx, "/settings") {
+                    user_routes(cx) { user => settings(cx, user); };
+                } else if rest::scope(cx, "/organizations") {
+                    member_routes(cx) { member => projects(cx, member); };
+                } else {
+                    rest::otherwise(cx);
+                }
+            };
+        };
+    };
+}
+
+fn settings(cx, user: users::User) {
+    if rest::on(cx, "GET", "") {
+        rest::text(cx, 200, str("the settings of user ", user.id));
+    } else {
+        rest::otherwise(cx);
+    }
+}
+
+fn projects(cx, member: members::Member) {
+    if rest::on(cx, "GET", "/projects") {
+        rest::text(cx, 200, str("the projects of organization ", member.organization));
+    } else {
+        rest::otherwise(cx);
+    }
+}
+
+thread_fn worker(cfg: http::Config) {
+    let e = rest::serve(cfg) { cx => handle(cx) };
+    if e.code != 0 { http::report(e); }
+}
+
+fn main() {
+    let a = args();
+    var port: i64 = 8080;
+    if a.len > 1 {
+        let p, ok = parse_int(a[1]);
+        if ok { port = p; }
+    }
+    http::exit_on_error(http::stop_on_signals());
+    let cfg = http::Config { port: port as i32, .. };
+    var ids: i64[>..] = [];
+    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg)); }
+    for id in ids { thread_wait(id); }
+}

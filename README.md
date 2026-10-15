@@ -10,7 +10,8 @@ The API is still taking shape. The tutorial and examples use the intended API, b
 names and details may change between tags. Work is also underway to reduce the
 remaining overhead over goose-http.
 
-[Tutorial](docs/tutorial/README.md) · [Reference](docs/reference.md) ·
+[Tutorial](docs/tutorial/README.md) · [Best practices](docs/best-practices/README.md) ·
+[Reference](docs/reference.md) ·
 [Generator](docs/generator.md) · [Benchmarks](docs/benchmarks.md) ·
 [Architecture](docs/architecture.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)

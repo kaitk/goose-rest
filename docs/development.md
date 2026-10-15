@@ -31,8 +31,9 @@ test/             tests by area, test/<area>/<name>.goose, with golden files in
 spikes/           language checks the design relies on, one folder each with a README
 bench/            benchmark servers, scripts, and results (bench/README.md)
 scripts/          test scripts, and the Goose and goose-http setup and pin scripts
-docs/             the tutorial and its programs (docs/tutorial/), references, architecture,
-                  decisions, benchmarks, development setup, known issues, Goose findings
+docs/             the tutorial and its programs (docs/tutorial/), the best practices and
+                  theirs (docs/best-practices/), references, architecture, decisions,
+                  benchmarks, development setup, known issues, Goose findings
 tasks/            task tracking (tasks/README.md)
 CHANGELOG.md      what each tag adds
 ```
@@ -96,14 +97,16 @@ which git ignores.
    Then the TypeScript helper's tests, where `tsc` is installed
    ([below](#run-the-typescript-helpers-tests)).
 3. `scripts/test-examples.sh`, which builds each example under `examples/` and each
-   tutorial program under `docs/tutorial/`, serves it on `127.0.0.1` from port 18081
-   up, sends the requests its `requests.sh` lists with `curl`, and compares the answers
-   with its `expected.txt`. A port in use there fails the run. A request that gives up,
-   such as one with `-m`, is recorded as status `000` without a body:
-   `docs/tutorial/15-limits` closes two clients early that way, and expects its
-   database to count them, with a margin of 0.5 s. Then each tutorial program's `test.goose`,
-   through TinyCC. `examples/device` reads its fake sysfs from `build/examples/` and
-   takes paths of up to 1 KB ([known issues](known-issues.md#tests)).
+   program under `docs/tutorial/` and `docs/best-practices/`, serves it on `127.0.0.1`
+   from port 18081 up, sends the requests its `requests.sh` lists with `curl`, and
+   compares the answers with its `expected.txt`. A port in use there fails the run. A
+   request that gives up, such as one with `-m`, is recorded as status `000` without a
+   body: `docs/tutorial/15-limits` closes two clients early that way, and expects its
+   database to count them, with a margin of 0.5 s. Then each tutorial program's
+   `test.goose`, through TinyCC, and each `rust` and `json` block of the tutorial's and
+   the best practices' pages, which must appear as it is in a program or an example.
+   `examples/device` reads its fake sysfs from `build/examples/` and takes paths of up
+   to 1 KB ([known issues](known-issues.md#tests)).
 4. Each spike's `main.goose`, whose standard output must match the `expected.txt` beside
    it ([below](#run-the-spikes)).
 5. Spike 04's `-O2` C, which must keep `main_g` as its only Goose function, and

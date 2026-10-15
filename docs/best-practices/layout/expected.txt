@@ -1,0 +1,13 @@
+GET /health 200 ok
+GET /settings 401 {"error":"unauthenticated"}
+GET /settings 200 {"time_zone":"Europe/Tallinn"}
+GET /organizations/1/projects 401 {"error":"invalid_token"}
+GET /organizations/2/projects 403 {"error":"not_a_member"}
+GET /organizations/x/projects 400 {"error":"invalid_parameter","detail":"organization: integer"}
+POST /organizations/1/projects 201 {"id":1,"name":"goose"}
+POST /organizations/1/projects 422 {"error":"project_name_required"}
+POST /organizations/2/projects 201 {"id":2,"name":"gander"}
+GET /organizations/1/projects 200 [{"id":1,"name":"goose"}]
+GET /organizations/2/teams 200 [{"id":2,"name":"support"}]
+DELETE /organizations/2/teams 405 {"error":"method_not_allowed"}
+GET /organizations/2/members 404 {"error":"not_found"}

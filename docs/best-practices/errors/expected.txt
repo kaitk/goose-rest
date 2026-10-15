@@ -1,0 +1,9 @@
+GET /health 200 ok
+GET /projects/1 200 project 1
+GET /projects/3 404 {"error":"project_not_found"}
+GET /projects/x 400 {"error":"invalid_parameter","detail":"id: integer"}
+DELETE /projects/1 403 {"error":"not_an_admin"}
+DELETE /projects/3 404 {"error":"project_not_found"}
+DELETE /projects/2 409 {"error":"project_archived"}
+DELETE /projects/1 204
+PUT /projects/1 405 {"error":"method_not_allowed"}

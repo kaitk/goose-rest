@@ -106,6 +106,11 @@ argument, as `F(id)` does.
 A stack is code, not a value. A block is a compile-time argument, so a program can't
 build a list of middleware at run time, as Actix's `wrap` or Tower's `Layer` does.
 
+How to name stacks and middleware, and how many stacks to write, is in
+[Middleware and stacks](../best-practices/middleware.md): a stack per audience, such
+as `member_routes`, and a middleware named by a verb. [Naming](../best-practices/naming.md)
+has the rest of an application's names.
+
 A stack keeps the rules of the nesting it replaces:
 
 - Middleware that adds fields to every answer, such as `timed` and `cors`, goes outside

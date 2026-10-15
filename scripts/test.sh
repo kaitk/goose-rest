@@ -4,9 +4,10 @@
 # failure among them), the generator's output for each schema under
 # test/gen/, examples/, and docs/tutorial/ against its golden file, the
 # TypeScript helper's tests where tsc is installed (ts/), each example and
-# tutorial program served and requested (scripts/test-examples.sh), each
-# tutorial test.goose, the tutorial pages' code blocks against the programs
-# they quote, then each spike, whose output must match the
+# each tutorial and best-practices program served and requested
+# (scripts/test-examples.sh), each tutorial test.goose, the code blocks of
+# the tutorial's and the best practices' pages against the programs they
+# quote, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
 # also keep main as its only Goose function: everything else inlined. And
@@ -93,46 +94,50 @@ else
     echo "skipped: no ${TSC%% *} on PATH (TSC names another)"
 fi
 
-# A tutorial program is a folder under docs/tutorial/ with a requests.sh, one
-# level down or two, for a page with several programs.
-tutorial=$(find "$root/docs/tutorial" -name requests.sh -exec dirname {} \; | sort)
+# A program of the docs is a folder under docs/tutorial/ or
+# docs/best-practices/ with a requests.sh, one level down or two, for a page
+# with several programs.
+programs=$(find "$root/docs/tutorial" "$root/docs/best-practices" -name requests.sh -exec dirname {} \; | sort)
 step "test-examples.sh"
 # shellcheck disable=SC2086
-"$root/scripts/test-examples.sh" "$root"/examples/*/ $tutorial
+"$root/scripts/test-examples.sh" "$root"/examples/*/ $programs
 
 for t in $(find "$root/docs/tutorial" -name test.goose | sort); do
     step "${t#"$root"/}"
     "$goose" "$t"
 done
 
-# The tutorial pages' rust and json blocks quote the tutorial's programs and
-# the examples: each run of lines between "..." lines must appear as it is
-# in one of their files.
-step "docs/tutorial/'s code"
-blocks=$root/build/tutorial-blocks
-rm -rf "$blocks"
-mkdir -p "$blocks"
-awk -v dir="$blocks" '
-    FNR == 1 { page = FILENAME; sub(/.*\//, "", page); sub(/\.md$/, "", page) }
-    /^```(rust|json)$/ { n++; part = 0; file = dir "/" page "." n "." part; inside = 1; next }
-    inside && /^```$/ { inside = 0; next }
-    inside && /^ *\.\.\.$/ { part++; file = dir "/" page "." n "." part; next }
-    inside { print > file }
-' "$root"/docs/tutorial/*.md
-sources=$(find "$root/docs/tutorial" "$root/examples" -type f ! -name '*.md' | sort)
-for b in "$blocks"/*; do
-    want=$(cat "$b")
-    found=
-    for f in $sources; do
-        case $(cat "$f") in *"$want"*) found=1; break ;; esac
+# The rust and json blocks of the tutorial's and the best practices' pages
+# quote the programs beside them and the examples: each run of lines between
+# "..." lines must appear as it is in one of their files. A block's file is
+# named <section>.<page>.<block>.<part>.
+for section in tutorial best-practices; do
+    step "docs/$section/'s code"
+    blocks=$root/build/$section-blocks
+    rm -rf "$blocks"
+    mkdir -p "$blocks"
+    awk -v dir="$blocks" -v section="$section" '
+        FNR == 1 { page = FILENAME; sub(/.*\//, "", page); sub(/\.md$/, "", page); page = section "." page }
+        /^```(rust|json)$/ { n++; part = 0; file = dir "/" page "." n "." part; inside = 1; next }
+        inside && /^```$/ { inside = 0; next }
+        inside && /^ *\.\.\.$/ { part++; file = dir "/" page "." n "." part; next }
+        inside { print > file }
+    ' "$root/docs/$section"/*.md
+    sources=$(find "$root/docs/$section" "$root/examples" -type f ! -name '*.md' | sort)
+    for b in "$blocks"/*; do
+        want=$(cat "$b")
+        found=
+        for f in $sources; do
+            case $(cat "$f") in *"$want"*) found=1; break ;; esac
+        done
+        if [ -z "$found" ]; then
+            echo "docs/$section/$(basename "$b" | cut -d. -f2).md quotes what no program holds:"
+            cat "$b"
+            exit 1
+        fi
     done
-    if [ -z "$found" ]; then
-        echo "docs/tutorial/$(basename "$b" | cut -d. -f1).md quotes what no program holds:"
-        cat "$b"
-        exit 1
-    fi
+    echo "$(ls "$blocks" | wc -l | tr -d ' ') excerpts found"
 done
-echo "$(ls "$blocks" | wc -l | tr -d ' ') excerpts found"
 
 mkdir -p "$root/build"
 for f in "$root"/spikes/*/main.goose "$root"/spikes/*/*/main.goose; do

@@ -1,0 +1,9 @@
+GET /health 200 ok
+GET /health 403 {"error":"origin_not_allowed"}
+GET /settings 401 {"error":"unauthenticated"}
+GET /settings 401 {"error":"invalid_token"}
+GET /settings 200 the settings of user 2
+GET /organizations/1/projects 200 the projects of organization 1
+GET /organizations/2/projects 403 {"error":"not_a_member"}
+GET /organizations/2/projects 200 the projects of organization 2
+GET /organizations 404 {"error":"not_found"}

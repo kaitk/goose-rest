@@ -35,4 +35,5 @@ covers the setup and measurement method.
 
 ---
 
-[Index](README.md) · Previous: [16. Testing the application](16-testing.md)
+[Index](README.md) · Previous: [16. Testing the application](16-testing.md) · Next:
+[Best practices](../best-practices/README.md)

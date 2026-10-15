@@ -37,6 +37,8 @@ what the page shows matches what the code does.
 
 ## Where to go next
 
+- [Best practices](../best-practices/README.md): how to lay out an application that
+  grows, by domain, and what to name each part.
 - [Reference](../reference.md): every middleware, extractor, and error code.
 - [Generator](../generator.md): what the generator reads, what it writes, what it
   refuses, and how the router matches.

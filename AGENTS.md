@@ -4,7 +4,8 @@
 
 - What this is: `README.md`; what each tag adds: `CHANGELOG.md`; the framework step
   by step: `docs/tutorial/README.md`, a page each, with its programs beside the
-  pages; every middleware, extractor, and error:
+  pages; how to lay out an application: `docs/best-practices/README.md`, with its
+  programs too; every middleware, extractor, and error:
   `docs/reference.md`; what the generator reads, writes, and refuses:
   `docs/generator.md`
 - Architecture decisions: `docs/decisions.md`, each dated with its reason and what it
@@ -104,7 +105,7 @@ commit and the reason in `docs/development.md`, "Get Goose".
 The import in `rest.goose` is the pin: a release tag, or a full commit hash for a fix
 not yet released, since git can't fetch an abbreviated one. The same reference is in
 each of the package's files, in each root file under `test/`, `examples/`,
-`docs/tutorial/`, `spikes/`, and `bench/`, in `README.md`'s quick start, and in
+`docs/tutorial/`, `docs/best-practices/`, `spikes/`, and `bench/`, in `README.md`'s quick start, and in
 `docs/tutorial/01-running.md`. `scripts/move-http-pin.sh` changes every one:
 
 ```sh

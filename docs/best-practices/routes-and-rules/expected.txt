@@ -1,0 +1,9 @@
+GET /health 200 ok
+POST /projects 201 {"id":1,"name":"goose","archived":false}
+POST /projects 400 {"error":"invalid_parameter","detail":"name: required"}
+POST /projects 422 {"error":"project_name_required"}
+POST /projects 422 {"error":"project_name_too_long"}
+POST /projects/1/archive 200 {"id":1,"name":"goose","archived":true}
+POST /projects/1/archive 409 {"error":"project_already_archived"}
+POST /projects/9/archive 404 {"error":"project_not_found"}
+POST /projects/x/archive 400 {"error":"invalid_parameter","detail":"id: integer"}

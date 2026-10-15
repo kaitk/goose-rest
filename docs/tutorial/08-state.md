@@ -3,6 +3,9 @@
 Workers share nothing, so state lives in one of three places: within a worker, within a
 request, or on a dedicated thread
 ([goose-http's state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)).
+Which to choose for a piece of data is in
+[State](../best-practices/state.md#choose-the-place-by-what-the-data-is), among the
+best practices.
 
 ## Per worker
 

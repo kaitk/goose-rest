@@ -1,6 +1,7 @@
 # 035: Best practices, a section of the docs on laying out an application
 
-Status: todo (asked for 2026-10-15; a docs section, not a tutorial part, 2026-10-15)
+Status: in-progress (asked for 2026-10-15; a docs section, not a tutorial part,
+2026-10-15; the section written, its testing page a stub, 2026-10-15)
 
 The tutorial's pages teach goose-rest's mechanisms one at a time, and leave how a whole
 application is laid out to the reader. A "Best practices" section of its own, beside
@@ -116,6 +117,13 @@ name shape of its own, so a call chain shows the layer:
 | Structs | noun, and `<Verb>Input` | `Project`, `CreateInput` |
 | `Waiting` variant | domain and operation | `Waiting.ProjectCreate` |
 
+As written (2026-10-15), to be confirmed in review: a domain also has `errors.goose`,
+its `Error` enum and a `check` case function per variant giving its status and code,
+and `rules.goose`, its rules; `common/errors.goose` holds the shared errors the same
+way; a rule is named for what it returns (`new_project`, `archived`); a domain's entry
+is `routes`; and until task 036, `resolve_organization` reads the id from the segment
+after a literal `/organizations` scope and narrows the router's path past it.
+
 Open: `rest::scope` matches literal prefixes only, so the member audience's
 `/organizations/:id` waits on task 036, or `member_routes` reads the segment itself;
 and whether a domain's entry is `routes` or `handle`, beside the stacks' `_routes`.
@@ -128,18 +136,23 @@ only overrides that, and a configuration names the folders.
 
 ## Acceptance criteria
 
-- [ ] `docs/best-practices/`, an index (`README.md`) that says once that it's the
+- [x] `docs/best-practices/`, an index (`README.md`) that says once that it's the
       recommended way and not required, and a page per topic above, or fewer where
       they're short; each rule with its reason, and an anchor a review can link
-- [ ] Each page's excerpts come from a small program of its own under
+- [ ] The testing page's examples: a stub states the rule until task 038 moves
+      goose-rest's own tests to the convention the page shows
+- [x] Each page's excerpts come from a small program of its own under
       `docs/best-practices/`, and `scripts/test.sh` checks them as it checks the
       tutorial's code
-- [ ] Each kind of code (structs, routes, services, data access) has one file name and
-      place in every domain and in `common/`, given in one table
-- [ ] Each convention given once, and linked from the tutorial page it builds on (page
+- [x] Each kind of code (structs, routes, services, data access) has one file name and
+      place in every domain and in `common/`, given in one table (data access's file
+      is named with the data-access page, below)
+- [x] Each convention given once, and linked from the tutorial page it builds on (page
       7 links its naming, page 8 its state, page 16 its testing); the tutorial's index
       and last page, and the README, link the section
 - [ ] Later, once goose-rest has database helpers and transactions: the data-access
-      page (point 7), with its layer's name decided
+      page (point 7), with its layer's name decided; open, as goose-rest has no database
+      helpers yet
 - [ ] Later, once goose-rest also has a JWT implementation: a full example application
-      laid out this way, in `examples/`
+      laid out this way, in `examples/`; open, as it would fake its data access and
+      authentication

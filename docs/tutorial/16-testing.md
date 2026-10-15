@@ -22,6 +22,9 @@ this way, one reply per answer it gives. Test over HTTP what needs real threads 
 time: that the service replies at all, a reply after the route's wait has ended, and a
 client that goes while its job waits.
 
+How an application lays out its tests, by domain and by scenario, is in
+[Testing](../best-practices/testing.md), among the best practices.
+
 ## The use cases, as plain calls
 
 A service's use case is a function that takes a connection and a job, so a test calls

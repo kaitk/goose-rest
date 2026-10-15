@@ -1,0 +1,4 @@
+GET /health 200 ok
+GET /holidays 200 [{"date":"2026-02-24","name":"Independence Day"}, {"date":"2026-06-24","name":"Midsummer Day"}]
+GET /holidays 200 [{"date":"2026-02-24","name":"Independence Day"}, {"date":"2026-06-24","name":"Midsummer Day"}]
+GET /lookups 200 2
