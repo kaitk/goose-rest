@@ -78,3 +78,39 @@ fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
     guard x else { return; }
     x.mode = 0;
 }
+
+// Answers a GET or HEAD with the file at path, as http::serve_file does:
+// 200, 206 for a range, 304 when the request's validators match, or 416,
+// with ETag, Last-Modified, and Accept-Ranges, and a Content-Type of
+// content_type, or by path's extension when it's empty
+// (http::content_type_of). body, a field of the per-request state, holds
+// what is left to send, and w goes in cx.state.waiting: the case function
+// calls rest::send_file(cx, body) for each call, which sends the rest and
+// closes the file. A response with nothing to send, as for HEAD or 304,
+// gets no calls. Fails with 404 file_not_found for no file, or a
+// directory, at path, 403 forbidden where reading it isn't allowed, and 500
+// file_unreadable.
+fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, w, content_type: const u8[:] = "") {
+    let f, status = http::open_file(path);
+    if status == 404 { fail(cx, 404, "file_not_found"); }
+    if status == 403 { fail(cx, 403, "forbidden"); }
+    if status != 200 { fail(cx, 500, "file_unreadable"); }
+    http::serve_file(cx.req, cx.out, f, if content_type.len > 0 { content_type } else { http::content_type_of(path) },
+                     body);
+    guard cx.out.stream.open else { return; }
+    cx.state.waiting = w;
+    var x .= cx.ex;
+    guard x else { return; }
+    x.mode |= SENDING;
+}
+
+// The case function's work for a file rest::file answered: at http::MORE,
+// sends the next piece of body, and ends the response after the last; at
+// http::CLOSED, closes the file.
+fn send_file<S, A, R>(cx: Cx<S, A, R>&, body: http::FileBody&) {
+    if cx.kind == http::MORE {
+        if !http::send_file(cx.out, body) { end(cx); }
+    } else if cx.kind == http::CLOSED {
+        http::close_body(body);
+    }
+}

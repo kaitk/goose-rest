@@ -2,15 +2,16 @@
 // and in pieces, the limit, a failure or an answer before the END, a client
 // that hangs up, and rest::body beside it; and responses sent in pieces with
 // rest::begin, chunked and with a length, for HEAD, cut short by a failure,
-// and begun while the body is read. scripts/test-unit.sh runs this through
-// TinyCC.
+// and begun while the body is read; and files with rest::file, whole, a
+// range, a 304, HEAD, and none. scripts/test-unit.sh runs this through
+// TinyCC, and writes test_pieces.tmp in the working directory for it.
 import std;
 import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../";
 
-enum Waiting { None, Upload, Export { rows: i64 }, Echo }
+enum Waiting { None, Upload, Export { rows: i64 }, Echo, Download }
 
-struct St { waiting: Waiting = Waiting.None, size: i64 = 0 }
+struct St { waiting: Waiting = Waiting.None, size: i64 = 0, file: http::FileBody = http::FileBody { .. } }
 
 // What the case function saw, in order: B and a piece's length, E, C.
 struct App { log: u8[>..]& }
@@ -195,7 +196,55 @@ fn test_echo() {
     same(log, "B8192 B8192 B3616 E ", "echo's calls");
 }
 
+fn resume(w: Waiting.Download, cx) {
+    format(cx.app.log, if cx.kind == http::MORE { "M " } else if cx.kind == http::CLOSED { "C " } else { "? " });
+    rest::send_file(cx, cx.state.file);
+}
+
+// The file at path, by a GET with fields, the request's own.
+fn download(path: const u8[:], fields: const u8[:] = "", method: const u8[:] = "GET") -> u8[>..], u8[>..] {
+    var log: u8[>..] = [];
+    var app = App { log: log };
+    let out = rest::serve_one(str(method, " /f HTTP/1.1\r\n", fields, "\r\n"), app, St { .. }) { cx =>
+        if rest::resumed(cx) {
+            resume(cx.state.waiting, cx);
+        } else {
+            rest::file(cx, path, cx.state.file, Waiting.Download);
+        }
+    };
+    return out, log;
+}
+
+fn test_file() {
+    let path = "test_pieces.tmp";
+    var data: u8[>..] = [];
+    for i in 150000 { data.push('a' + (i % 26) as u8); }
+    assert(write_file(path, data));
+    // In pieces of 64 KB, a MORE each.
+    let whole, l1 = download(path);
+    same(status_of(whole), "HTTP/1.1 200 OK", "file");
+    assert(body_of(whole) == data);
+    same(l1, "M M M ", "file's calls");
+    // A range: 206, and those bytes.
+    let part, l2 = download(path, "Range: bytes=26-30\r\n");
+    same(status_of(part), "HTTP/1.1 206 Partial Content", "range");
+    same(body_of(part), "abcde", "range's bytes");
+    // The ETag it gave: 304, with no calls.
+    let at = find(whole, "ETag: ") + 6;
+    let tag = whole[at..at + find(whole[at..], "\r\n")];
+    let same_tag, l3 = download(path, str("If-None-Match: ", tag, "\r\n"));
+    same(status_of(same_tag), "HTTP/1.1 304 Not Modified", "If-None-Match");
+    same(l3, "", "304's calls");
+    let head, l4 = download(path, "", "HEAD");
+    same(body_of(head), "", "HEAD");
+    same(l4, "", "HEAD's calls");
+    let missing, l5 = download("no-such-file.tmp");
+    same(body_of(missing), "{\"error\":\"file_not_found\"}", "no file");
+    assert(delete_file(path));
+}
+
 fn main() {
+    test_file();
     test_receive();
     test_ending_early();
     test_body_beside();
