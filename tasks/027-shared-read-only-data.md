@@ -1,6 +1,29 @@
 # 027: A helper for read-only data every worker shares
 
-Status: todo (asked for 2026-10-15)
+Status: deferred (asked for 2026-10-15; deferred 2026-10-15 until a program needs it)
+
+## Decided (2026-10-15): no goose-rest helper yet
+
+Read-only data falls into three cases, and only one needs the store:
+
+1. **Known at build time** (holidays, translations, lookup tables shipped with a
+   release): `const` globals with compile-time initializers, which Goose shares between
+   workers as static data with no copy (spec §11.2). Task 037 checks that large literal
+   arrays compile well.
+2. **Fixed at runtime, too large to copy per worker** (a GeoIP database, a catalog or
+   code list loaded at boot, an index built at startup): goose-http's `http::store`,
+   which a goose-rest program already imports directly (`import http.store`), as the
+   benchmark server does and tutorial page 8 says. Its reads get cheaper with goose-http's
+   task 040, typed reads by value.
+3. **Changing while running**: per worker, or an owner thread the routes ask (tutorial
+   pages 8 and 13), as now. goose-http's mailboxes stay as they are, not extracted into a
+   package of their own yet.
+
+snowtime, the model application, has nothing in case 2: its reference data is known at
+build time, its small settings are copied per worker at no cost, and the rest is in its
+database. So the helper below waits until a real program shows what its API should be.
+The planned design further down stays as the record of that thinking, with its
+alternatives: JSON per record, record images, columns, and an owner thread.
 
 Data a program loads in `main`, such as records or prebuilt JSON, is copied into every
 worker by `thread_spawn`, so it costs its size once per worker. Task 020 found this to

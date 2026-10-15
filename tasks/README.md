@@ -58,7 +58,10 @@ data every worker shares, 028, a body of known length gathered at its exact size
 029, a per-worker budget for bodies being gathered, come from it; 028 and 029 are done. Task 025, the middleware's fields on answers
 written after the request, and task 026, the architecture doc's split, follow. Task
 024, the tutorial's testing of part two's application, task 031, `serve_one` past
-`rest::ask`, and task 033, ASCII strings sized in bytes, are done. Tasks 030, responses
-in pieces under `rest::compressed`, and 032, timers for a route that began a response,
-can start at any point. Task 034, middleware stacks of the program's own, comes before
-task 035, the tutorial's part on one way to lay out an application, which names them.
+`rest::ask`, task 033, ASCII strings sized in bytes, and task 030, responses in pieces
+under `rest::compressed`, are done. Task 032, timers for a route that began a response,
+can start at any point. Task 034, middleware stacks of the program's own, is built (its
+generator question open), and comes before task 035, the tutorial's part on one way to lay out an application, which names them.
+Task 027, a helper over goose-http's shared store, is deferred until a program needs
+it; task 037, data compiled into the binary, and task 036, parameters in a scope's
+prefix, are spikes that can start at any point.
