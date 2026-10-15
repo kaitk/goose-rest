@@ -283,13 +283,27 @@ and OPTIONS across scopes from the routes it passed.
 
 Decided (2026-10-15): `rest::compressed` lives in `rest.compression`, a module `rest`
 doesn't import, as goose-http keeps its compression in `http.compression`, so only a
-program that imports it declares goose-compress or builds its code; the core has no
-hook for it. Its block gets a context whose `out` writes to a local buffer, and
+program that imports it declares goose-compress or builds its code. Its block gets a
+context whose `out` writes to a local buffer, and
 `compressed` copies the answer from there to the response, compressed where goose-http
 would compress it. Rewriting the answer in the response buffer would shrink that
 buffer, which Goose refuses while the handler holds the request (§5.1), and rebinding
 the caller's `cx.out.buf` to a local would let it outlive the local (§9.2). So the
 block takes `cx =>`, as `rest::routes`'s does, and each answer inside is copied once.
+
+Decided (2026-10-15): a response begun with `rest::begin` inside `compressed` is
+compressed as it's sent, through four hooks the core declares beside `begin`, `send`,
+and `end`: generic functions that leave the response as written. `rest.compression`
+overloads each for an `Exchange`, and a concrete overload wins over a generic one
+(§7.1), so a program that imports the module gets its versions and the core still
+imports nothing of goose-compress. `compressed` marks the exchange with a `mode` bit
+while its block runs, and `begin` takes an encoder only then. The encoder's slot in
+goose-http's pool is kept in a per-worker table of the module, by the connection's fd,
+not in the exchange: a field there would cost every connection slot of every program
+(Goose packs structs), while the table costs only a response being compressed. A
+per-request field in the program's state, with `begin_compressed`, `send_compressed`,
+and `end_compressed` of goose-rest's own, was the alternative: a larger API, and one
+more field for the program to keep and release at `CLOSED`.
 
 ### Inlining
 

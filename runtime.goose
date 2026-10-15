@@ -101,12 +101,16 @@ let RETRY_AFTER = "1";
 // a response it sends in pieces (rest::begin, rest::file), and the bytes of
 // a connection it upgraded (rest::upgrade), the four LATER names. KEPT says
 // the exchange keeps what its middleware decided for a later answer.
+// OFFERED says the handler runs inside rest::compressed, and CODED that the
+// response rest::begin began there holds an encoder (compression.goose).
 let GATHERING: u8 = 1;
 let RECEIVING: u8 = 2;
 let SENDING: u8 = 4;
 let UPGRADED: u8 = 8;
 let LATER: u8 = 15;
 let KEPT: u8 = 16;
+let OFFERED: u8 = 32;
+let CODED: u8 = 64;
 
 // What serve keeps of a request past the handler's first call. A body
 // gathered for rest::body is a run of the worker's spill from at, of cap
@@ -454,6 +458,7 @@ fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, bu
             before: i64) -> u8 {
     let x .= st.ex;
     if k == http::CLOSED {
+        if (x.mode & CODED) != 0 { release_coded(x, out.fd); }
         x.mode &= KEPT;
         return http::NO_EVENT;
     }

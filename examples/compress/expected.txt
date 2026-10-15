@@ -10,6 +10,10 @@ GET /v1/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=492 body=15
 GET /v1/events/7 200 encoding=none vary=Accept-Encoding sent=56 body=2088668682/56
 GET /v1/events/0 404 encoding=none vary=Accept-Encoding sent=27 body=1177042288/27
 GET /nope 404 encoding=none vary=none sent=21 body=401450075/21
+GET /v1/export?limit=1000 200 encoding=none vary=Accept-Encoding sent=58893 body=3403885530/58893
+GET /v1/export?limit=1000 200 encoding=gzip vary=Accept-Encoding sent=3907 body=3403885530/58893
+GET /v1/export?limit=1000 200 encoding=deflate vary=Accept-Encoding sent=3895 body=3403885530/58893
+GET /v1/export?limit=0 200 encoding=gzip vary=Accept-Encoding sent=20 body=4294967295/0
 GET /archive/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=402 body=1564805783/5793
 GET /archive/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=402 body=1564805783/5793
 GET /archive/events?limit=5 200 encoding=gzip vary=Accept-Encoding sent=104 body=1576705413/286

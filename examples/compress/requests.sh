@@ -27,6 +27,12 @@ coded GET '/v1/events?limit=100'
 coded GET /v1/events/7 -H 'Accept-Encoding: gzip'
 coded GET /v1/events/0 -H 'Accept-Encoding: gzip'
 coded GET /nope -H 'Accept-Encoding: gzip'
+# The export in pieces of 100 events, each compressed as it's sent: the same
+# body in each coding.
+coded GET '/v1/export?limit=1000' -H 'Accept-Encoding: identity'
+coded GET '/v1/export?limit=1000' -H 'Accept-Encoding: gzip'
+coded GET '/v1/export?limit=1000' -H 'Accept-Encoding: deflate'
+coded GET '/v1/export?limit=0' -H 'Accept-Encoding: gzip'
 # /archive's options: level 9, smaller than /v1's level 1; gzip where zstd
 # is offered, since the archive doesn't offer zstd; and a listing of five,
 # past its 256-byte minimum, compressed where /v1 sends it as it is.

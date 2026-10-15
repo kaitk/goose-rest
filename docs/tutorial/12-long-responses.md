@@ -121,6 +121,18 @@ A response begun in the route, as both here are, has the CORS fields and `Server
 in its head. One begun at a later call, such as at a body's `END`, gets the fields the
 middleware kept at the request ([page 11](11-bodies-in-pieces.md#answers-written-at-the-end)).
 
+## Compressed
+
+An export is text that compresses well. Begun inside `rest::compressed`, it's sent in the
+coding the request's `Accept-Encoding` picks, each `rest::send` compressed as it goes,
+and `rest::end` closes the coding. The case function stays as it is: the response keeps
+its coding at each `MORE`, outside the block. A download goes as the file is, inside
+`compressed` too, so that it keeps its length and its ranges.
+[Compression](../reference.md#compression) has what's compressed and what each response
+holds while it's sent, and
+[`examples/compress`](../../examples/compress/main.goose)'s `/v1/export` is an export
+compressed this way.
+
 ---
 
 [Index](README.md) · Previous: [11. Bodies read as they arrive](11-bodies-in-pieces.md) ·

@@ -143,7 +143,11 @@ deflate when the weights are equal.
 | Shorter, HEAD, 206, or for a request that accepts no coding | `Vary` alone |
 | A type `http::compressible` refuses, such as `image/png`; one with a `Content-Encoding` already | As written |
 | Without a body (`rest::empty`, 204, 304) | As written |
-| Begun and sent in pieces: `rest::begin`, `rest::file`, `rest::relay`'s reply in pieces, `http::begin` | As written, uncompressed |
+| Begun with `rest::begin`, for a request that accepts a coding | Compressed as it's sent, chunked, with `Vary` |
+| Begun with `rest::begin` for a request that accepts a coding, but HEAD, 206, a status without a body, or HTTP/1.0 | `Vary` alone, without the length `begin` was given |
+| Begun with `rest::begin`, for a request that accepts no coding | `Vary` alone, with the length `begin` was given |
+| Begun with `rest::begin`, of a type `http::compressible` refuses, or with no type | As written |
+| `rest::file`, `rest::relay`'s reply in pieces, `http::begin` | As written |
 
 Put `compressed` outside `rest::route`, so that the route's errors are compressed, and
 inside `timed`, which then logs the compressed size. CORS and other fields added inside
@@ -152,6 +156,22 @@ is compressed only if the resumed handler runs inside `compressed` too. Each ans
 inside is copied once, compressed or not: the response buffer can't shrink while a
 handler holds the request. Request bodies sent with a `Content-Encoding` aren't
 decoded.
+
+A response begun with `rest::begin` inside `compressed` is compressed as goose-http's
+`http::begin_compressed` compresses one: each `rest::send` is compressed and flushed as a
+chunk of its own, so the client can decode all it has, and `rest::end` sends the coding's
+trailer. Its later calls (`MORE`) needn't run inside `compressed`: the response keeps
+the coding it began with, as [`examples/compress`](../examples/compress/main.goose)'s
+`/v1/export` shows. Each response compressed at once holds an encoder from goose-http's
+pool until `rest::end`, or until `CLOSED` when it ends otherwise: about 460 KB for gzip
+and deflate, and 1 MB for zstd. A worker builds one per response compressed at once and
+reuses it after. A program that doesn't compress keeps no bytes for it.
+
+`rest::file` sends a file as it is, inside `compressed` too. Compressed on the fly, the
+file would lose its `Content-Length`, its ranges, and the epoll loop's `sendfile`, and
+goose-http's `http::serve_file` doesn't compress one either. goose-http serves a copy
+stored compressed instead, `path.br`, `path.zst`, or `path.gz`, with
+`http::open_precompressed`; `rest::file` opens `path` alone.
 
 Declare your own middleware that takes a block as `inline fn`, as goose-rest's own are:
 
@@ -296,7 +316,7 @@ response cut short.
 | Call | Does | Fails with |
 |---|---|---|
 | `rest::body_in_pieces(cx, limit, w)` | The body in pieces as they arrive, up to `limit` bytes. A body that came whole with its head comes as one `BODY` and the `END`, and an empty one as the `END` alone. The code around it runs once. | 413 `payload_too_large` for a `Content-Length` over `limit`, before the body is sent; a chunked body past it gets 413 and the connection closes. 500 `body_already_read` after `rest::body`, and `rest::body` after it. 500 `not_served` outside `rest::serve` and `serve_one`. |
-| `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. | |
+| `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. Inside `rest::compressed`, a response of a type worth compressing is compressed ([Compression](#compression)). | |
 | `rest::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `rest::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
 | `rest::file(cx, path, body, w, content_type)` | `http::serve_file`'s answer, with `ETag`, `Last-Modified`, and `Accept-Ranges`, and a type by `path`'s extension when `content_type` is empty. `body`, an `http::FileBody` in the per-request state, holds what's left to send. | 404 `file_not_found`, 403 `forbidden`, 500 `file_unreadable` |

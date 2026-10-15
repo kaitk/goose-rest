@@ -51,33 +51,68 @@ fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
 // client goes, or when the route fails with it open, which cuts it short
 // (rest::route). A HEAD request, or a status without a body, gets the head
 // alone, and no calls. Begun after rest::body_in_pieces, the pieces of the body
-// still come, then MORE once it has ended.
+// still come, then MORE once it has ended. Inside rest::compressed, a
+// response of a type worth compressing is compressed (compression.goose).
 fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], length: i64, w) {
-    http::begin(cx.out, status, length);
-    if content_type.len > 0 { http::field(cx.out, "Content-Type", content_type); }
+    var x .= cx.ex;
+    var begun = false;
+    if x { begun = begin_coded(x, cx.out, cx.req, status, content_type, length); }
+    if !begun {
+        http::begin(cx.out, status, length);
+        if content_type.len > 0 { http::field(cx.out, "Content-Type", content_type); }
+    }
     if cx.out.head || cx.out.stream.bodyless {
         http::end(cx.out);
         return;
     }
     cx.state.waiting = w;
-    var x .= cx.ex;
     guard x else { return; }
     x.mode |= SENDING;
 }
 
 // Sends data, the next piece of the response rest::begin began, or bytes as
 // they are on a connection rest::upgrade took.
-fn send(cx, data: const u8[:]) { http::send(cx.out, data); }
+fn send(cx, data: const u8[:]) {
+    var x .= cx.ex;
+    if x {
+        if (x.mode & CODED) != 0 {
+            send_coded(x, cx.out, data);
+            return;
+        }
+    }
+    http::send(cx.out, data);
+}
 
 // Ends the response rest::begin began, with trailers when it's chunked
 // (http::end), or closes a connection rest::upgrade took. The route has
 // finished: it gets no more calls, CLOSED included.
 fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
-    http::end(cx.out, trailers);
     var x .= cx.ex;
-    guard x else { return; }
+    guard x else {
+        http::end(cx.out, trailers);
+        return;
+    }
+    if (x.mode & CODED) != 0 { end_coded(x, cx.out, trailers); } else { http::end(cx.out, trailers); }
     x.mode &= KEPT;
 }
+
+// What a response rest::begin begins inside rest::compressed does: these
+// leave it as written. rest.compression overloads them for an Exchange, and
+// where a program imports it, its overloads win, as a concrete match does
+// over a generic one (spec §7.1), so that the core neither imports
+// goose-compress nor keeps a byte for it. begin_coded returns whether it
+// began the response; the others run only for one it began with an encoder
+// (CODED), at each rest::send, at rest::end, and at CLOSED.
+fn begin_coded(x, out: http::Reply, req: const http::Request&, status: i32, content_type: const u8[:],
+               length: i64) -> bool {
+    return false;
+}
+
+fn send_coded(x, out: http::Reply, data: const u8[:]) { http::send(out, data); }
+
+fn end_coded(x, out: http::Reply, trailers: const u8[:]) { http::end(out, trailers); }
+
+fn release_coded(x, fd: i32) {}
 
 // Answers a GET or HEAD with the file at path, as http::serve_file does:
 // 200, 206 for a range, 304 when the request's validators match, or 416,
@@ -89,7 +124,9 @@ fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
 // closes the file. A response with nothing to send, as for HEAD or 304,
 // gets no calls. Fails with 404 file_not_found for no file, or a
 // directory, at path, 403 forbidden where reading it isn't allowed, and 500
-// file_unreadable.
+// file_unreadable. Inside rest::compressed, the file goes as it is: coded on
+// the fly, it would lose its Content-Length, its ranges, and the loop's
+// sendfile.
 fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, w, content_type: const u8[:] = "") {
     let f, status = http::open_file(path);
     if status == 404 { fail(cx, 404, "file_not_found"); }
