@@ -37,10 +37,10 @@ pass their tests on arm64 Linux.
 | 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/13-waiting.md)). |
 | 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#testing)). |
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
-| ⚪ | OpenAPI out | Generate a document from the routes, as Elysia's plugin does. Planned. |
+| ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
 | ⚪ | Bodies in pieces | A body is gathered whole, up to its limit; goose-http reads one [as it arrives](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies). |
 | ⚪ | Static files, streaming | Not in goose-rest yet; goose-http [serves files and streams](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses). |
-| 🔴 | WebSocket | Currently out of scope, as in goose-http. |
+| 🔴 | WebSocket | Currently out of scope. |
 
 ### Middleware
 
