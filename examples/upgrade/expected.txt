@@ -1,0 +1,5 @@
+GET /health 200 ok
+GET /echo 426 {"error":"upgrade_required"}
+UPGRADE /echo 101 hello|bye
+UPGRADE /echo 101 hello
+the client closed after 6 bytes

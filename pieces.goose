@@ -104,6 +104,22 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, w, 
     x.mode |= SENDING;
 }
 
+// Answers 101 and switches the connection to protocol (http::upgrade), with
+// w in cx.state.waiting. The handler is called again with http::BODY and the
+// client's bytes in cx.body as they arrive, with no END and no limit, and
+// writes with rest::send, bytes as they are, until rest::end closes the
+// connection. It gets http::CLOSED once if the client closes first, or the
+// route fails. http::upgrade_of(cx.req) says what the request asks to switch
+// to. While the route waits on another thread (rest::ask), goose-http reads
+// none of the client's bytes.
+fn upgrade<S, A, R>(cx: Cx<S, A, R>&, protocol: const u8[:], w) {
+    http::upgrade(cx.out, protocol);
+    cx.state.waiting = w;
+    var x .= cx.ex;
+    guard x else { return; }
+    x.mode |= UPGRADED;
+}
+
 // The case function's work for a file rest::file answered: at http::MORE,
 // sends the next piece of body, and ends the response after the last; at
 // http::CLOSED, closes the file.
