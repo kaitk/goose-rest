@@ -64,5 +64,7 @@ can start at any point. Task 034, middleware stacks of the program's own, is bui
 generator question open), and comes before task 035, the docs' "Best practices" section on laying out an application, which names
 them.
 Task 027, a helper over goose-http's shared store, is deferred until a program needs
-it; task 037, data compiled into the binary, and task 036, parameters in a scope's
+it. Task 038 moves the tests to Goose's test convention, with a runner of
+the repository's own, as goose-http's task 041 and goose-compress's task 007 do. Task 037, data compiled
+into the binary, and task 036, parameters in a scope's
 prefix, are spikes that can start at any point.

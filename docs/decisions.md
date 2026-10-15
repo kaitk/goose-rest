@@ -334,6 +334,35 @@ variant, not in goose-rest's slot, so that a program that serves no files keeps 
 bytes for one. A failure with a response begun leaves it unended, and goose-http closes
 the connection: its head has gone, so the first answer wins (["Handlers"](#handlers)).
 
+## Tests
+
+Decided (2026-10-15), for goose-rest, goose-http, and goose-compress alike: tests
+follow Goose's own convention, as the Goose repository's `test/` and `docs/testing.md`
+lay it out.
+
+- A top-level `test/` holds the tests, in a folder per area.
+- Each test is a small program: a `main` with `assert`s, which prints what it checks.
+  Its expected output is a golden file, `test/expected/<name>.out`, with
+  `<name>.stderr` for lines its standard error must hold, and `<name>.aborts` for a
+  test that must abort.
+- A test that must not compile carries `// error: <substring>` comments.
+- The repository's own runner, `test/run_tests.py` in Python as Goose's is, finds the
+  tests, compiles them in batches with `goose --multi-test`, runs each as a process of
+  its own and in parallel, and reports every failure without stopping at the first.
+  No runner is shared between repositories, as none is with Goose's.
+- Helpers the tests share are one imported module, not a copy in each test.
+- An application laid out by domain keeps the same shape: `test/<domain>/` for each
+  domain's tests, and a folder per scenario for its tests over HTTP.
+
+This replaces test programs that `scripts/test.sh` lists by hand, each with its own
+helpers, where the first failed `assert` ends the program and hides the rest.
+
+Rejected: a test framework inside Goose, as Goose has no reflection to find tests, and
+checking by printing against a golden file needs none; and tests beside the code, as
+Goose's compiler already leaves out of a release what its root doesn't import, so a
+separate `test/` costs nothing and matches the convention any reader of Goose's own
+repository knows.
+
 ## Spike results (2026-10-13)
 
 On Goose `a6249a4`, and again on `46356c2` with the same results but spike 04's, whose

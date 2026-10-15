@@ -145,6 +145,10 @@ new goose-http names another, change it in the same commit (2026-10-15).
 - Edit files with the Edit tool, not with `sed` or a Python or PowerShell script. On
   Windows, line endings differ by file type and a shell adds a layer of escaping, and
   scripted edits break on both.
+- Tests follow Goose's own convention: a top-level `test/` by area, each test a small
+  program whose printed output a golden file in `test/expected/` checks, `// error:`
+  fixtures for code that must not compile, and a runner that batches them with
+  `goose --multi-test` ([decisions](docs/decisions.md#tests), 2026-10-15).
 
 ## Commits
 
