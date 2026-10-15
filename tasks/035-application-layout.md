@@ -59,8 +59,21 @@ tag (below) is that step, later.
    wait, and "service" keeps the meaning it has in goose-rest, the thread a route asks.
    Validation runs in the route, before the ask. The data-access layer's name is open:
    `dao`, or `queries` as snowtime calls its own, one query per function.
-8. **Testing.** Rules as plain calls, routes with `rest::serve_one` (replies included),
-   and a few tests over HTTP.
+8. **Testing** (2026-10-15). Two places, by what a test needs:
+   - **Unit tests beside the code**: one `test.goose` per domain, a program of its own,
+     with the domain's rules as plain calls and its routes, middleware, and stacks
+     through `rest::serve_one`, a service's reply or timeout included. It moves with the
+     domain, as snowtime's `*.test.ts` sit beside their code. One per domain, not per
+     file, keeps the programs few and their builds quick.
+   - **Integration tests in a top-level `test/`**: a folder per scenario, which runs
+     the real program (its workers, service threads, and later its database) over
+     HTTP and compares the answers with a golden file, the `requests.sh` and
+     `expected.txt` the tutorial's programs use, plus `test/fixtures/` for their
+     data. By scenario, not domain, since they cross domains.
+   - The rule: a test that needs a socket, a thread, or more than one domain goes in
+     `test/`; every other goes in its domain's `test.goose`, and most should.
+   - To check first: that a domain's `test.goose`, as a root file, imports its siblings
+     (`import .routes`), as the tutorial's `test.goose` files import their programs.
 
 ## Proposal: snowtime's API laid out this way (2026-10-15)
 
