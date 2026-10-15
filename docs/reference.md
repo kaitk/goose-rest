@@ -176,7 +176,7 @@ stored compressed instead, `path.br`, `path.zst`, or `path.gz`, with
 Declare your own middleware that takes a block as `inline fn`, as goose-rest's own are:
 
 ```rust
-inline fn tenant<F>(cx) {
+inline fn resolve_tenant<F>(cx) {
     let id, has = rest::header(cx, "X-Tenant");
     guard has else { rest::fail(cx, 400, "tenant_required"); }
     F(id);

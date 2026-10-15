@@ -1,4 +1,4 @@
-// The teams' routes, under /organizations/:id/teams.
+// The teams' routes, under /organization/teams.
 namespace teams;
 
 import std;

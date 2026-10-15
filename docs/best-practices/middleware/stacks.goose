@@ -17,7 +17,7 @@ inline fn user_routes<F>(cx) {
     };
 }
 
-// Routes a member of the organization in the path calls.
+// Routes a member of the organization the request names calls.
 inline fn member_routes<F>(cx) {
     rest::route(cx) {
         authenticate(cx) { user =>

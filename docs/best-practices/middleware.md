@@ -58,7 +58,7 @@ inline fn user_routes<F>(cx) {
     };
 }
 
-// Routes a member of the organization in the path calls.
+// Routes a member of the organization the request names calls.
 inline fn member_routes<F>(cx) {
     rest::route(cx) {
         authenticate(cx) { user =>
@@ -74,9 +74,10 @@ it's called. Never name a stack `api` or another word that fits every route: it 
 nothing about who calls them, and `api` is also the generated file's namespace
 ([Run it](../generator.md#run-it)).
 
-A parameter in a scope's prefix isn't supported yet, so `resolve_organization` reads the
-organization's id from the path itself: the program scopes `/organizations`, and the
-middleware takes the next segment and passes the rest on to the routes.
+A parameter in a scope's prefix, such as `/organizations/:id`, isn't supported yet, so
+the member routes can't take the organization from their path. Until it is, the program
+scopes them under `/organization`, and `resolve_organization` reads the organization's
+id from the `X-Organization` header with `rest::header`.
 
 ## Every scope behind one stack
 
@@ -92,7 +93,7 @@ fn handle(cx) {
                     public_routes(cx) { rest::text(cx, 200, "ok"); };
                 } else if rest::scope(cx, "/settings") {
                     user_routes(cx) { user => settings(cx, user); };
-                } else if rest::scope(cx, "/organizations") {
+                } else if rest::scope(cx, "/organization") {
                     member_routes(cx) { member => projects(cx, member); };
                 } else {
                     rest::otherwise(cx);

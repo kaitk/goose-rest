@@ -4,7 +4,7 @@
 //
 //   goose build -o build/middleware docs/best-practices/middleware/main.goose
 //   build/middleware 8080
-//   curl -s -H 'Authorization: Bearer ada' localhost:8080/organizations/1/projects
+//   curl -s -H 'Authorization: Bearer ada' -H 'X-Organization: 1' localhost:8080/organization/projects
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.3.2";
@@ -19,7 +19,7 @@ fn handle(cx) {
                     public_routes(cx) { rest::text(cx, 200, "ok"); };
                 } else if rest::scope(cx, "/settings") {
                     user_routes(cx) { user => settings(cx, user); };
-                } else if rest::scope(cx, "/organizations") {
+                } else if rest::scope(cx, "/organization") {
                     member_routes(cx) { member => projects(cx, member); };
                 } else {
                     rest::otherwise(cx);

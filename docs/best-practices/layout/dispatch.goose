@@ -14,7 +14,7 @@ fn handle(cx) {
                 public_routes(cx) { rest::text(cx, 200, "ok"); };
             } else if rest::scope(cx, "/settings") {
                 user_routes(cx) { user => settings::routes(cx, user); };
-            } else if rest::scope(cx, "/organizations") {
+            } else if rest::scope(cx, "/organization") {
                 member_routes(cx) { member =>
                     if rest::scope(cx, "/projects") {
                         projects::routes(cx, member);

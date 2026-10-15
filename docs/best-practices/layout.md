@@ -9,7 +9,7 @@ This is a time-tracking API with eight domains and three audiences, laid out thi
 
 ```text
 app/
-  main.goose            the workers, and rest::serve
+  main.goose            App, St, and Waiting, the workers, and rest::serve
   dispatch.goose        each audience's scope and stack, then each domain's routes
   stacks.goose          public_routes, user_routes, member_routes
   middleware.goose      authenticate, resolve_organization
@@ -89,7 +89,7 @@ fn handle(cx) {
                 public_routes(cx) { rest::text(cx, 200, "ok"); };
             } else if rest::scope(cx, "/settings") {
                 user_routes(cx) { user => settings::routes(cx, user); };
-            } else if rest::scope(cx, "/organizations") {
+            } else if rest::scope(cx, "/organization") {
                 member_routes(cx) { member =>
                     if rest::scope(cx, "/projects") {
                         projects::routes(cx, member);
@@ -125,10 +125,6 @@ fn routes(cx, member: members::Member) {
 Every route's path, and the stack that guards it, is then in one file, where a review
 checks that no route is left without authentication. A domain doesn't know its prefix,
 so moving it to another path changes one line.
-
-A parameter in a scope's prefix, such as `/organizations/:id`, isn't supported yet. Until
-it is, the program scopes `/organizations` and `resolve_organization` reads the id from
-the segment after it ([Middleware and stacks](middleware.md#a-stack-per-audience)).
 
 ## With a schema
 

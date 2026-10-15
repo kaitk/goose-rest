@@ -1,5 +1,5 @@
-// The projects' routes, under /organizations/:id/projects: each extracts,
-// calls one rule, and answers.
+// The projects' routes, under /organization/projects: each extracts, calls
+// one rule, and answers.
 namespace projects;
 
 import std;

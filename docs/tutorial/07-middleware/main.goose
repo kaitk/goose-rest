@@ -6,7 +6,7 @@ import http from "github.com/kaitk/goose-http@v0.3.2";
 import rest from "../../../";
 
 // Runs F with the request's X-Tenant, or fails with 400 tenant_required.
-inline fn tenant<F>(cx) {
+inline fn resolve_tenant<F>(cx) {
     let id, has = rest::header(cx, "X-Tenant");
     guard has else { rest::fail(cx, 400, "tenant_required"); }
     F(id);
@@ -17,7 +17,7 @@ inline fn member_routes<F>(cx) {
     rest::route(cx) {
         rest::bearer(cx) { token =>
             guard token == "secret" else { rest::invalid_token(cx); }
-            tenant(cx) { id => F(id); };
+            resolve_tenant(cx) { tenant => F(tenant); };
         };
     };
 }
@@ -33,7 +33,7 @@ fn handle(cx) {
                 } else if rest::scope(cx, "/v1") {
                     // Every route under /v1 needs a tenant.
                     rest::route(cx) {
-                        tenant(cx) { id => v1(cx, id); };
+                        resolve_tenant(cx) { tenant => v1(cx, tenant); };
                     };
                 } else if rest::scope(cx, "/admin") {
                     // Every route under /admin needs the token.
@@ -45,7 +45,7 @@ fn handle(cx) {
                     };
                 } else if rest::scope(cx, "/v2") {
                     // The token and a tenant, as the member_routes stack.
-                    member_routes(cx) { id => v1(cx, id); };
+                    member_routes(cx) { tenant => v1(cx, tenant); };
                 } else {
                     rest::otherwise(cx);
                 }

@@ -16,7 +16,7 @@ that a reader can tell when it applies.
    and answers; a rule takes typed input and has no `cx`.
 3. [Middleware and stacks](middleware.md): middleware named by a verb, a stack per
    audience, and each scope behind one stack.
-4. [State](state.md): where data lives, by what it is.
+4. [State](state.md): where data lives, by what it is, and where its types are declared.
 5. [Errors](errors.md): one shape, and each domain's codes in one place.
 6. [Naming](naming.md): every name an application gives, in one table.
 7. [Testing](testing.md): small tests per domain, and scenarios over HTTP.

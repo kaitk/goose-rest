@@ -5,7 +5,7 @@
 //
 //   goose build -o build/layout docs/best-practices/layout/main.goose
 //   build/layout 8080
-//   curl -s -H 'Authorization: Bearer ada' localhost:8080/organizations/1/projects
+//   curl -s -H 'Authorization: Bearer ada' -H 'X-Organization: 1' localhost:8080/organization/projects
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.3.2";

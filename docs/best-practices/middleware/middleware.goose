@@ -27,21 +27,17 @@ inline fn authenticate<F>(cx) {
     };
 }
 
-// Runs F with the user as a member of the organization the path names, or
-// fails with 403 not_a_member. A scope's prefix can't hold a parameter yet,
-// so the organization's id is the segment after the /organizations scope,
-// read here, and the routes inside match the rest.
+// Runs F with the user as a member of the organization the X-Organization
+// header names, or fails with 403 not_a_member. A scope's prefix can't hold
+// a parameter yet, so the organization's id comes from a header.
 inline fn resolve_organization<F>(cx, user: users::User) {
-    let path = cx.router.path;
-    guard path.len > 1 else { rest::otherwise(cx); }
-    var end: i64 = 1;
-    while end < path.len && path[end] != '/' { end++; }
-    let organization = rest::int_of(cx, path[1..end], "organization");
+    let value, has = rest::header(cx, "X-Organization");
+    rest::require(cx, "X-Organization", has);
+    let organization = rest::int_of(cx, value, "X-Organization");
     var member = false;
     for s in SESSIONS {
         if s.user == user.id && s.organization == organization { member = true; }
     }
     guard member else { common::check(common::Error.NotAMember, cx); }
-    cx.router.path = path[end..];
     F(members::Member { user: user.id, organization: organization });
 }

@@ -40,8 +40,7 @@ change to the code, reviewed and released as one. Don't load data into a global 
 ## A worker's state holds only what may differ
 
 Keep in `cx.app` only data whose value may differ from one worker to the next without a
-wrong answer: a cache, a count, a connection of the worker's own. Declare its type,
-`App`, in `main.goose`, where the worker builds it:
+wrong answer: a cache, a count, a connection of the worker's own. Its type is `App`:
 
 ```rust
 // The worker's own state: it lasts as long as the worker, and no other
@@ -58,6 +57,18 @@ thread_fn worker(cfg: http::Config) {
 A client's next request may reach another worker. Data that must be the same for it
 there, such as a project just created, belongs on a service thread. The programs in this
 section and the tutorial keep projects per worker only because they run one worker.
+
+## The state's types are declared in `main.goose`
+
+Declare `App`, the worker's state, `St`, the request's state, and `Waiting`, what a
+route that waits keeps until it resumes
+([Work that waits](../tutorial/13-waiting.md)), in `main.goose`, beside the workers
+that pass them to `rest::serve`.
+
+Each is one type for the whole program: every domain's routes get the same `cx`, so no
+domain owns them. A domain still owns its part of `Waiting`: its variants are named for
+it (`Waiting.ProjectCreate`), and their `resume` case functions are in its
+`routes.goose` ([Layout by domain](layout.md#the-same-files-in-every-domain)).
 
 ---
 

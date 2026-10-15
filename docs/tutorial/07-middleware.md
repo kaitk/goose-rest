@@ -16,7 +16,7 @@ fn handle(cx) {
                 } else if rest::scope(cx, "/v1") {
                     // Every route under /v1 needs a tenant.
                     rest::route(cx) {
-                        tenant(cx) { id => v1(cx, id); };
+                        resolve_tenant(cx) { tenant => v1(cx, tenant); };
                     };
                 } else if rest::scope(cx, "/admin") {
                     // Every route under /admin needs the token.
@@ -50,15 +50,15 @@ route under `/v1` requires a tenant, and every route under `/admin` requires a t
 These checks run before matching the route within the scope. Middleware that adds
 headers to every answer, such as `timed` and `cors`, goes outside `rest::route` so
 the errors the route answers get the headers too. Middleware that can fail, such as
-`bearer` and `tenant`, goes inside it. A request has one `rest::route`:
+`bearer` and `resolve_tenant`, goes inside it. A request has one `rest::route`:
 routes nested in routes keep each other out of line.
 
 ## A middleware of your own
 
-The program's own middleware is `tenant`:
+The program's own middleware is `resolve_tenant`:
 
 ```rust
-inline fn tenant<F>(cx) {
+inline fn resolve_tenant<F>(cx) {
     let id, has = rest::header(cx, "X-Tenant");
     guard has else { rest::fail(cx, 400, "tenant_required"); }
     F(id);
@@ -78,14 +78,14 @@ Each middleware adds a level around every scope's routes, written again at each 
 A stack is an `inline fn` that nests the middleware and passes its own block on, so each
 scope has one level however many middleware the stack holds. The program's
 `member_routes` stack, for the routes a tenant's signed-in members use, holds the
-route, the token check, and `tenant`:
+route, the token check, and `resolve_tenant`:
 
 ```rust
 inline fn member_routes<F>(cx) {
     rest::route(cx) {
         rest::bearer(cx) { token =>
             guard token == "secret" else { rest::invalid_token(cx); }
-            tenant(cx) { id => F(id); };
+            resolve_tenant(cx) { tenant => F(tenant); };
         };
     };
 }
@@ -96,12 +96,12 @@ A scope uses it as one level:
 ```rust
                 } else if rest::scope(cx, "/v2") {
                     // The token and a tenant, as the member_routes stack.
-                    member_routes(cx) { id => v1(cx, id); };
+                    member_routes(cx) { tenant => v1(cx, tenant); };
 ```
 
 The call compiles to the same code as the nesting written out, one C function with a
 jump for each early answer. A stack can call another stack, and a block can take an
-argument, as `F(id)` does.
+argument, as `F(tenant)` does.
 
 A stack is code, not a value. A block is a compile-time argument, so a program can't
 build a list of middleware at run time, as Actix's `wrap` or Tower's `Layer` does.

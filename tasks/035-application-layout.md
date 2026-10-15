@@ -86,7 +86,7 @@ public, signed in (`signedIn`), and a member of the organization in the path
 
 ```text
 app/
-  main.goose            workers and serve
+  main.goose            App, St, Waiting, the workers, and serve
   dispatch.goose        audiences by scope, then each domain's routes
   stacks.goose          public_routes, user_routes, member_routes
   middleware.goose      authenticate, resolve_organization
@@ -95,6 +95,8 @@ app/
     errors.goose        the error shape and the shared codes
   projects/
     structs.goose       Project, CreateInput, UpdateInput, ..., and the domain's enums
+    errors.goose        Error, and a check case function per variant: status and code
+    rules.goose         new_project, archived: typed input in, no cx
     routes.goose        routes(cx, member), one function per route, its case functions
     service.goose       the jobs on the database thread, one transaction each
     dao.goose           one query per function
@@ -112,21 +114,26 @@ name shape of its own, so a call chain shows the layer:
 | Block parameter | what it's given | `user`, `member` |
 | A domain's entry | `routes` | `projects::routes(cx, member)` |
 | Route | the operation's verb | `list`, `create`, `archive`, `add_team` |
+| Rule | what it returns | `new_project`, `archived`, `readable` |
 | Service job | verb and noun | `create_project`, `archive_project` |
 | Data access | query verb and noun | `find_project`, `list_projects`, `insert_project` |
 | Structs | noun, and `<Verb>Input` | `Project`, `CreateInput` |
 | `Waiting` variant | domain and operation | `Waiting.ProjectCreate` |
 
-As written (2026-10-15), to be confirmed in review: a domain also has `errors.goose`,
-its `Error` enum and a `check` case function per variant giving its status and code,
-and `rules.goose`, its rules; `common/errors.goose` holds the shared errors the same
-way; a rule is named for what it returns (`new_project`, `archived`); a domain's entry
-is `routes`; and until task 036, `resolve_organization` reads the id from the segment
-after a literal `/organizations` scope and narrows the router's path past it.
+Decided in review (2026-10-15):
 
-Open: `rest::scope` matches literal prefixes only, so the member audience's
-`/organizations/:id` waits on task 036, or `member_routes` reads the segment itself;
-and whether a domain's entry is `routes` or `handle`, beside the stacks' `_routes`.
+- A domain has `errors.goose`, its `Error` enum and a `check` case function per variant
+  giving its status and code, and `rules.goose`, its rules. `common/errors.goose` holds
+  the shared errors the same way.
+- A rule is named for what it returns (`new_project`, `archived`, `readable`).
+- A domain's entry is `routes`.
+- `App`, the per-request state `St`, and `Waiting` are declared in `main.goose`, as
+  they're program-wide.
+- The section's programs use only goose-rest's public API. `rest::scope` matches
+  literal prefixes only, so the member audience's `/organizations/:id` waits on task
+  036. Until then, the programs scope the member routes under a literal
+  `/organization`, and `resolve_organization` reads the id from an `X-Organization`
+  header with `rest::header`.
 
 Later, in the generator (may become its own task): with one schema for the application,
 write each domain's part into its folder. An operation's place is its OpenAPI `tags`,
