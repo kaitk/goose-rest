@@ -1,7 +1,7 @@
 # 020: Find where goose-rest's memory goes
 
-Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, the Linux
-rerun and the fixes still to do). Blocks v0.1.0, after task 023 (2026-10-15).
+Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fix 1 done
+on macOS 2026-10-15, the Linux rerun and fixes 2 and 3 still to do). Blocks v0.1.0, after task 023 (2026-10-15).
 
 At saturation on io_uring, goose-rest holds 2.0-6.7 times goose-http's peak RSS: 33 MB
 against 12 on tier A, 96 against 30 on B, 140 against 71 on C, and 387 against 58 on C
@@ -149,7 +149,8 @@ benchmark program:
    Expected: tiers A to C and uploads' idle share at goose-http's figures, 18-341 MiB
    less. Touches only `bench/rest/goose-rest/main.goose`, so it doesn't conflict with
    task 023.
-2. **Tier D on `rest::receive`**, step 9 of task 023, made required rather than
+2. **Tier D on `rest::body_in_pieces`** (named `rest::receive` when this was written),
+   step 9 of task 023, made required rather than
    optional: parse the CSV and the multipart body piece by piece, as goose-http's
    server does. Expected: the 240-251 MiB of spill gone, and task 021's stall with it.
    Touches `bench/` after task 023 lands.
@@ -161,13 +162,13 @@ Can be recorded and left after v0.1.0:
 4. **Gather a body with a `Content-Length` in one run of its exact size**, at the first
    piece, rather than doubling from 16 KB: no growth copies, and no power-of-two slack.
    Chunked bodies still double. Touches `gather_head` and `gather_piece` in
-   `runtime.goose`, which task 023 is rewriting: do it after task 023.
+   `runtime.goose`, which task 023 is rewriting: do it after task 023. Task 028.
 5. **A per-worker budget for gathered bytes**, beyond which a route gets 503 or the
    worker stops reading the connection, so the spill's high-water mark has a bound
    whatever the clients send. Touches `on_event` in `runtime.goose`, after task 023;
-   stopping a connection's reads may need goose-http.
+   stopping a connection's reads may need goose-http. Task 029.
 6. **A goose-rest way to share read-only data across workers**, over goose-http's
-   `http::store`, for programs that keep a cache built at startup.
+   `http::store`, for programs that keep a cache built at startup. Task 027.
 
 The framework's own cost on tiers A to C, under 1 MiB, stays: it is the per-connection
 `Gather` and the per-event context.
@@ -231,3 +232,116 @@ the route reads the whole body.
   buffers): fewer, larger pieces change the doubling's copies but not the high-water mark.
 - After fixes 1 and 2, goose-rest's peak on every workload should sit within a few MiB
   of goose-http's; anything left is the framework's, to cut or record.
+
+## Fix 1 (2026-10-15)
+
+goose-rest's tier server, `bench/rest/goose-rest/main.goose`, now loads and holds its
+data as goose-http's server at `v0.3.2` does, after goose-http's task 025. Its routes,
+extractors, middleware, and answers are unchanged. On tiers A to C, its idle and peak
+RSS now match goose-http's within 2 MiB. Before the change, the peak was 19-331 MiB
+over.
+
+### What changed
+
+The changes are goose-http's commits `c9d9d9f` to `9b7786a`, applied to goose-rest's
+copy of the same code:
+
+- A `loader` thread reads the files, builds the records, and returns, which unmaps its
+  stacks. A `distributor` thread hands each worker one set of the records over the
+  typed queues, and each worker takes it into its globals (`take_set`). `main`'s record
+  globals stay empty, so `thread_spawn` copies none of them. Tiers F and R hand over
+  the empty set.
+- Strings live in one pool, `text`, as `Str` ranges, and a value many records share
+  is a `u8` index into `words`, instead of fixed-capacity fields.
+- Tier C's visit templates take their notes' text from the notes' JSON, so each note's
+  text is held once.
+- The prebuilt JSON goes in goose-http's shared store (`import http.store`), one copy
+  per process, and template routes copy from it with `http::store_append`. In
+  template mode, tiers A and C drop the records and strings that only the JSON needed.
+
+goose-http's server also has `json_string`, which scans a string for bytes to escape 16
+at a time (its task 033). It came with the port and changes no answer. It isn't a
+memory change. On these runs it shows no rate change, because the client limits the
+rate here.
+
+Not ported: goose-http's `main` calls glibc's `mallopt` to fix the mmap threshold,
+which keeps glibc from holding one extra set of records in an arena after the hand-off
+on Linux. macOS has no `mallopt`, so the call wouldn't link, and Goose can't build a
+call for one platform only. goose-http's server didn't link on macOS either. The Linux
+rerun shows what this costs. goose-http measured about one set of a worker's records
+(task 025, before the shared store: 17 MB on tier C templated). The templates no
+longer travel on the queues, so the cost is now the records alone.
+
+The server's comment on tier D said its CSV and multipart bodies "are read in pieces
+as they arrive". The comment now says what the server does: `rest::body` gathers every
+body whole, and the piece readers get it as one piece. Reading in pieces is fix 2.
+
+### Answers
+
+- goose-http's `bench/rest/check.py` passes tiers A to C, both JSON ways, and tier D,
+  and `bench/rest/tiers/check.py` passes tiers F, R, and M. Each ran on a fresh
+  server, `LOOP=epoll`, 4 workers.
+- Byte for byte, against the server before the change (a script, not committed, with
+  `servedAt` masked): every item and user and their 404s on tier A (11,005 requests);
+  each of the 200 users' session, timer, entries, projects, and a PATCH on tier B
+  (1,401); every week's and the month's bookings and shifts, every encounter, every
+  client and its history, and their 404s on tier C (4,548). Both JSON ways, no
+  difference.
+
+### How this was measured
+
+As in [How this was measured](#how-this-was-measured) above: Apple M1 Pro, 10 cores,
+32 GB, macOS 26.3.1 (Darwin 25.3.0), goose-http's epoll loop on kqueue
+(`LOOP=epoll`), not Linux. Pinned Goose `v2026.1`, `goose build --standalone`, Apple
+clang 21.0.0. Datasets from goose-http's `bench/rest/gen.goose`.
+
+- Servers: goose-rest's server before (`f549591`) and after this change, and
+  goose-http's `bench/rest/goose/rest.goose` at `v0.3.2` with its `mallopt` call
+  removed.
+- Each cell: a fresh server, `WORKERS=4`, under `/usr/bin/time -l`, whose "maximum
+  resident set size" is the peak. Idle RSS is `ps -o rss` 3 s after the server listens.
+- wrk 4.2.0, `-t 4 -c 256`, goose-http's `tier-a.lua`, `tier-b.lua`, and `tier-c.lua`,
+  5 s warm-up then 15 s. 3 rounds, interleaved by round, then workload, then server.
+  The tables show medians, with the rounds' range in brackets where it exceeds 1 MiB.
+- The machine wasn't kept idle: other work ran beside it, with a 1-minute load average
+  near 5 at the start. Requests/s here are the client's limit on this machine, not
+  saturation, as in the findings. They show only that the change costs no rate.
+
+### Results
+
+RSS in MiB:
+
+| Workload | goose-http idle | peak | goose-rest before, idle | peak | after, idle | peak |
+|---|---:|---:|---:|---:|---:|---:|
+| Tier A | 5.7 | 6.8 | 25.6 | 26.0 | 6.6 | 7.6 |
+| Tier A, templates | 4.3 | 7.3 | 42.1 | 42.5 | 4.4 | 7.3 |
+| Tier B | 23.6 | 30.3 | 86.1 | 86.8 | 23.0 | 29.6 |
+| Tier B, templates | 41.3 | 49.5 | 212.3 [206.4-212.3] | 212.9 | 42.0 | 49.6 |
+| Tier C | 51.8 [51.7-53.5] | 69.8 [69.8-71.6] | 122.4 | 140.1 | 53.4 | 71.4 |
+| Tier C, templates | 28.9 [28.5-30.5] | 57.1 | 370.0 | 388.0 [387.6-389.2] | 30.9 [29.7-31.0] | 57.1 |
+
+Requests/s, medians and the rounds' range:
+
+| Workload | goose-http | goose-rest before | after |
+|---|---:|---:|---:|
+| Tier A | 33.8K (33.5-34.5K) | 33.9K (33.8-34.3K) | 34.5K (33.9-34.7K) |
+| Tier A, templates | 33.6K (33.0-34.5K) | 34.3K (34.1-34.5K) | 34.2K (32.4-34.6K) |
+| Tier B | 33.1K (32.5-34.0K) | 33.7K (32.3-33.8K) | 33.8K (33.4-33.9K) |
+| Tier B, templates | 33.6K (33.3-33.8K) | 33.8K (32.4-33.9K) | 33.5K (33.5-34.1K) |
+| Tier C | 14.6K (14.4-14.7K) | 14.3K (14.1-14.5K) | 14.6K (14.3-14.7K) |
+| Tier C, templates | 14.6K (14.2-14.7K) | 14.6K (13.9-14.7K) | 14.4K (14.3-14.7K) |
+
+Every range after the change overlaps the range before it.
+
+### What's left of the gap
+
+On tiers A to C, goose-rest's server now sits within 2 MiB of goose-http's, idle and
+at peak: -0.6 to +2.0 MiB idle, and -0.7 to +1.6 MiB at peak. That matches what the
+findings put down to the framework, under 1 MiB at saturation: each connection's
+`Gather` and slot, the per-event context, and goose-rest's larger binary. Tier C shows
+the largest differences, 1.6 MiB serialized and 2.0 MiB templated at idle. The rounds'
+spread there is up to 2 MiB, so this run can't separate them from noise. The Linux
+rerun settles it, with 1, 2, and 4 workers.
+
+Not done here: uploads (tier D), whose roughly 240 MiB of spill is fix 2, and the Linux
+rerun.
