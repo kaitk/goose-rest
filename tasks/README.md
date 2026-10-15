@@ -61,7 +61,8 @@ written after the request, and task 026, the architecture doc's split, follow. T
 `rest::ask`, task 033, ASCII strings sized in bytes, and task 030, responses in pieces
 under `rest::compressed`, are done. Task 032, timers for a route that began a response,
 can start at any point. Task 034, middleware stacks of the program's own, is built (its
-generator question open), and comes before task 035, the tutorial's part on one way to lay out an application, which names them.
+generator question open), and comes before task 035, the docs' "Best practices" section on laying out an application, which names
+them.
 Task 027, a helper over goose-http's shared store, is deferred until a program needs
 it; task 037, data compiled into the binary, and task 036, parameters in a scope's
 prefix, are spikes that can start at any point.

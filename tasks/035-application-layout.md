@@ -1,22 +1,31 @@
-# 035: One way to lay out an application, as a part of the tutorial
+# 035: Best practices, a section of the docs on laying out an application
 
-Status: todo (asked for 2026-10-15)
+Status: todo (asked for 2026-10-15; a docs section, not a tutorial part, 2026-10-15)
 
 The tutorial's pages teach goose-rest's mechanisms one at a time, and leave how a whole
-application is laid out to the reader. A part of its own gives one opinionated way to
-do it: the way goose-rest's authors build their own applications, and recommend
-following. It isn't required, and says so once, but it doesn't hedge or list
-alternatives: one answer to each question a growing application meets, where the other
-pages show the options. The value is in a convention everyone follows, so the part
-picks one and keeps to it (2026-10-15). Its model is snowtime's backend, which is
+application is laid out to the reader. A "Best practices" section of its own, beside
+the tutorial and the reference, gives one opinionated way to do it, as Angular's "Best
+Practices" (its style guide), Spring Boot's "Structuring Your Code", and Elysia's "Best
+Practice" do apart from their tutorials (2026-10-15). It's the way goose-rest's
+authors build their own applications, and recommend following. It isn't required, and
+says so once, but it doesn't hedge or list alternatives: one answer to each question a
+growing application meets, where the tutorial shows the options. The value is in a
+convention everyone follows, so the section picks one and keeps to it (2026-10-15). Its model is snowtime's backend, which is
 grouped by domain: `src/server/<domain>/` holds the domain's routes, its rules, and its
 schemas; a route only wires, its handler one call of its rule; and code starts in its
 domain and moves out once a second one needs it (snowtime's `AGENTS.md`).
 
-It rebuilds part two's application in that shape, so the reader sees an application
-they know laid out, rather than a new one.
+Its pages show the conventions with short excerpts, not a whole application: one built
+now would fake its data access and authentication, the parts a layout most needs to
+show. A full example application waits until goose-rest has database helpers and a JWT
+implementation (2026-10-15). Each page's excerpts come from a small program of its
+own, checked as the tutorial's are, so they keep compiling.
 
-## What the part settles
+The conventions stick best where tooling follows them, as Rails's and Phoenix's
+generators create files where the conventions put them: the generator's placement by
+tag (below) is that step, later.
+
+## What the section settles
 
 1. **Layout, by domain** (2026-10-15). A folder per domain (or feature) holds all of
    that domain's code: its structs, routes, services, and data access, each
@@ -34,7 +43,7 @@ they know laid out, rather than a new one.
    `_routes` (`public_routes`, `member_routes`, `admin_routes`), as it wraps routes the
    way `rest::routes` does, never a name as generic or keyword-like as `api`; the
    stacks live in one file. A block's parameter is named for what it's given (`user`,
-   `tenant`) (2026-10-15). Task 034 builds stacks; this part names them.
+   `tenant`) (2026-10-15). Task 034 builds stacks; this section names them.
 4. **State and services.** What goes per worker, on a service thread, and in the shared
    store, by what the data is (task 027).
 5. **Errors.** One shape, and each domain's codes in one place.
@@ -105,15 +114,18 @@ only overrides that, and a configuration names the folders.
 
 ## Acceptance criteria
 
-- [ ] The tutorial gets a part of its own, after the mechanism pages, that says once
-      that it's the recommended way and not required, with a page per topic above or
-      fewer where they're short
-- [ ] Part two's application rebuilt in that layout, as the part's program, its answers
-      the same as before and checked by `scripts/test.sh`
+- [ ] `docs/best-practices/`, an index (`README.md`) that says once that it's the
+      recommended way and not required, and a page per topic above, or fewer where
+      they're short; each rule with its reason, and an anchor a review can link
+- [ ] Each page's excerpts come from a small program of its own under
+      `docs/best-practices/`, and `scripts/test.sh` checks them as it checks the
+      tutorial's code
 - [ ] Each kind of code (structs, routes, services, data access) has one file name and
-      place in every domain and in `common/`, and the part gives them in one table
-- [ ] Each convention given once, with its reason, and linked from the mechanism page
-      it builds on (page 7 links its naming, page 8 its state, page 16 its testing)
-- [ ] The index lists the part, and the README's tutorial link mentions it
+      place in every domain and in `common/`, given in one table
+- [ ] Each convention given once, and linked from the tutorial page it builds on (page
+      7 links its naming, page 8 its state, page 16 its testing); the tutorial's index
+      and last page, and the README, link the section
 - [ ] Later, once goose-rest has database helpers and transactions: the data-access
       page (point 7), with its layer's name decided
+- [ ] Later, once goose-rest also has a JWT implementation: a full example application
+      laid out this way, in `examples/`
