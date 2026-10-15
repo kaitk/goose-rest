@@ -99,6 +99,7 @@ document the same way, with paths. Rust's schemars writes optional values in the
 | `"type": "object"` with `properties` | a struct, one field per property, in the schema's order |
 | `"type": "string"` | `u8[]` |
 | … with `maxLength: n` | `u8[..4n]`, a limited array: 4 bytes per code point |
+| … with `maxLength: n` and `format` `uuid`, `date`, `date-time`, `email`, or `ascii` | `u8[..n]`: the format's values are ASCII, 1 byte per code point |
 | `"type": "string"` with `enum` | a Goose enum, one variant per value |
 | `"type": "integer"`, `"number"`, `"boolean"` | `i64`, `f64`, `bool` |
 | `"type": "array"` with `items` | `T[]` |
@@ -108,16 +109,18 @@ document the same way, with paths. Rust's schemars writes optional values in the
 | `"anyOf": [<schema>, {"type": "null"}]`, in either order, with annotations and `"default": null` beside it | the schema, nullable, as above; pydantic and schemars write optional values this way |
 
 A limited array takes its full capacity whatever the string's length, so a field of
-`maxLength: 200` takes 800 bytes. That suits a request's body, which lives for the
-request. A program that keeps many records of a generated type, as a cache, keeps
-their strings as ranges into one byte array instead
-([tutorial](tutorial/08-state.md#per-worker)).
+`maxLength: 200` takes 800 bytes, and 200 with a format in the table's last row. That
+suits a request's body, which lives for the request. A program that keeps many records
+of a generated type, as a cache, keeps their strings as ranges into one byte array
+instead ([tutorial](tutorial/08-state.md#per-worker)), or marks a string that holds
+only codes or identifiers `format: ascii`
+([tutorial](tutorial/04-json.md#size-a-string-in-bytes)).
 
 Each kind takes these keywords besides `type`:
 
 | Kind | Keywords |
 |---|---|
-| string | `minLength`, `maxLength`, `format` (`date`, `date-time`, `uuid`, `email`), `enum` (strings) |
+| string | `minLength`, `maxLength`, `format` (`date`, `date-time`, `uuid`, `email`, `ascii`), `enum` (strings) |
 | integer | `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `format` (`int32`, `int64`) |
 | number | `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `format` (`float`, `double`) |
 | object | `properties`, `required`, `additionalProperties` (`true` or `false`) |
@@ -146,7 +149,11 @@ with null (above), `allOf`, `not`, `readOnly`, `writeOnly`, and OpenAPI 3.0's
 
 Formats are checked as follows (`check.goose`): `date` and `date-time` as RFC 3339,
 with days that exist; `uuid` as 8-4-4-4-12 hex digits; `email` as a dot-atom address
-whose domain has two or more labels, without quoted local parts or address literals.
+whose domain has two or more labels, without quoted local parts or address literals;
+`ascii` as bytes below 0x80, so a name with an accent or an emoji fails with
+`<field>: format`, as a malformed `uuid` does. `ascii` isn't a format JSON Schema
+defines. A validator that doesn't know a format ignores it, so a client's validator
+accepts a value that isn't ASCII, and only goose-rest refuses it.
 
 ## Names
 
@@ -218,7 +225,7 @@ let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 | A path, `/projects/{id}` | matched segment by segment; a parameter takes a whole, non-empty segment |
 | An operation, `get`, `post`, ... | a call to `<handlers>::<operationId in snake_case>` inside `rest::route` |
 | A path parameter, `"type": "integer"` | an `i64` from `rest::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
-| A path parameter, `"type": "string"` | the segment, decoded, from `rest::path_str` |
+| A path parameter, `"type": "string"`, with `format: ascii` or none | the segment, decoded, from `rest::path_str`, checked as ASCII for `format: ascii` |
 | Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
 | `requestBody` with `application/json` and a `$ref` to an object | the object, from `rest::take`; 415 for another media type |
 | `"x-body-limit": n` on a `requestBody`, a positive byte count | `rest::body(cx, n)` before `rest::take`, so the route takes a body of up to `n` bytes, not 1 MB; 413 past it |
@@ -255,7 +262,7 @@ An optional parameter has a `has_<field>: bool` before its field.
 |---|---|---|
 | `"type": "integer"`, with `minimum`, `maximum`, `format` (`int32`, `int64`) | `i64` | `rest::int_of` |
 | `"type": "boolean"` | `bool`, from `true` or `false` | `rest::bool_of` |
-| `"type": "string"`, with `minLength`, `maxLength` | `const u8[:]`, a query parameter decoded with `+` as a space | as it is |
+| `"type": "string"`, with `minLength`, `maxLength`, `format: ascii` | `const u8[:]`, a query parameter decoded with `+` as a space | as it is |
 
 A query parameter's value is decoded; a header's and a cookie's are given as sent. A
 parameter that's missing when `required`, malformed, or outside its schema fails the
@@ -286,8 +293,9 @@ Each of these is an error at its JSON pointer:
   parameter no parameter declares; a parameter's `style`, `explode`, or `content`; a
   `required` that isn't `true` or `false`; a parameter repeated in one list.
 - A path parameter's schema other than an integer or a string, and on a string any
-  keyword. Another parameter's other than an integer, a boolean, or a string with
-  `minLength` and `maxLength`, so `default`, `enum`, and arrays among them.
+  keyword but `format: ascii`. Another parameter's other than an integer, a boolean, or
+  a string with `minLength`, `maxLength`, and `format: ascii`, so `default`, `enum`, and
+  arrays among them, and a `format` other than `ascii`.
 - A header parameter named `Accept`, `Content-Type`, or `Authorization`, which OpenAPI
   says to ignore.
 - A path parameter or handler named after one of `dispatch`'s locals (`cx`, `state`,

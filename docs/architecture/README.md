@@ -177,8 +177,9 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
 2026-10-07 (https://x.com/wvo/status/2107979660558766351), and spike 05:
 
 - A string with `maxLength` fits a limited array of four bytes per code point
-  (`u8[..480]` for 120), and the reader counts code points. An unbounded one is a
-  variable-size `u8[]` field, kept inline in the struct.
+  (`u8[..480]` for 120), and the reader counts code points. With a `format` whose values
+  are ASCII (`uuid`, `date`, `date-time`, `email`, and `ascii`) it fits `n` bytes. An
+  unbounded one is a variable-size `u8[]` field, kept inline in the struct.
 - A `u8[]` field can't grow or be assigned after construction, nor can a struct holding
   one (§4.4). A reader keeps each `json::read_string` slice as its key arrives, in any
   order, then builds the struct with one literal, in place, with no copy. Each slice

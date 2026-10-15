@@ -50,7 +50,7 @@ fn test_types() {
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "date"}}}}"""),
         "#/components/schemas/A/properties/c/type: unknown type date");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "string", "format": "hostname"}}}}"""),
-        "#/components/schemas/A/properties/c/format: only date, date-time, uuid and email are supported");
+        "#/components/schemas/A/properties/c/format: only date, date-time, uuid, email and ascii are supported");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "integer", "format": "uint8"}}}}"""),
         "#/components/schemas/A/properties/c/format: only int32 and int64 are supported");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "integer", "minimum": 1.5}}}}"""),
@@ -161,7 +161,7 @@ fn test_paths() {
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "number"}}]}}}"""),
         "#/paths/~1a/get/parameters/0/schema: a parameter's schema is an integer, a string, or a boolean");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string", "format": "uuid"}}]}}}"""),
-        "#/paths/~1a/get/parameters/0/schema/format: not supported on a string parameter");
+        "#/paths/~1a/get/parameters/0/schema/format: only ascii is supported");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "boolean", "default": true}}]}}}"""),
         "#/paths/~1a/get/parameters/0/schema/default: not supported on a boolean parameter");
     fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "required": "yes", "schema": {"type": "string"}}]}}}"""),
@@ -219,6 +219,40 @@ fn test_accepted() {
     assert(find(out, "    http_server: bool,\n") >= 0);
 }
 
+// A string with maxLength 20 is 80 bytes, since a code point takes up to 4; a
+// format whose values are ASCII takes 20 (36 for a uuid's exact length).
+fn test_ascii_widths() {
+    let cases = [["", "80"], ["date", "10"], ["date-time", "20"], ["uuid", "36"], ["email", "20"], ["ascii", "20"]];
+    for c in cases {
+        let format = if c[0].len > 0 { str(",\"format\":\"", c[0], "\"") } else { str("") };
+        let max = if c[0] == "date" { "10" } else if c[0] == "uuid" { "36" } else { "20" };
+        let out = generated(doc(str("""{"A":{"type":"object","properties":{"s":{"type":"string","maxLength":""", max, format, "}}}}")));
+        let want = str("    s: u8[..", if c[0].len == 0 { "80" } else { max }, "],\n");
+        if find(out, want) < 0 { print("no '", want, "' for format '", c[0], "'\n", out); assert(false); }
+    }
+    let ok = generated(doc("""{"A":{"type":"object","properties":{"s":{"type":"string","format":"ascii"}}}}"""));
+    assert(find(ok, "    s: u8[],\n") >= 0);
+    assert(find(ok, "if has_s && !rest::is_ascii(s) { json::fail(r, \"s: format\"); }") >= 0);
+    fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "string", "format": "ascii", "enum": ["a"]}}}}"""),
+        "#/components/schemas/A/properties/c/format: not supported beside enum");
+    fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "string", "format": "ASCII"}}}}"""),
+        "#/components/schemas/A/properties/c/format: only date, date-time, uuid, email and ascii are supported");
+    fails(doc("""{"A": {"type": "string", "format": "ascii", "minLength": 5, "maxLength": 4}}"""),
+        "#/components/schemas/A: minLength and maxLength leave no value between them");
+}
+
+// A string parameter's format is ascii or an error, and the router checks it.
+fn test_ascii_params() {
+    let q = """{"name": "q", "in": "query", "schema": {"type": "string", "format": "ascii"}}""";
+    let out = generated(api(str("""{"/a": {"get": {"operationId": "a", "parameters": [""", q, "]}}}")));
+    assert(find(out, "if has_q && !rest::is_ascii(q) { rest::fail_param(cx, \"q: format\"); }") >= 0);
+    let p = """{"name": "k", "in": "path", "required": true, "schema": {"type": "string", "format": "ascii"}}""";
+    let out2 = generated(api(str("""{"/a/{k}": {"get": {"operationId": "a", "parameters": [""", p, "]}}}")));
+    assert(find(out2, "if !rest::is_ascii(k) { rest::fail_param(cx, \"k: format\"); }") >= 0);
+    fails(api("""{"/a": {"get": {"operationId": "a", "parameters": [{"name": "q", "in": "query", "schema": {"type": "string", "format": "uuid"}}]}}}"""),
+        "#/paths/~1a/get/parameters/0/schema/format: only ascii is supported");
+}
+
 fn generated(text: const u8[:]) -> u8[>..] {
     var out: u8[>..] = [];
     let err = gen::generate(text, "api", "app", "api.json", out);
@@ -259,5 +293,7 @@ fn main() {
     test_names();
     test_paths();
     test_accepted();
+    test_ascii_widths();
+    test_ascii_params();
     print("test_generator: ok");
 }

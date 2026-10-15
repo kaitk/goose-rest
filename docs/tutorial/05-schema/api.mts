@@ -46,7 +46,7 @@ const doc = api({
         properties: {
           id: { type: "integer", minimum: 1 },
           name,
-          owner: { type: "string", maxLength: 32 },
+          owner: { type: "string", format: "ascii", maxLength: 32 },
         },
       },
       ProjectCreate: {

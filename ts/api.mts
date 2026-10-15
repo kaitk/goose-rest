@@ -27,7 +27,7 @@ export type Annotations = {
 type Kind = "string" | "integer" | "number" | "boolean" | "object" | "array";
 type Nullable<T extends Kind> = T | readonly [T, "null"] | readonly ["null", T];
 
-export type StringFormat = "date" | "date-time" | "uuid" | "email";
+export type StringFormat = "date" | "date-time" | "uuid" | "email" | "ascii";
 export type IntegerFormat = "int32" | "int64";
 export type NumberFormat = "float" | "double";
 

@@ -157,6 +157,10 @@ fn test_create() {
     bad_create("""{"color": "#ff0000"}""", "name: required");
     bad_create("""{"name": "goose", "colour": "#ff0000"}""", "unknown member");
     bad_create("""{"name": "goose", "color": "#ff00000"}""", "color: maxLength");
+    // Seven code points, eight bytes: format ascii refuses it before the
+    // seven-byte field could overflow.
+    bad_create("""{"name": "goose", "color": "#ff000é"}""", "color: format");
+    bad_create("""{"name": "goose", "color": "😀"}""", "color: format");
 }
 
 fn main() {

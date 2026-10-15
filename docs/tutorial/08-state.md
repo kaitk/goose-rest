@@ -37,7 +37,10 @@ goose-http's shared store, `import http.store`, keeps one copy that every worker
 To keep many records in memory, hold their strings as ranges into one byte array, not
 in fixed-capacity fields such as `u8[..48]`. A limited array always takes its full
 capacity, so a 6-byte name in a `u8[..48]` field takes 48 bytes. A generated type's
-string with a `maxLength` is such a field ([generator](../generator.md#the-subset)).
+string with a `maxLength` is such a field, four bytes per code point
+([generator](../generator.md#the-subset)). Where every value is ASCII, as in a code or
+an identifier, `format: ascii` sizes it at one byte per code point
+([JSON bodies](04-json.md#size-a-string-in-bytes)).
 
 ## Per request
 

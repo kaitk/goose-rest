@@ -71,7 +71,7 @@ fn format(out: u8[>..]&, v: ProjectSettingsChannelsItem) {
 struct ProjectCreate {
     name: u8[..480],
     has_color: bool,
-    color: u8[..28],
+    color: u8[..7],
     has_status: bool,
     status: Status,
 }
@@ -123,6 +123,7 @@ fn read_project_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
         if n_ < 0 { json::fail(r, "color: not UTF-8"); }
         if n_ > 7 { json::fail(r, "color: maxLength"); }
     }
+    if has_color && !rest::is_ascii(color) { json::fail(r, "color: format"); }
     if r.error.len > 0 { return ProjectCreate { .. }; }
     return ProjectCreate {
         name: name,

@@ -31,6 +31,14 @@ const name = { type: "string", minLength: 1, maxLength: 64 } as const;
 node docs/tutorial/05-schema/api.mts > docs/tutorial/05-schema/api.json   # Node 22.18+, or bun
 ```
 
+A string whose values are ASCII, such as a login, takes `format: "ascii"`, which sizes
+it at one byte per character ([JSON bodies](04-json.md#size-a-string-in-bytes)). The
+types accept it beside `date`, `date-time`, `uuid`, and `email`:
+
+```ts
+          owner: { type: "string", format: "ascii", maxLength: 32 },
+```
+
 The generator doesn't support `pattern` yet, so `tsc` rejects it before the generator
 runs:
 
@@ -52,6 +60,33 @@ OpenAPI with their `$ref`s under `#/components/schemas`, and the generator reads
 `anyOf` with `null` that pydantic and schemars write for an optional value
 ([generator reference](../generator.md#export-it-from-python-or-rust)). A backend written in
 another language and one written in Goose can then share a contract.
+
+Neither tool has a type for `format: ascii`, so each adds the keyword by hand. In
+pydantic, `json_schema_extra` merges it into the field's schema
+([`05-schema/pydantic`](05-schema/pydantic/project.py)):
+
+```python
+from pydantic import BaseModel, Field
+
+class Project(BaseModel):
+    color: str = Field(max_length=7, json_schema_extra={"format": "ascii"})
+```
+
+This writes `{"type": "string", "maxLength": 7, "format": "ascii"}` (checked with
+pydantic 2.14.1). In schemars 1.x, `extend` does the same
+([`05-schema/schemars`](05-schema/schemars/src/main.rs)):
+
+```rust
+#[derive(JsonSchema)]
+struct Project {
+    #[schemars(length(max = 7), extend("format" = "ascii"))]
+    color: String,
+}
+```
+
+This writes `{"type": "string", "format": "ascii", "maxLength": 7}` (checked with
+schemars 1.2.3). Neither tool enforces the format: pydantic still accepts `"é"` for
+`color`, so only goose-rest refuses it.
 
 ---
 

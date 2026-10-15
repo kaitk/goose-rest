@@ -11,7 +11,7 @@ struct Project {
     id: i64,
     name: u8[..256],
     has_color: bool,
-    color: u8[..28],
+    color: u8[..7],
 }
 
 // Reads the Project at the cursor, checks it, and builds it once. Errors
@@ -60,6 +60,7 @@ fn read_project(r: json::Reader&, scratch: u8[>..]&) -> Project {
         if n_ < 0 { json::fail(r, "color: not UTF-8"); }
         if n_ > 7 { json::fail(r, "color: maxLength"); }
     }
+    if has_color && !rest::is_ascii(color) { json::fail(r, "color: format"); }
     if r.error.len > 0 { return Project { .. }; }
     return Project {
         id: id,
@@ -92,7 +93,7 @@ fn rest::from_request(cx, v: const api::Project?) -> api::Project {
 struct ProjectCreate {
     name: u8[..256],
     has_color: bool,
-    color: u8[..28],
+    color: u8[..7],
 }
 
 // Reads the ProjectCreate at the cursor, checks it, and builds it once. Errors
@@ -131,6 +132,7 @@ fn read_project_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
         if n_ < 0 { json::fail(r, "color: not UTF-8"); }
         if n_ > 7 { json::fail(r, "color: maxLength"); }
     }
+    if has_color && !rest::is_ascii(color) { json::fail(r, "color: format"); }
     if r.error.len > 0 { return ProjectCreate { .. }; }
     return ProjectCreate {
         name: name,

@@ -87,6 +87,12 @@ fn is_date_time(s: const u8[:]) -> bool {
     return oh >= 0 && oh <= 23 && om >= 0 && om <= 59;
 }
 
+// Whether every byte of s is below 0x80, for format ascii.
+fn is_ascii(s: const u8[:]) -> bool {
+    for c in s { guard c < 0x80 else { return false; } }
+    return true;
+}
+
 // A UUID in RFC 9562's text form: 8-4-4-4-12 hex digits, either case.
 fn is_uuid(s: const u8[:]) -> bool {
     guard s.len == 36 else { return false; }

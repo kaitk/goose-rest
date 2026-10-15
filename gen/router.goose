@@ -85,6 +85,9 @@ fn emit_params(t: Tables&, o: Op) {
             }
             t.out.append("    }\n");
         }
+        if q.ascii {
+            format(t.out, "    if ", present, "!rest::is_ascii(", q.local, ") { rest::fail_param(cx, \"", q.name, ": format\"); }\n");
+        }
     }
     format(t.out, "    return ", t.ns, "::", o.params_type, " {");
     for q, i in qs {
@@ -113,6 +116,9 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
             k++;
             if !p.int {
                 format(t.out, in2, "let ", p.local, " = rest::path_str(cx, s", i + 1, ", \"", p.name, "\");\n");
+                if p.ascii {
+                    format(t.out, in2, "if !rest::is_ascii(", p.local, ") { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
+                }
                 continue;
             }
             format(t.out, in2, "let ", p.local, " = rest::path_int(cx, s", i + 1, ", \"", p.name, "\");\n");

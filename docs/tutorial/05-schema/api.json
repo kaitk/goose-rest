@@ -37,7 +37,7 @@
         "properties": {
           "id": { "type": "integer", "minimum": 1 },
           "name": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "owner": { "type": "string", "maxLength": 32 }
+          "owner": { "type": "string", "format": "ascii", "maxLength": 32 }
         }
       },
       "ProjectCreate": {

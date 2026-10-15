@@ -25,6 +25,7 @@ let F_DATE = 1;
 let F_DATE_TIME = 2;
 let F_UUID = 3;
 let F_EMAIL = 4;
+let F_ASCII = 5;
 
 // A value's type and the checks on it. ref indexes objs for K_OBJ and enums
 // for K_ENUM. A bound is the schema's number node, written into the
@@ -113,6 +114,7 @@ struct Param {
     maximum: i64 = 0,
     min_len: i64 = -1,
     max_len: i64 = -1,
+    ascii: bool = false,
 }
 
 // An operation: its method as HTTP spells it, its handler's name, the
@@ -619,13 +621,14 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             if f {
                 let fs, ok = json::as_string(f);
                 ty.format = if !ok { -1 } else if fs == "date" { F_DATE } else if fs == "date-time" { F_DATE_TIME }
-                    else if fs == "uuid" { F_UUID } else if fs == "email" { F_EMAIL } else { -1 };
-                guard ty.format > 0 else { fail(ptr1(ptr, "format"), "only date, date-time, uuid and email are supported"); }
+                    else if fs == "uuid" { F_UUID } else if fs == "email" { F_EMAIL }
+                    else if fs == "ascii" { F_ASCII } else { -1 };
+                guard ty.format > 0 else { fail(ptr1(ptr, "format"), "only date, date-time, uuid, email and ascii are supported"); }
                 // The lengths each format's check accepts, in code points.
                 let flo = if ty.format == F_DATE { 10 } else if ty.format == F_DATE_TIME { 20 }
-                    else if ty.format == F_UUID { 36 } else { 5 };
+                    else if ty.format == F_UUID { 36 } else if ty.format == F_EMAIL { 5 } else { 0 };
                 let fhi = if ty.format == F_DATE { 10 } else if ty.format == F_DATE_TIME { -1 }
-                    else if ty.format == F_UUID { 36 } else { 254 };
+                    else if ty.format == F_UUID { 36 } else if ty.format == F_EMAIL { 254 } else { -1 };
                 let fkey = str("format ", fs);
                 counts_meet(ptr, flo, fkey, ty.max_len, "maxLength");
                 counts_meet(ptr, ty.min_len, "minLength", fhi, fkey);
@@ -875,11 +878,17 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             return pp;
         }
         if t == "string" {
-            if where == P_PATH { check_keys(schema, sptr, [], "a path parameter's string"); }
-            else { check_keys(schema, sptr, ["minLength", "maxLength"], "a string parameter"); }
+            if where == P_PATH { check_keys(schema, sptr, ["format"], "a path parameter's string"); }
+            else { check_keys(schema, sptr, ["minLength", "maxLength", "format"], "a string parameter"); }
             pp.min_len = count_of(schema, sptr, "minLength");
             pp.max_len = count_of(schema, sptr, "maxLength");
             counts_meet(sptr, pp.min_len, "minLength", pp.max_len, "maxLength");
+            let f = json::member(schema, "format");
+            if f {
+                let fs, fok = json::as_string(f);
+                guard fok && fs == "ascii" else { fail(ptr1(sptr, "format"), "only ascii is supported"); }
+                pp.ascii = true;
+            }
             return pp;
         }
         check_keys(schema, sptr, ["minimum", "maximum", "format"], "an integer parameter");

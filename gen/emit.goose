@@ -12,7 +12,8 @@ fn format_type(out: u8[>..]&, ty: Ty, objs, enums) {
     else if ty.kind == K_INT { out.append("i64"); }
     else if ty.kind == K_NUM { out.append("f64"); }
     else if ty.kind == K_STR {
-        if ty.max_len >= 0 { format(out, "u8[..", ty.max_len * 4, "]"); } else { out.append("u8[]"); }
+        // Every format's values are ASCII, one byte a code point.
+        if ty.max_len >= 0 { format(out, "u8[..", if ty.format > 0 { ty.max_len } else { ty.max_len * 4 }, "]"); } else { out.append("u8[]"); }
     }
     else if ty.kind == K_ENUM { out.append(enums[ty.ref].name); }
     else if ty.kind == K_OBJ { out.append(objs[ty.ref].name); }
@@ -61,7 +62,7 @@ fn format_checks(out: u8[>..]&, ty: Ty, x: const u8[:], what: const u8[:], prese
         }
         if ty.format > 0 {
             let f = if ty.format == F_DATE { "is_date" } else if ty.format == F_DATE_TIME { "is_date_time" }
-                else if ty.format == F_UUID { "is_uuid" } else { "is_email" };
+                else if ty.format == F_UUID { "is_uuid" } else if ty.format == F_EMAIL { "is_email" } else { "is_ascii" };
             format(out, indent, "if ", when, "!rest::", f, "(", x, ") { json::fail(r, \"", what, ": format\"); }\n");
         }
     } else if ty.kind == K_INT || ty.kind == K_NUM {

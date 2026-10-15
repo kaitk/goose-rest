@@ -11,7 +11,7 @@ import rest;
 struct Project {
     id: i64,
     name: u8[..256],
-    owner: u8[..128],
+    owner: u8[..32],
 }
 
 // Reads the Project at the cursor, checks it, and builds it once. Errors
@@ -61,6 +61,7 @@ fn read_project(r: json::Reader&, scratch: u8[>..]&) -> Project {
         if n_ < 0 { json::fail(r, "owner: not UTF-8"); }
         if n_ > 32 { json::fail(r, "owner: maxLength"); }
     }
+    if !rest::is_ascii(owner) { json::fail(r, "owner: format"); }
     if r.error.len > 0 { return Project { .. }; }
     return Project {
         id: id,

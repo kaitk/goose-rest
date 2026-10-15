@@ -1,6 +1,6 @@
 # 033: Size ASCII strings in bytes, and a `format: ascii`
 
-Status: todo (asked for 2026-10-15)
+Status: done (2026-10-15)
 
 The generator writes a string with `maxLength: n` as `u8[..4n]`, since JSON Schema counts
 code points and UTF-8 takes up to 4 bytes for one. A limited array always takes its full
@@ -18,14 +18,14 @@ it (2026-10-15).
 
 ## Acceptance criteria
 
-- [ ] A string of `format` `uuid`, `date`, `date-time`, `email`, or `ascii`, with
+- [x] A string of `format` `uuid`, `date`, `date-time`, `email`, or `ascii`, with
       `maxLength: n`, is `u8[..n]`
-- [ ] `format: ascii` is supported: the reader refuses a byte of 0x80 or more, as 400
+- [x] `format: ascii` is supported: the reader refuses a byte of 0x80 or more, as 400
       with `<field>: format`, as it refuses a malformed `uuid`
-- [ ] The query and path readers check `format: ascii` the same way
-- [ ] Generator tests cover each format's width, an `ascii` value refused, and the
+- [x] The query and path readers check `format: ascii` the same way
+- [x] Generator tests cover each format's width, an `ascii` value refused, and the
       refusal's pointer and message
-- [ ] `docs/generator.md` lists `ascii` with the formats, gives each format's width in
+- [x] `docs/generator.md` lists `ascii` with the formats, gives each format's width in
       its types table, and says other tools don't enforce `ascii`
 - [ ] The tutorial teaches it where a reader writes a schema: page 4 ("JSON"), whose
       `color` (`maxLength: 7`, a `#rrggbb`) becomes `format: ascii`. It says why it

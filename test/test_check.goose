@@ -40,6 +40,14 @@ fn test_date_time() {
     }
 }
 
+fn test_ascii() {
+    assert(rest::is_ascii(""));
+    assert(rest::is_ascii("#ff0000 ~\x7F"));
+    assert(!rest::is_ascii("hané"));
+    assert(!rest::is_ascii("\x80"));
+    assert(!rest::is_ascii("😀"));
+}
+
 fn test_uuid() {
     assert(rest::is_uuid("123e4567-e89b-12d3-a456-426614174000"));
     assert(rest::is_uuid("123E4567-E89B-12D3-A456-426614174000"));
@@ -62,6 +70,7 @@ fn main() {
     test_code_points();
     test_date();
     test_date_time();
+    test_ascii();
     test_uuid();
     test_email();
     print("test_check: ok");

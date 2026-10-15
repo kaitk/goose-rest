@@ -9,7 +9,7 @@
         "properties": {
           "id": { "type": "integer", "minimum": 1 },
           "name": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "color": { "type": "string", "maxLength": 7 }
+          "color": { "type": "string", "format": "ascii", "maxLength": 7 }
         }
       },
       "ProjectCreate": {
@@ -18,7 +18,7 @@
         "additionalProperties": false,
         "properties": {
           "name": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "color": { "type": "string", "maxLength": 7 }
+          "color": { "type": "string", "format": "ascii", "maxLength": 7 }
         }
       }
     }
