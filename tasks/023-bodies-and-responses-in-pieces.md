@@ -1,6 +1,6 @@
 # 023: Read a body and send a response in pieces
 
-Status: todo (found 2026-10-15)
+Status: todo (found 2026-10-15; proposal agreed 2026-10-15)
 
 goose-rest gathers a request body whole, up to its limit (`rest::body`), and sends a
 response whole, but for `rest::relay`'s pieces of a service's reply. A route can't read
@@ -19,7 +19,7 @@ because `on_event` passes `BODY` on only to a body being gathered.
 
 ## Proposal (2026-10-15)
 
-Not yet agreed. Each numbered decision below can be agreed or pushed back on alone.
+Agreed (2026-10-15), with the open questions answered at the end.
 
 ### 1. One resume mechanism: the `Waiting` enum, for every later call
 
@@ -316,22 +316,26 @@ Each step is its own commit, with its tests, and `scripts/test.sh` passing.
    and "WebSocket", which says upgraded connections reach the route; `CHANGELOG.md`.
 9. Optional: tier D's server on `rest::receive`, measured (section 5).
 
-### Open questions
+### Open questions, answered (2026-10-15)
 
-1. `rest::woken` renamed to `rest::resumed`, or kept with the wider meaning?
-2. The file body in goose-rest's slot, 24 bytes for every request, or in the program's
-   state with a `Waiting` variant, so that programs that serve no files pay nothing?
-3. `TIMEOUT` to a route that began a response (events over time), or leave events to a
-   later task?
-4. CORS fields and `Server-Timing` on answers written after `REQUEST`, at `WAKE`, `END`,
-   or a later `begin`: in scope here, or a task of its own? It needs the middleware's
-   decision kept in the slot, since the request's head is gone by then.
-5. `rest::send` and `rest::end` as wrappers, or the program calls `http::send` and
-   `http::end` on `cx.out`?
+The proposal and its build plan are agreed, with these answers:
+
+1. `rest::woken` is renamed to `rest::resumed`, and the tutorial's pages that call it
+   change with it: once it covers pieces and `MORE`, "woken" no longer says what it is.
+2. The file body lives in the program's state, with a `Waiting` variant, so that
+   programs that serve no files pay nothing (AGENTS.md, "Benchmarks"). Section 3's slot
+   field goes; `rest::file` takes the `http::FileBody` the program keeps.
+3. `TIMEOUT` to a route that began a response, for events over time, is left to a later
+   task; pages 11 and 12 don't need it.
+4. CORS fields and `Server-Timing` on answers written after `REQUEST` are task 025, of
+   their own and next after this one: a cross-origin upload that page 11 shows needs
+   them.
+5. `rest::send` and `rest::end` are thin wrappers, so that a route stays in `rest::`
+   calls and the compression module can offer its own for responses in pieces.
 
 ## Acceptance criteria
 
-- [ ] The proposal is agreed, with the open questions answered
+- [x] The proposal is agreed, with the open questions answered (2026-10-15)
 - [ ] A route reads a body in pieces as they arrive, with a limit, inside `rest::route`,
       and gets `CLOSED` once when it ends early
 - [ ] A route sends a response in pieces as the loop calls for more, and a file
