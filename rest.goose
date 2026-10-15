@@ -1,12 +1,12 @@
 // goose-rest: a REST framework on goose-http (docs/architecture.md). A
 // program declares both packages in its root file, goose-http at the release below:
 //
-//   import http from "github.com/kaitk/goose-http@v0.3.2";
+//   import http from "github.com/kaitk/goose-http@v0.3.3";
 //   import rest from "github.com/kaitk/goose-rest@<commit>";
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import .check;
 import .runtime;
 import .extract;

@@ -1,6 +1,6 @@
 // A response begun while the body is read: each piece's first bytes back.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../";
 import expect from "../";
 import common;

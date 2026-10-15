@@ -2,7 +2,7 @@
 // project that a route loads through two calls that may fail.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../";
 import expect from "../";
 

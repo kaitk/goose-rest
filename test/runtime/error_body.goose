@@ -2,7 +2,7 @@
 // shapes every error answer: a failure's and rest::otherwise's.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../";
 import expect from "../";
 import common;

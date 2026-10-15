@@ -8,7 +8,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 
 struct Holiday { date: const u8[:], name: const u8[:] }

@@ -13,7 +13,7 @@ served by the generated router, builds no router.
 Also checks a function that types its context through an alias,
 `type Cx = rest::Cx<St, App>;`.
 
-Goose: release `v2026.1` (`ac759c3`), with the same output as on `bc3c1f1`. goose-http: `v0.3.2`, with the same output as at `v0.3.1` and `cb57a0b`.
+Goose: release `v2026.1` (`ac759c3`), with the same output as on `bc3c1f1`. goose-http: `v0.3.3`, with the same output as at `v0.3.2`, `v0.3.1`, and `cb57a0b`.
 
 ```sh
 GOOSE=<build>/goose

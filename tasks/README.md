@@ -67,4 +67,5 @@ Task 027, a helper over goose-http's shared store, is deferred until a program n
 it. Task 038 moves the tests to Goose's test convention, with a runner of
 the repository's own, as goose-http's task 041 and goose-compress's task 007 do. Task 037, data compiled
 into the binary, and task 036, parameters in a scope's
-prefix, are spikes that can start at any point.
+prefix, are spikes that can start at any point. Task 039, an upgraded connection's
+bytes while its route waits on `rest::ask`, comes after v0.1.0 and can start at any point.

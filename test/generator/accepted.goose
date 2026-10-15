@@ -1,7 +1,7 @@
 // Property names goose-rest gen renames rather than refuses: a Goose
 // keyword, and a name in capitals.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../";
 import rest.gen.gen;
 import common;

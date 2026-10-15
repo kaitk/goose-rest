@@ -10,7 +10,7 @@
 //   curl -s -r 0-99 localhost:8080/v1/projects/1/files/plans.txt
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.3.2";
+import http from "github.com/kaitk/goose-http@v0.3.3";
 import rest from "../../../";
 
 let PROJECTS = 2;
