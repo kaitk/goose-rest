@@ -25,7 +25,7 @@ Start with the [tutorial](docs/tutorial.md); the [docs](#docs) table lists the r
 | 🟢 | Generator | Types, readers, writers, and extractors from OpenAPI's schemas, no `pattern` yet ([reference](docs/generator.md)) |
 | 🟢 | TypeScript helper | `ts/api.mts`: write the OpenAPI document in TypeScript, and `tsc` rejects what the generator doesn't support as you type it; cycles, names, and number values stay the generator's checks ([reference](docs/generator.md#write-it-in-typescript)) |
 | 🟢 | Generated router | `dispatch` from the paths, with typed path, query, header, and cookie parameters, at one route's cost where the if chain pays 6,000 instructions deep in 60 routes ([reference](docs/generator.md#paths)) |
-| 🟢 | Waiting on another thread | `rest::ask`, resuming through the program's `Waiting` enum, replies of any size in pieces (`waiting.goose`, `examples/waiting/`) |
+| 🟢 | Waiting on another thread | `rest::ask`, resuming through the program's `Waiting` enum, replies of any size in pieces, and `rest::wanted` to skip the work of a client that has gone (`waiting.goose`, `examples/waiting/`) |
 | 🟡 | Benchmark | Against goose-http alone on the Linux desktop: within 0.7-3.2% of its rate where routing and middleware are the work, 8-15% behind on serialized JSON, with 2-7 times its memory ([below](#benchmarks)). Axum, actix-web, and dusty pass their checks and wait for their run (task 010) |
 
 ## Layout
@@ -44,7 +44,8 @@ test/             unit tests, test_*.goose, each a root file; test/gen/ golden f
 scripts/          test.sh runs every test; test-unit.sh the unit tests alone
 bench/            measurements: routes.sh counts the routers' instructions per request (task 007),
                   stack.sh a JSON body's and the middleware's (task 015);
-                  rest.sh runs the REST benchmark against goose-http and three frameworks (task 010)
+                  rest.sh runs the REST benchmark against goose-http and three frameworks (task 010);
+                  all.sh measures both repositories' Goose servers in one unattended session
 spikes/           language checks the design relies on, one folder each with a README
 docs/             the tutorial and its programs (docs/tutorial/), references, architecture,
                   development setup, Goose findings

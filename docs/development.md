@@ -84,7 +84,10 @@ an error, so a test can't point at a local goose-http checkout instead.
 4. `scripts/test-examples.sh`, which builds each example under `examples/` and each
    tutorial program under `docs/tutorial/`, serves it on `127.0.0.1` from port 18081
    up, sends the requests its `requests.sh` lists with `curl`, and compares the answers
-   with its `expected.txt`. A port in use there fails the run. Then each tutorial
+   with its `expected.txt`. A port in use there fails the run. A request that gives up,
+   such as one with `-m`, is recorded as status `000` without a body:
+   `examples/waiting` closes two clients early that way, and expects its database to
+   count them, with a margin of 0.6 s. Then each tutorial
    program's `test.goose`, through TinyCC. `examples/device` reads its fake sysfs from
    `build/examples/` and takes paths of up to 1 KB, so a checkout deeper than that fails
    its run as "no answer on port", with "THERMAL is too long" in
@@ -288,6 +291,29 @@ bench/rest.sh check    # every server on every tier, against both checkers
 bench/rest.sh run      # tiers A to D through goose-http's script, then F, R, and M
 sudo bench/rest.sh count
 ```
+
+`bench/all.sh` measures goose-http's and this repository's Goose servers in one
+unattended session, without the frameworks, whose cells come from earlier runs. It
+checks the machine first, then runs both repositories' `scripts/test.sh`, the Goose
+builds with `ONLY=goose`, `bench/rest.sh check`, goose-http's `bench/run.sh` and
+`bench/files.sh`, `bench/rest.sh run`, and, as root, goose-http's
+`bench/instructions.sh` and `bench/rest.sh count`. It stops at the first failure, and
+took about 2 h 30 min on the Linux desktop (2026-10-14). Its checks need:
+
+- `GOOSE` set to the compiler, and goose-http's checkout in `GOOSE_HTTP`
+  (`../goose-http`).
+- Root, or `sudo` without a password.
+- Both checkouts clean and at `origin/main`, so push or pull first, and goose-http's
+  code the same as at the tag `rest.goose` pins.
+- An idle machine: a 1-minute load average of at most `IDLE_LOAD` (0.5) in two checks
+  30 s apart, and on WSL a Windows CPU load of at most `IDLE_CPU` percent (10).
+
+Tiers A to C run at the fixed rates `RATE_A`, `RATE_B`, and `RATE_C` (100,000, 24,000,
+and 1,700, the full run of 2026-10-13's), so that their cells compare with earlier
+runs. The results go to goose-http's `bench/results/` under one time stamp, and the
+session's log, step times, and environment to `build/bench-all/<stamp>-<machine>/`.
+Nothing is committed: writing the results up is a separate step. The header lists every
+setting.
 
 `run` and `count` need Linux: `taskset`, `/proc`, and `perf`. `check` runs on macOS too,
 after `OWN=1 bench/rest.sh build`, which skips goose-http's build, given goose-http's

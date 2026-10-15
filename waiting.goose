@@ -15,7 +15,8 @@
 // The job crosses in a rest::Ask, with the address the reply goes to and
 // the size of a reply message, read with http::mail_slot_size. The thread
 // replies with rest::answer, in pieces
-// of at most that size, and rest::relay sends them on as they come. A route
+// of at most that size, and rest::relay sends them on as they come; before
+// work worth skipping, rest::wanted says whether the route still waits. A route
 // that never asks keeps nothing on the connection beyond its state.
 namespace rest;
 
