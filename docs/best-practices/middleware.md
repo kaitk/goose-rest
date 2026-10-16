@@ -103,7 +103,7 @@ Who may call a route decides what runs before it, so the audience is what tells 
 stacks apart. A stack wraps routes as `rest::routes` does, and `_routes` says so where
 it's called. Never name a stack `api` or another word that fits every route: it says
 nothing about who calls them, and `api` is also the generated file's namespace
-([Run it](../generator.md#run-it)).
+([Run it](../generator.md#1-run-it)).
 
 A parameter in a scope's prefix, such as `/organizations/:id`, isn't supported yet, so
 the member routes can't take the organization from their path. Until it is, the program

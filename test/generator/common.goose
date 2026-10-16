@@ -17,9 +17,13 @@ fn api(paths: const u8[:]) -> u8[>..] {
         """, "components": {"schemas": {"A": {"type": "object", "properties": {}}, "N": {"type": "string"}}, "securitySchemes": {"s": {"type": "http"}}}}""")
 }
 
+// The error, without the section of docs/generator.md it ends with, which
+// test/generator/sections.goose checks.
 fn fails(text: const u8[:], want: const u8[:]) {
     var out: u8[>..] = [];
-    let err = gen::generate(text, "api", "app", "api.json", out);
+    let full = gen::generate(text, "api", "app", "api.json", out);
+    let at = find(full, " (generator.md §");
+    let err = if at >= 0 { full[..at] } else { full[..] };
     if err != want {
         print("want '", want, "'\ngot  '", err, "'\nfor ", text);
         assert(false);

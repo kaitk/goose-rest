@@ -132,7 +132,7 @@ POST /projects 400 {"error":"invalid_body","detail":"unknown member","at":26}
 
 Never edit the generated file by hand: change the schema and regenerate.
 `scripts/test.sh` regenerates every `api_gen.goose` in this repository and fails if any
-result differs from the committed file. The [generator reference](../generator.md#the-subset)
+result differs from the committed file. The [generator reference](../generator.md#4-the-subset)
 lists the supported schema keywords. A construct outside that subset is refused with
 its JSON pointer, never silently dropped.
 

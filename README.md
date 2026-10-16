@@ -108,8 +108,8 @@ goose build hello.goose
 TinyCC, which can't start threads.*
 
 **With a schema**, describe the API in OpenAPI 3.1 using JSON or
-[TypeScript](docs/generator.md#write-it-in-typescript), then
-[generate its types and router](docs/generator.md#run-it). `api::dispatch(cx)` replaces
+[TypeScript](docs/generator.md#2-write-it-in-typescript), then
+[generate its types and router](docs/generator.md#1-run-it). `api::dispatch(cx)` replaces
 the routes and calls your handler for each operation with typed, validated parameters
 and a validated body: [tutorial, page 5](docs/tutorial/05-schema.md).
 

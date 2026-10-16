@@ -234,7 +234,7 @@ domain owns them. A domain still owns its `Waiting` variants, named for it, and 
 
 The generator writes one file for the whole API, `api_gen.goose`, beside `main.goose`,
 and its router calls every handler in one namespace, `app` by default
-([Run it](../generator.md#run-it)). The generator can't yet write each domain's part
+([Run it](../generator.md#1-run-it)). The generator can't yet write each domain's part
 into its folder, by the operations' OpenAPI `tags`, so for now keep the handlers in
 one file. Each handler calls its domain's rules or asks for
 its job; the rest of the code stays in the domain.

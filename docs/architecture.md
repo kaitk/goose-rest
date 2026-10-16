@@ -211,7 +211,7 @@ and a router, `dispatch`, from its paths. The build compiles that file with the
 handlers. OpenAPI is the format clients, documentation tools, and a TypeScript backend
 already read and write, so one contract can describe two backends of one API. An
 optional TypeScript helper types a document to the supported subset as it's written
-([Write it in TypeScript](generator.md#write-it-in-typescript)).
+([Write it in TypeScript](generator.md#2-write-it-in-typescript)).
 
 Its ideas come from Elysia 2, which composes each route's handler at run time or in an
 ahead-of-time build. Goose's compiler already composes a handler with its middleware.
@@ -259,4 +259,4 @@ start, so a long chain costs more per request than a generated router
 - **Compression copies.** `rest::compressed` writes each answer inside it to a local
   buffer and copies it once into the response.
 - **The generator's subset.** It refuses what it can't read yet, such as `pattern` and
-  recursive schemas ([The subset](generator.md#the-subset)).
+  recursive schemas ([The subset](generator.md#4-the-subset)).

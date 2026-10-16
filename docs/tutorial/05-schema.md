@@ -125,7 +125,7 @@ The router first uses a `match` on the path's length for static paths, then walk
 path segment by segment, checking literals before parameters. Its answers match
 those of the `if` chain byte for byte, except that it validates typed parameters and
 gives a literal path priority over a matching template
-([generator reference](../generator.md#how-it-matches)).
+([generator reference](../generator.md#73-how-it-matches)).
 
 ## Generated and hand-written routes
 

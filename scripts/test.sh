@@ -83,7 +83,9 @@ if command -v "${TSC%% *}" >/dev/null 2>&1; then
             echo "accepted, but want: $want"
             exit 1
         fi
-        if ! grep -qxF "goose-rest: $ts/api.json: $want" "$ts/err"; then
+        # The error, without the section of docs/generator.md it ends with,
+        # which test/generator/sections.goose checks.
+        if ! sed 's/ (generator\.md [^)]*)$//' "$ts/err" | grep -qxF "goose-rest: $ts/api.json: $want"; then
             echo "want: $want"
             grep '^goose-rest' "$ts/err"
             exit 1

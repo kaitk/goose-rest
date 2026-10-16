@@ -315,9 +315,18 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
     var ops: Op[>..] = [];
     var params: Param[>..] = [];
 
-    fn fail(ptr: const u8[:], msg: const u8[:]) {
-        return str(ptr, ": ", msg) from generate;
+    // The error names the section of docs/generator.md that covers what it
+    // refuses: "What it refuses" for paths, operations, and security, "Names"
+    // for a schema's names, and "The subset" for the rest. Inserting a section
+    // there renumbers these.
+    fn fail_in(ptr: const u8[:], msg: const u8[:], section: const u8[:]) {
+        let paths = starts_with(ptr, "#/paths") || starts_with(ptr, "#/security");
+        return str(ptr, ": ", msg, " (generator.md §", if paths { "7.2" } else { section }, ")") from generate;
     }
+
+    fn fail(ptr: const u8[:], msg: const u8[:]) { fail_in(ptr, msg, "4"); }
+
+    fn fail_name(ptr: const u8[:], msg: const u8[:]) { fail_in(ptr, msg, "5"); }
 
     // A pointer: base, then each of the tokens, each escaped.
     fn ptr2(base: const u8[:], a: const u8[:], b: const u8[:]) -> const u8[:] {
@@ -340,9 +349,9 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
 
     fn type_name(name: const u8[:], ptr: const u8[:]) {
         guard is_ident(name) && !is_one_of(name, KEYWORDS) else {
-            fail(ptr, "the name isn't a Goose identifier");
+            fail_name(ptr, "the name isn't a Goose identifier");
         }
-        guard !taken(name) else { fail(ptr, "another type has this name"); }
+        guard !taken(name) else { fail_name(ptr, "another type has this name"); }
     }
 
     // Parent + the property's name in PascalCase: the name of a type
@@ -368,9 +377,9 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             let at = strs.len;
             format_pascal(strs, s);
             let variant = strs[at..];
-            guard variant.len > 0 else { fail(vptr, "an enum value needs a letter or digit"); }
+            guard variant.len > 0 else { fail_name(vptr, "an enum value needs a letter or digit"); }
             for k in first..variants.len {
-                guard variants[k] != variant else { fail(vptr, str("two values make the variant ", variant)); }
+                guard variants[k] != variant else { fail_name(vptr, str("two values make the variant ", variant)); }
             }
             variants.push(variant);
         };
@@ -670,16 +679,16 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
             let key = p.key;
             let pptr = ptr2(ptr, "properties", key);
             guard key.len > 0 && is_plain(key) else {
-                fail(pptr, "a property name that's empty, or has '\"', '\\' or a control character, isn't supported");
+                fail_name(pptr, "a property name that's empty, or has '\"', '\\' or a control character, isn't supported");
             }
             let at = strs.len;
             guard format_snake(strs, key) else {
-                fail(pptr, "a property name of letters, digits, '_', '-', '.' and spaces is supported");
+                fail_name(pptr, "a property name of letters, digits, '_', '-', '.' and spaces is supported");
             }
             if is_one_of(strs[at..], KEYWORDS) { strs.push('_'); }
             let name = strs[at..];
-            guard is_ident(name) else { fail(pptr, str("the field name ", name, " isn't a Goose identifier")); }
-            guard !is_one_of(name, READER_NAMES) else { fail(pptr, str("the field name ", name, " is one the reader uses")); }
+            guard is_ident(name) else { fail_name(pptr, str("the field name ", name, " isn't a Goose identifier")); }
+            guard !is_one_of(name, READER_NAMES) else { fail_name(pptr, str("the field name ", name, " is one the reader uses")); }
             for f in fields[first..] {
                 guard f.key != key else { fail(pptr, "a repeated property"); }
             }
@@ -727,7 +736,7 @@ fn generate(text: const u8[:], ns: const u8[:], handlers: const u8[:], source: c
         }
         for a, k in names {
             for b in names[k + 1..] {
-                guard a != b else { fail(ptr1(ptr, "properties"), str("two properties make the name ", a)); }
+                guard a != b else { fail_name(ptr1(ptr, "properties"), str("two properties make the name ", a)); }
             }
         }
     }

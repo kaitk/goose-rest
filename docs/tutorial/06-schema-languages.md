@@ -1,7 +1,7 @@
 # 6. The schema in TypeScript, Python, or Rust
 
 `api.json` is plain OpenAPI 3.1. Any tool that writes OpenAPI can make it, as long as
-the output stays within the generator's [subset](../generator.md#the-subset).
+the output stays within the generator's [subset](../generator.md#4-the-subset).
 
 ## TypeScript
 
@@ -58,7 +58,7 @@ matches the committed `api.json`
 A schema can also come from Python or Rust. pydantic models, or a FastAPI app, export
 OpenAPI with their `$ref`s under `#/components/schemas`, and the generator reads the
 `anyOf` with `null` that pydantic and schemars write for an optional value
-([generator reference](../generator.md#export-it-from-python-or-rust)). A backend written in
+([generator reference](../generator.md#3-export-it-from-python-or-rust)). A backend written in
 another language and one written in Goose can then share a contract.
 
 Neither tool has a type for `format: ascii`, so each adds the keyword by hand. In

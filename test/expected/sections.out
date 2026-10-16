@@ -1,0 +1,4 @@
+#/components/schemas/A/properties/c/pattern: not supported on a string (generator.md §4)
+#/components/schemas/A/properties/r: the field name r is one the reader uses (generator.md §5)
+#/paths/x: a path must start with '/' (generator.md §7.2)
+#/paths/~1a/get/security/0/t: no such scheme in components.securitySchemes (generator.md §7.2)

@@ -2,12 +2,12 @@
 
 `goose-rest gen` reads an OpenAPI 3.1 document and writes a Goose file with a struct, a
 JSON reader, and a JSON writer for each schema under `components.schemas`, and a router,
-`dispatch`, from its `paths` ([Paths](#paths)). The design is in
+`dispatch`, from its `paths` ([Paths](#7-paths)). The design is in
 [Architecture](architecture.md#the-generator), and its reasons in
 [Decisions](decisions.md#the-generator). This page is the reference:
 what the generator reads, what it writes, and what it refuses.
 
-## Run it
+## 1. Run it
 
 The generator is a Goose program, `gen/main.goose`. Run it through TinyCC, or build it
 once:
@@ -20,10 +20,11 @@ build/goose-rest gen api.json -o api_gen.goose --namespace api
 
 `--namespace` names the generated file's namespace (default `api`), and `--handlers` the
 namespace whose functions the router calls (default `app`). On an error, the generator
-writes nothing and exits with status 1, printing the construct's JSON pointer:
+writes nothing and exits with status 1, printing the construct's JSON pointer and the
+section of this page that covers what it refuses:
 
 ```text
-goose-rest: api.json: #/components/schemas/A/properties/c/pattern: not supported on a string
+goose-rest: api.json: #/components/schemas/A/properties/c/pattern: not supported on a string (generator.md §4)
 ```
 
 A program imports the file by its module name, so name it `<name>_gen.goose`, not
@@ -34,7 +35,7 @@ program's root declares goose-rest and goose-http ([README](../README.md#quick-s
 handlers' module: the root does, wherever the module lives, and the router's qualified
 calls find it.
 
-## Write it in TypeScript
+## 2. Write it in TypeScript
 
 `ts/api.mts` types the subset below, so `tsc` rejects a keyword, a type, a format, or a
 shape outside it while the document is being written. Copy it beside the contract, pass
@@ -72,7 +73,7 @@ doesn't name. The generator still checks what types can't: cycles, names that ar
 Goose identifiers or that collide, and number values such as a negative `maxLength`.
 `ts/test/` checks which of the two rejects each construct.
 
-## Export it from Python or Rust
+## 3. Export it from Python or Rust
 
 A team that keeps its models in pydantic (2.x) exports them as the document's
 components, with `$ref`s pointing there instead of at `$defs`:
@@ -93,7 +94,7 @@ beside it is what the generator writes from that export. `Field(ge=, le=, min_le
 document the same way, with paths. Rust's schemars writes optional values in the same
 `anyOf` shape.
 
-## The subset
+## 4. The subset
 
 | Schema | Goose |
 |---|---|
@@ -156,7 +157,7 @@ whose domain has two or more labels, without quoted local parts or address liter
 defines. A validator that doesn't know a format ignores it, so a client's validator
 accepts a value that isn't ASCII, and only goose-rest refuses it.
 
-## Names
+## 5. Names
 
 - A component's name is its type's name and must be a Goose identifier. A type declared
   inline is named after its parent and property in PascalCase, `Project` and `owner`
@@ -168,7 +169,7 @@ accepts a value that isn't ASCII, and only goose-rest refuses it.
   and a field named after one of the reader's own locals (`r`, `scratch`, `key`, and a
   few ending in `_`) are errors.
 
-## The code
+## 6. The code
 
 For a schema `Project`, the file has:
 
@@ -210,7 +211,7 @@ punctuation a constant: `out.append(",\"name\":")`, and each string through
 a key may all have been left out, the writer checks the last byte for the object's `{`
 to know whether a comma is due.
 
-## Paths
+## 7. Paths
 
 A document with `paths` also gets `fn dispatch(cx)`, which answers a
 request through the handler named by its path and method. A program calls it from
@@ -220,7 +221,7 @@ request through the handler named by its path and method. A program calls it fro
 let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 ```
 
-### What it reads
+### 7.1 What it reads
 
 | OpenAPI | Goose |
 |---|---|
@@ -286,7 +287,7 @@ fn list_projects(cx, s, q) { ... q.page ... }    // in app
 parameter's `description`, `deprecated`, and examples are read but not used. The
 handler writes the response; `responses` isn't checked against it.
 
-### What it refuses
+### 7.2 What it refuses
 
 Each of these is an error at its JSON pointer:
 
@@ -316,7 +317,7 @@ Each of these is an error at its JSON pointer:
 - Any other key on a path item, an operation, a parameter, or a request body, such as
   `servers`, `callbacks`, or `$ref`.
 
-### How it matches
+### 7.3 How it matches
 
 `dispatch` answers as an if chain of `http::on` over the same routes in the same order
 would, with two differences: a parameter is typed, so `/users/me/avatar` for
@@ -365,14 +366,14 @@ then the path parameters, the other parameters, and the body, and answers the fi
 failure: a path parameter that doesn't fit its schema is `400
 {"error":"invalid_parameter","detail":"id: minimum"}`.
 
-## Tests
+## 8. Tests
 
 `test/gen/` holds schemas and the files the generator writes from them, the golden
 files. `scripts/test.sh` regenerates each and compares it byte for byte.
 `test/generated/` round-trips valid and invalid JSON through `test/gen/api_gen.goose`,
 `test/router/` runs `test/gen/routes_gen.goose` against an if chain of the same routes,
-with the handlers in `test/gen/app.goose`, and `test/generator/` checks each error above
-([development](development.md#run-the-tests-by-area)). After changing the generator, regenerate the golden files and read the
+with the handlers in `test/gen/app.goose`, and `test/generator/` checks each error above,
+and the section each names ([development](development.md#run-the-tests-by-area)). After changing the generator, regenerate the golden files and read the
 diff:
 
 ```sh

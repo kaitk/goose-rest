@@ -509,6 +509,17 @@ rule. Rejected: a number outside the heading, such as an HTML anchor of its own,
 keeps old links working but lets the number and the heading disagree; and numbering
 every page, which gives citations no one makes.
 
+Decided (2026-10-16): `generator.md` is numbered too, and each of the generator's
+errors ends with the section that covers what it refuses, as
+`#/paths/x: a path must start with '/' (generator.md §7.2)`, so a reader goes from the
+error to the rule in one step. The section comes from the error's JSON pointer, §7.2
+under `#/paths` or `#/security` and §4 elsewhere, and from the call site for a schema's
+names, §5. The tests of each message compare it without the section, and
+`test/generator/sections.goose` checks the sections themselves. A section inserted
+before those in `generator.md` changes the generator's output, so it goes at the end.
+Rejected: a section named at each of the generator's hundred or so call sites, which
+says the same as the pointer in nearly every case.
+
 ## Spike results (2026-10-13)
 
 On Goose `a6249a4`, and again on `46356c2` with the same results except for spike 04, whose
