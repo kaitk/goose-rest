@@ -40,8 +40,8 @@ CHANGELOG.md      what each tag adds
 
 ## Get Goose
 
-The scripts use the official Goose release that `scripts/goose.sh` pins: `v2026.1`
-(`ac759c3`), since 2026-10-15. The first script that needs the compiler fetches it into
+The scripts use the official Goose release that `scripts/goose.sh` pins: `v2026.2`
+(`3ee3871`), since 2026-10-16. The first script that needs the compiler fetches it into
 `build/`, as goose-http's does
 ([its Get Goose](https://github.com/kaitk/goose-http/blob/main/docs/development.md#get-goose)).
 `scripts/goose.sh` is a copy of goose-http's script: keep the two the same. To fetch the compiler
@@ -272,7 +272,7 @@ that the scripts clone and build into `build/goose-<commit>/`, as in goose-http
 which also covers building a checkout by hand). Don't edit a checkout (`AGENTS.md`).
 
 `bench/rest.sh` and `bench/all.sh` pass `GOOSE` on to goose-http's scripts, so the two
-repositories build with the same compiler, and record it in `env.txt`. Goose `v2026.1`
+repositories build with the same compiler, and record it in `env.txt`. Goose `v2026.2`
 has no `--version` option, so `scripts/goose.sh`'s `goose_version` names a compiler by
 its release directory or its checkout's commit, and `bench/all.sh` adds the binary's
 SHA-256 (2026-10-15).

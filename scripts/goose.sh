@@ -17,22 +17,22 @@
 # Run directly, it prints the compiler's path, downloading it if needed:
 #   GOOSE=$(scripts/goose.sh)
 
-goose_release=v2026.1
+goose_release=v2026.2
 
 goose_fetch() {
     case ${GOOSE_ASSET:-$(uname -s)-$(uname -m)} in
     linux-x64 | Linux-x86_64)
         asset=linux-x64
-        sum=c4b7eabfaef9662d451a8d760e44215cfd8a4ed10a4e32e2769820508aa79c9a ;;
+        sum=f9f0b448800b27b9d86fcd8341a08e8cda790ff86cd500c90e287fa1a616197c ;;
     macos-arm64 | Darwin-arm64)
         asset=macos-arm64
-        sum=939be9b05b983fc4a474ed13a7448d8638911829fabcfb2d0d58357bd39c88e5 ;;
+        sum=d945c8cc1ce35f964ebde9a9e0a40e62533ff55010ed30bf2412af87aa44552a ;;
     macos-x64 | Darwin-x86_64)
         asset=macos-x64
-        sum=64dcae32d6e8ef511f44dc2d0799034bea034bfa4f27866550a5d35165bcb73e ;;
+        sum=341053fb7122c2871f9bf1e8caa19ff45e96549b27804dac0c62d2e45974e649 ;;
     windows-x64 | MINGW*-x86_64 | MSYS*-x86_64 | CYGWIN*-x86_64)
         asset=windows-x64
-        sum=dcca0f1fa9b6681b77d27aaee3d4d892b1fe2fdf291248db5beeabcd62c63eb5 ;;
+        sum=16b44686cf4286a4868fb1b7d78c5aafa17eee679aea66b5e8268cc7513d458a ;;
     *) return 2 ;;
     esac
     name=goose-$goose_release-$asset
