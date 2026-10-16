@@ -156,9 +156,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::health(cx);
-                        };
+                        route_health(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -168,19 +166,11 @@ fn dispatch(cx) {
             12 => {
                 if path == "/v1/projects" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let q_ = rest::take<ListProjectsParams>(cx);
-                            app::list_projects(cx, q_);
-                        };
+                        route_list_projects(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_token(cx);
-                            rest::body(cx, 2 * 1024 * 1024);
-                            let body_ = rest::take<ProjectCreate>(cx);
-                            app::create_project(cx, s_, body_);
-                        };
+                        route_create_project(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -197,9 +187,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "health", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::health(cx);
-                        };
+                        route_health(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -212,19 +200,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "projects", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let q_ = rest::take<ListProjectsParams>(cx);
-                                    app::list_projects(cx, q_);
-                                };
+                                route_list_projects(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    let s_ = app::security_token(cx);
-                                    rest::body(cx, 2 * 1024 * 1024);
-                                    let body_ = rest::take<ProjectCreate>(cx);
-                                    app::create_project(cx, s_, body_);
-                                };
+                                route_create_project(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -235,20 +215,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_project(cx, id);
-                                        };
+                                        route_get_project(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_token(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_project(cx, s_, id);
-                                        };
+                                        route_delete_project(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -262,4 +233,48 @@ fn dispatch(cx) {
         }
     }
     rest::not_found(cx, m, path);
+}
+
+// GET /health
+fn route_health(cx) {
+    rest::route(cx) {
+        app::health(cx);
+    };
+}
+
+// GET /v1/projects
+fn route_list_projects(cx) {
+    rest::route(cx) {
+        let q_ = rest::take<ListProjectsParams>(cx);
+        app::list_projects(cx, q_);
+    };
+}
+
+// POST /v1/projects
+fn route_create_project(cx) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        rest::body(cx, 2 * 1024 * 1024);
+        let body_ = rest::take<ProjectCreate>(cx);
+        app::create_project(cx, s_, body_);
+    };
+}
+
+// GET /v1/projects/{id}
+fn route_get_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_project(cx, id);
+    };
+}
+
+// DELETE /v1/projects/{id}
+fn route_delete_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_project(cx, s_, id);
+    };
 }

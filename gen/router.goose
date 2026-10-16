@@ -19,9 +19,12 @@ fn size(n: i64) -> u8[>..] {
     return str(n);
 }
 
-// What the router's emitters read, and where they write.
+// What the router's emitters read, and where they write: dispatch to out,
+// and each operation's function to fns once, which emitted records.
 struct Tables {
     out: u8[>..]&,
+    fns: u8[>..]&,
+    emitted: bool[>..]&,
     ns: const u8[:],
     handlers: const u8[:],
     routes: const Route[:],
@@ -31,20 +34,20 @@ struct Tables {
     objs: const Obj[:],
 }
 
-// The checks on an integer x, the parameter p, at indent: present says
-// it was given, for an optional one.
-fn int_checks(t: Tables&, p: Param, x: const u8[:], present: const u8[:], ind: const u8[:]) {
+// The checks on an integer x, the parameter p, at indent, written to out:
+// present says it was given, for an optional one.
+fn int_checks(out: u8[>..]&, p: Param, x: const u8[:], present: const u8[:], ind: const u8[:]) {
     if p.int32 {
         let open = if present.len > 0 { "(" } else { "" };
         let close = if present.len > 0 { ")" } else { "" };
-        format(t.out, ind, "if ", present, open, x, " < -2147483648 || ", x, " > 2147483647", close,
+        format(out, ind, "if ", present, open, x, " < -2147483648 || ", x, " > 2147483647", close,
                " { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
     }
     if p.has_minimum {
-        format(t.out, ind, "if ", present, x, " < ", p.minimum, " { rest::fail_param(cx, \"", p.name, ": minimum\"); }\n");
+        format(out, ind, "if ", present, x, " < ", p.minimum, " { rest::fail_param(cx, \"", p.name, ": minimum\"); }\n");
     }
     if p.has_maximum {
-        format(t.out, ind, "if ", present, x, " > ", p.maximum, " { rest::fail_param(cx, \"", p.name, ": maximum\"); }\n");
+        format(out, ind, "if ", present, x, " > ", p.maximum, " { rest::fail_param(cx, \"", p.name, ": maximum\"); }\n");
     }
 }
 
@@ -72,7 +75,7 @@ fn emit_params(t: Tables&, o: Op) {
                    "(cx, ", q.local, "_s, \"", q.name, "\") } else { ", if q.int { "0" } else { "false" }, " };\n");
         }
         let present: u8[>..] = if q.required { "" } else { str("has_", q.local, " && ") };
-        if q.int { int_checks(t, q, q.local, present, "    "); }
+        if q.int { int_checks(t.out, q, q.local, present, "    "); }
         if q.min_len >= 0 || q.max_len >= 0 {
             format(t.out, "    if has_", q.local, " {\n");
             format(t.out, "        let n_ = rest::code_points(", q.local, ");\n");
@@ -103,39 +106,61 @@ fn emit_params(t: Tables&, o: Op) {
 // r's Allow. Each answer returns.
 fn emit_ops(t: Tables&, r: Route, level: i64) {
     let ind = indent(level);
-    let in2 = indent(level + 2);
-    for o in t.ops[r.first_op..r.first_op + r.nops] {
+    for j in r.nops {
+        let o = t.ops[r.first_op + j];
         if o.method == "GET" { format(t.out, ind, "if m == \"GET\" || m == \"HEAD\" {\n"); }
         else { format(t.out, ind, "if m == \"", o.method, "\" {\n"); }
-        format(t.out, ind, "    rest::route(cx) {\n");
-        if o.scheme.len > 0 { format(t.out, in2, "let s_ = ", t.handlers, "::", o.scheme, "(cx);\n"); }
-        var k = 0;
+        format(t.out, ind, "    route_", o.handler, "(cx");
         for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
-            if !s.param { continue; }
-            let p = t.params[o.first + k];
-            k++;
-            if !p.int {
-                format(t.out, in2, "let ", p.local, " = rest::path_str(cx, s", i + 1, ", \"", p.name, "\");\n");
-                if p.ascii {
-                    format(t.out, in2, "if !rest::is_ascii(", p.local, ") { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
-                }
-                continue;
-            }
-            format(t.out, in2, "let ", p.local, " = rest::path_int(cx, s", i + 1, ", \"", p.name, "\");\n");
-            int_checks(t, p, p.local, "", in2);
+            if s.param { format(t.out, ", s", i + 1); }
         }
-        if o.count_q > 0 { format(t.out, in2, "let q_ = rest::take<", o.params_type, ">(cx);\n"); }
-        if o.body_limit > 0 { format(t.out, in2, "rest::body(cx, ", size(o.body_limit), ");\n"); }
-        if o.body >= 0 { format(t.out, in2, "let body_ = rest::take<", t.objs[o.body].name, ">(cx);\n"); }
-        format(t.out, in2, t.handlers, "::", o.handler, "(cx");
-        if o.scheme.len > 0 { t.out.append(", s_"); }
-        for p in t.params[o.first..o.first + o.count] { format(t.out, ", ", p.local); }
-        if o.count_q > 0 { t.out.append(", q_"); }
-        if o.body >= 0 { t.out.append(", body_"); }
-        t.out.append(");\n");
-        format(t.out, ind, "    };\n", ind, "    return;\n", ind, "}\n");
+        format(t.out, ");\n", ind, "    return;\n", ind, "}\n");
+        if !t.emitted[r.first_op + j] {
+            t.emitted[r.first_op + j] = true;
+            emit_op(t, r, o);
+        }
     }
     format(t.out, ind, "rest::no_method(cx, \"", r.allow, "\");\n", ind, "return;\n");
+}
+
+// The function that answers o, an operation of r, inside rest::route, given
+// the path's segments that hold r's parameters. Each operation has its own
+// function, which dispatch calls from an arm that returns, so that Goose
+// keeps it out of line: inlined, every route's temporaries would add to
+// dispatch's stack frame, which the C compiler's stack probes touch page by
+// page on every request (docs/goose-findings.md).
+fn emit_op(t: Tables&, r: Route, o: Op) {
+    let in2 = indent(2);
+    format(t.fns, "\n// ", o.method, " ", r.template, "\nfn route_", o.handler, "(cx");
+    for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
+        if s.param { format(t.fns, ", s", i + 1, ": const u8[:]"); }
+    }
+    t.fns.append(") {\n    rest::route(cx) {\n");
+    if o.scheme.len > 0 { format(t.fns, in2, "let s_ = ", t.handlers, "::", o.scheme, "(cx);\n"); }
+    var k = 0;
+    for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
+        if !s.param { continue; }
+        let p = t.params[o.first + k];
+        k++;
+        if !p.int {
+            format(t.fns, in2, "let ", p.local, " = rest::path_str(cx, s", i + 1, ", \"", p.name, "\");\n");
+            if p.ascii {
+                format(t.fns, in2, "if !rest::is_ascii(", p.local, ") { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
+            }
+            continue;
+        }
+        format(t.fns, in2, "let ", p.local, " = rest::path_int(cx, s", i + 1, ", \"", p.name, "\");\n");
+        int_checks(t.fns, p, p.local, "", in2);
+    }
+    if o.count_q > 0 { format(t.fns, in2, "let q_ = rest::take<", o.params_type, ">(cx);\n"); }
+    if o.body_limit > 0 { format(t.fns, in2, "rest::body(cx, ", size(o.body_limit), ");\n"); }
+    if o.body >= 0 { format(t.fns, in2, "let body_ = rest::take<", t.objs[o.body].name, ">(cx);\n"); }
+    format(t.fns, in2, t.handlers, "::", o.handler, "(cx");
+    if o.scheme.len > 0 { t.fns.append(", s_"); }
+    for p in t.params[o.first..o.first + o.count] { format(t.fns, ", ", p.local); }
+    if o.count_q > 0 { t.fns.append(", q_"); }
+    if o.body >= 0 { t.fns.append(", body_"); }
+    t.fns.append(");\n    };\n}\n");
 }
 
 // The trie's node for the routes idx[lo..hi], whose first d segments all
@@ -196,8 +221,11 @@ recursive fn emit_node(t: Tables&, idx: i64[>..<]&, lo: i64, hi: i64, d: i64, le
 // Writes dispatch, which calls the handlers in the namespace handlers.
 fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: const Route[:], segs: const Seg[:],
                ops: const Op[:], params: const Param[:], objs: const Obj[:]) {
-    var t = Tables { out: out, ns: ns, handlers: handlers, routes: routes, segs: segs, ops: ops, params: params,
-                     objs: objs };
+    var fns: u8[>..] = [];
+    var emitted: bool[>..] = [];
+    for o in ops { emitted.push(false); }
+    var t = Tables { out: out, fns: fns, emitted: emitted, ns: ns, handlers: handlers, routes: routes, segs: segs,
+                     ops: ops, params: params, objs: objs };
     for o in ops { if o.count_q > 0 { emit_params(t, o); } }
     // goose-http's MAX_BODY and rest's BODY_LIMIT, a route's default.
     var max_body: i64 = 1024 * 1024;
@@ -241,4 +269,5 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     out.append("    }\n");
     out.append("    rest::not_found(cx, m, path);\n");
     out.append("}\n");
+    out.append(fns);
 }

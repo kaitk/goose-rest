@@ -24,9 +24,7 @@ fn dispatch(cx) {
             5 => {
                 if path == "/meta" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r90(cx);
-                        };
+                        route_r90(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -34,9 +32,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r186(cx);
-                        };
+                        route_r186(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -46,9 +42,7 @@ fn dispatch(cx) {
             6 => {
                 if path == "/feeds" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r17(cx);
-                        };
+                        route_r17(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -56,15 +50,11 @@ fn dispatch(cx) {
                 }
                 if path == "/gists" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r42(cx);
-                        };
+                        route_r42(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r44(cx);
-                        };
+                        route_r44(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -72,9 +62,7 @@ fn dispatch(cx) {
                 }
                 if path == "/users" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r187(cx);
-                        };
+                        route_r187(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -84,9 +72,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/events" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r8(cx);
-                        };
+                        route_r8(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -94,9 +80,7 @@ fn dispatch(cx) {
                 }
                 if path == "/issues" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r60(cx);
-                        };
+                        route_r60(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -104,9 +88,7 @@ fn dispatch(cx) {
                 }
                 if path == "/emojis" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r85(cx);
-                        };
+                        route_r85(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -116,9 +98,7 @@ fn dispatch(cx) {
             9 => {
                 if path == "/markdown" {
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r88(cx);
-                        };
+                        route_r88(cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -128,9 +108,7 @@ fn dispatch(cx) {
             10 => {
                 if path == "/user/orgs" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r93(cx);
-                        };
+                        route_r93(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -138,15 +116,11 @@ fn dispatch(cx) {
                 }
                 if path == "/user/keys" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r200(cx);
-                        };
+                        route_r200(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r202(cx);
-                        };
+                        route_r202(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -156,9 +130,7 @@ fn dispatch(cx) {
             11 => {
                 if path == "/rate_limit" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r91(cx);
-                        };
+                        route_r91(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -166,9 +138,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user/teams" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r114(cx);
-                        };
+                        route_r114(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -176,15 +146,11 @@ fn dispatch(cx) {
                 }
                 if path == "/user/repos" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r124(cx);
-                        };
+                        route_r124(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r128(cx);
-                        };
+                        route_r128(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -194,9 +160,7 @@ fn dispatch(cx) {
             12 => {
                 if path == "/user/issues" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r61(cx);
-                        };
+                        route_r61(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -204,9 +168,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/code" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r178(cx);
-                        };
+                        route_r178(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -214,21 +176,15 @@ fn dispatch(cx) {
                 }
                 if path == "/user/emails" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r188(cx);
-                        };
+                        route_r188(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r189(cx);
-                        };
+                        route_r189(cx);
                         return;
                     }
                     if m == "DELETE" {
-                        rest::route(cx) {
-                            app::r190(cx);
-                        };
+                        route_r190(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST, DELETE");
@@ -238,9 +194,7 @@ fn dispatch(cx) {
             13 => {
                 if path == "/user/starred" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r28(cx);
-                        };
+                        route_r28(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -248,9 +202,7 @@ fn dispatch(cx) {
                 }
                 if path == "/markdown/raw" {
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r89(cx);
-                        };
+                        route_r89(cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -258,9 +210,7 @@ fn dispatch(cx) {
                 }
                 if path == "/repositories" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r127(cx);
-                        };
+                        route_r127(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -268,9 +218,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/users" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r180(cx);
-                        };
+                        route_r180(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -280,15 +228,11 @@ fn dispatch(cx) {
             14 => {
                 if path == "/notifications" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r18(cx);
-                        };
+                        route_r18(cx);
                         return;
                     }
                     if m == "PUT" {
-                        rest::route(cx) {
-                            app::r20(cx);
-                        };
+                        route_r20(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -296,9 +240,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/issues" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r179(cx);
-                        };
+                        route_r179(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -308,15 +250,11 @@ fn dispatch(cx) {
             15 => {
                 if path == "/authorizations" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r1(cx);
-                        };
+                        route_r1(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r3(cx);
-                        };
+                        route_r3(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -324,9 +262,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user/followers" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r192(cx);
-                        };
+                        route_r192(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -334,9 +270,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user/following" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r194(cx);
-                        };
+                        route_r194(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -346,9 +280,7 @@ fn dispatch(cx) {
             19 => {
                 if path == "/user/subscriptions" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r34(cx);
-                        };
+                        route_r34(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -358,9 +290,7 @@ fn dispatch(cx) {
             20 => {
                 if path == "/gitignore/templates" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r86(cx);
-                        };
+                        route_r86(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -368,9 +298,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/repositories" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r177(cx);
-                        };
+                        route_r177(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -387,15 +315,11 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "authorizations", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r1(cx);
-                        };
+                        route_r1(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r3(cx);
-                        };
+                        route_r3(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -406,17 +330,11 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let id = rest::path_str(cx, s2, "id");
-                                    app::r2(cx, id);
-                                };
+                                route_r2(cx, s2);
                                 return;
                             }
                             if m == "DELETE" {
-                                rest::route(cx) {
-                                    let id = rest::path_str(cx, s2, "id");
-                                    app::r4(cx, id);
-                                };
+                                route_r4(cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -434,10 +352,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "tokens", plain) {
                                 if e3 == path.len {
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let client_id = rest::path_str(cx, s2, "client_id");
-                                            app::r6(cx, client_id);
-                                        };
+                                        route_r6(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "DELETE");
@@ -448,19 +363,11 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let client_id = rest::path_str(cx, s2, "client_id");
-                                                    let access_token = rest::path_str(cx, s4, "access_token");
-                                                    app::r5(cx, client_id, access_token);
-                                                };
+                                                route_r5(cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let client_id = rest::path_str(cx, s2, "client_id");
-                                                    let access_token = rest::path_str(cx, s4, "access_token");
-                                                    app::r7(cx, client_id, access_token);
-                                                };
+                                                route_r7(cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -476,9 +383,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "events", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r8(cx);
-                        };
+                        route_r8(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -494,19 +399,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let owner = rest::path_str(cx, s2, "owner");
-                                            let repo = rest::path_str(cx, s3, "repo");
-                                            app::r130(cx, owner, repo);
-                                        };
+                                        route_r130(cx, s2, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let owner = rest::path_str(cx, s2, "owner");
-                                            let repo = rest::path_str(cx, s3, "repo");
-                                            app::r137(cx, owner, repo);
-                                        };
+                                        route_r137(cx, s2, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -517,11 +414,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "events", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r9(cx, owner, repo);
-                                                };
+                                                route_r9(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -531,19 +424,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "notifications", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r19(cx, owner, repo);
-                                                };
+                                                route_r19(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r21(cx, owner, repo);
-                                                };
+                                                route_r21(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -553,11 +438,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "stargazers", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r26(cx, owner, repo);
-                                                };
+                                                route_r26(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -567,11 +448,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "subscribers", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r32(cx, owner, repo);
-                                                };
+                                                route_r32(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -581,27 +458,15 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "subscription", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r35(cx, owner, repo);
-                                                };
+                                                route_r35(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r36(cx, owner, repo);
-                                                };
+                                                route_r36(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r37(cx, owner, repo);
-                                                };
+                                                route_r37(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -614,11 +479,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "blobs", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r51(cx, owner, repo);
-                                                        };
+                                                        route_r51(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -629,12 +490,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r50(cx, owner, repo, sha);
-                                                                };
+                                                                route_r50(cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -646,11 +502,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "commits", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r53(cx, owner, repo);
-                                                        };
+                                                        route_r53(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -661,12 +513,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r52(cx, owner, repo, sha);
-                                                                };
+                                                                route_r52(cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -678,19 +525,11 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "refs", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r54(cx, owner, repo);
-                                                        };
+                                                        route_r54(cx, s2, s3);
                                                         return;
                                                     }
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r55(cx, owner, repo);
-                                                        };
+                                                        route_r55(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -700,11 +539,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "tags", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r57(cx, owner, repo);
-                                                        };
+                                                        route_r57(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -715,12 +550,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r56(cx, owner, repo, sha);
-                                                                };
+                                                                route_r56(cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -732,11 +562,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "trees", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r59(cx, owner, repo);
-                                                        };
+                                                        route_r59(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -747,12 +573,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let sha = rest::path_str(cx, s6, "sha");
-                                                                    app::r58(cx, owner, repo, sha);
-                                                                };
+                                                                route_r58(cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -766,19 +587,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "issues", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r63(cx, owner, repo);
-                                                };
+                                                route_r63(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r65(cx, owner, repo);
-                                                };
+                                                route_r65(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -789,12 +602,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let number = rest::path_str(cx, s5, "number");
-                                                            app::r64(cx, owner, repo, number);
-                                                        };
+                                                        route_r64(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -805,21 +613,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "comments", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r68(cx, owner, repo, number);
-                                                                };
+                                                                route_r68(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "POST" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r69(cx, owner, repo, number);
-                                                                };
+                                                                route_r69(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -829,12 +627,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "events", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r70(cx, owner, repo, number);
-                                                                };
+                                                                route_r70(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -844,39 +637,19 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "labels", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r75(cx, owner, repo, number);
-                                                                };
+                                                                route_r75(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "POST" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r76(cx, owner, repo, number);
-                                                                };
+                                                                route_r76(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "PUT" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r78(cx, owner, repo, number);
-                                                                };
+                                                                route_r78(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "DELETE" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r79(cx, owner, repo, number);
-                                                                };
+                                                                route_r79(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, POST, PUT, DELETE");
@@ -887,13 +660,7 @@ fn dispatch(cx) {
                                                             if s7.len > 0 {
                                                                 if e7 == path.len {
                                                                     if m == "DELETE" {
-                                                                        rest::route(cx) {
-                                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                                            let number = rest::path_str(cx, s5, "number");
-                                                                            let name = rest::path_str(cx, s7, "name");
-                                                                            app::r77(cx, owner, repo, number, name);
-                                                                        };
+                                                                        route_r77(cx, s2, s3, s5, s7);
                                                                         return;
                                                                     }
                                                                     rest::no_method(cx, "DELETE");
@@ -909,11 +676,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "assignees", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r66(cx, owner, repo);
-                                                };
+                                                route_r66(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -924,12 +687,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let assignee = rest::path_str(cx, s5, "assignee");
-                                                            app::r67(cx, owner, repo, assignee);
-                                                        };
+                                                        route_r67(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -941,19 +699,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "labels", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r71(cx, owner, repo);
-                                                };
+                                                route_r71(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r73(cx, owner, repo);
-                                                };
+                                                route_r73(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -964,21 +714,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let name = rest::path_str(cx, s5, "name");
-                                                            app::r72(cx, owner, repo, name);
-                                                        };
+                                                        route_r72(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let name = rest::path_str(cx, s5, "name");
-                                                            app::r74(cx, owner, repo, name);
-                                                        };
+                                                        route_r74(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -990,19 +730,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "milestones", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r81(cx, owner, repo);
-                                                };
+                                                route_r81(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r83(cx, owner, repo);
-                                                };
+                                                route_r83(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1013,21 +745,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let number = rest::path_str(cx, s5, "number");
-                                                            app::r82(cx, owner, repo, number);
-                                                        };
+                                                        route_r82(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let number = rest::path_str(cx, s5, "number");
-                                                            app::r84(cx, owner, repo, number);
-                                                        };
+                                                        route_r84(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1038,12 +760,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "labels", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r80(cx, owner, repo, number);
-                                                                };
+                                                                route_r80(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -1057,19 +774,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "pulls", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r115(cx, owner, repo);
-                                                };
+                                                route_r115(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r117(cx, owner, repo);
-                                                };
+                                                route_r117(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1080,12 +789,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let number = rest::path_str(cx, s5, "number");
-                                                            app::r116(cx, owner, repo, number);
-                                                        };
+                                                        route_r116(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1096,12 +800,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "commits", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r118(cx, owner, repo, number);
-                                                                };
+                                                                route_r118(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -1111,12 +810,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "files", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r119(cx, owner, repo, number);
-                                                                };
+                                                                route_r119(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -1126,21 +820,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "merge", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r120(cx, owner, repo, number);
-                                                                };
+                                                                route_r120(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "PUT" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r121(cx, owner, repo, number);
-                                                                };
+                                                                route_r121(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -1150,21 +834,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "comments", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r122(cx, owner, repo, number);
-                                                                };
+                                                                route_r122(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "PUT" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let number = rest::path_str(cx, s5, "number");
-                                                                    app::r123(cx, owner, repo, number);
-                                                                };
+                                                                route_r123(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -1178,11 +852,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "contributors", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r131(cx, owner, repo);
-                                                };
+                                                route_r131(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1192,11 +862,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "languages", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r132(cx, owner, repo);
-                                                };
+                                                route_r132(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1206,11 +872,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "teams", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r133(cx, owner, repo);
-                                                };
+                                                route_r133(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1220,11 +882,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "tags", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r134(cx, owner, repo);
-                                                };
+                                                route_r134(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1234,11 +892,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "branches", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r135(cx, owner, repo);
-                                                };
+                                                route_r135(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1249,12 +903,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let branch = rest::path_str(cx, s5, "branch");
-                                                            app::r136(cx, owner, repo, branch);
-                                                        };
+                                                        route_r136(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1266,11 +915,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "collaborators", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r138(cx, owner, repo);
-                                                };
+                                                route_r138(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1281,30 +926,15 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let user = rest::path_str(cx, s5, "user");
-                                                            app::r139(cx, owner, repo, user);
-                                                        };
+                                                        route_r139(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "PUT" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let user = rest::path_str(cx, s5, "user");
-                                                            app::r140(cx, owner, repo, user);
-                                                        };
+                                                        route_r140(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let user = rest::path_str(cx, s5, "user");
-                                                            app::r141(cx, owner, repo, user);
-                                                        };
+                                                        route_r141(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1316,11 +946,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "comments", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r142(cx, owner, repo);
-                                                };
+                                                route_r142(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1331,21 +957,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r145(cx, owner, repo, id);
-                                                        };
+                                                        route_r145(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r146(cx, owner, repo, id);
-                                                        };
+                                                        route_r146(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1357,11 +973,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "commits", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r147(cx, owner, repo);
-                                                };
+                                                route_r147(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1372,12 +984,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let sha = rest::path_str(cx, s5, "sha");
-                                                            app::r148(cx, owner, repo, sha);
-                                                        };
+                                                        route_r148(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1388,21 +995,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "comments", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let sha = rest::path_str(cx, s5, "sha");
-                                                                    app::r143(cx, owner, repo, sha);
-                                                                };
+                                                                route_r143(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "POST" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let sha = rest::path_str(cx, s5, "sha");
-                                                                    app::r144(cx, owner, repo, sha);
-                                                                };
+                                                                route_r144(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1416,11 +1013,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "readme", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r149(cx, owner, repo);
-                                                };
+                                                route_r149(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1430,19 +1023,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "keys", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r150(cx, owner, repo);
-                                                };
+                                                route_r150(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r152(cx, owner, repo);
-                                                };
+                                                route_r152(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1453,21 +1038,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r151(cx, owner, repo, id);
-                                                        };
+                                                        route_r151(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r153(cx, owner, repo, id);
-                                                        };
+                                                        route_r153(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1479,11 +1054,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "downloads", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r154(cx, owner, repo);
-                                                };
+                                                route_r154(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1494,21 +1065,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r155(cx, owner, repo, id);
-                                                        };
+                                                        route_r155(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r156(cx, owner, repo, id);
-                                                        };
+                                                        route_r156(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1520,19 +1081,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "forks", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r157(cx, owner, repo);
-                                                };
+                                                route_r157(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r158(cx, owner, repo);
-                                                };
+                                                route_r158(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1542,19 +1095,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "hooks", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r159(cx, owner, repo);
-                                                };
+                                                route_r159(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r161(cx, owner, repo);
-                                                };
+                                                route_r161(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1565,21 +1110,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r160(cx, owner, repo, id);
-                                                        };
+                                                        route_r160(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r163(cx, owner, repo, id);
-                                                        };
+                                                        route_r163(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1590,12 +1125,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "tests", plain) {
                                                         if e6 == path.len {
                                                             if m == "POST" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let id = rest::path_str(cx, s5, "id");
-                                                                    app::r162(cx, owner, repo, id);
-                                                                };
+                                                                route_r162(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "POST");
@@ -1609,11 +1139,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "merges", plain) {
                                         if e4 == path.len {
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r164(cx, owner, repo);
-                                                };
+                                                route_r164(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "POST");
@@ -1623,19 +1149,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "releases", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r165(cx, owner, repo);
-                                                };
+                                                route_r165(cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r167(cx, owner, repo);
-                                                };
+                                                route_r167(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1646,21 +1164,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r166(cx, owner, repo, id);
-                                                        };
+                                                        route_r166(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let id = rest::path_str(cx, s5, "id");
-                                                            app::r168(cx, owner, repo, id);
-                                                        };
+                                                        route_r168(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1671,12 +1179,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "assets", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                rest::route(cx) {
-                                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                                    let id = rest::path_str(cx, s5, "id");
-                                                                    app::r169(cx, owner, repo, id);
-                                                                };
+                                                                route_r169(cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -1693,11 +1196,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "contributors", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r170(cx, owner, repo);
-                                                        };
+                                                        route_r170(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1707,11 +1206,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "commit_activity", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r171(cx, owner, repo);
-                                                        };
+                                                        route_r171(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1721,11 +1216,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "code_frequency", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r172(cx, owner, repo);
-                                                        };
+                                                        route_r172(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1735,11 +1226,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "participation", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r173(cx, owner, repo);
-                                                        };
+                                                        route_r173(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1749,11 +1236,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "punch_card", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            app::r174(cx, owner, repo);
-                                                        };
+                                                        route_r174(cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1768,21 +1251,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let ref = rest::path_str(cx, s5, "ref");
-                                                            app::r175(cx, owner, repo, ref);
-                                                        };
+                                                        route_r175(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let owner = rest::path_str(cx, s2, "owner");
-                                                            let repo = rest::path_str(cx, s3, "repo");
-                                                            let ref = rest::path_str(cx, s5, "ref");
-                                                            app::r176(cx, owner, repo, ref);
-                                                        };
+                                                        route_r176(cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1809,11 +1282,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "events", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s2, "owner");
-                                                    let repo = rest::path_str(cx, s3, "repo");
-                                                    app::r10(cx, owner, repo);
-                                                };
+                                                route_r10(cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1832,10 +1301,7 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let org = rest::path_str(cx, s2, "org");
-                                    app::r94(cx, org);
-                                };
+                                route_r94(cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1846,10 +1312,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "events", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r11(cx, org);
-                                        };
+                                        route_r11(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1859,10 +1322,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "issues", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r62(cx, org);
-                                        };
+                                        route_r62(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1872,10 +1332,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "members", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r95(cx, org);
-                                        };
+                                        route_r95(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1886,19 +1343,11 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let org = rest::path_str(cx, s2, "org");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r96(cx, org, user);
-                                                };
+                                                route_r96(cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let org = rest::path_str(cx, s2, "org");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r97(cx, org, user);
-                                                };
+                                                route_r97(cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1910,10 +1359,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "public_members", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r98(cx, org);
-                                        };
+                                        route_r98(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1924,27 +1370,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let org = rest::path_str(cx, s2, "org");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r99(cx, org, user);
-                                                };
+                                                route_r99(cx, s2, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let org = rest::path_str(cx, s2, "org");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r100(cx, org, user);
-                                                };
+                                                route_r100(cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let org = rest::path_str(cx, s2, "org");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r101(cx, org, user);
-                                                };
+                                                route_r101(cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1956,17 +1390,11 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "teams", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r102(cx, org);
-                                        };
+                                        route_r102(cx, s2);
                                         return;
                                     }
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r104(cx, org);
-                                        };
+                                        route_r104(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1976,17 +1404,11 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "repos", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r126(cx, org);
-                                        };
+                                        route_r126(cx, s2);
                                         return;
                                     }
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            let org = rest::path_str(cx, s2, "org");
-                                            app::r129(cx, org);
-                                        };
+                                        route_r129(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -2000,9 +1422,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "users", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r187(cx);
-                        };
+                        route_r187(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2013,10 +1433,7 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let user = rest::path_str(cx, s2, "user");
-                                    app::r185(cx, user);
-                                };
+                                route_r185(cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2027,10 +1444,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "received_events", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r12(cx, user);
-                                        };
+                                        route_r12(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2041,10 +1455,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "public", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let user = rest::path_str(cx, s2, "user");
-                                                    app::r13(cx, user);
-                                                };
+                                                route_r13(cx, s2);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -2056,10 +1467,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "events", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r14(cx, user);
-                                        };
+                                        route_r14(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2070,10 +1478,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "public", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let user = rest::path_str(cx, s2, "user");
-                                                    app::r15(cx, user);
-                                                };
+                                                route_r15(cx, s2);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -2086,11 +1491,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let user = rest::path_str(cx, s2, "user");
-                                                            let org = rest::path_str(cx, s5, "org");
-                                                            app::r16(cx, user, org);
-                                                        };
+                                                        route_r16(cx, s2, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -2104,10 +1505,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "starred", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r27(cx, user);
-                                        };
+                                        route_r27(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2117,10 +1515,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "subscriptions", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r33(cx, user);
-                                        };
+                                        route_r33(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2130,10 +1525,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "gists", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r41(cx, user);
-                                        };
+                                        route_r41(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2143,10 +1535,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "orgs", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r92(cx, user);
-                                        };
+                                        route_r92(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2156,10 +1545,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "repos", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r125(cx, user);
-                                        };
+                                        route_r125(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2169,10 +1555,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "followers", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r191(cx, user);
-                                        };
+                                        route_r191(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2182,10 +1565,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "following", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r193(cx, user);
-                                        };
+                                        route_r193(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2196,11 +1576,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let user = rest::path_str(cx, s2, "user");
-                                                    let target_user = rest::path_str(cx, s4, "target_user");
-                                                    app::r196(cx, user, target_user);
-                                                };
+                                                route_r196(cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -2212,10 +1588,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "keys", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s2, "user");
-                                            app::r199(cx, user);
-                                        };
+                                        route_r199(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2229,9 +1602,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "feeds", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r17(cx);
-                        };
+                        route_r17(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2241,15 +1612,11 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "notifications", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r18(cx);
-                        };
+                        route_r18(cx);
                         return;
                     }
                     if m == "PUT" {
-                        rest::route(cx) {
-                            app::r20(cx);
-                        };
+                        route_r20(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -2263,10 +1630,7 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s3, "id");
-                                            app::r22(cx, id);
-                                        };
+                                        route_r22(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2277,24 +1641,15 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "subscription", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let id = rest::path_str(cx, s3, "id");
-                                                    app::r23(cx, id);
-                                                };
+                                                route_r23(cx, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let id = rest::path_str(cx, s3, "id");
-                                                    app::r24(cx, id);
-                                                };
+                                                route_r24(cx, s3);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let id = rest::path_str(cx, s3, "id");
-                                                    app::r25(cx, id);
-                                                };
+                                                route_r25(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2310,9 +1665,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "user", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r186(cx);
-                        };
+                        route_r186(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2323,9 +1676,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "starred", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r28(cx);
-                                };
+                                route_r28(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2339,27 +1690,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s3, "owner");
-                                                    let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r29(cx, owner, repo);
-                                                };
+                                                route_r29(cx, s3, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s3, "owner");
-                                                    let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r30(cx, owner, repo);
-                                                };
+                                                route_r30(cx, s3, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s3, "owner");
-                                                    let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r31(cx, owner, repo);
-                                                };
+                                                route_r31(cx, s3, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2373,9 +1712,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "subscriptions", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r34(cx);
-                                };
+                                route_r34(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2389,27 +1726,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s3, "owner");
-                                                    let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r38(cx, owner, repo);
-                                                };
+                                                route_r38(cx, s3, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s3, "owner");
-                                                    let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r39(cx, owner, repo);
-                                                };
+                                                route_r39(cx, s3, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let owner = rest::path_str(cx, s3, "owner");
-                                                    let repo = rest::path_str(cx, s4, "repo");
-                                                    app::r40(cx, owner, repo);
-                                                };
+                                                route_r40(cx, s3, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2423,9 +1748,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "issues", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r61(cx);
-                                };
+                                route_r61(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2435,9 +1758,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "orgs", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r93(cx);
-                                };
+                                route_r93(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2447,9 +1768,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "teams", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r114(cx);
-                                };
+                                route_r114(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2459,15 +1778,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "repos", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r124(cx);
-                                };
+                                route_r124(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    app::r128(cx);
-                                };
+                                route_r128(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -2477,21 +1792,15 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "emails", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r188(cx);
-                                };
+                                route_r188(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    app::r189(cx);
-                                };
+                                route_r189(cx);
                                 return;
                             }
                             if m == "DELETE" {
-                                rest::route(cx) {
-                                    app::r190(cx);
-                                };
+                                route_r190(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST, DELETE");
@@ -2501,9 +1810,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "followers", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r192(cx);
-                                };
+                                route_r192(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2513,9 +1820,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "following", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r194(cx);
-                                };
+                                route_r194(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2526,24 +1831,15 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s3, "user");
-                                            app::r195(cx, user);
-                                        };
+                                        route_r195(cx, s3);
                                         return;
                                     }
                                     if m == "PUT" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s3, "user");
-                                            app::r197(cx, user);
-                                        };
+                                        route_r197(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let user = rest::path_str(cx, s3, "user");
-                                            app::r198(cx, user);
-                                        };
+                                        route_r198(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2555,15 +1851,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "keys", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r200(cx);
-                                };
+                                route_r200(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    app::r202(cx);
-                                };
+                                route_r202(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -2574,17 +1866,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s3, "id");
-                                            app::r201(cx, id);
-                                        };
+                                        route_r201(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s3, "id");
-                                            app::r203(cx, id);
-                                        };
+                                        route_r203(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -2598,15 +1884,11 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "gists", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r42(cx);
-                        };
+                        route_r42(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r44(cx);
-                        };
+                        route_r44(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -2617,17 +1899,11 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let id = rest::path_str(cx, s2, "id");
-                                    app::r43(cx, id);
-                                };
+                                route_r43(cx, s2);
                                 return;
                             }
                             if m == "DELETE" {
-                                rest::route(cx) {
-                                    let id = rest::path_str(cx, s2, "id");
-                                    app::r49(cx, id);
-                                };
+                                route_r49(cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -2638,24 +1914,15 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "star", plain) {
                                 if e3 == path.len {
                                     if m == "PUT" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s2, "id");
-                                            app::r45(cx, id);
-                                        };
+                                        route_r45(cx, s2);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s2, "id");
-                                            app::r46(cx, id);
-                                        };
+                                        route_r46(cx, s2);
                                         return;
                                     }
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s2, "id");
-                                            app::r47(cx, id);
-                                        };
+                                        route_r47(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "PUT, DELETE, GET, HEAD");
@@ -2665,10 +1932,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "forks", plain) {
                                 if e3 == path.len {
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s2, "id");
-                                            app::r48(cx, id);
-                                        };
+                                        route_r48(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "POST");
@@ -2682,9 +1946,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "issues", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r60(cx);
-                        };
+                        route_r60(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2694,9 +1956,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "emojis", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r85(cx);
-                        };
+                        route_r85(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2709,9 +1969,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "templates", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r86(cx);
-                                };
+                                route_r86(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2722,10 +1980,7 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let name = rest::path_str(cx, s3, "name");
-                                            app::r87(cx, name);
-                                        };
+                                        route_r87(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2739,9 +1994,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "markdown", plain) {
                 if e1 == path.len {
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::r88(cx);
-                        };
+                        route_r88(cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -2752,9 +2005,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "raw", plain) {
                         if e2 == path.len {
                             if m == "POST" {
-                                rest::route(cx) {
-                                    app::r89(cx);
-                                };
+                                route_r89(cx);
                                 return;
                             }
                             rest::no_method(cx, "POST");
@@ -2766,9 +2017,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "meta", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r90(cx);
-                        };
+                        route_r90(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2778,9 +2027,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "rate_limit", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r91(cx);
-                        };
+                        route_r91(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2793,17 +2040,11 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let id = rest::path_str(cx, s2, "id");
-                                    app::r103(cx, id);
-                                };
+                                route_r103(cx, s2);
                                 return;
                             }
                             if m == "DELETE" {
-                                rest::route(cx) {
-                                    let id = rest::path_str(cx, s2, "id");
-                                    app::r105(cx, id);
-                                };
+                                route_r105(cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -2814,10 +2055,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "members", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s2, "id");
-                                            app::r106(cx, id);
-                                        };
+                                        route_r106(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2828,27 +2066,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let id = rest::path_str(cx, s2, "id");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r107(cx, id, user);
-                                                };
+                                                route_r107(cx, s2, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let id = rest::path_str(cx, s2, "id");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r108(cx, id, user);
-                                                };
+                                                route_r108(cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let id = rest::path_str(cx, s2, "id");
-                                                    let user = rest::path_str(cx, s4, "user");
-                                                    app::r109(cx, id, user);
-                                                };
+                                                route_r109(cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2860,10 +2086,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "repos", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let id = rest::path_str(cx, s2, "id");
-                                            app::r110(cx, id);
-                                        };
+                                        route_r110(cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2877,30 +2100,15 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let id = rest::path_str(cx, s2, "id");
-                                                            let owner = rest::path_str(cx, s4, "owner");
-                                                            let repo = rest::path_str(cx, s5, "repo");
-                                                            app::r111(cx, id, owner, repo);
-                                                        };
+                                                        route_r111(cx, s2, s4, s5);
                                                         return;
                                                     }
                                                     if m == "PUT" {
-                                                        rest::route(cx) {
-                                                            let id = rest::path_str(cx, s2, "id");
-                                                            let owner = rest::path_str(cx, s4, "owner");
-                                                            let repo = rest::path_str(cx, s5, "repo");
-                                                            app::r112(cx, id, owner, repo);
-                                                        };
+                                                        route_r112(cx, s2, s4, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let id = rest::path_str(cx, s2, "id");
-                                                            let owner = rest::path_str(cx, s4, "owner");
-                                                            let repo = rest::path_str(cx, s5, "repo");
-                                                            app::r113(cx, id, owner, repo);
-                                                        };
+                                                        route_r113(cx, s2, s4, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2918,9 +2126,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "repositories", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::r127(cx);
-                        };
+                        route_r127(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2933,9 +2139,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "repositories", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r177(cx);
-                                };
+                                route_r177(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2945,9 +2149,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "code", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r178(cx);
-                                };
+                                route_r178(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2957,9 +2159,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "issues", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r179(cx);
-                                };
+                                route_r179(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2969,9 +2169,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "users", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::r180(cx);
-                                };
+                                route_r180(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -3001,13 +2199,7 @@ fn dispatch(cx) {
                                                             if s7.len > 0 {
                                                                 if e7 == path.len {
                                                                     if m == "GET" || m == "HEAD" {
-                                                                        rest::route(cx) {
-                                                                            let owner = rest::path_str(cx, s4, "owner");
-                                                                            let repository = rest::path_str(cx, s5, "repository");
-                                                                            let state_ = rest::path_str(cx, s6, "state_");
-                                                                            let keyword = rest::path_str(cx, s7, "keyword");
-                                                                            app::r181(cx, owner, repository, state_, keyword);
-                                                                        };
+                                                                        route_r181(cx, s4, s5, s6, s7);
                                                                         return;
                                                                     }
                                                                     rest::no_method(cx, "GET, HEAD");
@@ -3033,10 +2225,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let keyword = rest::path_str(cx, s4, "keyword");
-                                                    app::r182(cx, keyword);
-                                                };
+                                                route_r182(cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -3056,10 +2245,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let keyword = rest::path_str(cx, s4, "keyword");
-                                                    app::r183(cx, keyword);
-                                                };
+                                                route_r183(cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -3074,10 +2260,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let email = rest::path_str(cx, s4, "email");
-                                                    app::r184(cx, email);
-                                                };
+                                                route_r184(cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -3093,4 +2276,1764 @@ fn dispatch(cx) {
         }
     }
     rest::not_found(cx, m, path);
+}
+
+// GET /meta
+fn route_r90(cx) {
+    rest::route(cx) {
+        app::r90(cx);
+    };
+}
+
+// GET /user
+fn route_r186(cx) {
+    rest::route(cx) {
+        app::r186(cx);
+    };
+}
+
+// GET /feeds
+fn route_r17(cx) {
+    rest::route(cx) {
+        app::r17(cx);
+    };
+}
+
+// GET /gists
+fn route_r42(cx) {
+    rest::route(cx) {
+        app::r42(cx);
+    };
+}
+
+// POST /gists
+fn route_r44(cx) {
+    rest::route(cx) {
+        app::r44(cx);
+    };
+}
+
+// GET /users
+fn route_r187(cx) {
+    rest::route(cx) {
+        app::r187(cx);
+    };
+}
+
+// GET /events
+fn route_r8(cx) {
+    rest::route(cx) {
+        app::r8(cx);
+    };
+}
+
+// GET /issues
+fn route_r60(cx) {
+    rest::route(cx) {
+        app::r60(cx);
+    };
+}
+
+// GET /emojis
+fn route_r85(cx) {
+    rest::route(cx) {
+        app::r85(cx);
+    };
+}
+
+// POST /markdown
+fn route_r88(cx) {
+    rest::route(cx) {
+        app::r88(cx);
+    };
+}
+
+// GET /user/orgs
+fn route_r93(cx) {
+    rest::route(cx) {
+        app::r93(cx);
+    };
+}
+
+// GET /user/keys
+fn route_r200(cx) {
+    rest::route(cx) {
+        app::r200(cx);
+    };
+}
+
+// POST /user/keys
+fn route_r202(cx) {
+    rest::route(cx) {
+        app::r202(cx);
+    };
+}
+
+// GET /rate_limit
+fn route_r91(cx) {
+    rest::route(cx) {
+        app::r91(cx);
+    };
+}
+
+// GET /user/teams
+fn route_r114(cx) {
+    rest::route(cx) {
+        app::r114(cx);
+    };
+}
+
+// GET /user/repos
+fn route_r124(cx) {
+    rest::route(cx) {
+        app::r124(cx);
+    };
+}
+
+// POST /user/repos
+fn route_r128(cx) {
+    rest::route(cx) {
+        app::r128(cx);
+    };
+}
+
+// GET /user/issues
+fn route_r61(cx) {
+    rest::route(cx) {
+        app::r61(cx);
+    };
+}
+
+// GET /search/code
+fn route_r178(cx) {
+    rest::route(cx) {
+        app::r178(cx);
+    };
+}
+
+// GET /user/emails
+fn route_r188(cx) {
+    rest::route(cx) {
+        app::r188(cx);
+    };
+}
+
+// POST /user/emails
+fn route_r189(cx) {
+    rest::route(cx) {
+        app::r189(cx);
+    };
+}
+
+// DELETE /user/emails
+fn route_r190(cx) {
+    rest::route(cx) {
+        app::r190(cx);
+    };
+}
+
+// GET /user/starred
+fn route_r28(cx) {
+    rest::route(cx) {
+        app::r28(cx);
+    };
+}
+
+// POST /markdown/raw
+fn route_r89(cx) {
+    rest::route(cx) {
+        app::r89(cx);
+    };
+}
+
+// GET /repositories
+fn route_r127(cx) {
+    rest::route(cx) {
+        app::r127(cx);
+    };
+}
+
+// GET /search/users
+fn route_r180(cx) {
+    rest::route(cx) {
+        app::r180(cx);
+    };
+}
+
+// GET /notifications
+fn route_r18(cx) {
+    rest::route(cx) {
+        app::r18(cx);
+    };
+}
+
+// PUT /notifications
+fn route_r20(cx) {
+    rest::route(cx) {
+        app::r20(cx);
+    };
+}
+
+// GET /search/issues
+fn route_r179(cx) {
+    rest::route(cx) {
+        app::r179(cx);
+    };
+}
+
+// GET /authorizations
+fn route_r1(cx) {
+    rest::route(cx) {
+        app::r1(cx);
+    };
+}
+
+// POST /authorizations
+fn route_r3(cx) {
+    rest::route(cx) {
+        app::r3(cx);
+    };
+}
+
+// GET /user/followers
+fn route_r192(cx) {
+    rest::route(cx) {
+        app::r192(cx);
+    };
+}
+
+// GET /user/following
+fn route_r194(cx) {
+    rest::route(cx) {
+        app::r194(cx);
+    };
+}
+
+// GET /user/subscriptions
+fn route_r34(cx) {
+    rest::route(cx) {
+        app::r34(cx);
+    };
+}
+
+// GET /gitignore/templates
+fn route_r86(cx) {
+    rest::route(cx) {
+        app::r86(cx);
+    };
+}
+
+// GET /search/repositories
+fn route_r177(cx) {
+    rest::route(cx) {
+        app::r177(cx);
+    };
+}
+
+// GET /authorizations/{id}
+fn route_r2(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r2(cx, id);
+    };
+}
+
+// DELETE /authorizations/{id}
+fn route_r4(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r4(cx, id);
+    };
+}
+
+// DELETE /applications/{client_id}/tokens
+fn route_r6(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let client_id = rest::path_str(cx, s2, "client_id");
+        app::r6(cx, client_id);
+    };
+}
+
+// GET /applications/{client_id}/tokens/{access_token}
+fn route_r5(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let client_id = rest::path_str(cx, s2, "client_id");
+        let access_token = rest::path_str(cx, s4, "access_token");
+        app::r5(cx, client_id, access_token);
+    };
+}
+
+// DELETE /applications/{client_id}/tokens/{access_token}
+fn route_r7(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let client_id = rest::path_str(cx, s2, "client_id");
+        let access_token = rest::path_str(cx, s4, "access_token");
+        app::r7(cx, client_id, access_token);
+    };
+}
+
+// GET /repos/{owner}/{repo}
+fn route_r130(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r130(cx, owner, repo);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}
+fn route_r137(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r137(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/events
+fn route_r9(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r9(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/notifications
+fn route_r19(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r19(cx, owner, repo);
+    };
+}
+
+// PUT /repos/{owner}/{repo}/notifications
+fn route_r21(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r21(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/stargazers
+fn route_r26(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r26(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/subscribers
+fn route_r32(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r32(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/subscription
+fn route_r35(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r35(cx, owner, repo);
+    };
+}
+
+// PUT /repos/{owner}/{repo}/subscription
+fn route_r36(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r36(cx, owner, repo);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/subscription
+fn route_r37(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r37(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/git/blobs
+fn route_r51(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r51(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/git/blobs/{sha}
+fn route_r50(cx, s2: const u8[:], s3: const u8[:], s6: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s6, "sha");
+        app::r50(cx, owner, repo, sha);
+    };
+}
+
+// POST /repos/{owner}/{repo}/git/commits
+fn route_r53(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r53(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/git/commits/{sha}
+fn route_r52(cx, s2: const u8[:], s3: const u8[:], s6: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s6, "sha");
+        app::r52(cx, owner, repo, sha);
+    };
+}
+
+// GET /repos/{owner}/{repo}/git/refs
+fn route_r54(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r54(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/git/refs
+fn route_r55(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r55(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/git/tags
+fn route_r57(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r57(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/git/tags/{sha}
+fn route_r56(cx, s2: const u8[:], s3: const u8[:], s6: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s6, "sha");
+        app::r56(cx, owner, repo, sha);
+    };
+}
+
+// POST /repos/{owner}/{repo}/git/trees
+fn route_r59(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r59(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/git/trees/{sha}
+fn route_r58(cx, s2: const u8[:], s3: const u8[:], s6: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s6, "sha");
+        app::r58(cx, owner, repo, sha);
+    };
+}
+
+// GET /repos/{owner}/{repo}/issues
+fn route_r63(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r63(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/issues
+fn route_r65(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r65(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/issues/{number}
+fn route_r64(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r64(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/issues/{number}/comments
+fn route_r68(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r68(cx, owner, repo, number);
+    };
+}
+
+// POST /repos/{owner}/{repo}/issues/{number}/comments
+fn route_r69(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r69(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/issues/{number}/events
+fn route_r70(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r70(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/issues/{number}/labels
+fn route_r75(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r75(cx, owner, repo, number);
+    };
+}
+
+// POST /repos/{owner}/{repo}/issues/{number}/labels
+fn route_r76(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r76(cx, owner, repo, number);
+    };
+}
+
+// PUT /repos/{owner}/{repo}/issues/{number}/labels
+fn route_r78(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r78(cx, owner, repo, number);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/issues/{number}/labels
+fn route_r79(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r79(cx, owner, repo, number);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/issues/{number}/labels/{name}
+fn route_r77(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:], s7: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        let name = rest::path_str(cx, s7, "name");
+        app::r77(cx, owner, repo, number, name);
+    };
+}
+
+// GET /repos/{owner}/{repo}/assignees
+fn route_r66(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r66(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/assignees/{assignee}
+fn route_r67(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let assignee = rest::path_str(cx, s5, "assignee");
+        app::r67(cx, owner, repo, assignee);
+    };
+}
+
+// GET /repos/{owner}/{repo}/labels
+fn route_r71(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r71(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/labels
+fn route_r73(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r73(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/labels/{name}
+fn route_r72(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let name = rest::path_str(cx, s5, "name");
+        app::r72(cx, owner, repo, name);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/labels/{name}
+fn route_r74(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let name = rest::path_str(cx, s5, "name");
+        app::r74(cx, owner, repo, name);
+    };
+}
+
+// GET /repos/{owner}/{repo}/milestones
+fn route_r81(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r81(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/milestones
+fn route_r83(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r83(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/milestones/{number}
+fn route_r82(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r82(cx, owner, repo, number);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/milestones/{number}
+fn route_r84(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r84(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/milestones/{number}/labels
+fn route_r80(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r80(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/pulls
+fn route_r115(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r115(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/pulls
+fn route_r117(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r117(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/pulls/{number}
+fn route_r116(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r116(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/pulls/{number}/commits
+fn route_r118(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r118(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/pulls/{number}/files
+fn route_r119(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r119(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/pulls/{number}/merge
+fn route_r120(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r120(cx, owner, repo, number);
+    };
+}
+
+// PUT /repos/{owner}/{repo}/pulls/{number}/merge
+fn route_r121(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r121(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/pulls/{number}/comments
+fn route_r122(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r122(cx, owner, repo, number);
+    };
+}
+
+// PUT /repos/{owner}/{repo}/pulls/{number}/comments
+fn route_r123(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let number = rest::path_str(cx, s5, "number");
+        app::r123(cx, owner, repo, number);
+    };
+}
+
+// GET /repos/{owner}/{repo}/contributors
+fn route_r131(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r131(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/languages
+fn route_r132(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r132(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/teams
+fn route_r133(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r133(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/tags
+fn route_r134(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r134(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/branches
+fn route_r135(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r135(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/branches/{branch}
+fn route_r136(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let branch = rest::path_str(cx, s5, "branch");
+        app::r136(cx, owner, repo, branch);
+    };
+}
+
+// GET /repos/{owner}/{repo}/collaborators
+fn route_r138(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r138(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/collaborators/{user}
+fn route_r139(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let user = rest::path_str(cx, s5, "user");
+        app::r139(cx, owner, repo, user);
+    };
+}
+
+// PUT /repos/{owner}/{repo}/collaborators/{user}
+fn route_r140(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let user = rest::path_str(cx, s5, "user");
+        app::r140(cx, owner, repo, user);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/collaborators/{user}
+fn route_r141(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let user = rest::path_str(cx, s5, "user");
+        app::r141(cx, owner, repo, user);
+    };
+}
+
+// GET /repos/{owner}/{repo}/comments
+fn route_r142(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r142(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/comments/{id}
+fn route_r145(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r145(cx, owner, repo, id);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/comments/{id}
+fn route_r146(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r146(cx, owner, repo, id);
+    };
+}
+
+// GET /repos/{owner}/{repo}/commits
+fn route_r147(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r147(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/commits/{sha}
+fn route_r148(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s5, "sha");
+        app::r148(cx, owner, repo, sha);
+    };
+}
+
+// GET /repos/{owner}/{repo}/commits/{sha}/comments
+fn route_r143(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s5, "sha");
+        app::r143(cx, owner, repo, sha);
+    };
+}
+
+// POST /repos/{owner}/{repo}/commits/{sha}/comments
+fn route_r144(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let sha = rest::path_str(cx, s5, "sha");
+        app::r144(cx, owner, repo, sha);
+    };
+}
+
+// GET /repos/{owner}/{repo}/readme
+fn route_r149(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r149(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/keys
+fn route_r150(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r150(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/keys
+fn route_r152(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r152(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/keys/{id}
+fn route_r151(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r151(cx, owner, repo, id);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/keys/{id}
+fn route_r153(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r153(cx, owner, repo, id);
+    };
+}
+
+// GET /repos/{owner}/{repo}/downloads
+fn route_r154(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r154(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/downloads/{id}
+fn route_r155(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r155(cx, owner, repo, id);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/downloads/{id}
+fn route_r156(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r156(cx, owner, repo, id);
+    };
+}
+
+// GET /repos/{owner}/{repo}/forks
+fn route_r157(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r157(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/forks
+fn route_r158(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r158(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/hooks
+fn route_r159(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r159(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/hooks
+fn route_r161(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r161(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/hooks/{id}
+fn route_r160(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r160(cx, owner, repo, id);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/hooks/{id}
+fn route_r163(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r163(cx, owner, repo, id);
+    };
+}
+
+// POST /repos/{owner}/{repo}/hooks/{id}/tests
+fn route_r162(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r162(cx, owner, repo, id);
+    };
+}
+
+// POST /repos/{owner}/{repo}/merges
+fn route_r164(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r164(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/releases
+fn route_r165(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r165(cx, owner, repo);
+    };
+}
+
+// POST /repos/{owner}/{repo}/releases
+fn route_r167(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r167(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/releases/{id}
+fn route_r166(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r166(cx, owner, repo, id);
+    };
+}
+
+// DELETE /repos/{owner}/{repo}/releases/{id}
+fn route_r168(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r168(cx, owner, repo, id);
+    };
+}
+
+// GET /repos/{owner}/{repo}/releases/{id}/assets
+fn route_r169(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let id = rest::path_str(cx, s5, "id");
+        app::r169(cx, owner, repo, id);
+    };
+}
+
+// GET /repos/{owner}/{repo}/stats/contributors
+fn route_r170(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r170(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/stats/commit_activity
+fn route_r171(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r171(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/stats/code_frequency
+fn route_r172(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r172(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/stats/participation
+fn route_r173(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r173(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/stats/punch_card
+fn route_r174(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r174(cx, owner, repo);
+    };
+}
+
+// GET /repos/{owner}/{repo}/statuses/{ref}
+fn route_r175(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let ref = rest::path_str(cx, s5, "ref");
+        app::r175(cx, owner, repo, ref);
+    };
+}
+
+// POST /repos/{owner}/{repo}/statuses/{ref}
+fn route_r176(cx, s2: const u8[:], s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        let ref = rest::path_str(cx, s5, "ref");
+        app::r176(cx, owner, repo, ref);
+    };
+}
+
+// GET /networks/{owner}/{repo}/events
+fn route_r10(cx, s2: const u8[:], s3: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s2, "owner");
+        let repo = rest::path_str(cx, s3, "repo");
+        app::r10(cx, owner, repo);
+    };
+}
+
+// GET /orgs/{org}
+fn route_r94(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r94(cx, org);
+    };
+}
+
+// GET /orgs/{org}/events
+fn route_r11(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r11(cx, org);
+    };
+}
+
+// GET /orgs/{org}/issues
+fn route_r62(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r62(cx, org);
+    };
+}
+
+// GET /orgs/{org}/members
+fn route_r95(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r95(cx, org);
+    };
+}
+
+// GET /orgs/{org}/members/{user}
+fn route_r96(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        let user = rest::path_str(cx, s4, "user");
+        app::r96(cx, org, user);
+    };
+}
+
+// DELETE /orgs/{org}/members/{user}
+fn route_r97(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        let user = rest::path_str(cx, s4, "user");
+        app::r97(cx, org, user);
+    };
+}
+
+// GET /orgs/{org}/public_members
+fn route_r98(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r98(cx, org);
+    };
+}
+
+// GET /orgs/{org}/public_members/{user}
+fn route_r99(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        let user = rest::path_str(cx, s4, "user");
+        app::r99(cx, org, user);
+    };
+}
+
+// PUT /orgs/{org}/public_members/{user}
+fn route_r100(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        let user = rest::path_str(cx, s4, "user");
+        app::r100(cx, org, user);
+    };
+}
+
+// DELETE /orgs/{org}/public_members/{user}
+fn route_r101(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        let user = rest::path_str(cx, s4, "user");
+        app::r101(cx, org, user);
+    };
+}
+
+// GET /orgs/{org}/teams
+fn route_r102(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r102(cx, org);
+    };
+}
+
+// POST /orgs/{org}/teams
+fn route_r104(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r104(cx, org);
+    };
+}
+
+// GET /orgs/{org}/repos
+fn route_r126(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r126(cx, org);
+    };
+}
+
+// POST /orgs/{org}/repos
+fn route_r129(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let org = rest::path_str(cx, s2, "org");
+        app::r129(cx, org);
+    };
+}
+
+// GET /users/{user}
+fn route_r185(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r185(cx, user);
+    };
+}
+
+// GET /users/{user}/received_events
+fn route_r12(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r12(cx, user);
+    };
+}
+
+// GET /users/{user}/received_events/public
+fn route_r13(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r13(cx, user);
+    };
+}
+
+// GET /users/{user}/events
+fn route_r14(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r14(cx, user);
+    };
+}
+
+// GET /users/{user}/events/public
+fn route_r15(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r15(cx, user);
+    };
+}
+
+// GET /users/{user}/events/orgs/{org}
+fn route_r16(cx, s2: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        let org = rest::path_str(cx, s5, "org");
+        app::r16(cx, user, org);
+    };
+}
+
+// GET /users/{user}/starred
+fn route_r27(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r27(cx, user);
+    };
+}
+
+// GET /users/{user}/subscriptions
+fn route_r33(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r33(cx, user);
+    };
+}
+
+// GET /users/{user}/gists
+fn route_r41(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r41(cx, user);
+    };
+}
+
+// GET /users/{user}/orgs
+fn route_r92(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r92(cx, user);
+    };
+}
+
+// GET /users/{user}/repos
+fn route_r125(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r125(cx, user);
+    };
+}
+
+// GET /users/{user}/followers
+fn route_r191(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r191(cx, user);
+    };
+}
+
+// GET /users/{user}/following
+fn route_r193(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r193(cx, user);
+    };
+}
+
+// GET /users/{user}/following/{target_user}
+fn route_r196(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        let target_user = rest::path_str(cx, s4, "target_user");
+        app::r196(cx, user, target_user);
+    };
+}
+
+// GET /users/{user}/keys
+fn route_r199(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s2, "user");
+        app::r199(cx, user);
+    };
+}
+
+// GET /notifications/threads/{id}
+fn route_r22(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s3, "id");
+        app::r22(cx, id);
+    };
+}
+
+// GET /notifications/threads/{id}/subscription
+fn route_r23(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s3, "id");
+        app::r23(cx, id);
+    };
+}
+
+// PUT /notifications/threads/{id}/subscription
+fn route_r24(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s3, "id");
+        app::r24(cx, id);
+    };
+}
+
+// DELETE /notifications/threads/{id}/subscription
+fn route_r25(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s3, "id");
+        app::r25(cx, id);
+    };
+}
+
+// GET /user/starred/{owner}/{repo}
+fn route_r29(cx, s3: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s3, "owner");
+        let repo = rest::path_str(cx, s4, "repo");
+        app::r29(cx, owner, repo);
+    };
+}
+
+// PUT /user/starred/{owner}/{repo}
+fn route_r30(cx, s3: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s3, "owner");
+        let repo = rest::path_str(cx, s4, "repo");
+        app::r30(cx, owner, repo);
+    };
+}
+
+// DELETE /user/starred/{owner}/{repo}
+fn route_r31(cx, s3: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s3, "owner");
+        let repo = rest::path_str(cx, s4, "repo");
+        app::r31(cx, owner, repo);
+    };
+}
+
+// GET /user/subscriptions/{owner}/{repo}
+fn route_r38(cx, s3: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s3, "owner");
+        let repo = rest::path_str(cx, s4, "repo");
+        app::r38(cx, owner, repo);
+    };
+}
+
+// PUT /user/subscriptions/{owner}/{repo}
+fn route_r39(cx, s3: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s3, "owner");
+        let repo = rest::path_str(cx, s4, "repo");
+        app::r39(cx, owner, repo);
+    };
+}
+
+// DELETE /user/subscriptions/{owner}/{repo}
+fn route_r40(cx, s3: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s3, "owner");
+        let repo = rest::path_str(cx, s4, "repo");
+        app::r40(cx, owner, repo);
+    };
+}
+
+// GET /user/following/{user}
+fn route_r195(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s3, "user");
+        app::r195(cx, user);
+    };
+}
+
+// PUT /user/following/{user}
+fn route_r197(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s3, "user");
+        app::r197(cx, user);
+    };
+}
+
+// DELETE /user/following/{user}
+fn route_r198(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let user = rest::path_str(cx, s3, "user");
+        app::r198(cx, user);
+    };
+}
+
+// GET /user/keys/{id}
+fn route_r201(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s3, "id");
+        app::r201(cx, id);
+    };
+}
+
+// DELETE /user/keys/{id}
+fn route_r203(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s3, "id");
+        app::r203(cx, id);
+    };
+}
+
+// GET /gists/{id}
+fn route_r43(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r43(cx, id);
+    };
+}
+
+// DELETE /gists/{id}
+fn route_r49(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r49(cx, id);
+    };
+}
+
+// PUT /gists/{id}/star
+fn route_r45(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r45(cx, id);
+    };
+}
+
+// DELETE /gists/{id}/star
+fn route_r46(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r46(cx, id);
+    };
+}
+
+// GET /gists/{id}/star
+fn route_r47(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r47(cx, id);
+    };
+}
+
+// POST /gists/{id}/forks
+fn route_r48(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r48(cx, id);
+    };
+}
+
+// GET /gitignore/templates/{name}
+fn route_r87(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let name = rest::path_str(cx, s3, "name");
+        app::r87(cx, name);
+    };
+}
+
+// GET /teams/{id}
+fn route_r103(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r103(cx, id);
+    };
+}
+
+// DELETE /teams/{id}
+fn route_r105(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r105(cx, id);
+    };
+}
+
+// GET /teams/{id}/members
+fn route_r106(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r106(cx, id);
+    };
+}
+
+// GET /teams/{id}/members/{user}
+fn route_r107(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        let user = rest::path_str(cx, s4, "user");
+        app::r107(cx, id, user);
+    };
+}
+
+// PUT /teams/{id}/members/{user}
+fn route_r108(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        let user = rest::path_str(cx, s4, "user");
+        app::r108(cx, id, user);
+    };
+}
+
+// DELETE /teams/{id}/members/{user}
+fn route_r109(cx, s2: const u8[:], s4: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        let user = rest::path_str(cx, s4, "user");
+        app::r109(cx, id, user);
+    };
+}
+
+// GET /teams/{id}/repos
+fn route_r110(cx, s2: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        app::r110(cx, id);
+    };
+}
+
+// GET /teams/{id}/repos/{owner}/{repo}
+fn route_r111(cx, s2: const u8[:], s4: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        let owner = rest::path_str(cx, s4, "owner");
+        let repo = rest::path_str(cx, s5, "repo");
+        app::r111(cx, id, owner, repo);
+    };
+}
+
+// PUT /teams/{id}/repos/{owner}/{repo}
+fn route_r112(cx, s2: const u8[:], s4: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        let owner = rest::path_str(cx, s4, "owner");
+        let repo = rest::path_str(cx, s5, "repo");
+        app::r112(cx, id, owner, repo);
+    };
+}
+
+// DELETE /teams/{id}/repos/{owner}/{repo}
+fn route_r113(cx, s2: const u8[:], s4: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let id = rest::path_str(cx, s2, "id");
+        let owner = rest::path_str(cx, s4, "owner");
+        let repo = rest::path_str(cx, s5, "repo");
+        app::r113(cx, id, owner, repo);
+    };
+}
+
+// GET /legacy/issues/search/{owner}/{repository}/{state_}/{keyword}
+fn route_r181(cx, s4: const u8[:], s5: const u8[:], s6: const u8[:], s7: const u8[:]) {
+    rest::route(cx) {
+        let owner = rest::path_str(cx, s4, "owner");
+        let repository = rest::path_str(cx, s5, "repository");
+        let state_ = rest::path_str(cx, s6, "state_");
+        let keyword = rest::path_str(cx, s7, "keyword");
+        app::r181(cx, owner, repository, state_, keyword);
+    };
+}
+
+// GET /legacy/repos/search/{keyword}
+fn route_r182(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let keyword = rest::path_str(cx, s4, "keyword");
+        app::r182(cx, keyword);
+    };
+}
+
+// GET /legacy/user/search/{keyword}
+fn route_r183(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let keyword = rest::path_str(cx, s4, "keyword");
+        app::r183(cx, keyword);
+    };
+}
+
+// GET /legacy/user/email/{email}
+fn route_r184(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let email = rest::path_str(cx, s4, "email");
+        app::r184(cx, email);
+    };
 }

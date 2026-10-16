@@ -341,9 +341,7 @@ fn dispatch(cx) {
             1 => {
                 if path == "/" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::page(cx);
-                        };
+                        route_page(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -353,9 +351,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::health(cx);
-                        };
+                        route_health(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -365,9 +361,7 @@ fn dispatch(cx) {
             10 => {
                 if path == "/v1/status" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::get_status(cx);
-                        };
+                        route_get_status(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -377,18 +371,11 @@ fn dispatch(cx) {
             12 => {
                 if path == "/v1/settings" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::get_settings(cx);
-                        };
+                        route_get_settings(cx);
                         return;
                     }
                     if m == "PUT" {
-                        rest::route(cx) {
-                            let s_ = app::security_token(cx);
-                            rest::body(cx, 1 * 1024);
-                            let body_ = rest::take<Settings>(cx);
-                            app::put_settings(cx, s_, body_);
-                        };
+                        route_put_settings(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -396,12 +383,7 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/firmware" {
                     if m == "PUT" {
-                        rest::route(cx) {
-                            let s_ = app::security_token(cx);
-                            rest::body(cx, 256 * 1024);
-                            let body_ = rest::take<FirmwareUpload>(cx);
-                            app::put_firmware(cx, s_, body_);
-                        };
+                        route_put_firmware(cx);
                         return;
                     }
                     rest::no_method(cx, "PUT");
@@ -418,9 +400,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::page(cx);
-                        };
+                        route_page(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -430,9 +410,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "health", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::health(cx);
-                        };
+                        route_health(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -445,9 +423,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "status", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::get_status(cx);
-                                };
+                                route_get_status(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -457,18 +433,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "settings", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    app::get_settings(cx);
-                                };
+                                route_get_settings(cx);
                                 return;
                             }
                             if m == "PUT" {
-                                rest::route(cx) {
-                                    let s_ = app::security_token(cx);
-                                    rest::body(cx, 1 * 1024);
-                                    let body_ = rest::take<Settings>(cx);
-                                    app::put_settings(cx, s_, body_);
-                                };
+                                route_put_settings(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -478,12 +447,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "firmware", plain) {
                         if e2 == path.len {
                             if m == "PUT" {
-                                rest::route(cx) {
-                                    let s_ = app::security_token(cx);
-                                    rest::body(cx, 256 * 1024);
-                                    let body_ = rest::take<FirmwareUpload>(cx);
-                                    app::put_firmware(cx, s_, body_);
-                                };
+                                route_put_firmware(cx);
                                 return;
                             }
                             rest::no_method(cx, "PUT");
@@ -495,4 +459,52 @@ fn dispatch(cx) {
         }
     }
     rest::not_found(cx, m, path);
+}
+
+// GET /
+fn route_page(cx) {
+    rest::route(cx) {
+        app::page(cx);
+    };
+}
+
+// GET /health
+fn route_health(cx) {
+    rest::route(cx) {
+        app::health(cx);
+    };
+}
+
+// GET /v1/status
+fn route_get_status(cx) {
+    rest::route(cx) {
+        app::get_status(cx);
+    };
+}
+
+// GET /v1/settings
+fn route_get_settings(cx) {
+    rest::route(cx) {
+        app::get_settings(cx);
+    };
+}
+
+// PUT /v1/settings
+fn route_put_settings(cx) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        rest::body(cx, 1 * 1024);
+        let body_ = rest::take<Settings>(cx);
+        app::put_settings(cx, s_, body_);
+    };
+}
+
+// PUT /v1/firmware
+fn route_put_firmware(cx) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        rest::body(cx, 256 * 1024);
+        let body_ = rest::take<FirmwareUpload>(cx);
+        app::put_firmware(cx, s_, body_);
+    };
 }

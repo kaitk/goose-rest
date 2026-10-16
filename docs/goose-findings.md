@@ -303,6 +303,57 @@ and Goose inlines `on_later` into each, the request path's included. A `while` w
 Workaround: none. The request path holds the handler twice, as it did before `on_later`,
 when the second copy was the one for a gathered body.
 
+### Every temporary of a function takes its own stack slot
+
+Found on `ac759c3` (`v2026.1`). Status: open
+
+The C that Goose writes declares a function's temporaries at the top of the C function,
+those of every body inlined into it included, so the C compiler can't give two of them,
+used in different branches, one stack slot. A struct passed by value to a call that
+stays out of line gets a temporary of its own at each call, so the frame grows with the
+calls in the function, not with the deepest branch. With gcc's
+`-fstack-clash-protection`, Ubuntu's default, a frame of more than a page is probed a
+page at a time on every call, whichever branch runs. Expected: a temporary declared in
+the C block of the statement that uses it, or slots shared between branches. Below,
+`main`'s 64 calls in 64 branches give the C 129 `Big` temporaries of 64 bytes each, and
+gcc `-O2` an 8 KB frame that it probes twice per call:
+
+    import std;
+    import os;
+
+    struct Big { a: i64, b: i64, c: i64, d: i64, e: i64, f: i64, g: i64, h: i64 }
+
+    // Too big to inline: a call that takes x by value.
+    fn show(x: Big, k: i64) -> i64 {
+        var s = 0;
+        for i in x.a { s += i * x.h + k; if s > 1000 { print(s); } }
+        for i in x.b { s += i * x.g; if s > 2000 { print(s); } }
+        for i in x.c { s += i * x.f; if s > 3000 { print(s); } }
+        return s;
+    }
+
+    inline fn twice<F>() -> i64 { F() + F() }
+
+    fn main() {
+        let x = Big { a: args().len, b: 0, c: 0, d: 0, e: 0, f: 0, g: 0, h: 1 };
+        let n = args().len;
+        var t = 0;
+        if n == 0 { t += twice() { show(x, 0) }; }
+        // ... the same for 1 to 62
+        if n == 63 { t += twice() { show(x, 63) }; }
+        print(t);
+    }
+
+goose-rest meets it in a router. `rest::route` is an `inline fn`, and `rest::Cx`, about
+170 bytes, goes by value to each call in a route, so a function that holds many routes
+holds about 1 KB of frame for each. The generated router for the 203 routes of tier R
+had a frame of 217 KB, and its probes took 56% of the server's user cycles per request;
+built with `-fno-stack-clash-protection`, a request took 923 cycles instead of 2,220.
+
+Workaround: the generator writes each operation as a function of its own, called from an
+arm that returns, which Goose keeps out of line (`gen/router.goose`). A hand-written
+chain of many routes in one function still pays it: tier R's has a frame of 190 KB.
+
 ### UFCS doesn't reach the namespace of the receiver's type
 
 Found on `46356c2`. Status: open

@@ -139,9 +139,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::health(cx);
-                        };
+                        route_health(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -151,17 +149,11 @@ fn dispatch(cx) {
             8 => {
                 if path == "/v1/orgs" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::list_orgs(cx, s_);
-                        };
+                        route_list_orgs(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::create_org(cx, s_);
-                        };
+                        route_create_org(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -171,17 +163,11 @@ fn dispatch(cx) {
             9 => {
                 if path == "/v1/tasks" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::list_tasks(cx, s_);
-                        };
+                        route_list_tasks(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::create_task(cx, s_);
-                        };
+                        route_create_task(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -189,17 +175,11 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/files" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::list_files(cx, s_);
-                        };
+                        route_list_files(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::upload_file(cx, s_);
-                        };
+                        route_upload_file(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -209,17 +189,11 @@ fn dispatch(cx) {
             12 => {
                 if path == "/v1/users/me" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::get_me(cx, s_);
-                        };
+                        route_get_me(cx);
                         return;
                     }
                     if m == "PATCH" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::update_me(cx, s_);
-                        };
+                        route_update_me(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PATCH");
@@ -227,20 +201,11 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/projects" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            let q_ = rest::take<ListProjectsParams>(cx);
-                            app::list_projects(cx, s_, q_);
-                        };
+                        route_list_projects(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            rest::body(cx, 4 * 1024 * 1024);
-                            let body_ = rest::take<ProjectCreate>(cx);
-                            app::create_project(cx, s_, body_);
-                        };
+                        route_create_project(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -248,17 +213,11 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/webhooks" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::list_webhooks(cx, s_);
-                        };
+                        route_list_webhooks(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::create_webhook(cx, s_);
-                        };
+                        route_create_webhook(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -268,9 +227,7 @@ fn dispatch(cx) {
             14 => {
                 if path == "/v1/auth/login" {
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::login(cx);
-                        };
+                        route_login(cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -280,10 +237,7 @@ fn dispatch(cx) {
             15 => {
                 if path == "/v1/auth/logout" {
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::logout(cx, s_);
-                        };
+                        route_logout(cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -293,9 +247,7 @@ fn dispatch(cx) {
             16 => {
                 if path == "/v1/auth/refresh" {
                     if m == "POST" {
-                        rest::route(cx) {
-                            app::refresh(cx);
-                        };
+                        route_refresh(cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -303,10 +255,7 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/auth/session" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::get_session(cx, s_);
-                        };
+                        route_get_session(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -314,10 +263,7 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/reports/time" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::time_report(cx, s_);
-                        };
+                        route_time_report(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -327,10 +273,7 @@ fn dispatch(cx) {
             18 => {
                 if path == "/v1/reports/budget" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::budget_report(cx, s_);
-                        };
+                        route_budget_report(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -340,19 +283,11 @@ fn dispatch(cx) {
             19 => {
                 if path == "/v1/reports/exports" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            let q_ = rest::take<ListExportsParams>(cx);
-                            app::list_exports(cx, s_, q_);
-                        };
+                        route_list_exports(cx);
                         return;
                     }
                     if m == "POST" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            let q_ = rest::take<CreateExportParams>(cx);
-                            app::create_export(cx, s_, q_);
-                        };
+                        route_create_export(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -362,17 +297,11 @@ fn dispatch(cx) {
             21 => {
                 if path == "/v1/users/me/settings" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::get_settings(cx, s_);
-                        };
+                        route_get_settings(cx);
                         return;
                     }
                     if m == "PUT" {
-                        rest::route(cx) {
-                            let s_ = app::security_session(cx);
-                            app::put_settings(cx, s_);
-                        };
+                        route_put_settings(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -389,9 +318,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "health", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            app::health(cx);
-                        };
+                        route_health(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -407,9 +334,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "login", plain) {
                                 if e3 == path.len {
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            app::login(cx);
-                                        };
+                                        route_login(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "POST");
@@ -419,10 +344,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "logout", plain) {
                                 if e3 == path.len {
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            app::logout(cx, s_);
-                                        };
+                                        route_logout(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "POST");
@@ -432,9 +354,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "refresh", plain) {
                                 if e3 == path.len {
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            app::refresh(cx);
-                                        };
+                                        route_refresh(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "POST");
@@ -444,10 +364,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "session", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            app::get_session(cx, s_);
-                                        };
+                                        route_get_session(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -462,17 +379,11 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "me", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            app::get_me(cx, s_);
-                                        };
+                                        route_get_me(cx);
                                         return;
                                     }
                                     if m == "PATCH" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            app::update_me(cx, s_);
-                                        };
+                                        route_update_me(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PATCH");
@@ -483,17 +394,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "settings", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    app::get_settings(cx, s_);
-                                                };
+                                                route_get_settings(cx);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    app::put_settings(cx, s_);
-                                                };
+                                                route_put_settings(cx);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -505,12 +410,7 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_user(cx, s_, id);
-                                        };
+                                        route_get_user(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -521,21 +421,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "avatar", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::get_avatar(cx, s_, id);
-                                                };
+                                                route_get_avatar(cx, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::put_avatar(cx, s_, id);
-                                                };
+                                                route_put_avatar(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -549,17 +439,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "orgs", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::list_orgs(cx, s_);
-                                };
+                                route_list_orgs(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::create_org(cx, s_);
-                                };
+                                route_create_org(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -570,27 +454,15 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let org = rest::path_str(cx, s3, "org");
-                                            app::get_org(cx, s_, org);
-                                        };
+                                        route_get_org(cx, s3);
                                         return;
                                     }
                                     if m == "PATCH" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let org = rest::path_str(cx, s3, "org");
-                                            app::update_org(cx, s_, org);
-                                        };
+                                        route_update_org(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let org = rest::path_str(cx, s3, "org");
-                                            app::delete_org(cx, s_, org);
-                                        };
+                                        route_delete_org(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PATCH, DELETE");
@@ -601,19 +473,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "members", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let org = rest::path_str(cx, s3, "org");
-                                                    app::list_org_members(cx, s_, org);
-                                                };
+                                                route_list_org_members(cx, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let org = rest::path_str(cx, s3, "org");
-                                                    app::add_org_member(cx, s_, org);
-                                                };
+                                                route_add_org_member(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -624,12 +488,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let s_ = app::security_session(cx);
-                                                            let org = rest::path_str(cx, s3, "org");
-                                                            let user = rest::path_int(cx, s5, "user");
-                                                            app::remove_org_member(cx, s_, org, user);
-                                                        };
+                                                        route_remove_org_member(cx, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "DELETE");
@@ -645,20 +504,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "projects", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    let q_ = rest::take<ListProjectsParams>(cx);
-                                    app::list_projects(cx, s_, q_);
-                                };
+                                route_list_projects(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    rest::body(cx, 4 * 1024 * 1024);
-                                    let body_ = rest::take<ProjectCreate>(cx);
-                                    app::create_project(cx, s_, body_);
-                                };
+                                route_create_project(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -669,30 +519,15 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_project(cx, s_, id);
-                                        };
+                                        route_get_project(cx, s3);
                                         return;
                                     }
                                     if m == "PATCH" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::update_project(cx, s_, id);
-                                        };
+                                        route_update_project(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_project(cx, s_, id);
-                                        };
+                                        route_delete_project(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PATCH, DELETE");
@@ -703,12 +538,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "archive", plain) {
                                         if e4 == path.len {
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::archive_project(cx, s_, id);
-                                                };
+                                                route_archive_project(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "POST");
@@ -718,12 +548,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "restore", plain) {
                                         if e4 == path.len {
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::restore_project(cx, s_, id);
-                                                };
+                                                route_restore_project(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "POST");
@@ -733,21 +558,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "members", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::list_project_members(cx, s_, id);
-                                                };
+                                                route_list_project_members(cx, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::add_project_member(cx, s_, id);
-                                                };
+                                                route_add_project_member(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -758,13 +573,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "DELETE" {
-                                                        rest::route(cx) {
-                                                            let s_ = app::security_session(cx);
-                                                            let id = rest::path_int(cx, s3, "id");
-                                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                            let user = rest::path_int(cx, s5, "user");
-                                                            app::remove_project_member(cx, s_, id, user);
-                                                        };
+                                                        route_remove_project_member(cx, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "DELETE");
@@ -780,17 +589,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "tasks", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::list_tasks(cx, s_);
-                                };
+                                route_list_tasks(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::create_task(cx, s_);
-                                };
+                                route_create_task(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -801,30 +604,15 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_task(cx, s_, id);
-                                        };
+                                        route_get_task(cx, s3);
                                         return;
                                     }
                                     if m == "PATCH" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::update_task(cx, s_, id);
-                                        };
+                                        route_update_task(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_task(cx, s_, id);
-                                        };
+                                        route_delete_task(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PATCH, DELETE");
@@ -835,12 +623,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "assign", plain) {
                                         if e4 == path.len {
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::assign_task(cx, s_, id);
-                                                };
+                                                route_assign_task(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "POST");
@@ -850,21 +633,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "comments", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::list_comments(cx, s_, id);
-                                                };
+                                                route_list_comments(cx, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::add_comment(cx, s_, id);
-                                                };
+                                                route_add_comment(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -875,13 +648,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "PATCH" {
-                                                        rest::route(cx) {
-                                                            let s_ = app::security_session(cx);
-                                                            let id = rest::path_int(cx, s3, "id");
-                                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                            let comment = rest::path_str(cx, s5, "comment");
-                                                            app::update_comment(cx, s_, id, comment);
-                                                        };
+                                                        route_update_comment(cx, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "PATCH");
@@ -897,17 +664,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "files", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::list_files(cx, s_);
-                                };
+                                route_list_files(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::upload_file(cx, s_);
-                                };
+                                route_upload_file(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -918,21 +679,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_file(cx, s_, id);
-                                        };
+                                        route_get_file(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_file(cx, s_, id);
-                                        };
+                                        route_delete_file(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -943,21 +694,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "content", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::get_file_content(cx, s_, id);
-                                                };
+                                                route_get_file_content(cx, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::put_file_content(cx, s_, id);
-                                                };
+                                                route_put_file_content(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -971,17 +712,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "webhooks", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::list_webhooks(cx, s_);
-                                };
+                                route_list_webhooks(cx);
                                 return;
                             }
                             if m == "POST" {
-                                rest::route(cx) {
-                                    let s_ = app::security_session(cx);
-                                    app::create_webhook(cx, s_);
-                                };
+                                route_create_webhook(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -992,30 +727,15 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_webhook(cx, s_, id);
-                                        };
+                                        route_get_webhook(cx, s3);
                                         return;
                                     }
                                     if m == "PATCH" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::update_webhook(cx, s_, id);
-                                        };
+                                        route_update_webhook(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_webhook(cx, s_, id);
-                                        };
+                                        route_delete_webhook(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PATCH, DELETE");
@@ -1026,12 +746,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "deliveries", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s3, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::list_deliveries(cx, s_, id);
-                                                };
+                                                route_list_deliveries(cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1048,10 +763,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "time", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            app::time_report(cx, s_);
-                                        };
+                                        route_time_report(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1062,12 +774,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let user = rest::path_int(cx, s4, "user");
-                                                    if user < -2147483648 || user > 2147483647 { rest::fail_param(cx, "user: format"); }
-                                                    app::user_time_report(cx, s_, user);
-                                                };
+                                                route_user_time_report(cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1079,10 +786,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "budget", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            app::budget_report(cx, s_);
-                                        };
+                                        route_budget_report(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1092,19 +796,11 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "exports", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let q_ = rest::take<ListExportsParams>(cx);
-                                            app::list_exports(cx, s_, q_);
-                                        };
+                                        route_list_exports(cx);
                                         return;
                                     }
                                     if m == "POST" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_session(cx);
-                                            let q_ = rest::take<CreateExportParams>(cx);
-                                            app::create_export(cx, s_, q_);
-                                        };
+                                        route_create_export(cx);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1115,21 +811,11 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s4, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::get_export(cx, s_, id);
-                                                };
+                                                route_get_export(cx, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                rest::route(cx) {
-                                                    let s_ = app::security_session(cx);
-                                                    let id = rest::path_int(cx, s4, "id");
-                                                    if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                    app::delete_export(cx, s_, id);
-                                                };
+                                                route_delete_export(cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1140,12 +826,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "cancel", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        rest::route(cx) {
-                                                            let s_ = app::security_session(cx);
-                                                            let id = rest::path_int(cx, s4, "id");
-                                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                            app::cancel_export(cx, s_, id);
-                                                        };
+                                                        route_cancel_export(cx, s4);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -1155,12 +836,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "download", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        rest::route(cx) {
-                                                            let s_ = app::security_session(cx);
-                                                            let id = rest::path_int(cx, s4, "id");
-                                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                                            app::download_export(cx, s_, id);
-                                                        };
+                                                        route_download_export(cx, s4);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1178,4 +854,557 @@ fn dispatch(cx) {
         }
     }
     rest::not_found(cx, m, path);
+}
+
+// GET /health
+fn route_health(cx) {
+    rest::route(cx) {
+        app::health(cx);
+    };
+}
+
+// GET /v1/orgs
+fn route_list_orgs(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::list_orgs(cx, s_);
+    };
+}
+
+// POST /v1/orgs
+fn route_create_org(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::create_org(cx, s_);
+    };
+}
+
+// GET /v1/tasks
+fn route_list_tasks(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::list_tasks(cx, s_);
+    };
+}
+
+// POST /v1/tasks
+fn route_create_task(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::create_task(cx, s_);
+    };
+}
+
+// GET /v1/files
+fn route_list_files(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::list_files(cx, s_);
+    };
+}
+
+// POST /v1/files
+fn route_upload_file(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::upload_file(cx, s_);
+    };
+}
+
+// GET /v1/users/me
+fn route_get_me(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::get_me(cx, s_);
+    };
+}
+
+// PATCH /v1/users/me
+fn route_update_me(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::update_me(cx, s_);
+    };
+}
+
+// GET /v1/projects
+fn route_list_projects(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let q_ = rest::take<ListProjectsParams>(cx);
+        app::list_projects(cx, s_, q_);
+    };
+}
+
+// POST /v1/projects
+fn route_create_project(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        rest::body(cx, 4 * 1024 * 1024);
+        let body_ = rest::take<ProjectCreate>(cx);
+        app::create_project(cx, s_, body_);
+    };
+}
+
+// GET /v1/webhooks
+fn route_list_webhooks(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::list_webhooks(cx, s_);
+    };
+}
+
+// POST /v1/webhooks
+fn route_create_webhook(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::create_webhook(cx, s_);
+    };
+}
+
+// POST /v1/auth/login
+fn route_login(cx) {
+    rest::route(cx) {
+        app::login(cx);
+    };
+}
+
+// POST /v1/auth/logout
+fn route_logout(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::logout(cx, s_);
+    };
+}
+
+// POST /v1/auth/refresh
+fn route_refresh(cx) {
+    rest::route(cx) {
+        app::refresh(cx);
+    };
+}
+
+// GET /v1/auth/session
+fn route_get_session(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::get_session(cx, s_);
+    };
+}
+
+// GET /v1/reports/time
+fn route_time_report(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::time_report(cx, s_);
+    };
+}
+
+// GET /v1/reports/budget
+fn route_budget_report(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::budget_report(cx, s_);
+    };
+}
+
+// GET /v1/reports/exports
+fn route_list_exports(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let q_ = rest::take<ListExportsParams>(cx);
+        app::list_exports(cx, s_, q_);
+    };
+}
+
+// POST /v1/reports/exports
+fn route_create_export(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let q_ = rest::take<CreateExportParams>(cx);
+        app::create_export(cx, s_, q_);
+    };
+}
+
+// GET /v1/users/me/settings
+fn route_get_settings(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::get_settings(cx, s_);
+    };
+}
+
+// PUT /v1/users/me/settings
+fn route_put_settings(cx) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        app::put_settings(cx, s_);
+    };
+}
+
+// GET /v1/users/{id}
+fn route_get_user(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_user(cx, s_, id);
+    };
+}
+
+// GET /v1/users/{id}/avatar
+fn route_get_avatar(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_avatar(cx, s_, id);
+    };
+}
+
+// PUT /v1/users/{id}/avatar
+fn route_put_avatar(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::put_avatar(cx, s_, id);
+    };
+}
+
+// GET /v1/orgs/{org}
+fn route_get_org(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let org = rest::path_str(cx, s3, "org");
+        app::get_org(cx, s_, org);
+    };
+}
+
+// PATCH /v1/orgs/{org}
+fn route_update_org(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let org = rest::path_str(cx, s3, "org");
+        app::update_org(cx, s_, org);
+    };
+}
+
+// DELETE /v1/orgs/{org}
+fn route_delete_org(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let org = rest::path_str(cx, s3, "org");
+        app::delete_org(cx, s_, org);
+    };
+}
+
+// GET /v1/orgs/{org}/members
+fn route_list_org_members(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let org = rest::path_str(cx, s3, "org");
+        app::list_org_members(cx, s_, org);
+    };
+}
+
+// POST /v1/orgs/{org}/members
+fn route_add_org_member(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let org = rest::path_str(cx, s3, "org");
+        app::add_org_member(cx, s_, org);
+    };
+}
+
+// DELETE /v1/orgs/{org}/members/{user}
+fn route_remove_org_member(cx, s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let org = rest::path_str(cx, s3, "org");
+        let user = rest::path_int(cx, s5, "user");
+        app::remove_org_member(cx, s_, org, user);
+    };
+}
+
+// GET /v1/projects/{id}
+fn route_get_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_project(cx, s_, id);
+    };
+}
+
+// PATCH /v1/projects/{id}
+fn route_update_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::update_project(cx, s_, id);
+    };
+}
+
+// DELETE /v1/projects/{id}
+fn route_delete_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_project(cx, s_, id);
+    };
+}
+
+// POST /v1/projects/{id}/archive
+fn route_archive_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::archive_project(cx, s_, id);
+    };
+}
+
+// POST /v1/projects/{id}/restore
+fn route_restore_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::restore_project(cx, s_, id);
+    };
+}
+
+// GET /v1/projects/{id}/members
+fn route_list_project_members(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::list_project_members(cx, s_, id);
+    };
+}
+
+// POST /v1/projects/{id}/members
+fn route_add_project_member(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::add_project_member(cx, s_, id);
+    };
+}
+
+// DELETE /v1/projects/{id}/members/{user}
+fn route_remove_project_member(cx, s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        let user = rest::path_int(cx, s5, "user");
+        app::remove_project_member(cx, s_, id, user);
+    };
+}
+
+// GET /v1/tasks/{id}
+fn route_get_task(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_task(cx, s_, id);
+    };
+}
+
+// PATCH /v1/tasks/{id}
+fn route_update_task(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::update_task(cx, s_, id);
+    };
+}
+
+// DELETE /v1/tasks/{id}
+fn route_delete_task(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_task(cx, s_, id);
+    };
+}
+
+// POST /v1/tasks/{id}/assign
+fn route_assign_task(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::assign_task(cx, s_, id);
+    };
+}
+
+// GET /v1/tasks/{id}/comments
+fn route_list_comments(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::list_comments(cx, s_, id);
+    };
+}
+
+// POST /v1/tasks/{id}/comments
+fn route_add_comment(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::add_comment(cx, s_, id);
+    };
+}
+
+// PATCH /v1/tasks/{id}/comments/{comment}
+fn route_update_comment(cx, s3: const u8[:], s5: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        let comment = rest::path_str(cx, s5, "comment");
+        app::update_comment(cx, s_, id, comment);
+    };
+}
+
+// GET /v1/files/{id}
+fn route_get_file(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_file(cx, s_, id);
+    };
+}
+
+// DELETE /v1/files/{id}
+fn route_delete_file(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_file(cx, s_, id);
+    };
+}
+
+// GET /v1/files/{id}/content
+fn route_get_file_content(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_file_content(cx, s_, id);
+    };
+}
+
+// PUT /v1/files/{id}/content
+fn route_put_file_content(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::put_file_content(cx, s_, id);
+    };
+}
+
+// GET /v1/webhooks/{id}
+fn route_get_webhook(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_webhook(cx, s_, id);
+    };
+}
+
+// PATCH /v1/webhooks/{id}
+fn route_update_webhook(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::update_webhook(cx, s_, id);
+    };
+}
+
+// DELETE /v1/webhooks/{id}
+fn route_delete_webhook(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_webhook(cx, s_, id);
+    };
+}
+
+// GET /v1/webhooks/{id}/deliveries
+fn route_list_deliveries(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::list_deliveries(cx, s_, id);
+    };
+}
+
+// GET /v1/reports/time/{user}
+fn route_user_time_report(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let user = rest::path_int(cx, s4, "user");
+        if user < -2147483648 || user > 2147483647 { rest::fail_param(cx, "user: format"); }
+        app::user_time_report(cx, s_, user);
+    };
+}
+
+// GET /v1/reports/exports/{id}
+fn route_get_export(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s4, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_export(cx, s_, id);
+    };
+}
+
+// DELETE /v1/reports/exports/{id}
+fn route_delete_export(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s4, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_export(cx, s_, id);
+    };
+}
+
+// POST /v1/reports/exports/{id}/cancel
+fn route_cancel_export(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s4, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::cancel_export(cx, s_, id);
+    };
+}
+
+// GET /v1/reports/exports/{id}/download
+fn route_download_export(cx, s4: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_session(cx);
+        let id = rest::path_int(cx, s4, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::download_export(cx, s_, id);
+    };
 }

@@ -225,7 +225,7 @@ let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 | OpenAPI | Goose |
 |---|---|
 | A path, `/projects/{id}` | matched segment by segment; a parameter takes a whole, non-empty segment |
-| An operation, `get`, `post`, ... | a call to `<handlers>::<operationId in snake_case>` inside `rest::route` |
+| An operation, `get`, `post`, ... | a function, `route_<operationId in snake_case>`, that calls `<handlers>::<operationId in snake_case>` inside `rest::route`; `dispatch` calls it |
 | A path parameter, `"type": "integer"` | an `i64` from `rest::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
 | A path parameter, `"type": "string"`, with `format: ascii` or none | the segment, decoded, from `rest::path_str`, checked as ASCII for `format: ascii` |
 | Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
@@ -236,6 +236,11 @@ let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 The router's namespace also gets `MAX_BODY`, the largest `x-body-limit` or 1 MB, for
 `http::Config { max_body: api::MAX_BODY, .. }`. goose-http refuses a body past it with a
 413 of its own, without a body, before the route runs.
+
+Each operation's code is in its own function, not in `dispatch`, so that a document's
+routes don't add up in one stack frame: the C compiler's stack probes touch a frame page
+by page on every call, and with every route inline, `dispatch` would take most of a
+request's time on a document of a few hundred routes.
 
 A handler takes `cx`, then the security check's result if the operation names
 a scheme, its path parameters in the template's order, its parameters struct, and its
