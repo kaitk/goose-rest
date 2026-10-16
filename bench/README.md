@@ -31,10 +31,13 @@ scripts work around.
 
 The REST servers live under `rest/`:
 
-- `goose-rest/`: goose-http's REST tier server at goose-http's pin, ported onto
-  goose-rest: its routes, extractors, and middleware are goose-rest's, and it loads,
-  hands over, and holds its records as goose-http's server does, its prebuilt JSON in
-  goose-http's shared store.
+- `goose-rest/`: goose-http's REST tier server at goose-http's pin, served through
+  goose-rest: `main.goose` holds its routes, extractors, middleware, error shapes, and
+  threads, and imports the rest from goose-http's `bench/rest/goose/app.goose` as
+  `http.bench.rest.goose.app`: the records, their loaders and JSON, and tier D's work
+  on a body. Both Goose servers do the same work outside the framework, and load, hand
+  over, and hold their records the same way, their prebuilt JSON in goose-http's shared
+  store.
 - `axum/` and `actix-web/`, with `rust-app/` holding the records and JSON they share.
 - `dusty/`: dusty with a route per path.
 - `tiers/`: goose-rest's own tiers F, R, and M, with their checker, loads, and summary.
@@ -51,7 +54,9 @@ checkout.
 `check` runs on macOS too, after `OWN=1 bench/rest.sh build`, which skips goose-http's
 build, given goose-http's datasets in its `build/rest` (`goose build` and run its
 `bench/rest/gen.goose` into it). dusty needs Zig 0.16.0 there, which Homebrew doesn't
-install ([known issues](../docs/known-issues.md#the-rest-benchmark-on-macos)).
+install. Both Goose servers call glibc's `mallopt`, so they build only on Linux: on a
+Mac, in an arm64 Linux container
+([known issues](../docs/known-issues.md#the-rest-benchmark-on-macos)).
 
 ## An unattended session
 

@@ -58,6 +58,6 @@ unless the table says otherwise.
 | 035: best practices | Built; the testing page, then data access and a full example once there are database helpers and JWT. |
 | 027: a helper over the shared store | Deferred until a program needs it. |
 | 022: OpenAPI output | Planned for later. |
-| 012: a benchmark app shared with goose-http | Waits on goose-http's task 031. |
+| 012: a benchmark app shared with goose-http | Done in Docker on a Mac; the Linux desktop's idle VmRSS recheck remains, before task 010's run. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |

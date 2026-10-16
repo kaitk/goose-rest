@@ -78,7 +78,11 @@ build)
     "$goose" "$root/gen/main.goose" -- gen "$root/bench/rest/goose-rest/github.json" -o "$bin/github_gen.goose" >/dev/null
     cmp -s "$bin/github_gen.goose" "$root/bench/rest/goose-rest/github_gen.goose" ||
         { echo "bench/rest.sh: github_gen.goose is stale; regenerate it (scripts/test.sh)"; exit 1; }
-    "$goose" build --cc gcc --standalone -o "$bin/rest-goose-rest" "$root/bench/rest/goose-rest/main.goose"
+    if [ "$(uname -s)" = Darwin ]; then
+        echo "bench/rest.sh: rest-goose-rest calls glibc's mallopt; build it on Linux" >&2
+    else
+        "$goose" build --cc gcc --standalone -o "$bin/rest-goose-rest" "$root/bench/rest/goose-rest/main.goose"
+    fi
     if [ "${ONLY:-}" = goose ]; then
         ls -l "$bin"
         exit 0

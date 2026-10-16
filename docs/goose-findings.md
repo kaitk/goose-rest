@@ -39,6 +39,43 @@ variant Waiting.None`. Expected: the same message for both.
 
 Workaround: none needed; compare the candidates with the enum's variants.
 
+### A package's module can't import another module of its package
+
+Found on `3ee3871` (release `v2026.2`), the benchmark server. Status: open
+
+Spec §11.1 resolves `import pkg.mod;` among the root's declared packages, as
+`docs/design/packages.md` §4.4 lists it. From a module inside a package the root imports,
+the same import looks only under that module's package directory (`<package>/pkg/`) and in
+the stdlib, so it fails. The same import written in the root resolves. goose-http's
+`bench/rest/goose/app.goose`, which the benchmark server imports, can't import
+`http.store` for this reason.
+
+    // app/main.goose
+    import mylib2 from "../mylib2";
+    import mylib2.sub.user;
+    fn main() { print(used()); }
+
+    // mylib2/mylib2.goose
+    fn entry() -> i64 { 1 }
+
+    // mylib2/extra.goose
+    fn helper() -> i64 { 2 }
+
+    // mylib2/sub/user.goose
+    import mylib2.extra;
+    fn used() -> i64 { helper() }
+
+    $ goose run app/main.goose
+    mylib2/sub/user.goose:1: error: cannot find the module mylib2.extra, looked for
+        .../mylib2/mylib2/extra.goose
+        .../stdlib/mylib2/extra.goose
+
+Expected: `2`. Importing `mylib2.extra` in `app/main.goose` as well doesn't help while
+`user.goose` keeps its import.
+
+Workaround: the module leaves the import out and the root imports the module instead:
+`bench/rest/goose-rest/main.goose` imports `http.store` for `app.goose`.
+
 ### A block given a local struct gets a copy of it
 
 Found on `a6249a4`. Status: open; still prints 0 on `46356c2`. Recorded in

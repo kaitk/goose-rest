@@ -70,6 +70,12 @@ What `bench/rest.sh check` met on macOS (2026-10-14):
   builds dusty from a copy in `CACHE`, and passes tier R's route list with `-Dgithub`.
 - In zsh, `env $v` passes a variable holding `A=1 B=2` as one argument; `bench/rest.sh`
   is `sh`, where it splits.
+- Both Goose REST servers call glibc's `mallopt`, which macOS lacks, so they don't link
+  there (2026-10-16). They build and pass `check` in an `ubuntu:26.04` arm64 container
+  on Docker Desktop, with `--security-opt seccomp=unconfined` so `LOOP=uring` gets
+  io_uring, Goose built from source by `scripts/goose.sh`, and goose-http's datasets in
+  `GOOSE_HTTP`'s `build/rest`. `bench/rest.sh` needs `nc` (`netcat-openbsd`), which the
+  base image lacks.
 
 ## ARM under Docker
 
