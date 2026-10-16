@@ -71,7 +71,7 @@ a program also needs a C compiler and, on Linux, liburing:
 Save this as `hello.goose`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.3.3";
+import http from "github.com/kaitk/goose-http@v0.3.4";
 import rest from "github.com/kaitk/goose-rest@v0.1.0";
 
 fn handle(cx) {

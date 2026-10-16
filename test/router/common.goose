@@ -4,7 +4,7 @@
 // stands for.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.3.3";
+import http from "github.com/kaitk/goose-http@v0.3.4";
 import rest from "../../";
 import expect from "../";
 import expect.gen.routes_gen;

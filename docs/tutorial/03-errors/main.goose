@@ -2,7 +2,7 @@
 // type of its per-request state.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.3.3";
+import http from "github.com/kaitk/goose-http@v0.3.4";
 import rest from "../../../";
 
 // The per-request state. This program keeps nothing in it: its type picks

@@ -1,6 +1,6 @@
 // rest::is_email, format email's check.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.3";
+import http from "github.com/kaitk/goose-http@v0.3.4";
 import rest from "../../";
 
 fn main() {

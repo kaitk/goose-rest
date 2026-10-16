@@ -2,7 +2,7 @@
 // share: the routes' waits and the case functions that resume them, which
 // log what they saw, through rest::serve_one.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.3";
+import http from "github.com/kaitk/goose-http@v0.3.4";
 import rest from "../../";
 import expect from "../";
 

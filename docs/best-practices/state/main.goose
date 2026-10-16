@@ -7,7 +7,7 @@
 //   curl -s localhost:8080/holidays
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.3.3";
+import http from "github.com/kaitk/goose-http@v0.3.4";
 import rest from "../../../";
 
 struct Holiday { date: const u8[:], name: const u8[:] }
