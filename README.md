@@ -180,8 +180,8 @@ middleware.
 | [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,090 req/s (99%) | **1,191** | 1,117 | 1,119 |
 | [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **133 MB**, uploads beside forms | 781 MB, uploads beside forms | 388 MB, C templates | 587 MB, C templates |
 
-The percentage is goose-rest's rate against goose-http's own server for the same
-routes, written without a framework.
+*Note: percentages, such as (97%), are goose-rest's share of goose-http's rate with no
+framework.*
 
 Goose uses io_uring. Results for every server, both Goose event loops, and memory:
 [docs/benchmarks.md](docs/benchmarks.md#against-other-frameworks).
