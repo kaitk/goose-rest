@@ -5,7 +5,7 @@ and `fail(cx, status, code)` does `return Failure { ... } from route`. The appli
 in namespace `app`, calls `fail` two and three calls below the handler that `route`'s
 block calls. `rest::serve` then writes the error that `route` returns.
 
-Goose: release `v2026.1` (`ac759c3`), with the same output as on `bc3c1f1` and `a6249a4`.
+Goose: release `v2026.2` (`3ee3871`), with the same output as on `v2026.1` (`ac759c3`), `bc3c1f1` and `a6249a4`.
 
 ```sh
 GOOSE=<build>/goose

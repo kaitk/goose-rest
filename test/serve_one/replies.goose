@@ -2,7 +2,7 @@
 // timeout: a value and its tag, a relay in one piece and in several, two
 // waits in turn, and a wait with no wake left.
 import std;
-import http from "github.com/kaitk/goose-http@6e57c429ae1fa6dd01b5bc4c253eb4cf71a20aa7";
+import http from "github.com/kaitk/goose-http@v0.3.6";
 import rest from "../../";
 import expect from "../";
 
