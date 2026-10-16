@@ -1,7 +1,7 @@
 # Naming
 
-Two rules give every name in an application, and the table below applies them to each
-kind of name.
+Two rules guide naming throughout an application, and the table below applies them to
+each kind of name.
 
 ## A name doesn't repeat its domain
 
@@ -23,8 +23,8 @@ projects::create  ->  create_project  ->  find_project, insert_project
 ```
 
 The noun in a service job's or a query's name is the exception to the rule above: it
-tells a job or a query from the route that calls it, and the queries of a job that
-touches several entities apart.
+distinguishes a job or a query from the route that calls it, and distinguishes the
+queries of a job that touches several entities from each other.
 
 ## The names
 

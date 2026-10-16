@@ -4,7 +4,7 @@ An application's tests follow Goose's own convention
 ([Tests](../decisions.md#tests)), laid out by domain as the code is:
 
 - **Small tests, by domain.** Each test is a small program in `test/<domain>/`, such as
-  `test/projects/`, that prints what it checks, compared with its golden file. It calls
+  `test/projects/`, that prints what it checks; that output is compared with its golden file. It calls
   the domain's rules as plain functions, and its routes, middleware, and stacks through
   `rest::serve_one` ([Testing](../reference.md#testing)).
 - **Scenarios over HTTP.** A folder per scenario under `test/` runs the real program, its

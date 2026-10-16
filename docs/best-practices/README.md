@@ -3,7 +3,7 @@
 The [tutorial](../tutorial/README.md) teaches goose-rest's mechanisms one at a time, and
 shows the options each one has. This section gives one way to put them together into an
 application that grows: where each piece of code goes, and what it's called. It's the
-way goose-rest's authors build their own applications, and the way they recommend. You
+way goose-rest's authors build their own applications, and the approach they recommend. You
 don't have to follow it, and goose-rest doesn't check it. Its value is that one
 convention, followed everywhere, lets a reader find any piece of code without looking.
 
@@ -22,4 +22,4 @@ that a reader can tell when it applies.
 7. [Testing](testing.md): small tests per domain, and scenarios over HTTP.
 
 Each page's code is quoted from a small program in the folder of the same name, which
-`scripts/test.sh` builds and sends requests, as it does the tutorial's.
+`scripts/test.sh` builds and sends requests to, as it does for the tutorial's programs.

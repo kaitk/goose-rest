@@ -89,9 +89,10 @@ fn handle(cx) {
 `rest::scope` narrows the router to a prefix, and `rest::otherwise` answers 404, 405,
 and OPTIONS across scopes from the routes it passed. An extractor runs only where the
 handler calls it, and `goose-http` keeps header lines as bytes until one is asked for,
-so a route parses only what it reads. A body arrives parsed and validated; a malformed
-one gets 400 and its field errors, in one error shape for every route, before the
-handler runs.
+so a route parses only what it reads. A body taken as a schema type, with `rest::take`
+or by the generated router, arrives parsed and validated; a malformed one gets 400 and
+its field errors, in one error shape for every route, before the code that uses it
+runs. A route that reads `rest::body` gets the bytes and parses them itself.
 
 `rest::fail` leaves through `return ... from rest::route`, so a helper several calls
 down can answer 404 without passing an error back up. A call to `fail` outside a route
@@ -112,7 +113,7 @@ nothing the route doesn't read.
 
 Middleware is a block around the routes it applies to. A handler behind middleware
 compiles to one C function, with the middleware, the route, and the code that fails
-inlined into it, and each early answer a jump. Three rules keep it so:
+inlined into it, with each early answer compiled as a jump. Three rules keep it so:
 
 - **One route per request.** A function that fails returns from the innermost route,
   so a route nested in a route keeps both out of line. Middleware doesn't open routes
@@ -209,8 +210,8 @@ What the generator adds is the rest:
 Each handler call is typed from its operation. A missing handler, or one whose
 parameters have the wrong types, fails to compile, which keeps schema and code in step.
 A construct outside the supported subset is a generator error that names it, never
-silently dropped. The generated code is plain Goose, read and debugged like any other
-file, and never edited.
+silently dropped. The generated code is plain Goose, can be read and debugged like any other
+file, and is never edited.
 
 Without a schema, the if chain is the API. Each `rest::on` scans the path again from its
 start, so a long chain costs more per request than a generated router

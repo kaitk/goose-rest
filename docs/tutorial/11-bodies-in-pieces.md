@@ -128,7 +128,7 @@ releases what the state holds then: here, the `.part` file. That happens when:
 - a chunked body passes the limit;
 - the route fails while handling a piece, such as when the disk is full, or answers before the `END`.
 
-After `CLOSED`, the route gets no more pieces. A failure at a piece is answered at once,
+After `CLOSED`, the route gets no more pieces. A failure while handling a piece is answered at once,
 in the error shape, and goose-http drops the rest of the body. A route that answers at
 the `END`, as here, gets no `CLOSED`, so a check that fails there cleans up first, as
 the form below does.

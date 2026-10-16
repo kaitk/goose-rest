@@ -16,7 +16,7 @@ The code on this page is from [`state/`](state/).
 | One request's own: the signed-in user, looked up once | The request's state, `cx.state`, with `rest::once` |
 
 Each row is the cheapest place that still gives every request the right answer. Data
-that every worker must see the same doesn't go per worker, and data that one worker can
+that must look the same to every worker doesn't go per worker, and data that one worker can
 keep doesn't cost a message to another thread.
 
 ## Data known at build time is a global
@@ -54,8 +54,8 @@ thread_fn worker(cfg: http::Config) {
     let e = rest::serve(cfg, app) { cx => handle(cx) };
 ```
 
-A client's next request may reach another worker. Data that must be the same for it
-there, such as a project just created, belongs on a service thread. The programs in this
+A client's next request may reach another worker. Data that must be the same for the client
+on that worker, such as a project just created, belongs on a service thread. The programs in this
 section and the tutorial keep projects per worker only because they run one worker.
 
 ## The state's types are declared in `main.goose`

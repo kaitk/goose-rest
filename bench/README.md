@@ -4,7 +4,7 @@ Build and run goose-rest's benchmark servers, configure the workloads, and keep 
 results. The [benchmark summary](../docs/benchmarks.md) owns the current comparisons and
 the tiers. Most of the harness is goose-http's, which this directory wraps:
 [its bench/README.md](https://github.com/kaitk/goose-http/blob/main/bench/README.md)
-has the toolchain, the method, and how each number is taken.
+has the toolchain, the method, and how each number is measured.
 
 ```sh
 bench/rest.sh build    # goose-http's servers and datasets, then this repository's
@@ -35,7 +35,7 @@ The REST servers live under `rest/`:
   goose-rest: its routes, extractors, and middleware are goose-rest's, and it loads,
   hands over, and holds its records as goose-http's server does, its prebuilt JSON in
   goose-http's shared store.
-- `axum/` and `actix-web/`, with `rust-app/` the records and JSON they share.
+- `axum/` and `actix-web/`, with `rust-app/` holding the records and JSON they share.
 - `dusty/`: dusty with a route per path.
 - `tiers/`: goose-rest's own tiers F, R, and M, with their checker, loads, and summary.
 
@@ -81,7 +81,7 @@ results up is a separate step.
 ## Instruction counts on macOS
 
 goose-http's `bench/count.sh` counts a server's user instructions with Linux `perf`, and
-macOS has none. `bench/routes.sh` uses its load on macOS instead: the server runs under
+that tool isn't available on macOS. `bench/routes.sh` uses its load on macOS instead: the server runs under
 `/usr/bin/time -l`, whose "instructions retired" include the kernel's, and the count is
 divided by the requests
 ([goose-http's known issues, macOS](https://github.com/kaitk/goose-http/blob/main/docs/known-issues.md#macos)).

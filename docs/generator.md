@@ -86,7 +86,7 @@ doc = {"openapi": "3.1.0", "info": {"title": "Device", "version": "1"},
 ```
 
 `test/gen/pydantic.json` is such an export, of pydantic 2.11.7, and the golden file
-beside it what the generator writes from it. `Field(ge=, le=, min_length=, max_length=)`,
+beside it is what the generator writes from that export. `Field(ge=, le=, min_length=, max_length=)`,
 `Literal` of strings, `Optional[T] = None`, nested models, `list[T]`, and
 `extra="forbid"` map onto the subset. Defaults other than `None`, unions other than with
 `None`, and `pattern` are refused, each with its pointer. FastAPI writes a whole
@@ -110,9 +110,9 @@ document the same way, with paths. Rust's schemars writes optional values in the
 | `"anyOf": [<schema>, {"type": "null"}]`, in either order, with annotations and `"default": null` beside it | the schema, nullable, as above; pydantic and schemars write optional values this way |
 
 A limited array takes its full capacity whatever the string's length, so a field of
-`maxLength: 200` takes 800 bytes, and 200 with a format in the table's last row. That
+`maxLength: 200` takes 800 bytes, and 200 with one of the ASCII formats above. That
 suits a request's body, which lives for the request. A program that keeps many records
-of a generated type, as a cache, keeps their strings as ranges into one byte array
+of a generated type, such as in a cache, keeps their strings as ranges into one byte array
 instead ([tutorial](tutorial/08-state.md#per-worker)), or marks a string that holds
 only codes or identifiers `format: ascii`
 ([tutorial](tutorial/04-json.md#size-a-string-in-bytes)).
@@ -213,7 +213,7 @@ to know whether a comma is due.
 ## Paths
 
 A document with `paths` also gets `fn dispatch(cx)`, which answers a
-request through the handler its path and method name. A program calls it from
+request through the handler named by its path and method. A program calls it from
 `rest::serve`:
 
 ```rust
@@ -278,7 +278,7 @@ struct ListProjectsParams { has_page: bool, page: i64, q: const u8[:] }
 fn list_projects(cx, s, q) { ... q.page ... }    // in app
 ```
 `summary`, `description`, `tags`, `deprecated`, `externalDocs`, `responses`, and a
-parameter's `description`, `deprecated`, and examples are read for nothing. The
+parameter's `description`, `deprecated`, and examples are read but not used. The
 handler writes the response; `responses` isn't checked against it.
 
 ### What it refuses
@@ -295,9 +295,9 @@ Each of these is an error at its JSON pointer:
   parameter no parameter declares; a parameter's `style`, `explode`, or `content`; a
   `required` that isn't `true` or `false`; a parameter repeated in one list.
 - A path parameter's schema other than an integer or a string, and on a string any
-  keyword but `format: ascii`. Another parameter's other than an integer, a boolean, or
-  a string with `minLength`, `maxLength`, and `format: ascii`, so `default`, `enum`, and
-  arrays among them, and a `format` other than `ascii`.
+  keyword but `format: ascii`. For another parameter, a schema other than an integer,
+  a boolean, or a string with `minLength`, `maxLength`, and `format: ascii`; this excludes
+  `default`, `enum`, and arrays, as well as a `format` other than `ascii`.
 - A header parameter named `Accept`, `Content-Type`, or `Authorization`, which OpenAPI
   says to ignore.
 - A path parameter or handler named after one of `dispatch`'s locals (`cx`, `state`,

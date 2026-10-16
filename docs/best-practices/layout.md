@@ -3,7 +3,7 @@
 An application's code is grouped by domain: the part of the product it serves, such as
 projects, teams, or time entries. Each domain's folder holds that domain's structs,
 errors, rules, routes, and services. The kind of code (routes, rules) sets the file
-name inside the folder, never the folder.
+name inside the folder, never the folder name.
 
 This is a time-tracking API with eight domains and three audiences, laid out this way:
 
@@ -63,7 +63,7 @@ Each file of a domain declares the domain's namespace, `namespace projects;`, so
 names inside don't repeat the domain: `projects::CreateInput`, `teams::CreateInput`.
 
 Goose keeps the two apart by namespace, and a call from outside the domain names it
-once: `projects::routes(cx, member)`. A folder in `common/` is a namespace of its own
+once: `projects::routes(cx, member)`. A folder in `common/` has a namespace with the same
 name, such as `members`, and `common/`'s own files are in `common`.
 
 ## Shared code moves to `common/`

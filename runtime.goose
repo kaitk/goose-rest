@@ -77,8 +77,8 @@ let BODY_LIMIT = 1024 * 1024;
 // rest::body_in_pieces don't count.
 struct Config { gather_budget: i64 = GATHER_BUDGET }
 
-// 64 bodies at goose-http's default max_body of 1 MB at once, or four at a
-// 16 MB limit, in each worker.
+// 63 bodies at goose-http's default max_body of 1 MB at once, with their
+// heads, or three at a 16 MB limit, in each worker.
 let GATHER_BUDGET: i64 = 64 * 1024 * 1024;
 
 // A run of the spill in use, a gathered body's or what an exchange's

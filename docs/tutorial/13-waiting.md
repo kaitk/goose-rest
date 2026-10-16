@@ -108,7 +108,7 @@ struct AssignJob { project: i64, task: i64, user: i64, assignee: i64 }
 struct AssignReply { status: i32 = 200, code: u8[..32] = "" }
 ```
 
-The service's thread takes each job from its box with `rest::asked<J>`, and replies
+The service thread takes each job from its box with `rest::asked<J>` and replies
 with `rest::reply_value`:
 
 ```rust

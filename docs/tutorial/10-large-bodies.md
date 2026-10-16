@@ -116,13 +116,13 @@ takes room as it grows. A body for which the worker has no room within the budge
 once, before the client sends it, and a chunked one once it can't grow, which also
 closes the connection. The client can send it again a second later, once the bodies
 gathered meanwhile have been answered.
-The default lets a worker gather 64 bodies at the 1 MB limit at once. The import sets a
-budget of its own, in the `rest::Config` it passes to `rest::serve` after the
-per-request state, here none:
+The default, 64 MB, lets a worker gather 63 bodies at the 1 MB limit at once, since each
+takes its head too. The import sets a budget of its own, in the `rest::Config` it
+passes to `rest::serve` after the per-request state, here none:
 
 ```rust
-// The most bytes the worker gathers at once: 16 imports at the limit, where
-// the default, 64 MB, would take 256.
+// The most bytes the worker gathers at once: 15 imports at the limit, with
+// their heads, where the default, 64 MB, would take 255.
 let LIMITS = rest::Config { gather_budget: 16 * IMPORT_LIMIT };
 ```
 

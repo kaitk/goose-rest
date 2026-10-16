@@ -1,7 +1,7 @@
 # Goose findings
 
 Goose compiler and stdlib gaps found here, in the format of goose-http's
-`docs/goose-findings.md`. Each names the Goose commit it was found on, and the one it
+`docs/goose-findings.md`. Each entry names the Goose commit the gap was found on, and the one it
 was last checked on. A gap fixed upstream leaves this file with the pin move that
 takes the fix.
 
@@ -267,11 +267,12 @@ the code that fails all fold into the handler, which may stay one function of it
 
 Found on `ac759c3` (`v2026.1`). Status: open
 
-The inverse of the entry above. A function with one call site is inlined whatever its
-size, unless the call is in a guard's `else` or an arm that ends in a `return`, `break`,
-or `abort` (implementation notes, "Inlining"); and the C compiler inlines a static
-function with one caller unless Goose declares it `GS_NOINLINE`. A call that is rare
-but not on such an arm can't be kept out of line. Expected: a way to ask for it, as
+The inverse of the entry above. A function with one call site is inlined unless its
+body passes the size limit that entry names, four times larger in a loop, or the call is
+in a guard's `else` or an arm that ends in a `return`, `break`, or `abort`
+(implementation notes, "Inlining"); and the C compiler inlines a static function with
+one caller unless Goose declares it `GS_NOINLINE`. A call that is rare but within the
+limit and not on such an arm can't be kept out of line. Expected: a way to ask for it, as
 Rust's `#[inline(never)]` or C's `noinline`. Below, `rare` is inlined into `main`'s
 loop at `-O2`, and the C has `main_g` alone:
 
@@ -325,7 +326,7 @@ Within the library itself, and for programs in the global namespace, nothing cha
 
     error: unknown function or member: text
 
-goose-rest's every call takes the context first: `rest::text(cx, 200, "ok")`,
+Every goose-rest call takes the context first: `rest::text(cx, 200, "ok")`,
 `rest::fail(cx, 404, "project_not_found")`, `rest::param_int(cx, "id")`. With the lookup,
 they'd read `cx.text(200, "ok")`, `cx.fail(404, "project_not_found")`, and
 `cx.param_int("id")`, which is what a reader of Actix or Axum expects.

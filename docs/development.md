@@ -44,7 +44,7 @@ The scripts use the official Goose release that `scripts/goose.sh` pins: `v2026.
 (`ac759c3`), since 2026-10-15. The first script that needs the compiler fetches it into
 `build/`, as goose-http's does
 ([its Get Goose](https://github.com/kaitk/goose-http/blob/main/docs/development.md#get-goose)).
-`scripts/goose.sh` is goose-http's, copied: keep the two the same. To fetch the compiler
+`scripts/goose.sh` is a copy of goose-http's script: keep the two the same. To fetch the compiler
 and use it by hand:
 
 ```sh
@@ -65,8 +65,8 @@ Ubuntu or Debian:
 sudo apt-get install -y git curl gcc libc6-dev liburing-dev
 ```
 
-`GOOSE_COMMIT` and Linux on arm64, which has no Goose release archive, build Goose from
-source, with `sudo apt-get install -y cmake g++` too. Both sets passed the suite on a
+When using `GOOSE_COMMIT` or Linux on arm64, which has no Goose release archive, the
+scripts build Goose from source; also run `sudo apt-get install -y cmake g++`. Both sets passed the suite on a
 clean `ubuntu:26.04` for arm64 (2026-10-15).
 
 On macOS, the Xcode command line tools (`xcode-select --install`) have all of them. On
@@ -122,7 +122,7 @@ nonblank line of `test/expected/<name>.stderr`, where there is one, must occur i
 standard error, and `test/expected/<name>.aborts` marks a test that must exit nonzero. A
 file with `// error: <message>` lines is a fixture that must fail to compile with each
 message; `test/errors/` holds them. Any other file in an area, `common.goose`, holds what
-that area's tests share, and `test/expect.goose` what all of them share: `expect::same`,
+that area's tests share, and `test/expect.goose` holds what all of them share: `expect::same`,
 `expect::body_of`, and the like.
 
 `test/run_tests.py` needs Python 3 and nothing else. It checks every test and fixture in
@@ -183,7 +183,7 @@ Git Bash, and set a Git identity in WSL before committing from it
 `ts/` holds the TypeScript helper and its tests, and goose-rest doesn't install a
 JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
 `ts/tsconfig.json`, which also covers the tutorial's `.mts` files, then runs
-`ts/test/*.mts` and `docs/tutorial/06-schema/api.mts` with `JS`: `node`, or `bun` where
+`ts/test/*.mts` and `docs/tutorial/05-schema/api.mts` with `JS`: `node`, or `bun` where
 Node isn't installed. Without `tsc`, it prints `skipped` and goes on. With Node or Bun
 installed and no `tsc`, npx or bunx fetches one for the run:
 
@@ -244,8 +244,8 @@ purpose, update its README and its `expected.txt` together.
 
 ### Use the package from git
 
-A program outside the repository imports the package as a user's does, at a release tag
-or a pushed commit by its full hash, next to goose-http at the pin
+A program outside the repository imports the package in the same way as a user's program,
+at a release tag or a pushed commit identified by its full hash, alongside goose-http at the pin
 ([README](../README.md#quick-start)). The compiler fetches it into
 `~/.goose/pkg/github.com/kaitk/goose-rest/<12-hex hash>/`. Check it with `goose build`
 and a program whose `main` spawns a `thread_fn` that calls `http::serve`: `goose run`
@@ -256,8 +256,8 @@ local commit.
 
 ## Benchmarks
 
-The REST benchmark runs on Linux, and its checks and the instruction counts of
-`bench/routes.sh` and `bench/stack.sh` on macOS too. [bench/README.md](../bench/README.md)
+The REST benchmark runs on Linux. Its checks and the instruction counts from
+`bench/routes.sh` and `bench/stack.sh` also run on macOS. [bench/README.md](../bench/README.md)
 sets them up: the servers, the scripts and their settings, and where results go.
 [benchmarks.md](benchmarks.md) owns the current comparisons, the tiers, and the build
 and Goose compiler each one measured.

@@ -30,7 +30,7 @@ fn create(cx) {
 the worker's list; with a database, the route asks a service job instead, which applies
 the same rule.
 
-A route kept to this shape reads in one screen, and the decisions it leads to are in
+A route kept to this shape fits on one screen, and the decisions it leads to are in
 functions that a test calls without a request.
 
 ## The route checks the request, the rule checks the domain
@@ -46,8 +46,8 @@ POST /projects 422 {"error":"project_name_required"}
 POST /projects/1/archive 409 {"error":"project_already_archived"}
 ```
 
-A malformed request is a bug in the client, and its 400 names the field. A refused one is
-the user's input or the data's state, and its code says which rule refused it, in the
+A malformed request is a bug in the client, and its 400 names the field. A refused
+request comes from the user's input or the data's state, and its code says which rule refused it, in the
 domain's words. Each check is in one place: a rule doesn't check what the extractors
 did.
 

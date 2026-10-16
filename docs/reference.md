@@ -37,13 +37,13 @@ The generated `api::dispatch(cx)` works with either context and reads the preced
 routes' `Allow` inside the block. Generated handlers receive path parameters as
 arguments; pass those to helpers rather than read the last hand-written match.
 
-`cx.kind` is the event the handler is called for: `http::REQUEST` for a request, and
-for each later call the event's ([Later calls](#later-calls)). `rest::resumed(cx)` is
+`cx.kind` identifies the event the handler is called for: `http::REQUEST` for a request,
+and the corresponding event for each later call ([Later calls](#later-calls)). `rest::resumed(cx)` is
 true for every call after a request's first.
 
 `rest::json` and `rest::json_bytes` answer `application/json`; `rest::text` answers
 `text/plain; charset=utf-8`. `rest::empty(cx,
-status)` answers none: 204 and 304 omit `Content-Length`, and other statuses write
+status)` answers without a body: 204 and 304 omit `Content-Length`, and other statuses write
 `Content-Length: 0`.
 
 ## Middleware
@@ -60,7 +60,7 @@ can have its own, and a public route none.
 | `rest::scope(cx, "/v1")` | Whether the path starts with the prefix at a segment boundary; `rest::on` calls inside match the rest. `rest::otherwise(cx)` answers 404, 405, and OPTIONS across scopes. |
 
 `timed` and `cors` go outside `rest::route`, so that the errors it answers get their
-fields; `bearer` and anything else that fails goes inside it. A request has one route:
+fields; `bearer` and anything else that fails go inside it. A request has one route:
 routes nested in routes don't inline ([architecture](architecture.md#middleware-and-inlining)).
 A program's own `inline fn` can nest several middleware and pass its block on, so a scope
 has one level: [A stack of your own](tutorial/07-middleware.md#a-stack-of-your-own).
@@ -162,10 +162,10 @@ A response begun with `rest::begin` inside `compressed` is compressed as goose-h
 chunk of its own, so the client can decode all it has, and `rest::end` sends the coding's
 trailer. Its later calls (`MORE`) needn't run inside `compressed`: the response keeps
 the coding it began with, as [`examples/compress`](../examples/compress/main.goose)'s
-`/v1/export` shows. Each response compressed at once holds an encoder from goose-http's
+`/v1/export` shows. Each response being compressed holds an encoder from goose-http's
 pool until `rest::end`, or until `CLOSED` when it ends otherwise: about 460 KB for gzip
-and deflate, and 1 MB for zstd. A worker builds one per response compressed at once and
-reuses it after. A program that doesn't compress keeps no bytes for it.
+and deflate, and 1 MB for zstd. A worker builds one per response being compressed at the same time and
+reuses it afterward. A program that doesn't compress keeps no bytes for it.
 
 `rest::file` sends a file as it is, inside `compressed` too. Compressed on the fly, the
 file would lose its `Content-Length`, its ranges, and the epoll loop's `sendfile`, and
@@ -183,8 +183,8 @@ inline fn resolve_tenant<F>(cx) {
 }
 ```
 
-Goose's `-O2` inlines a function called once only up to a size, and a handler's routes
-pass it as soon as they're the block. A plain `fn` then stays a C function that reaches
+Goose's `-O2` inlines a function called once only up to a size threshold, and a handler's
+routes exceed that threshold as soon as they're passed as the block. A plain `fn` then stays a C function that reaches
 the handler's locals through pointers, and every middleware around it stays out of line
 too. `inline fn` folds it into the handler ([findings](goose-findings.md#a-function-called-once-isnt-inlined-past-a-size),
 aardappel/goose#33).
@@ -236,8 +236,9 @@ goose-http hands a body to the handler with its head when both fit its read buff
 `rest::body` reads a longer one too: at its first call, the route leaves
 without an answer, `rest::serve` gathers the body up to the limit, and then calls the
 handler again with the body whole. The code before a route's first `rest::body`,
-`rest::take` of a JSON type, or form extractor therefore runs twice for such a body, and must not change
-state before it; an answer there, such as a 401, ends the request ungathered. A `Content-Length` over the limit is refused with 413 before
+`rest::take` of a JSON type, or form extractor therefore runs twice for such a body and
+must not change state; an answer there, such as a 401, ends the request without gathering
+the body. A `Content-Length` over the limit is refused with 413 before
 the body is sent, and a chunked body once it passes the limit. The first call's limit
 holds for the request, so a route that takes a JSON body over 1 MB calls `rest::body`
 with its limit first; a generated route does so for its `x-body-limit`
@@ -336,7 +337,9 @@ and `file` ([page 12](tutorial/12-long-responses.md));
 
 ## Errors
 
-Every error goose-rest answers is JSON with one member, `error`, a code in snake_case:
+By default, every error goose-rest answers is a JSON object whose member `error` is a
+code in snake_case, with `detail` and `at` where the table names them; a program can write
+another shape, as the end of this section shows:
 
 ```json
 {"error":"project_not_found"}
@@ -367,8 +370,8 @@ Every error goose-rest answers is JSON with one member, `error`, a code in snake
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
 through `rest::no_route`, `rest::no_method`, and `rest::not_found`.
 
-A body a generated reader refuses names the field and the check that failed, and where
-in the body the reader stopped, counted in bytes:
+When a generated reader refuses a body, the error names the field and the check that
+failed, and gives the position in the body where the reader stopped, counted in bytes:
 
 ```json
 {"error":"invalid_body","detail":"name: maxLength","at":31}

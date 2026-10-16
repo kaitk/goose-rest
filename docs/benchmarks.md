@@ -21,7 +21,7 @@ requests, one run per case.
 
 The method behind each number is goose-http's
 ([its bench/README.md](https://github.com/kaitk/goose-http/blob/main/bench/README.md#method)),
-whose `bench/rest.sh` this repository's wraps.
+whose `bench/rest.sh` is wrapped by this repository's script of the same name.
 
 ## Pins
 
@@ -92,7 +92,7 @@ routes.
 **M, a middleware stack.** Tier A with three middlewares around every route, each the
 framework's own: a `Server-Timing: app;dur=<ms>` field without an access log, CORS for
 `https://app.example`, and a bearer check that answers 401 without a token. The load is
-tier A's with an `Origin` field. Compared with tier A, it prices the stack.
+tier A's with an `Origin` field. Comparing it with tier A measures the cost of the stack.
 
 ## Against other frameworks
 

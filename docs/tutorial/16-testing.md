@@ -177,8 +177,8 @@ GET /v1/projects/1/summary 503 {"error":"unavailable"}
 GET /v1/gone 200 {"skipped":2,"dropped":1}
 ```
 
-- **504.** The job takes 520 ms, its 500 ms and a 20 ms statement, and the route waits
-  200, so the 504 holds however fast the machine is.
+- **504.** The job takes 520 ms: its 500 ms delay plus a 20 ms statement. The route waits
+  200, so it answers 504 however fast the machine is.
 - **503.** The database works on the first job for 520 ms from its start, and the four
   requests must all reach the worker within that time. Their fixed waits total 300 ms:
   200 for the 504, and 50 for each of the two clients. That leaves about 200 ms for starting curl

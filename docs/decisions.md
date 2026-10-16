@@ -1,6 +1,6 @@
 # Decisions
 
-The record of goose-rest's design decisions, for contributors and agents: each one dated,
+This page records goose-rest's design decisions for contributors and agents: each one dated,
 with its reason and what was rejected, and the spike results, the Elysia study, and the
 later uses behind them. How goose-rest works as it is now is in
 [Architecture](architecture.md). A change that contradicts a decision here updates it in
@@ -179,8 +179,8 @@ from `api.ts` where there is one. The generated file is `api_gen.goose`, not
 Decided (2026-10-14): goose-rest commits its generated files, under `test/gen/`,
 `examples/`, `docs/tutorial/`, and `bench/`, as golden files that `scripts/test.sh`
 regenerates and compares byte for byte. An application chooses for itself. It can
-commit its `api_gen.goose`, so that a schema change shows as a diff of the code it
-makes in review and the build needs no generator, or generate it in its build.
+commit its `api_gen.goose`, so that reviewers can see a diff of the code a schema change
+generates and the build needs no generator, or generate it in its build.
 
 ## The API
 
@@ -253,7 +253,7 @@ more field for the program to keep and release at `CLOSED`.
 
 Decided (2026-10-13), from `test/inline_route.goose`'s C. A handler behind
 middleware compiles to one C function, the handler, with the middleware, the route,
-and the code that fails inlined into it, and each early answer a jump. Three rules keep
+and the code that fails inlined into it, and each early answer compiled as a jump. Three rules keep
 it so:
 
 - **One route per request.** A function that fails returns from the innermost
@@ -370,7 +370,7 @@ repository knows.
 
 ## Spike results (2026-10-13)
 
-On Goose `a6249a4`, and again on `46356c2` with the same results but spike 04's, whose
+On Goose `a6249a4`, and again on `46356c2` with the same results except for spike 04, whose
 by-name form now inlines too, in `spikes/` (each spike's README has its command and evidence).
 Nothing blocks the design; three checks need a workaround, which the design takes:
 

@@ -87,9 +87,9 @@ A long job checks it between steps as well as before starting.
 
 ## A slow client
 
-A client that reads its response slowly can't make the worker hold more than a bound:
+A client that reads its response slowly can't make the worker hold an unbounded amount of response data:
 goose-http stops reading from a connection whose responses queue up, and closes one
-that takes nothing for `Config.write_ms`, 10 seconds by default. A route needs nothing
+that takes nothing for `Config.write_ms`, 10 seconds by default. A route needs no special handling
 for this. The other bounds, such as `request_ms` for a request head and `body_ms`
 between a body's pieces, are in [goose-http's limits](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits).
 
@@ -98,7 +98,7 @@ between a body's pieces, are in [goose-http's limits](https://github.com/kaitk/g
 A wait holds the connection, a timer, and a slot of `Config.max_waiting`, so a report
 that takes minutes doesn't fit one. It runs as a job: the route answers 202 with the
 job's state at once, and the client asks for it until it's done. A reports thread keeps
-each report's state, and takes a step of the one running between its messages, so that
+each report's state and advances the running report one step between messages, so that
 it replies while a report runs:
 
 ```rust
