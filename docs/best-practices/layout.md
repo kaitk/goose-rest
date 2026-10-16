@@ -2,11 +2,11 @@
 
 An application's code is grouped by domain: the part of the product it serves, such as
 projects, teams, or time entries. Each domain's folder holds that domain's structs,
-errors, rules, routes and jobs, and queries. The kind of code (routes, rules) sets the
+errors, rules, routes, jobs, and queries. The kind of code (routes, rules) sets the
 file name inside the folder, never the folder name.
 
-The application this section's pages take their examples from is a time-tracking API
-with eight domains and three audiences, laid out this way:
+The examples in this guide come from a time-tracking API with eight domains and three
+audiences, laid out as follows:
 
 ```text
 app/
@@ -35,13 +35,13 @@ app/
   auth/                 (structs, errors, rules, routes, queries)
 ```
 
-Its data model, a box per domain around the tables it owns, with a few columns of each.
-`timer` and `reports` own no tables: they work on `entries`'.
+The data model below groups each domain's tables in a box and shows a few columns from
+each table. `timer` and `reports` own no tables: they use the tables owned by `entries`.
 
 ![The data model: a box per domain, its tables, and the references between them](layout-model.png)
 
-The three audiences are the public, a signed-in user, and a member of an organization,
-each with its stack in `stacks.goose`. The domains:
+The three audiences are the public, a signed-in user, and a member of an organization.
+Each has a stack in `stacks.goose`. The domains serve these purposes:
 
 - **`auth`**: signing in and out, and the session it opens. Public routes:
   `POST /auth/session` signs in, `DELETE /auth/session` signs out. Signing in checks the
@@ -69,10 +69,11 @@ each with its stack in `stacks.goose`. The domains:
 - **`availability`**: the hours each member expects to work on each weekday, which
   reports compare with the time recorded. Member routes under
   `/organization/availability`: `GET` and `PUT`.
-- **`common/`**: `users` (`User`) and `members` (`Member`, a user in an organization),
-  which the stacks look up and every user or member route is given, the errors several
-  domains answer, and `calendar`: time zones, and the days and weeks that `entries`,
-  `timer`, `reports`, and `availability` split time into. No routes.
+- **`common/`**: shared code, with no routes. `users` holds `User`, and `members` holds
+  `Member`, a user in an organization. The stacks look these up and pass them to every
+  user or member route. This folder also holds errors used by several domains and
+  `calendar`: time zones and the days and weeks that `entries`, `timer`, `reports`, and
+  `availability` split time into.
 
 [`layout/`](layout/) is a smaller program laid out the same way, with three domains:
 `projects`, `teams`, and `settings`.
@@ -81,8 +82,8 @@ each with its stack in `stacks.goose`. The domains:
 
 Put all of a domain's code in one folder named for the domain, such as `projects/`.
 
-A change to a feature then touches one folder, a reviewer sees which domain it changes
-from the paths alone, and a domain's size shows in its folder. A layout by kind
+A feature change then touches one folder. Reviewers can identify the domain from the
+paths alone, and the folder shows the domain's size. A layout by kind
 (`routes/`, `rules/`, `queries/`) spreads one feature across every folder.
 
 ## The same files in every domain
@@ -100,8 +101,8 @@ Each kind of code has one file name, the same in every domain and in `common/`:
 A domain has the files it needs and no others: `settings/` in the program has no rules
 or errors, and a domain with no tables of its own, such as `timer`, has no queries.
 
-Someone who knows one domain then knows where everything is in every other, and a
-file's name says what kind of change a diff makes.
+Someone familiar with one domain can find the same kinds of code in every other.
+A file's name tells a reviewer what kind of change to expect.
 
 A route and its `resume` functions, a job, a query, and a rule are the controller, the
 transactional service method, the repository, and the domain logic of a Spring
@@ -114,10 +115,10 @@ logic, and a test calls them as plain functions, with no server, thread, or data
 
 ## When a domain grows
 
-Split a domain by operation once its `routes.goose` holds more flows than a reader
-follows in one file: `routes.goose` keeps `routes` and the paths, and each operation's
-flow, its route, jobs, and `resume` functions, moves to a file of its own in a
-`routes/` folder beside it. The domain's structs, errors, rules, and queries stay shared:
+Split a domain by operation once its `routes.goose` holds too many flows to follow in
+one file. Keep `routes` and the paths in `routes.goose`. Move each operation's flow,
+including its route, jobs, and `resume` functions, to its own file in a `routes/` folder
+beside it. The domain's structs, errors, rules, and queries stay shared:
 
 ```text
 reports/
@@ -132,9 +133,10 @@ reports/
     export.goose      GET /export: the route, its job, its reply in pieces
 ```
 
-The files in `routes/` declare the domain's namespace too, `namespace reports;`, so
-moving a function between files changes no call to it: a domain can start in one file
-and split when it's long, where a Java application splits into classes from the start.
+The files in `routes/` also declare the domain's namespace, `namespace reports;`.
+Moving a function between files therefore requires no changes to its callers. A domain
+can start in one file and split as it grows, whereas a Java application splits into
+classes from the start.
 
 ## A domain is a namespace
 
@@ -150,9 +152,9 @@ Code starts in the domain that needs it. Move it to `common/` when a second doma
 it, and not before. `common/` is laid out as a domain is, by the entity it serves:
 `common/members/structs.goose` holds `Member`, which every member route is given.
 
-Code moved early guesses at what other domains will need. Code moved once a second
-domain uses it has two callers that show its shape. Laid out by entity, `common/` reads
-the same way as the domains do.
+Moving code early means guessing what other domains will need. Once a second domain
+uses it, two callers show what the shared code needs to do. Organizing `common/` by
+entity makes it read the same way as the domains.
 
 ## All routing in one file
 
@@ -206,9 +208,9 @@ fn routes(cx, member: members::Member) {
 }
 ```
 
-Every route's path, and the stack that guards it, is then in one file, where a review
-checks that no route is left without authentication. A domain doesn't know its prefix,
-so moving it to another path changes one line.
+Every route's path and the stack that guards it are then in one file, so reviewers can
+check that no route lacks authentication. A domain doesn't depend on its prefix, so
+moving it to another path changes one line.
 
 ## The program's types are in `main.goose`
 
@@ -225,10 +227,10 @@ domain owns them. A domain still owns its `Waiting` variants, named for it, and 
 
 The generator writes one file for the whole API, `api_gen.goose`, beside `main.goose`,
 and its router calls every handler in one namespace, `app` by default
-([Run it](../generator.md#run-it)). Writing each domain's part into its folder, by each
-operation's OpenAPI `tags`, isn't supported yet. Until it is, keep the handlers in one
-file, each a call into its domain's rules or an ask for its job, so that the domains
-keep the rest of their code.
+([Run it](../generator.md#run-it)). The generator doesn't yet support writing each
+domain's part into its folder according to the operations' OpenAPI `tags`. Until it
+does, keep the handlers in one file. Each handler calls its domain's rules or asks for
+its job; the rest of the code stays in the domain.
 
 ---
 

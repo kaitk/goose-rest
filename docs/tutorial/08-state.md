@@ -10,10 +10,9 @@ own:
 - *request state*, `cx.state`, which each request starts afresh;
 - *lane data*, owned by a thread of its own, a lane, which workers ask.
 
-This page shows worker and request state, and how to reach the store and a lane. Which
-place to choose for a piece of data is in
-[State](../best-practices/state.md#choose-the-place-by-what-the-data-is), among the
-best practices.
+This page shows worker state, request state, and how to access the store and a lane.
+The Best practices guide explains where to keep each kind of data in
+[State](../best-practices/state.md#choose-the-place-by-what-the-data-is).
 
 ## Worker state
 

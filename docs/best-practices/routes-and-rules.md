@@ -1,6 +1,6 @@
 # Routes and rules
 
-The first code to get hard to change in a web application is often the handler that
+The first code that becomes hard to change in a web application is often the handler that
 does everything: it reads the request, decides what the domain allows, writes to the
 database, and builds the answer. Its decisions can then be tested only through HTTP,
 and a change to the request's shape sits in the same function as a change to the
@@ -8,23 +8,23 @@ domain's logic. Most frameworks' guides warn against this "fat controller". goos
 applications split the work three ways:
 
 - The **route** handles HTTP: it reads the request, checks its shape, and answers.
-- The **rule** decides: it takes typed values, and returns a result or the reason the
-  domain refuses.
-- The **job** does the slow work, such as the database's, on a lane, and calls the
+- The **rule** makes decisions: it takes typed values and returns a result or the reason
+  the domain refuses the operation.
+- The **job** does slow work, such as database operations, on a lane and calls the
   rules ([Lanes and jobs](lanes.md)).
 
 A domain's routes and jobs are in its `routes.goose`, and its rules in `rules.goose`
 ([Layout by domain](layout.md#the-same-files-in-every-domain)).
 
 This page follows one request, `POST /projects` with a name, through its route and its
-rule. The code is from [`routes-and-rules/`](routes-and-rules/), whose projects live in
-the worker's memory in place of a database; with one, the route would ask a job, which
-calls the same rule.
+rule. The code is from [`routes-and-rules/`](routes-and-rules/), which keeps projects in
+the worker's memory rather than a database. With a database, the route would ask for a
+job that calls the same rule.
 
 ## What a route does
 
-A route reads what it needs from the request, makes one call, a rule or a job, and
-answers with the result or the error. From
+A route reads what it needs from the request, calls a rule or asks for a job, and
+answers with the result or error. From
 [`routes-and-rules/projects/routes.goose`](routes-and-rules/projects/routes.goose):
 
 ```rust
@@ -77,8 +77,8 @@ fn archive(cx) {
 
 ## What a rule does
 
-A rule takes plain values, its domain's structs and numbers, and returns its result and
-an `Error`, `Error.None` when it succeeds. From
+A rule takes plain values, such as its domain's structs and numbers. It returns its
+result and an `Error`, using `Error.None` on success. From
 [`routes-and-rules/projects/rules.goose`](routes-and-rules/projects/rules.goose):
 
 ```rust
@@ -115,10 +115,10 @@ fn new_entry(input: CreateInput, id: i64, now: i64) -> Entry, Error {
 
 ## Which check goes where
 
-The route rejects a request that is malformed: a field missing, or not a number. The
-extractors do that, with 400 `invalid_parameter`, before the rule runs. The rule rejects
-a request that is well formed but that the domain refuses: an empty name, a project
-already archived.
+The route rejects malformed requests, such as a missing field or a value that isn't a
+number. The extractors handle these checks before the rule runs, answering 400
+`invalid_parameter`. The rule rejects well-formed requests that the domain refuses,
+such as an empty name or an attempt to archive a project that's already archived.
 
 ```text
 POST /projects 400 {"error":"invalid_parameter","detail":"name: required"}
@@ -143,11 +143,11 @@ database. From [`routes-and-rules/test.goose`](routes-and-rules/test.goose):
     assert(why == projects::Error.NameRequired);
 ```
 
-The domain's logic is then tested where it's written, every case of it, and a route's
-test covers only what the route adds: its extractors and its answer
+Tests cover each case of the domain's logic where it's defined. A route's test covers
+only what the route adds: its extractors and its answer
 ([Testing the application](../tutorial/16-testing.md)). A job on a lane calls the same
-rules where there is no request, and a change to a decision is a diff to one small
-function, which a review reads on its own.
+rules without a request. Changing a decision then changes one small function, which a
+reviewer can assess on its own.
 
 ---
 

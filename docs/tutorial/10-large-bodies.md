@@ -1,8 +1,8 @@
 # 10. Large bodies
 
-The projects get tasks, imported from a spreadsheet as CSV: thousands of lines, beyond the
-8 KB that goose-http reads a request into. goose-rest gathers such a body whole, up to a
-limit the route sets, and then calls the route with it. For how goose-http reads a body
+Projects now have tasks, imported from a spreadsheet as CSV. Thousands of lines exceed
+the 8 KB buffer that goose-http reads requests into. goose-rest gathers the whole body,
+up to a limit set by the route, then calls the route with it. For how goose-http reads a body
 and the other ways to read one, see [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
 
 ## Gathered whole, up to a limit
@@ -53,7 +53,7 @@ POST /v1/projects/1/tasks/import 400 {"error":"invalid_csv"}
 
 If the body hasn't all arrived when a route first calls `rest::body` or `rest::take`,
 the route leaves without answering. `rest::serve` reads the body up to the limit, then
-calls the handler again with the body whole. Code before that first call therefore runs
+calls the handler again with the whole body. Code before that first call therefore runs
 twice for a long body and must not change state.
 
 A check before that call is fine, and an answer there ends the request without reading
@@ -110,13 +110,13 @@ worker keeps that memory after the request, for the bodies it gathers next: the 
 has gathered at once stays with it for its life. The route then reads the whole body in
 one call, and the worker answers no other request meanwhile.
 
-The gather budget bounds that memory. A body with a `Content-Length` takes its whole
-length, with its head, from the moment its route calls `rest::body`, and a chunked body
-takes room as it grows. A body for which the worker has no room within the budget gets
-503 and `Retry-After: 1`, in the program's error shape: one with a `Content-Length` at
-once, before the client sends it, and a chunked one once it can't grow, which also
-closes the connection. The client can send it again a second later, once the bodies
-gathered meanwhile have been answered.
+The gather budget bounds that memory. When a route calls `rest::body`, a body with a
+`Content-Length` reserves its whole length plus its head. A chunked body takes space as
+it grows. If the worker has no room within the budget, it answers 503 with
+`Retry-After: 1`, in the program's error shape. For a body with a `Content-Length`, this
+happens at once, before the client sends it. For a chunked body, it happens when the
+body can no longer grow, and the connection closes. The client can try again a second
+later, once the worker has answered the requests whose bodies it gathered in the meantime.
 The default, 64 MB, lets a worker gather 63 bodies at the 1 MB limit at once, since each
 takes its head too. The import sets a budget of its own, in the `rest::Config` it
 passes to `rest::serve` after the request state, here none:

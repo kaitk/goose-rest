@@ -3,7 +3,7 @@
 Every wait is bounded: a route waits up to a time limit, a lane's box holds a fixed
 number of jobs, and a worker holds a fixed number of waiting routes. This page shows
 what the client receives at each limit and what the lane does when a client
-stops waiting. [goose-http's limits](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits)
+stops waiting. The [goose-http limits guide](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits)
 explains the event-loop side: its bounds, slow clients, and the resources held by a wait.
 
 [`13-limits`](13-limits/main.goose) requests a project's summary from the database. The

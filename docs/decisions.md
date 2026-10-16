@@ -324,28 +324,30 @@ needs, and the app writes a case function per variant. The compiler dispatches o
 tag and checks that every variant has its case (§8.2). The enum is fixed-mode because
 each request overwrites the slot (§3.5).
 
-The default is a lane: a thread that owns the connections, to which a route sends one
-job naming the whole use case, and which does it start to end with blocking calls, in
-one transaction (2026-10-14). A route then waits once, with one time limit and one place
-a full box refuses work, and a job is tested as a plain call. A route waits more than
-once only for what one lane can't do: a second lane in turn. The tutorial builds
+The default is a lane: a thread that owns the connections and receives a job describing
+the whole use case from the route. It runs the job from start to finish with blocking
+calls, in one transaction (2026-10-14). The route waits once, with one time limit and
+one place where a full box refuses work. Tests call the job as a plain function. A route
+waits more than once only when it needs a second lane in turn. The tutorial builds
 both, from [work that waits](tutorial/11-waiting.md) to
 [limits](tutorial/13-limits.md).
 
 Decided (2026-10-16), replacing the name "service" (2026-10-14): the thread a route
 sends work to is a *lane*, and what it sends is a *job*. In Spring, Laravel, and ASP.NET a
-service is the use-case code, the job here, not a thread, so "service" misleads a reader
-coming from them. One lane also runs jobs of many domains, and a domain's jobs may run
-on several lanes, so the thread and the code can't be one unit with one name. A lane is
-one thread, or several that run the same jobs, each with its box. Rejected: *pool* and
+service means the use-case code, called a job here, rather than a thread. Calling the
+thread a "service" would mislead readers familiar with those frameworks. One lane can
+run jobs from many domains, and a domain's jobs may run on several lanes, so the thread
+and the code need distinct names. A lane is one thread, or several running the same
+jobs, each with its own box. Rejected: *pool* and
 *executor*, which suggest work spread freely rather than queued by kind; *actor*, which
 suggests state per entity; *worker*, which names the HTTP threads already; and plain
 *thread*, which covers neither a lane's several threads nor the box in front of them.
 snowtime-native calls the same thing a lane. In an application
 ([Best practices](best-practices/lanes.md)), a domain's jobs are in its `routes.goose`,
-after the route that asks for each, in the order the flow runs, and a domain that grows
-splits by operation into `routes/`, not by layer into a file of jobs: the files of a
-domain share its namespace, so moving a function between them changes no call.
+after the route that asks for each job, in execution order. As a domain grows, it splits
+by operation into `routes/`, rather than separating jobs into their own file. The files
+share the domain's namespace, so moving a function between them requires no changes to
+its callers.
 
 Decided (2026-10-16): work of minutes that a route answers with `202 Accepted`, and that
 the client then polls, is a *background task*, in goose-rest's docs and goose-http's.

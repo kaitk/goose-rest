@@ -36,9 +36,9 @@ spec.
   `Serialize` does, but a reader, a renamed key, or a left-out field still comes from
   code written by hand or from the generator
   ([decisions](decisions.md#a-json-writer-from-a-structs-fields)).
-- **No shared memory.** Workers share nothing but `const` data and messages (§11.2). A
-  cache, a rate limiter, or a session store is worker state, or lane data, which a
-  thread of its own keeps and workers mail.
+- **No shared memory.** Workers share nothing but `const` data and messages (§11.2).
+  A cache, rate limiter, or session store lives in worker state or in lane data owned
+  by a separate thread. Workers access lane data by mail.
 - **No async.** A handler that waits on another thread splits in two around the reply,
   with its state in the connection ([Waiting on a lane](#waiting-on-a-lane)).
 
@@ -249,8 +249,8 @@ start, so a long chain costs more per request than a generated router
 - **Inlining has rules.** A route nested in a route, a large function that fails, or a
   plain `fn` that takes a block keeps the handler out of line, and the program still
   works, at a call per layer.
-- **Worker state.** A cache or session store is worker state, or lane data that
-  workers mail for; nothing is shared by reference between workers.
+- **Worker state.** A cache or session store lives in worker state or in lane data
+  accessed by mail. Workers share nothing by reference.
 - **Waiting splits a handler.** A route that waits writes its state into a `Waiting`
   variant and resumes in a case function, instead of continuing after an `await`.
   Replies come through fixed-size mail slots, and a larger one in pieces.

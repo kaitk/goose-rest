@@ -22,8 +22,8 @@ this way, one reply per answer it gives. Test over HTTP what needs real threads 
 time: that the lane replies at all, a reply after the route's wait has ended, and a
 client that goes while its job waits.
 
-How an application lays out its tests, by domain and by scenario, is in
-[Testing](../best-practices/testing.md), among the best practices.
+The Best practices guide explains how to organize tests by domain and scenario in
+[Testing](../best-practices/testing.md).
 
 ## The use cases, as plain calls
 
@@ -65,7 +65,7 @@ thread to open, send to, or take from
 The block is the one `main.goose`'s worker gives `rest::serve`. The request state,
 `St { .. }`, is what `rest::ask` keeps its `Waiting` variant in, and `wakes` holds the
 replies the [next section](#the-case-functions-given-a-reply) gives.
-A route that doesn't wait is answered whole, as is one that fails before it asks:
+A route that doesn't wait produces a complete answer, as does one that fails before it asks:
 
 ```rust
     expect(body_of(answer(get("/v1/in-place/projects/1"))), "{\"id\":1,\"name\":\"goose\",\"owner\":1}");
@@ -74,9 +74,9 @@ A route that doesn't wait is answered whole, as is one that fails before it asks
 ```
 
 A route that asks sends its job to the box, and the handler returns without an answer.
-Given no reply, `serve_one` then answers 500, as it does for any block that writes no
-answer, so the test checks the job instead: it takes the job from the box, reads it with `rest::asked`, as the
-lane does, and passes it to the job's function:
+Without a reply, `serve_one` answers 500, as it does for any block that writes no answer.
+The test checks the job instead: it takes the job from the box, reads it with
+`rest::asked` as the lane does, and passes it to the job's function:
 
 ```rust
     let user1 = "X-User: 1\r\n";
@@ -120,12 +120,12 @@ turn gets two:
            "{\"error\":\"timeout\"}");
 ```
 
-The database isn't touched: the reply says task 5 was assigned, and the test checks
-what the case function makes of that, the `Waiting` variant's task and assignee in the
-answer. Each route still sends its job, so the test empties the box before the box's
-two slots fill.
+The database isn't touched. The reply says task 5 was assigned, and the test checks
+that the case function's answer contains the task and assignee from the `Waiting`
+variant. Each route still sends its job, so the test empties the box before its two
+slots fill.
 
-A reply longer than a message of the worker's box, `Config.mail_size` bytes, comes in
+A reply larger than a slot in the worker's box, `Config.mail_size` bytes, comes in
 pieces, as `rest::reply` sends it. Pass the program's `http::Config` as `serve_one`'s
 last argument to split a reply as the server does: `rest::relay` sends the pieces on as
 chunks, and `rest::read_reply` can't read a value from them.

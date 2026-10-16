@@ -33,8 +33,8 @@ GET /v1/projects/2/tasks 200 [{"id":6,"title":"Name it","assignee":2}]
 ```
 
 The worker holds one piece at a time, however long the reply. The lane writes the
-whole reply first, so it holds all of it. Data too large for that is made a piece at a
-time as the client takes it ([long responses](15-long-responses.md)).
+whole reply first, so it holds all of it. Data too large to hold in full is generated
+one piece at a time as the client reads it ([long responses](15-long-responses.md)).
 
 ## Two lanes in turn
 

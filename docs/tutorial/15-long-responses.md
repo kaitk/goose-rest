@@ -67,8 +67,8 @@ GET /v1/projects/1/tasks.csv 200 transfer-encoding: chunked lines=2001     read 
 A case function that neither sends nor ends at `MORE` makes goose-http close the
 connection. The case function gets `http::CLOSED` once if the response ends otherwise:
 when the client goes, or when the route fails with the response begun. Its head has
-already been sent, so the failure can't be answered in the error shape: `rest::route` leaves the
-response unended and the connection closes, and the client sees it cut short. The
+already been sent, so the failure can't be answered in the error shape. `rest::route`
+leaves the response open and the connection closes, so the client sees it cut short. The
 export holds nothing to release, so it ignores `CLOSED`. A `HEAD` request gets the head
 alone, and no calls.
 
@@ -148,8 +148,8 @@ fn progress_event(cx, project: i64) {
 
 Each call sends an event and pauses again, or ends after the last. The event sent
 before a pause goes to the client meanwhile, and no `MORE` comes while the response is
-paused. A client that goes during a pause gets the case function `http::CLOSED`, and
-goose-http cancels the timer:
+paused. If the client disconnects during a pause, the case function gets `http::CLOSED`,
+and goose-http cancels the timer:
 
 ```text
 GET /v1/projects/2/progress?n=3 200 id: 1 data: {"tasks":2} ... id: 3 data: {"tasks":2}

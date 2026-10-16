@@ -10,11 +10,11 @@ database, and not to compute for long. That work goes to a lane, as a job:
   passwords. Each thread takes its jobs from its **box**, a queue with a fixed number of
   slots.
 - A **job** is one use case, such as "create this entry". A route sends it to a lane
-  with `rest::ask`, as a small message, and serves its worker's other connections until
-  the reply comes back. On the lane, a plain function runs the job from start to end, in
-  one transaction ([Work that waits](../tutorial/11-waiting.md)).
+  with `rest::ask`, as a small message. The worker serves its other connections until
+  the reply comes back. On the lane, a plain function runs the job from start to end,
+  in one transaction ([Work that waits](../tutorial/11-waiting.md)).
 
-What other frameworks call them is in [Concepts and naming](concepts.md#the-concepts).
+[Concepts and naming](concepts.md#the-concepts) gives their equivalents in other frameworks.
 
 The code on this page is from [`lanes/`](lanes/), a slice of the time-tracking API with
 three domains: `entries`, `reports`, and `auth`. Its lanes keep their data in memory in
@@ -22,9 +22,9 @@ place of a database.
 
 ## A lane for each kind of slow work
 
-Split slow work by what it occupies while it runs: the database's one write connection,
-a read connection, a CPU core. Give each kind a lane of its own, named for what it does.
-The program has three, of one thread each:
+Split slow work by the resource it occupies: the database's one write connection,
+a read connection, or a CPU core. Give each kind a lane of its own, named for what it
+does. The program has three lanes, with one thread each:
 
 | Lane | What it does | Its jobs | Box |
 |---|---|---|---|
@@ -46,11 +46,11 @@ flowchart LR
 ```
 
 A job then waits only behind jobs of its own kind. A slow report holds a reader, not the
-writer, so entries go on being written. A password check holds the hasher, not the
-database. A box that is full refuses its job at once with 503, and the other boxes take
-theirs. The program's database stands in for one over the network, where each lane's
-thread holds a connection of its own. With embedded SQLite, a short query runs in the
-route instead, as short CPU work does
+writer, so entries can still be written. A password check occupies the hasher without
+holding up the database. A full box refuses a job at once with 503 while the other
+boxes continue accepting theirs. The program's database stands in for one over the
+network, where each lane's thread holds its own connection. With embedded SQLite, a
+short query runs in the route instead, as short CPU work does
 ([Long CPU work goes to a lane](#long-cpu-work-goes-to-a-lane)), and a lane takes only
 what runs long, such as a report.
 
@@ -62,8 +62,9 @@ function is in its domain, beside the route that asks for it
 ## How many jobs a box holds
 
 Size a box by how long its lane's jobs take. A route waits for its reply up to a time
-limit, 5 seconds by default ([504 for a late reply](../tutorial/13-limits.md#504-for-a-late-reply)),
-so a box needs only as many slots as jobs its lane finishes within that limit. From
+limit, 5 seconds by default
+([504 for a late reply](../tutorial/13-limits.md#504-for-a-late-reply)). Give the box
+only enough slots for jobs the lane can finish within that limit. From
 [`lanes/main.goose`](lanes/main.goose):
 
 ```rust
@@ -77,16 +78,16 @@ let REPORTS_SLOTS: i32 = 2;
 let HASHER_SLOTS: i32 = 16;
 ```
 
-A job queued past what its lane finishes in time starts after its client has already
-had a 504, so its work is wasted. Refused at once instead, the client gets 503 and can
-try again later. To run more jobs at once, give the lane more threads, each with its
-own box, rather than make one box larger
+A job queued beyond what its lane can finish in time starts after its client has
+already received a 504, so the work is wasted. Refusing the job at once instead gives
+the client a 503 and a chance to try again later. To run more jobs at once, give the
+lane more threads, each with its own box, rather than make one box larger
 ([503 for a full box](../tutorial/13-limits.md#503-for-a-full-box)).
 
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
 
-`main` opens a box per lane, with slots of 256 bytes, room for the largest job a route
+`main` opens a box per lane, with slots of 256 bytes to fit the largest job a route
 sends. It gives the workers each box's address in `App`, which a route reads as
 `cx.app.writer`, and starts each lane's thread. At shutdown, it sends each lane `STOP`
 and waits for its thread:
@@ -160,12 +161,12 @@ blocking query would, because a worker is one thread for all of them. Send it to
 lane, where the operating system interleaves it with the workers: hashing a password,
 summing a long period's entries for a report, rendering a file to export.
 
-Signing in shows the whole path. A password hash gets a lane of its own, the hasher,
-because it holds a core for tens of milliseconds, and with scrypt at its common
-settings, 32 MiB of memory per call.
+Signing in shows the whole path. Password hashing gets a lane of its own, the hasher,
+because it occupies a core for tens of milliseconds. With scrypt at common settings,
+it also uses 32 MiB of memory per call.
 
 **1. The route reads the request and asks the hasher.** It checks only that the fields
-are there, puts them in a job, and returns, and the worker serves other connections
+are present, puts them in a job, and returns. The worker serves other connections
 while the hasher works. From [`lanes/auth/routes.goose`](lanes/auth/routes.goose):
 
 ```rust
@@ -192,7 +193,7 @@ fn sign_in(cx) {
 ```
 
 **3. The job's function finds the user and calls the rule.** The job and its reply are
-flat structs, as everything that goes between threads is
+flat structs, like all values passed between threads
 ([`lanes/auth/structs.goose`](lanes/auth/structs.goose)):
 
 ```rust
@@ -276,21 +277,19 @@ thread_fn hasher(box: http::Box) {
 
 </details>
 
-One hasher thread limits sign-ins to one core. A burst of sign-ins waits in the
-hasher's box, and gets 503 once the box is full, while the workers keep answering
-every other route.
+One hasher thread limits sign-ins to one core. During a burst, sign-in jobs wait in
+the hasher's box. Once it's full, further sign-ins get 503 while the workers keep
+answering every other route.
 
-Work that reads first and then computes, such as a report, needs no lane of its own for
-the computing: its job reads the entries and sums them with the rule, on the reports
-lane, in one job
+Work that reads and then computes, such as a report, needs no separate lane for the
+computation. One job on the reports lane reads the entries and calls the rule to sum them
 ([Choosing which work is refused under load](#choosing-which-work-is-refused-under-load)).
 
 ## Choosing which work is refused under load
 
-Give work that the product can do without under load, such as reports and exports, a
-lane and a box of its own, and keep the box small. When too many reports arrive, the
-reports' box fills and refuses them with 503, and the other lanes go on with every
-other route:
+Give work that the product can do without under load, such as reports and exports,
+its own lane with a small box. When too many reports arrive, that box fills and refuses
+them with 503. The other lanes continue handling work from every other route:
 
 ```text
 GET /reports/projects/1?ms=500 000
@@ -304,8 +303,8 @@ A user then can't get a report for a while, but they can still start and stop th
 timer. With one box for every job, a burst of reports would fill it, and starting a
 timer would get the 503.
 
-The reports lane skips a job whose client has gone, here the two that gave up while
-they waited in the box:
+The reports lane skips jobs whose clients have gone. Here, two clients gave up while
+their jobs waited in the box:
 
 ```rust
                 let a, ok = rest::asked<reports::TotalsJob>(bytes);
@@ -313,7 +312,7 @@ they waited in the box:
                 if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
 ```
 
-The lane's time then goes only to reports that a client still waits for
+The lane then spends its time only on reports that clients are still waiting for
 ([A client that has gone](../tutorial/13-limits.md#a-client-that-has-gone)).
 
 ## Continuing a route when the reply comes
@@ -323,8 +322,8 @@ the reply arrives, the worker calls the route again, at a `resume` case function
 one for the `Waiting` variant that the route passed to `rest::ask`. The variant names
 the step the route is at.
 
-List a route's steps together in `Waiting`, in the order they run, with the route that
-takes them in a comment. From [`lanes/main.goose`](lanes/main.goose):
+Group each route's steps in `Waiting`, in the order they run, and name the route in a
+comment. From [`lanes/main.goose`](lanes/main.goose):
 
 ```rust
 // The steps of every route that waits, a route's steps together and in the
@@ -337,8 +336,8 @@ enum Waiting {
 }
 ```
 
-Every route that waits, and each of its steps, is then in one place, and a reader sees
-which steps follow each other before opening a domain. A variant is named for its
+Every route that waits and all its steps are then listed in one place. Readers can
+see the sequence before opening a domain's files. Each variant is named for its
 domain, and for the operation or what the route waits for
 ([Concepts and naming](concepts.md#slow-work-lanes-jobs-and-queries)).
 
@@ -382,8 +381,8 @@ at the second step comes after the first lane has done its work.
 A domain's `routes.goose` holds each route's whole flow, in the order it runs: the
 route, the job it asks for, the `resume` that answers, and for a second step, the next
 job and `resume`. Every step is named `resume`, so the order in the file is what shows a
-route's steps from top to bottom. A comment opens each function with where it runs, on
-the worker or on a lane, and each `rest::ask` names the `resume` it leads to.
+route's steps from top to bottom. Each function opens with a comment saying where it
+runs: on the worker or on a lane. Each `rest::ask` names the `resume` it leads to.
 
 <details>
 <summary>Sign-in, from its first <code>resume</code> to its answer</summary>
@@ -424,21 +423,21 @@ A job takes no `cx`, so a test calls it as a plain function, as it does a rule. 
 domain's `routes.goose` grows too long, it splits by operation
 ([When a domain grows](layout.md#when-a-domain-grows)).
 
-Each `resume` also takes one line in the global namespace. `Waiting` is the program's,
-declared in `main.goose` in the global namespace
+Each `resume` also needs a one-line forwarding function in the global namespace.
+The program declares `Waiting` in `main.goose`, in the global namespace
 ([Layout by domain](layout.md#the-programs-types-are-in-maingoose)), so the worker's call
 `resume(cx.state.waiting, cx)` finds only global functions. The domain therefore
-declares a global `resume` for each of its variants, which passes the wait on to its
-own:
+declares a global `resume` for each of its variants to forward the call to its own
+implementation:
 
 ```rust
 fn ::resume(w: Waiting.AuthPassword, cx) { auth::resume(w, cx); }
 fn ::resume(w: Waiting.AuthSession, cx) { auth::resume(w, cx); }
 ```
 
-The code stays in the domain's own `resume`, because a function declared as `::resume`
-is global, and so are the names in its body (goose_spec §11.1): written there, it would
-have to name the domain on each of them, as in `auth::Verified`.
+The code stays in the domain's own `resume`. A function declared as `::resume` is global,
+so Goose looks up names in its body in the global namespace (goose_spec §11.1). Code
+written there would need to qualify each name from the domain, as in `auth::Verified`.
 
 ---
 

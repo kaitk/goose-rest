@@ -1,12 +1,12 @@
 # 14. Bodies read as they arrive
 
-The projects get attachments: photos, scans, and exports, up to 1 GB each. No worker can
-hold a body that large, and a worker holds every body it gathers until its route
-returns ([page 10](10-large-bodies.md)). So an attachment is read as it arrives, a piece
-at a time, and each piece goes to a file before the next comes. The worker holds one
-piece, however large the attachment is. The pieces come to the route's case function,
-as a lane's reply does on [page 11](11-waiting.md). For how goose-http reads a body this
-way, see
+Projects now have attachments: photos, scans, and exports, up to 1 GB each. A body that
+large won't fit in a worker's memory, and the worker holds every body it gathers until
+its route returns ([page 10](10-large-bodies.md)). Instead, the route reads an
+attachment in pieces as it arrives, writing each piece to a file before the next
+arrives. The worker holds one piece at a time, regardless of the attachment's size. The
+pieces come to the route's case function, as a lane's reply does on
+[page 11](11-waiting.md). For how goose-http reads a body this way, see
 [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
 
 ## A body read in pieces
@@ -29,11 +29,11 @@ fn attach(cx, project: i64) {
 }
 ```
 
-`rest::body_in_pieces` reads nothing itself: it accepts the body or refuses it, and says where
-its pieces go. A `Content-Length` over the limit gets 413, which leaves the route at the
-call. The code before and after it runs once: unlike `rest::body`, it leaves the route
-only when it refuses the body. No piece comes before the route has returned, even for a
-body that came with its head, so after the call the route can still set the state
+`rest::body_in_pieces` doesn't read the body itself. It accepts or refuses the body and
+sets where its pieces go. A `Content-Length` over the limit gets 413, which leaves the
+route at the call. The code before and after the call runs once: unlike `rest::body`, it
+leaves the route only if it refuses the body. No piece arrives before the route returns,
+even if the body came with its head. After the call, the route can still set the state
 needed to handle the pieces, such as `part_path` here.
 
 <details>
@@ -61,8 +61,8 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 The handler is then called again for each piece of the body, through the same
 `rest::resumed` block as a lane's reply
 ([page 11](11-waiting.md#asking-a-lane-and-resuming)), and goes to the variant's case
-function. `cx.kind` says which call it is: `http::BODY` with a piece in `cx.body`,
-`http::END` once the body has all come, or `http::CLOSED`:
+function. `cx.kind` identifies the event: `http::BODY` with a piece in `cx.body`,
+`http::END` once the whole body has arrived, or `http::CLOSED`:
 
 ```mermaid
 sequenceDiagram
@@ -103,9 +103,9 @@ fn store(cx, bytes: const u8[:]) {
 }
 ```
 
-What the route keeps between pieces goes in the request state, which starts fresh
-for each request: the file's path and the number of bytes received so far. What doesn't change, such as
-the project, goes in the variant:
+Values the route keeps between pieces go in the request state, which starts fresh for
+each request: the file's path and the number of bytes received so far. Values that don't
+change, such as the project, go in the variant:
 
 ```rust
 // What each route that reads its body in pieces needs at each call.
@@ -139,27 +139,29 @@ let LARGE_LIMIT: i64 = 1 << 30;
 let SMALL_LIMIT: i64 = 64 * 1024;
 ```
 
-A body whose `Content-Length` is over the limit fails at `rest::body_in_pieces` with 413,
-before the client sends it. A chunked body has no length, so goose-rest counts its bytes as they
-arrive, and answers 413 and closes the connection when it passes the limit. `http::Config`'s
-`max_body` still caps every route, so `main` raises it to the largest limit, as
+A body whose `Content-Length` is over the limit fails at `rest::body_in_pieces` with
+413, before the client sends it. A chunked body has no declared length, so goose-rest
+counts its bytes as they arrive. If it passes the limit, goose-rest answers 413 and
+closes the connection. `http::Config`'s `max_body` still caps every route, so `main`
+raises it to the largest limit, as
 [page 10](10-large-bodies.md#body-limits-and-the-gather-budget) explains:
 
 ```rust
     let cfg = http::Config { port: port as i32, workers: 1, max_body: LARGE_LIMIT, .. };
 ```
 
-The case function gets `http::CLOSED` once when the read ends before its `END`, and
-releases what the state holds then: here, the `.part` file. That happens when:
+If reading stops before `END`, the case function gets `http::CLOSED` once. It then
+releases the resources held in the state: here, the `.part` file. This happens when:
 
-- the client goes before the body has all come;
+- the client disconnects before the whole body arrives;
 - a chunked body passes the limit;
-- the route fails while handling a piece, such as when the disk is full, or answers before the `END`.
+- the route fails while handling a piece, such as when the disk is full, or answers
+  before the `END`.
 
-After `CLOSED`, the route gets no more pieces. A failure while handling a piece is answered at once,
-in the error shape, and goose-http drops the rest of the body. A route that answers at
-the `END`, as here, gets no `CLOSED`, so a check that fails there cleans up first, as
-the form below does.
+After `CLOSED`, the route gets no more pieces. If it fails while handling a piece, it
+answers at once in the error shape, and goose-http drops the rest of the body. A route
+that answers at `END`, as here, gets no `CLOSED`. A check that fails there must therefore
+clean up first, as the form below does.
 
 ```text
 POST /v1/projects/2/attachments 413 {"error":"payload_too_large"}   100 KB, from its Content-Length
@@ -181,7 +183,7 @@ starts it, or answers 415 for a body of another type:
 
 Each piece then goes through `each_part`, which calls its block with each part's head,
 the pieces of its content, and its end. The note's content goes in the state, and the
-file's to its `.part` file:
+uploaded file's content goes in its `.part` file:
 
 ```rust
 fn resume(w: Waiting.Form, cx) {

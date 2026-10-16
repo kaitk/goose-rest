@@ -309,7 +309,7 @@ rest::route(cx) {
 
 `rest::once(cx.state.profile) { load_profile(...) }` computes a value on its first call
 in a request and returns it from then on. The slot is a `rest::Once<T>` field of the
-request state, so each request starts it anew.
+request state, so each request starts with a fresh slot.
 
 ## Later calls
 

@@ -1,40 +1,35 @@
 # Best practices
 
-The [tutorial](../tutorial/README.md) shows what goose-rest can do, one mechanism at a
-time, and often more than one way to do it. That freedom helps while you learn, and
-starts to cost once an application grows. When a route, a rule, or a job could live in
-any file and be called anything, every new piece of code is a small decision, and every
-reader has to work out again how this particular application was put together.
+As an application grows, its organization matters more. The [tutorial](../tutorial/README.md)
+shows one mechanism at a time, often in more than one way. This section picks one: where
+each piece of code goes, what it's called, and how the pieces call each other. Without
+that, every reader has to work out again how this particular application was put
+together.
 
-This section expects you to know Goose, and what the tutorial teaches: workers that
-serve many connections each, routes, extractors, and middleware, and above all its
-pages on [work that waits](../tutorial/11-waiting.md), where a route asks another thread
-and resumes in a case function. The pages here use those mechanisms without explaining
-them again.
+It's an opinionated guide to building an application with goose-rest, the way its
+authors build their own. Nothing in goose-rest enforces it, and an application built
+another way works just as well; it only gives up a shape that others already know.
 
-This section makes those decisions once. It's an opinionated guide to building an
-application with goose-rest: where each piece of code goes, what it's called, and how
-the pieces call each other. It's how goose-rest's authors build their own applications,
-and the way they recommend. Nothing in goose-rest enforces it, and an application built
-another way works just as well. What it gives up is a shape that others already know.
+An application laid out this way has a few main parts. *Domains* are folders, one for
+each part of the product. *Routes* read requests and answer them, *rules* make the
+domain's decisions, and *jobs* do slow work on *lanes*, threads of their own.
+[Concepts and naming](concepts.md) lists each part and what other frameworks call it.
 
-The shape is built from a few parts. *Domains* are folders, one for each part of the
-product. *Routes* read a request and answer it, *rules* make the domain's decisions, and
-*jobs* do the slow work, on *lanes*, threads of their own.
-[Concepts and naming](concepts.md) lists every part, with what other frameworks call it.
+When every domain has the same files, every route asks for at most one job, and every
+wait is a step in one enum, you find code without searching, and a file's name tells
+you what kind of change a diff makes. Where code sits tells you what it may do: a rule
+does no I/O, so a test can call it as a plain function; a job is one transaction on a
+lane; and a route never blocks its worker. A developer from Actix-web or Spring
+recognizes its handlers, middleware, services, and repositories, under other names and
+with the differences Goose brings ([Concepts and naming](concepts.md)).
 
-That shared shape is the point. When every domain has the same files, every route reads
-the request and asks for at most one job, and every wait is a step listed in one enum,
-you find any piece of code without searching, and a file's name tells you what kind of
-change a diff makes. You can reason about a piece of code from where it sits: a rule
-does no I/O, a job is one transaction on a lane, and a route never blocks its worker. A
-developer who knows these conventions reads your application as easily as their own,
-and one who comes from Actix-web, Axum, Hono, or Spring recognizes most of it: handlers,
-middleware, services, and repositories, under the names and with the differences that
-Goose brings ([Concepts and naming](concepts.md)).
+This section assumes you know Goose, and its pages don't explain again what the tutorial
+teaches: workers that serve many connections each, routes, extractors, and middleware.
+Ideally you've also read [work that waits](../tutorial/11-waiting.md);
+[Lanes and jobs](lanes.md) repeats what this section needs from it.
 
-Each rule has a heading of its own, so that a review can link to it, and a reason, so
-that you can tell when it applies, and when your application is the exception.
+Each rule has its own heading so a review can link to it, and a reason, so you can tell
+when it applies and when your application is the exception.
 
 1. [Concepts and naming](concepts.md): each part of an application, its equivalents in
    other frameworks, and how it's named.
@@ -51,7 +46,8 @@ that you can tell when it applies, and when your application is the exception.
 7. [State](state.md): where data lives, by what it is.
 8. [Testing](testing.md): small tests per domain, and scenarios over HTTP.
 
-Every page draws its examples from one application, a time-tracking API whose domains,
-routes, and data [Layout by domain](layout.md) describes. Each page's code is quoted
-from a small program in the folder of the same name, a slice of that application, which
-`scripts/test.sh` builds and sends requests to, as it does for the tutorial's programs.
+Every page draws its examples from one time-tracking API.
+[Layout by domain](layout.md) describes its domains, routes, and data. Each page quotes
+code from a small program in the folder of the same name, covering part of that API.
+`scripts/test.sh` builds these programs and sends them requests, as it does for the
+tutorial's programs.

@@ -1,17 +1,17 @@
 # Middleware and stacks
 
-An application's middleware is in `middleware.goose`, and its stacks, one per audience,
-in `stacks.goose`. Every scope runs behind one stack. How middleware and stacks work,
-and where each kind goes around `rest::route`, is on
-[Middleware and scopes](../tutorial/07-middleware.md).
+An application's middleware lives in `middleware.goose`. Its stacks live in
+`stacks.goose`, with one per audience. Every scope runs behind one stack.
+[Middleware and scopes](../tutorial/07-middleware.md) explains how middleware and stacks
+work and where each kind belongs in relation to `rest::route`.
 
 The code on this page is from [`middleware/`](middleware/).
 
 ## Middleware is named by a verb
 
-Name a middleware for what it does: `authenticate`, `resolve_organization`,
-`limit_rate`. Don't name it for the state it leaves, as a participle such as `authed` or
-`rate_limited` would. From [`middleware/middleware.goose`](middleware/middleware.goose):
+Name middleware for what it does: `authenticate`, `resolve_organization`,
+`limit_rate`. Avoid participles such as `authed` or `rate_limited`, which describe the
+resulting state. From [`middleware/middleware.goose`](middleware/middleware.goose):
 
 ```rust
 // Runs F with the user the bearer token names, or fails with 401.
@@ -136,7 +136,7 @@ From [`middleware/main.goose`](middleware/main.goose):
 Keep the middleware in `middleware.goose` and the stacks in `stacks.goose`, beside
 `dispatch.goose` ([Layout by domain](layout.md)).
 
-Who may call what is then in two files, which a security review reads whole.
+These two files show who may call each route, so a security reviewer can read them in full.
 
 ---
 

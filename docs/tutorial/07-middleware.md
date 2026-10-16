@@ -116,8 +116,8 @@ A stack keeps the rules of the nesting it replaces:
 
 - Middleware that adds fields to every answer, such as `timed` and `cors`, goes outside
   `rest::route`, and middleware that can fail goes inside it.
-- A request opens one `rest::route`. A stack says whether it opens that route, as `member_routes` does;
-  code inside the route opened by a stack opens no additional routes.
+- A request opens one `rest::route`. A stack makes it clear whether it opens that
+  route, as `member_routes` does. Code inside that route opens no additional routes.
 - A stack is an `inline fn`. A plain `fn` that takes a block of routes stays a call and
   keeps the middleware around it out of line.
 

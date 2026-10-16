@@ -1,7 +1,7 @@
 # Errors
 
-Every error an application answers has one shape, and each domain lists the errors it
-answers in one file, `errors.goose`, with the status and code of each.
+The application uses one shape for every error answer. Each domain lists its errors
+in `errors.goose`, with a status and code for each.
 
 The code on this page is from [`errors/`](errors/).
 
@@ -13,13 +13,14 @@ write it once, as the `rest::error_body` overload in `common/errors.goose`
 ([Answers and errors](../tutorial/03-errors.md#errors)).
 
 A client then reads every error the same way, whether a route or goose-rest answered
-it: a 404 from `rest::otherwise`, a 413 for a body past its limit, or a project the
-domain refuses.
+it: a 404 from `rest::otherwise`, a 413 for a body past its limit, or an operation on a
+project that the domain refuses.
 
 ## Each domain's codes in one place
 
-A domain's `errors.goose` holds its `Error` enum, a variant per way the domain refuses,
-and `check`, a case function per variant that fails the route with its status and code.
+A domain's `errors.goose` holds its `Error` enum, with a variant for each reason the
+domain refuses an operation. It also holds a `check` case function for each variant,
+which fails the route with the corresponding status and code.
 From [`errors/projects/errors.goose`](errors/projects/errors.goose):
 
 ```rust
@@ -46,10 +47,10 @@ fn show(cx) {
 }
 ```
 
-Every code the domain answers is then in one file, which a client's developer can read
-whole. Rules stay free of HTTP: they name the refusal, and `check` gives it a status.
-Because the compiler requires a `check` for every variant, a new variant can't go out
-without a status and code.
+Every error code the domain answers is then in one file that a client developer can
+read in full. Rules stay free of HTTP: they name the refusal, and `check` gives it a
+status. Because the compiler requires a `check` for every variant, each new variant
+needs a status and code.
 
 <details>
 <summary>The projects' routes, with a domain's and a shared error</summary>
@@ -118,11 +119,11 @@ As with other shared code, an error moves here when a second domain answers it
 
 | Status | When | From |
 |---|---|---|
-| 400 | The request is malformed: a field missing, or not a number | The extractors, as `invalid_parameter` or `invalid_body` |
+| 400 | The request is malformed: a field is missing, or a value isn't a number | The extractors, as `invalid_parameter` or `invalid_body` |
 | 401 | No credentials, or credentials that aren't valid | `rest::bearer`, `rest::invalid_token` |
-| 403 | Valid credentials, for something they don't allow | `common/errors.goose`: `not_a_member` |
+| 403 | The credentials are valid but don't allow the operation | `common/errors.goose`: `not_a_member` |
 | 404 | No such entity, or none the caller may see | The domain: `project_not_found` |
-| 409 | The entity's state refuses the change | The domain: `project_archived`, `timer_already_running` |
+| 409 | The entity's state prevents the change | The domain: `project_archived`, `timer_already_running` |
 | 422 | Well-formed input that a rule refuses | The domain: `project_name_required` |
 
 A client can then decide from the status alone whether to fix the request, sign in

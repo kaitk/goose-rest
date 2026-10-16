@@ -109,8 +109,8 @@ fn assign(c: db::Conn&, j: AssignJob) -> AssignReply {
 ```
 
 The job and its reply are flat structs, which go between threads as bytes, one message
-each. A reply that carries an error's status and code lets the route answer it in the
-one error shape:
+each. A reply that carries an error's status and code lets the route answer in the
+common error shape:
 
 ```rust
 struct AssignJob { project: i64, task: i64, user: i64, assignee: i64 }
@@ -208,9 +208,9 @@ enum Waiting {
 struct St { waiting: Waiting = Waiting.None }
 ```
 
-When the reply comes, the handler runs again, and `rest::resumed`, true for every call
-after the request's first, sends it to a case function per variant, `resume`. The
-compiler checks that every variant has one:
+When the reply arrives, the handler runs again. `rest::resumed` is true for every call
+after the request's first, so the handler dispatches to the `resume` case function for
+the current variant. The compiler checks that every variant has one:
 
 ```rust
     let e = rest::serve(cfg, app, St { .. }) { cx =>
@@ -242,9 +242,9 @@ PUT /v1/projects/1/tasks/6/assignee?user=2 404 {"error":"task_not_found"}
 
 ## One job per route
 
-A route could instead ask once per query, and resume after each: a state machine with
-a `Waiting` variant and a case function per query. One job per route is the default,
-because:
+A route could instead ask once per query and resume after each, forming a state machine
+with a `Waiting` variant and a case function per query. One job per route is the default
+for these reasons:
 
 - A use case reads as one function, next to its data, and its queries share one
   transaction. A route that waits once per query can't hold a transaction across its
