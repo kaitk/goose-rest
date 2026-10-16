@@ -17,7 +17,7 @@ const doc = api({
         additionalProperties: false,
         properties: {
           name: { type: "string", minLength: 1, maxLength: 120 },
-          color: { type: "string", maxLength: 7 },
+          color: { type: "string", format: "ascii", maxLength: 7 },
           status: { $ref: "#/components/schemas/Status" },
         },
       },
