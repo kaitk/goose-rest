@@ -27,6 +27,9 @@ inline fn authenticate<F>(cx) {
 }
 ```
 
+The sessions it reads are the ones the `auth` domain's routes open
+([Layout by domain](layout.md)); the program keeps them in a global.
+
 A middleware runs code, and may answer instead of running its block. A verb says that
 at the call site, `authenticate(cx) { user => ... }`, where a participle reads as a
 condition already met.

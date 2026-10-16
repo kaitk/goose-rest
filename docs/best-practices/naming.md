@@ -30,7 +30,7 @@ queries of a job that touches several entities from each other.
 
 | Kind | Shape | Examples |
 |---|---|---|
-| Domain folder, and its namespace | The domain, plural | `projects/`, `projects` |
+| Domain folder, and its namespace | The entity it holds, plural, or else the area it covers | `projects/`, `entries`; `timer`, `auth`, `settings` |
 | File in a domain or in `common/` | Its kind ([the files](layout.md#the-same-files-in-every-domain)) | `structs.goose`, `errors.goose`, `rules.goose`, `routes.goose`, `service.goose` |
 | Stack | Its audience, singular, and `_routes` | `public_routes`, `user_routes`, `member_routes` |
 | Middleware | A verb | `authenticate`, `resolve_organization`, `limit_rate` |

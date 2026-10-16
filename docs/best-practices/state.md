@@ -11,7 +11,7 @@ The code on this page is from [`state/`](state/).
 |---|---|
 | Known at build time: holidays, translations, lookup tables | A global with a literal initializer, compiled into the program |
 | Loaded at startup, and too large to copy into every worker: a GeoIP database, a catalog | goose-http's shared store, `import http.store` ([state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)) |
-| Changing, and every worker must see the change: the projects, the users | A service thread that owns it, which routes ask ([Work that waits](../tutorial/13-waiting.md)) |
+| Changing, and every worker must see the change: the projects, the users, a member's running timer | A service thread that owns it, which routes ask ([Work that waits](../tutorial/13-waiting.md)) |
 | A worker's own, where workers may differ: a cache, a rate limiter's counts | The worker's state, `cx.app` |
 | One request's own: the signed-in user, looked up once | The request's state, `cx.state`, with `rest::once` |
 

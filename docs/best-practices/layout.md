@@ -5,7 +5,8 @@ projects, teams, or time entries. Each domain's folder holds that domain's struc
 errors, rules, routes, and services. The kind of code (routes, rules) sets the file
 name inside the folder, never the folder name.
 
-This is a time-tracking API with eight domains and three audiences, laid out this way:
+The application this section's pages take their examples from is a time-tracking API
+with eight domains and three audiences, laid out this way:
 
 ```text
 app/
@@ -23,9 +24,44 @@ app/
     rules.goose         new_project, archived: typed input in, no cx
     routes.goose        routes(cx, member), a function per route, its case functions
     service.goose       the jobs the routes send the database thread
-  entries/  timer/  teams/  reports/  settings/  availability/  auth/
-                        the same files, as far as each needs them
+  entries/              (structs, errors, rules, routes, service)
+  timer/                (structs, errors, rules, routes, service)
+  teams/                (structs, errors, rules, routes, service)
+  reports/              (structs, routes, service)
+  settings/             (structs, routes, service)
+  availability/         (structs, errors, rules, routes, service)
+  auth/                 (structs, errors, rules, routes, service)
 ```
+
+Its data model, a box per domain around the tables it owns, with a few columns of each.
+`timer` and `reports` own no tables: they work on `entries`'.
+
+![The data model: a box per domain, its tables, and the references between them](layout-model.png)
+
+The three audiences are the public, a signed-in user, and a member of an organization,
+each with its stack in `stacks.goose`. The domains:
+
+- **`auth`**: signing in and out, and the session it opens. Public routes:
+  `POST /auth/session` signs in, `DELETE /auth/session` signs out.
+- **`settings`**: a user's own preferences, such as time zone and the first day of the
+  week, the same in every organization. User routes: `GET` and `PUT /settings`.
+- **`projects`**: what an organization tracks time on, and the teams on each. Member
+  routes under `/organization/projects`: list, create, update, archive.
+- **`teams`**: groups of members, and who is in each. Member routes under
+  `/organization/teams`: list, create, add and remove a member.
+- **`entries`**: the time recorded, each entry a member's span on a project. Member
+  routes under `/organization/entries`: list a week, create, edit, delete.
+- **`timer`**: the running entry, one per member at most. Member routes under
+  `/organization/timer`: `GET` it, `POST` to start, `DELETE` to stop. It owns no data
+  of its own: it starts and stops entries.
+- **`reports`**: totals of entries by project, team, or member over a period. Member
+  routes, read only: `GET /organization/reports/...`. It owns no data either.
+- **`availability`**: the hours each member expects to work on each weekday, which
+  reports compare with the time recorded. Member routes under
+  `/organization/availability`: `GET` and `PUT`.
+- **`common/`**: `users` (`User`) and `members` (`Member`, a user in an organization),
+  which the stacks look up and every user or member route is given, and the errors
+  several domains answer. No routes.
 
 [`layout/`](layout/) is a smaller program laid out the same way, with three domains:
 `projects`, `teams`, and `settings`.

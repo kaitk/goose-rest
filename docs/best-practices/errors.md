@@ -86,7 +86,7 @@ As with other shared code, an error moves here when a second domain answers it
 | 401 | No credentials, or credentials that aren't valid | `rest::bearer`, `rest::invalid_token` |
 | 403 | Valid credentials, for something they don't allow | `common/errors.goose`: `not_a_member` |
 | 404 | No such entity, or none the caller may see | The domain: `project_not_found` |
-| 409 | The entity's state refuses the change | The domain: `project_archived` |
+| 409 | The entity's state refuses the change | The domain: `project_archived`, `timer_already_running` |
 | 422 | Well-formed input that a rule refuses | The domain: `project_name_required` |
 
 A client can then decide from the status alone whether to fix the request, sign in

@@ -21,5 +21,7 @@ that a reader can tell when it applies.
 6. [Naming](naming.md): every name an application gives, in one table.
 7. [Testing](testing.md): small tests per domain, and scenarios over HTTP.
 
-Each page's code is quoted from a small program in the folder of the same name, which
+Every page draws its examples from one application, a time-tracking API whose domains,
+routes, and data [Layout by domain](layout.md) describes. Each page's code is quoted
+from a small program in the folder of the same name, a slice of that application, which
 `scripts/test.sh` builds and sends requests to, as it does for the tutorial's programs.
