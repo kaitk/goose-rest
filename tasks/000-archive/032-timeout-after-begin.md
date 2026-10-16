@@ -34,8 +34,8 @@ Found while reading goose-http v0.3.3, not run: without `Config.mail_slots` and
 `max_waiting`, `start_wait` finds no timer and queues the exchange in `overdue`, which
 both loops process only `if waiting`, so a `later` on an open response never gets
 `TIMEOUT`, and the stream stalls until the connection's deadline. `rest::pause` says
-it needs both, as `rest::ask` does. For goose-http to decide: `TIMEOUT` at once there
-too, as its docs say for `max_waiting`.
+it needs both, as `rest::ask` does. goose-http's task 043 records it, to decide:
+`TIMEOUT` at once there too, as its docs say for `max_waiting`, or refusing `later`.
 
 ## Findings (2026-10-16)
 
