@@ -57,7 +57,7 @@ lane several threads, each with its own box, and send each job to one of them.
 
 *Note: the best practices size each box by how long its lane's jobs take, and give work
 the product can do without under load, such as reports, a small box of its own, so that
-it's refused first ([How many jobs a box holds](../best-practices/lanes.md#how-many-jobs-a-box-holds)).*
+it's refused first ([How many jobs a box holds](../best-practices/lanes.md#62-how-many-jobs-a-box-holds)).*
 
 ## A client that has gone
 

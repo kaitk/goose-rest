@@ -268,7 +268,7 @@ route still waits once. A route that needs two lanes in turn waits twice:
 
 *Note: an application with more slow work than one database gives each kind a lane of
 its own, so that a job waits only behind jobs of its kind, as the best practices
-recommend ([Lanes and jobs](../best-practices/lanes.md#a-lane-for-each-kind-of-slow-work)).*
+recommend ([Lanes and jobs](../best-practices/lanes.md#61-a-lane-for-each-kind-of-slow-work)).*
 
 ---
 

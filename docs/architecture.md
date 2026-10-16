@@ -130,7 +130,7 @@ inlined into it, with each early answer compiled as a jump. Three rules keep it 
 
 Middleware that applies to every answer, such as `timed`, `cors`, and `compressed`, goes
 outside `rest::route`, so that the errors the route answers get it too; middleware that
-can fail, such as `bearer`, goes inside it. The [reference](reference.md#middleware)
+can fail, such as `bearer`, goes inside it. The [reference](reference.md#2-middleware)
 says which answers get which fields.
 
 A program's own middleware is an `inline fn` that takes a block. A stack is one that
@@ -191,7 +191,7 @@ can pause it with `rest::pause`, and gets `TIMEOUT` when the time has passed, fo
 events sent over time: the exchange keeps the pause's deadline, so that goose-rest
 ends the response when goose-http, with no timer free, gives `TIMEOUT` at once. One case function per variant
 handles every kind, because Goose can't keep a block to call at the next event.
-[Later calls](reference.md#later-calls) has each call and event.
+[Later calls](reference.md#4-later-calls) has each call and event.
 
 Each call goes to the variant that is in `cx.state.waiting` at the time, and goose-rest
 keeps no other. An upgraded connection that waits on `rest::ask` therefore gets the

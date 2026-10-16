@@ -1,14 +1,14 @@
-# Errors
+# 4. Errors
 
 The application uses one shape for every error answer. Each domain lists its errors
 in `errors.goose`, with a status and code for each.
 
 The code on this page is from [`errors/`](errors/).
 
-## One error shape for the whole API
+## 4.1 One error shape for the whole API
 
 Answer every error in goose-rest's shape, `{"error": code}`, which the framework's own
-errors already use ([Errors](../reference.md#errors)). If the API needs another shape,
+errors already use ([Errors](../reference.md#5-errors)). If the API needs another shape,
 write it once, as the `rest::error_body` overload in `common/errors.goose`
 ([Answers and errors](../tutorial/03-errors.md#errors)).
 
@@ -16,7 +16,7 @@ A client then reads every error the same way, whether a route or goose-rest answ
 it: a 404 from `rest::otherwise`, a 413 for a body past its limit, or an operation on a
 project that the domain refuses.
 
-## Each domain's codes in one place
+## 4.2 Each domain's codes in one place
 
 A domain's `errors.goose` holds its `Error` enum, with a variant for each reason the
 domain refuses an operation. It also holds a `check` case function for each variant,
@@ -35,7 +35,7 @@ fn check(e: Error.NameTaken, cx) { rest::fail(cx, 409, "project_name_taken"); }
 fn check(e: Error.Archived, cx) { rest::fail(cx, 409, "project_archived"); }
 ```
 
-A rule returns an `Error` ([Routes and rules](routes-and-rules.md#what-a-rule-does)),
+A rule returns an `Error` ([Routes and rules](routes-and-rules.md#32-what-a-rule-does)),
 and the route passes it to `check`:
 
 ```rust
@@ -85,7 +85,7 @@ fn remove(cx) {
 
 </details>
 
-## A code names the entity and what went wrong
+## 4.3 A code names the entity and what went wrong
 
 Write a code in snake_case, starting with the entity it's about: `project_not_found`,
 `project_name_taken`, `project_archived`.
@@ -93,7 +93,7 @@ Write a code in snake_case, starting with the entity it's about: `project_not_fo
 Codes then stay unique across domains without a registry, and a client can match on
 one without reading the status.
 
-## Shared codes go in `common/errors.goose`
+## 4.4 Shared codes go in `common/errors.goose`
 
 An error that more than one domain answers, or that middleware answers, goes in
 `common/errors.goose`, laid out like a domain's. From
@@ -113,9 +113,9 @@ fn check(e: Error.NotAnAdmin, cx) { rest::fail(cx, 403, "not_an_admin"); }
 ```
 
 As with other shared code, an error moves here when a second domain answers it
-([Shared code moves to `common/`](layout.md#shared-code-moves-to-common)).
+([Shared code moves to `common/`](layout.md#25-shared-code-moves-to-common)).
 
-## Choosing the status code
+## 4.5 Choosing the status code
 
 | Status | When | From |
 |---|---|---|

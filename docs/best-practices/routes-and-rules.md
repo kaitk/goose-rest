@@ -1,4 +1,4 @@
-# Routes and rules
+# 3. Routes and rules
 
 The first code that becomes hard to change in a web application is often the handler that
 does everything: it reads the request, decides what the domain allows, writes to the
@@ -14,14 +14,14 @@ applications split the work three ways:
   rules ([Lanes and jobs](lanes.md)).
 
 A domain's routes and jobs are in its `routes.goose`, and its rules in `rules.goose`
-([Layout by domain](layout.md#the-same-files-in-every-domain)).
+([Layout by domain](layout.md#22-the-same-files-in-every-domain)).
 
 This page follows one request, `POST /projects` with a name, through its route and its
 rule. The code is from [`routes-and-rules/`](routes-and-rules/), which keeps projects in
 the worker's memory rather than a database. With a database, the route would ask for a
 job that calls the same rule.
 
-## What a route does
+## 3.1 What a route does
 
 A route reads what it needs from the request, calls a rule or asks for a job, and
 answers with the result or error. From
@@ -42,7 +42,7 @@ fn create(cx) {
 ```
 
 Everything here is about HTTP; the decision is the rule's, and `check` turns its
-refusal into a status and code ([Errors](errors.md#each-domains-codes-in-one-place)). A
+refusal into a status and code ([Errors](errors.md#42-each-domains-codes-in-one-place)). A
 route kept to this shape fits on one screen, and reads the same in every domain.
 
 <details>
@@ -75,7 +75,7 @@ fn archive(cx) {
 
 </details>
 
-## What a rule does
+## 3.2 What a rule does
 
 A rule takes plain values, such as its domain's structs and numbers. It returns its
 result and an `Error`, which is `Error.None` on success. From
@@ -113,7 +113,7 @@ fn new_entry(input: CreateInput, id: i64, now: i64) -> Entry, Error {
     let e, err = new_entry(j.input, all.len + 1, time() as i64);
 ```
 
-## Which check goes where
+## 3.3 Which check goes where
 
 The route rejects malformed requests, such as a missing field or a value that isn't a
 number. Its extractors make these checks before the rule runs, and answer 400
@@ -131,7 +131,7 @@ request comes from the user's input or the data's state, and its code names the 
 that refused it, in the domain's words. Each check is in one place: a rule doesn't
 repeat what the extractors checked.
 
-## Why the split pays
+## 3.4 Why the split pays
 
 A test calls a rule as a plain function, in microseconds, with no server, thread, or
 database. From [`routes-and-rules/test.goose`](routes-and-rules/test.goose):

@@ -12,7 +12,7 @@ own:
 
 This page shows worker state and request state, and how to reach the store and a lane.
 Which place suits which data is in Best practices'
-[State](../best-practices/state.md#choose-the-place-by-what-the-data-is).
+[State](../best-practices/state.md#71-choose-the-place-by-what-the-data-is).
 
 ## Worker state
 

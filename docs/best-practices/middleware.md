@@ -1,4 +1,4 @@
-# Middleware and stacks
+# 5. Middleware and stacks
 
 An application's middleware lives in `middleware.goose`, and its stacks, one per
 audience, in `stacks.goose`. Every scope runs behind one stack.
@@ -7,7 +7,7 @@ work and where each kind sits relative to `rest::route`.
 
 The code on this page is from [`middleware/`](middleware/).
 
-## Middleware is named by a verb
+## 5.1 Middleware is named by a verb
 
 Name middleware for what it does: `authenticate`, `resolve_organization`,
 `limit_rate`. Avoid participles such as `authed` or `rate_limited`, which describe the
@@ -60,7 +60,7 @@ A middleware runs code, and may answer instead of running its block. A verb says
 at the call site, `authenticate(cx) { user => ... }`, where a participle reads as a
 condition already met.
 
-## A block's parameter is named for what it's given
+## 5.2 A block's parameter is named for what it's given
 
 The parameter of a middleware's or a stack's block is named for the value it's given:
 `user` from `authenticate`, `member` from `resolve_organization`.
@@ -68,7 +68,7 @@ The parameter of a middleware's or a stack's block is named for the value it's g
 The block's code uses that name throughout, so the name says what the route may rely
 on: a `member` is a user already checked against the organization.
 
-## A stack per audience
+## 5.3 A stack per audience
 
 Write one stack for each audience the API has, and name it for that audience, singular,
 with `_routes`: `public_routes`, `user_routes`, `member_routes`. From
@@ -110,11 +110,11 @@ the member routes can't take the organization from their path. Until it is, the 
 scopes them under `/organization`, and `resolve_organization` reads the organization's
 id from the `X-Organization` header with `rest::header`.
 
-## Every scope behind one stack
+## 5.4 Every scope behind one stack
 
 Each scope's routes, public ones included, run behind exactly one stack, which opens the
 request's `rest::route`. `dispatch.goose` names each scope's stack, as
-[All routing in one file](layout.md#all-routing-in-one-file) shows:
+[All routing in one file](layout.md#26-all-routing-in-one-file) shows:
 `public_routes(cx) { ... }` around `/health`, `user_routes` around `/settings`, and
 `member_routes` around `/organization`.
 
@@ -131,7 +131,7 @@ From [`middleware/main.goose`](middleware/main.goose):
             rest::routes(cx) { cx =>
 ```
 
-## Where middleware and stacks live
+## 5.5 Where middleware and stacks live
 
 Keep the middleware in `middleware.goose` and the stacks in `stacks.goose`, beside
 `dispatch.goose` ([Layout by domain](layout.md)).

@@ -113,7 +113,7 @@ sending an email, the lane can forward the work itself and the route waits only 
 
 *Note: the best practices keep a route to one slow step where it can, and list each
 route's steps together in `Waiting`, in the order they run
-([A route with two slow steps](../best-practices/lanes.md#a-route-with-two-slow-steps)).*
+([A route with two slow steps](../best-practices/lanes.md#652-a-route-with-two-slow-steps)).*
 
 ---
 

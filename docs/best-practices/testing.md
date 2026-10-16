@@ -1,4 +1,4 @@
-# Testing
+# 8. Testing
 
 An application's tests follow Goose's own convention
 ([Tests](../decisions.md#tests)), and they're laid out by domain, as the code is. Most
@@ -23,11 +23,11 @@ testing/
     expected/             a golden file for each test and scenario
 ```
 
-## A test imports the application as a package
+## 8.1 A test imports the application as a package
 
 A test has a `main` of its own, so it can't import `main.goose`. Instead, it imports
 the application's folder as a package, which loads `app.goose` and everything
-it imports ([Layout by domain](layout.md#the-programs-types-are-in-appgoose)). From
+it imports ([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose)). From
 [`testing/test/projects/project_routes.goose`](testing/test/projects/project_routes.goose):
 
 ```rust
@@ -42,7 +42,7 @@ Being a root file, a test declares goose-http and goose-rest itself, at the same
 releases as `main.goose`. `expect` is `test/expect.goose`: the helpers every test
 shares, in one module rather than a copy in each test.
 
-## A folder per domain, a golden file per test
+## 8.2 A folder per domain, a golden file per test
 
 Put each domain's tests in `test/<domain>/`, such as `test/projects/`. Each test prints
 what it checks, and the runner compares that with `test/expected/<name>.out`. Name each
@@ -53,10 +53,10 @@ A golden file shows every answer at once, so a reviewer sees what changed in beh
 without reading the test's code. When one fails, the runner prints the difference and
 goes on, so one broken rule doesn't hide the rest.
 
-## Rules are tested as plain calls
+## 8.3 Rules are tested as plain calls
 
 A rule takes typed input and does no I/O, so a test calls it directly
-([Routes and rules](routes-and-rules.md#why-the-split-pays)). A rule that needs the
+([Routes and rules](routes-and-rules.md#34-why-the-split-pays)). A rule that needs the
 time takes `now`, so the test passes a fixed one and gets the same answers on every
 run. From [`testing/test/entries/entry_rules.goose`](testing/test/entries/entry_rules.goose):
 
@@ -83,7 +83,7 @@ ending in the future: Error.InFuture
 This is where each case of the domain's logic is tested, in microseconds, which leaves
 a route's test only what the route adds.
 
-## Routes are tested through `rest::serve_one`
+## 8.4 Routes are tested through `rest::serve_one`
 
 `rest::serve_one` takes one request's bytes and returns the response's, through the
 same code `rest::serve` runs, with no socket or thread
@@ -114,7 +114,7 @@ That covers what the route adds to its rules: the extractors' 400s, the status a
 `check` gives each refusal, and the JSON it writes. A stack or a middleware is tested
 the same way: give `serve_one` a request without a token, and the answer is the 401.
 
-## A route that asks a lane is given its replies
+## 8.5 A route that asks a lane is given its replies
 
 The test plays the lane. It gives the worker state a box of its own where the lane's
 would be, and nothing takes from that box but the test, so no thread runs and nothing
@@ -154,7 +154,7 @@ The job itself is a plain function, tested like a rule. So a route that waits is
 covered without any timing: the job it sends, and its answer to a reply, to none in
 time, and to a full box.
 
-## What must not compile is a fixture
+## 8.6 What must not compile is a fixture
 
 A test file with a `// error: <message>` line must fail to compile, with that message
 among the compiler's errors. It guards a promise the types make: a change that
@@ -169,7 +169,7 @@ route served with request state that has no `Waiting`:
 // compile.
 ```
 
-## A test that needs the running server is a scenario
+## 8.7 A test that needs the running server is a scenario
 
 A test that needs a socket, a thread, or more than one domain at once is a scenario: a
 folder under `test/` with a `requests.sh`. The runner builds `main.goose`, serves it
@@ -201,7 +201,7 @@ slow, and when it fails it's hard to say where. Keep scenarios few, and every ot
 small and in its domain's folder. What depends on timing, such as a reply after the
 route has stopped waiting, is a scenario too ([Testing the application](../tutorial/16-testing.md#the-running-server)).
 
-## The application keeps its own runner
+## 8.8 The application keeps its own runner
 
 Keep a `test/run_tests.py` in the application rather than install a shared one, as
 Goose and goose-rest each keep their own.

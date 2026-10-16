@@ -74,7 +74,7 @@ DELETE /v1/projects/2          405 {"error":"method_not_allowed"}
 An extractor returns a slice of the request when nothing needs decoding, and otherwise
 decodes into `cx.scratch`. Either way, the value stays valid until the handler returns,
 so copy it if it must outlive the request. The
-[reference](../reference.md#extractors) lists every extractor and the errors it can return.
+[reference](../reference.md#3-extractors) lists every extractor and the errors it can return.
 
 ---
 

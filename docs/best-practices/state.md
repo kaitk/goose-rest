@@ -1,4 +1,4 @@
-# State
+# 7. State
 
 Workers share nothing, so where data lives decides who can see it and what reaching it
 costs. Data lives in one of five places, each with its own name.
@@ -7,7 +7,7 @@ use.
 
 The code on this page is from [`state/`](state/).
 
-## Choose the place by what the data is
+## 7.1 Choose the place by what the data is
 
 The five places, in a server with two workers:
 
@@ -44,7 +44,7 @@ Each row is the cheapest place that still gives every request the right answer. 
 that must look the same to every worker isn't worker state, and data that one worker can
 keep doesn't cost a message to another thread.
 
-## Data known at build time is a constant
+## 7.2 Data known at build time is a constant
 
 Write data that ships with a release as a constant, a global with a literal value. From
 [`state/app.goose`](state/app.goose):
@@ -62,11 +62,11 @@ code change, reviewed and released with the code. Don't load data into a global 
 `main` before the workers start: each worker gets a copy of it
 ([State](../tutorial/08-state.md#worker-state)).
 
-## What worker state holds
+## 7.3 What worker state holds
 
 Keep in `cx.app` only data whose value may differ from one worker to the next without a
 wrong answer: a cache, a count, a connection of the worker's own. Its type is `App`,
-declared in `app.goose` ([Layout by domain](layout.md#the-programs-types-are-in-appgoose)),
+declared in `app.goose` ([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose)),
 and each worker builds its own in `main.goose`:
 
 ```rust
@@ -114,7 +114,7 @@ A client's next request may reach another worker. Data that must be the same for
 on that worker, such as a project just created, is lane data. The programs in this
 section and the tutorial keep projects in worker state only because they run one worker.
 
-## Rate limits: worker state or lane data
+## 7.4 Rate limits: worker state or lane data
 
 Keep the count for a limit that protects an account, such as failed sign-ins per user,
 in lane data, so requests on every worker add to the same count. Use worker

@@ -1,4 +1,4 @@
-# Layout by domain
+# 2. Layout by domain
 
 An application's code is grouped by domain: the part of the product it serves, such as
 projects, teams, or time entries. Each domain's folder holds that domain's structs,
@@ -63,11 +63,11 @@ Each has a stack in `stacks.goose`. Here is what each domain is for:
   entries behind them, for export. Member routes, read only:
   `GET /organization/reports/...`. It owns no data either. Its rules sum the entries,
   and its jobs run on a lane of their own, so that under load they are refused before
-  other work ([Lanes and jobs](lanes.md#choosing-which-work-is-refused-under-load)).
+  other work ([Lanes and jobs](lanes.md#64-choosing-which-work-is-refused-under-load)).
   An export's entries are a long answer, sent in pieces
   ([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)). Its five
   operations each have a file in `reports/routes/`
-  ([When a domain grows](#when-a-domain-grows)).
+  ([When a domain grows](#23-when-a-domain-grows)).
 - **`availability`**: the hours each member expects to work on each weekday, which
   reports compare with the time recorded. Member routes under
   `/organization/availability`: `GET` and `PUT`.
@@ -80,7 +80,7 @@ Each has a stack in `stacks.goose`. Here is what each domain is for:
 [`layout/`](layout/) is a smaller program laid out the same way, with three domains:
 `projects`, `teams`, and `settings`.
 
-## A folder per domain
+## 2.1 A folder per domain
 
 Put all of a domain's code in one folder named for the domain, such as `projects/`.
 
@@ -88,7 +88,7 @@ A change to a feature then touches one folder, a reviewer sees the domain from t
 paths alone, and the folder shows how big the domain is. Laid out by kind
 (`routes/`, `rules/`, `queries/`), one feature spreads across every folder.
 
-## The same files in every domain
+## 2.2 The same files in every domain
 
 Each kind of code has one file name, the same in every domain and in `common/`:
 
@@ -108,14 +108,14 @@ file's name tells a reviewer what kind of change to expect.
 
 A route and its `resume` functions, a job, a query, and a rule are the controller, the
 transactional service method, the repository, and the domain logic of a Spring
-application ([Concepts and naming](concepts.md#the-concepts)).
+application ([Concepts and naming](concepts.md#11-the-concepts)).
 
 A job only orchestrates: it opens the transaction, calls queries to read and write,
 calls rules to decide, and commits. When a job grows, what grows is a decision that
 belongs in a rule, or a statement that belongs in a query. Rules then hold the domain's
 logic, and a test calls them as plain functions, with no server, thread, or database.
 
-## When a domain grows
+## 2.3 When a domain grows
 
 Split a domain by operation once its `routes.goose` holds too many flows to follow in
 one file. Keep `routes` and the paths in `routes.goose`. Move each operation's flow,
@@ -140,15 +140,15 @@ Moving a function between files therefore changes none of its callers. A domain 
 start in one file and split as it grows, where a Java application splits into classes
 from the start.
 
-## A domain is a namespace
+## 2.4 A domain is a namespace
 
 Each file of a domain declares the domain's namespace, `namespace projects;`. A call
 from outside the domain names it once, `projects::routes(cx, member)`, and the names
-inside leave it out ([A name doesn't repeat its domain](concepts.md#a-name-doesnt-repeat-its-domain)).
+inside leave it out ([A name doesn't repeat its domain](concepts.md#12-a-name-doesnt-repeat-its-domain)).
 A folder in `common/` is a namespace of the same name, such as `members`, and the
 files directly in `common/` are in `common`.
 
-## Shared code moves to `common/`
+## 2.5 Shared code moves to `common/`
 
 Code starts in the domain that needs it. Move it to `common/` when a second domain needs
 it, and not before. `common/` is laid out as a domain is, by the entity it serves:
@@ -158,7 +158,7 @@ Moving code early means guessing what other domains will need. Once a second dom
 uses it, two callers show what the shared code needs to do. Laid out by entity,
 `common/` reads the same way as a domain.
 
-## All routing in one file
+## 2.6 All routing in one file
 
 `dispatch.goose` holds the routes block: each audience's scope, behind its stack, then
 each domain's scope and its `routes`. From [`layout/dispatch.goose`](layout/dispatch.goose):
@@ -214,7 +214,7 @@ Every route's path and the stack that guards it are then in one file, so a revie
 see that no route skips authentication. A domain doesn't depend on its prefix, so
 moving it to another path changes one line.
 
-## The program's types are in `app.goose`
+## 2.7 The program's types are in `app.goose`
 
 Declare three types in `app.goose`, the application's entry: `App`, the worker state;
 `St`, the request state; and `Waiting`, the steps of the routes that wait. The job tags
@@ -228,9 +228,9 @@ application through `app.goose` instead ([Testing](testing.md)).
 Each type is one for the whole program: every domain's routes get the same `cx`, so no
 domain owns them. A domain still owns its `Waiting` variants, named for it, and their
 `resume` functions are in its `routes.goose`
-([Structuring a route that waits](lanes.md#structuring-a-route-that-waits)).
+([Structuring a route that waits](lanes.md#653-structuring-a-route-that-waits)).
 
-## With an OpenAPI schema
+## 2.8 With an OpenAPI schema
 
 The generator writes one file for the whole API, `api_gen.goose`, beside `main.goose`,
 and its router calls every handler in one namespace, `app` by default

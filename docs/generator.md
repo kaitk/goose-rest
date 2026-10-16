@@ -180,7 +180,7 @@ For a schema `Project`, the file has:
 - `fn rest::from_request(cx, v: const api::Project?) -> api::Project`, the extractor
   `rest::take<api::Project>(cx)` calls: it reads the JSON body with the reader, and
   fails with 415 for another media type and 400 `invalid_body` for a body the reader
-  refuses ([reference](reference.md#extractors)).
+  refuses ([reference](reference.md#3-extractors)).
 
 For an enum `Status`: `enum Status`, `fn status_of(s) -> Status, bool`, and `fn
 format(out, v: Status)`.
@@ -360,7 +360,7 @@ matches the full request path from the schema. A generated handler gets each pat
 parameter as an argument; a helper that calls `rest::param` inside a routes block
 reads the last hand-written match instead.
 
-Each answer is in goose-rest's error shape ([reference](reference.md#errors)). A route checks the security scheme first,
+Each answer is in goose-rest's error shape ([reference](reference.md#5-errors)). A route checks the security scheme first,
 then the path parameters, the other parameters, and the body, and answers the first
 failure: a path parameter that doesn't fit its schema is `400
 {"error":"invalid_parameter","detail":"id: minimum"}`.

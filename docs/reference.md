@@ -4,7 +4,7 @@ goose-rest's middleware, extractors, errors, and test helper: what each call doe
 it gives, and what it answers when it fails. The [tutorial](tutorial/README.md) introduces them
 in order, and the [generator reference](generator.md) covers what `goose-rest gen` writes.
 
-## Context and routes
+## 1. Context and routes
 
 `rest::serve(cfg, app) { cx => handle(cx) };` serves requests with the worker state
 by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each request's
@@ -12,7 +12,7 @@ by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each reques
 With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
 `fresh`. `rest::serve(cfg, app, fresh, limits)` also takes goose-rest's own settings,
 a `rest::Config`: its `gather_budget` bounds the bodies a worker gathers at once
-([Extractors](#extractors)). `rest::serve_epoll` has the same forms.
+([Extractors](#3-extractors)). `rest::serve_epoll` has the same forms.
 
 The context is `rest::Cx<S, A, R>`: the request state, the worker state, and the
 router type. Its `req`, `body`, `out`, and `scratch` carry the request and response.
@@ -38,7 +38,7 @@ routes' `Allow` inside the block. Generated handlers receive path parameters as
 arguments; pass those to helpers rather than read the last hand-written match.
 
 `cx.kind` identifies the event the handler is called for: `http::REQUEST` for a request,
-and the corresponding event for each later call ([Later calls](#later-calls)). `rest::resumed(cx)` is
+and the corresponding event for each later call ([Later calls](#4-later-calls)). `rest::resumed(cx)` is
 true for every call after a request's first.
 
 `rest::json` and `rest::json_bytes` answer `application/json`; `rest::text` answers
@@ -46,7 +46,7 @@ true for every call after a request's first.
 status)` answers without a body: 204 and 304 omit `Content-Length`, and other statuses write
 `Content-Length: 0`.
 
-### JSON from a struct's fields
+### 1.1 JSON from a struct's fields
 
 `rest::format_fields(out, v)` writes the struct `v` as a JSON object: every field, in
 declaration order, keyed by its name as declared. A program's `format` overload calls
@@ -73,7 +73,7 @@ field, or read JSON: a writer that needs those stays hand-written, and the gener
 writes both from a schema. It builds on Goose's `const for` over `fields<T>` (spec
 §6), whose first version names each field and reaches it but doesn't give its type.
 
-## Middleware
+## 2. Middleware
 
 Middleware is a block around the routes it applies to, inlined into the handler: a scope
 can have its own, and a public route none.
@@ -82,7 +82,7 @@ can have its own, and a public route none.
 |---|---|
 | `rest::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` with a 12-byte duration field padded with trailing spaces, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `rest::timed(cx, false)` skips the log. |
 | `rest::cors(cx, rest::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
-| `rest::compressed(cx) { cx => ... }` | Compresses the answers inside, errors included, by the request's `Accept-Encoding`, with goose-http's gzip, deflate, and zstd. An optional module: [Compression](#compression). |
+| `rest::compressed(cx) { cx => ... }` | Compresses the answers inside, errors included, by the request's `Accept-Encoding`, with goose-http's gzip, deflate, and zstd. An optional module: [Compression](#21-compression). |
 | `rest::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `rest::invalid_token(cx)` refuses one. `rest::bearer_token(cx)` returns it, for a generated router's security check. |
 | `rest::scope(cx, "/v1")` | Whether the path starts with the prefix at a segment boundary; `rest::on` calls inside match the rest. `rest::otherwise(cx)` answers 404, 405, and OPTIONS across scopes. |
 
@@ -98,7 +98,7 @@ Which answers get the fields:
 |---|---|---|
 | Written in the route, at the request | yes | yes, the route's time |
 | A response begun in the route (`rest::begin`, `rest::file`, `rest::upgrade`) | in its head | in its head |
-| Written at a later call ([Later calls](#later-calls)) of a route that called `rest::ask` or `rest::body_in_pieces` at the request: at `WAKE`, at a body's `BODY` or `END`, a response begun then, a 504 `timeout`, or a 413 past the limit | yes | yes, timed from the request to the answer's head |
+| Written at a later call ([Later calls](#4-later-calls)) of a route that called `rest::ask` or `rest::body_in_pieces` at the request: at `WAKE`, at a body's `BODY` or `END`, a response begun then, a 504 `timeout`, or a 413 past the limit | yes | yes, timed from the request to the answer's head |
 | Written once a body left to gather (`rest::body`) is whole, when the route runs again | yes | yes, timed from that run |
 | goose-rest's 413 or 503 while a body is gathered, for a chunked body past its limit or the gather budget | no | no |
 
@@ -114,7 +114,7 @@ after the response is written, so the body doesn't move. Both `timed` and `cors`
 the context by reference. CORS looks for a preflight's request-method field only on
 OPTIONS. `bearer_token` uses `http::bearer` and requires a token68 bearer token.
 
-### Compression
+### 2.1 Compression
 
 `rest::compressed` is in the module `rest.compression`, which `rest` doesn't import, so
 a program without it builds without goose-compress. To use it, declare goose-compress in
@@ -216,10 +216,10 @@ the handler's locals through pointers, and every middleware around it stays out 
 too. `inline fn` folds it into the handler ([findings](goose-findings.md#a-function-called-once-isnt-inlined-past-a-size),
 aardappel/goose#33).
 
-## Extractors
+## 3. Extractors
 
 Each extractor reads one part of the request, and fails the route with 400 when that
-part is malformed ([Errors](#errors)), so it runs inside `rest::route`. A value that
+part is malformed ([Errors](#5-errors)), so it runs inside `rest::route`. A value that
 has escapes to decode is decoded into `cx.scratch`, which lasts until the handler
 returns. Otherwise the extractor returns the request's own bytes.
 
@@ -238,7 +238,7 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
 | `rest::require(cx, "q", found)` | | `q: required` |
 | `rest::take<T>(cx)` | a `T`, by `T`'s `from_request` overload | its own |
-| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default); a larger one in pieces with `rest::body_in_pieces` ([later calls](#later-calls)) | 413 `payload_too_large`; 503 `unavailable` past the worker's gather budget |
+| `rest::body(cx, limit)` | the body, whole, of at most `limit` bytes (1 MB by default); a larger one in pieces with `rest::body_in_pieces` ([later calls](#4-later-calls)) | 413 `payload_too_large`; 503 `unavailable` past the worker's gather budget |
 
 A query parameter, form field, or cookie that repeats gives its first value, and its
 name is compared as sent, without decoding it.
@@ -311,7 +311,7 @@ rest::route(cx) {
 in a request and returns it from then on. The slot is a `rest::Once<T>` field of the
 request state, so each request starts with a fresh slot.
 
-## Later calls
+## 4. Later calls
 
 A route that waits on another thread, reads its body in pieces, sends its response in
 pieces, or takes an upgraded connection says so with a call that takes a variant of the
@@ -352,7 +352,7 @@ response cut short.
 | Call | Does | Fails with |
 |---|---|---|
 | `rest::body_in_pieces(cx, limit, w)` | The body in pieces as they arrive, up to `limit` bytes. A body that came whole with its head comes as one `BODY` and the `END`, and an empty one as the `END` alone. The code around it runs once. | 413 `payload_too_large` for a `Content-Length` over `limit`, before the body is sent; a chunked body past it gets 413 and the connection closes. 500 `body_already_read` after `rest::body`, and `rest::body` after it. 500 `not_served` outside `rest::serve` and `serve_one`. |
-| `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. Inside `rest::compressed`, a response of a type worth compressing is compressed ([Compression](#compression)). | |
+| `rest::begin(cx, status, content_type, length, w)` | Begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. Inside `rest::compressed`, a response of a type worth compressing is compressed ([Compression](#21-compression)). | |
 | `rest::pause(cx, ms)` | Pauses the response `rest::begin` began, for events sent over time such as Server-Sent Events: `TIMEOUT` comes after `ms` milliseconds, and the case function sends the next piece and pauses again, or ends. What was sent still goes out meanwhile, and no `MORE` comes until the pause ends; a `TIMEOUT` call that neither pauses nor ends gets `MORE` next. Call it in the route, or at `MORE` or `TIMEOUT`. Needs `Config.mail_slots` and `max_waiting`: past `max_waiting`, goose-http has no timer and gives `TIMEOUT` at once, which goose-rest tells from the pause's own by the clock, halfway to `ms`, and answers by ending the response. | 500 `not_sending` without a response begun and open; 500 `not_served` outside `rest::serve` and `serve_one` |
 | `rest::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `rest::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
@@ -396,7 +396,7 @@ A WebSocket's framing isn't provided: a package on top of
 and `file` ([page 15](tutorial/15-long-responses.md));
 [`examples/upgrade`](../examples/upgrade/main.goose) echoes an upgraded connection.
 
-## Errors
+## 5. Errors
 
 By default, every error goose-rest answers is a JSON object whose member `error` is a
 code in snake_case, with `detail` and `at` where the table names them; a program can write
@@ -410,7 +410,7 @@ another shape, as the end of this section shows:
 |---|---|---|
 | any | the code given | `rest::fail(cx, status, code)` |
 | 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
-| 400 | `invalid_parameter`, with `detail` | the [extractors](#extractors), `rest::fail_param`, and the generated router: a parameter missing, malformed, or outside its schema, as `id: integer`, `q: required`, or `page: minimum` |
+| 400 | `invalid_parameter`, with `detail` | the [extractors](#3-extractors), `rest::fail_param`, and the generated router: a parameter missing, malformed, or outside its schema, as `id: integer`, `q: required`, or `page: minimum` |
 | 400 | `bad_path` | `rest::otherwise`: a path with a dot-segment or an escaped control byte |
 | 401 | `unauthenticated`, with `WWW-Authenticate: Bearer` | `rest::bearer`: no bearer token |
 | 401 | `invalid_token`, with `WWW-Authenticate: Bearer error="invalid_token"` | `rest::invalid_token(cx)` |
@@ -428,7 +428,7 @@ another shape, as the end of this section shows:
 | 500 | `not_served` | `rest::body_in_pieces` or `rest::pause` with a context that `rest::serve` or `serve_one` didn't make |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
 | 503 | `unavailable` | `rest::ask`: the thread's box is full or closed |
-| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#extractors)) |
+| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)) |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
 through `rest::no_route`, `rest::no_method`, and `rest::not_found`.
@@ -462,7 +462,7 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 }
 ```
 
-## Testing
+## 6. Testing
 
 | Call | Answers |
 |---|---|

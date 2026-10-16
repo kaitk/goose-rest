@@ -1,4 +1,4 @@
-# Lanes and jobs
+# 6. Lanes and jobs
 
 A *worker* is the thread that takes requests and runs their routes. A server runs one
 per core by default, and each serves thousands of connections, one call at a time
@@ -14,13 +14,13 @@ database, and not to compute for long. That work goes to a lane, as a job:
   the reply comes back. On the lane, a plain function runs the job from start to end,
   in one transaction ([Work that waits](../tutorial/11-waiting.md)).
 
-[Concepts and naming](concepts.md#the-concepts) gives their equivalents in other frameworks.
+[Concepts and naming](concepts.md#11-the-concepts) gives their equivalents in other frameworks.
 
 The code on this page is from [`lanes/`](lanes/), a slice of the time-tracking API with
 three domains: `entries`, `reports`, and `auth`. Its lanes keep their data in memory in
 place of a database.
 
-## A lane for each kind of slow work
+## 6.1 A lane for each kind of slow work
 
 Split slow work by the resource it occupies: the database's one write connection,
 a read connection, or a CPU core. Give each kind a lane of its own, named for what it
@@ -53,15 +53,15 @@ boxes still take theirs.
 The program's database stands in for one over the
 network, where each lane's thread holds its own connection. With embedded SQLite, a
 short query runs in the route instead, as short CPU work does
-([Long CPU work goes to a lane](#long-cpu-work-goes-to-a-lane)), and a lane takes only
+([Long CPU work goes to a lane](#63-long-cpu-work-goes-to-a-lane)), and a lane takes only
 what runs long, such as a report.
 
 A lane runs jobs from any domain, and a domain's jobs may run on several lanes: `auth`'s
 `verify_password` runs on the hasher, and its `open_session` on the writer. A job's
 function is in its domain, beside the route that asks for it
-([Structuring a route that waits](#structuring-a-route-that-waits)).
+([Structuring a route that waits](#653-structuring-a-route-that-waits)).
 
-## How many jobs a box holds
+## 6.2 How many jobs a box holds
 
 Size a box by how long its lane's jobs take. A route waits for its reply up to a time
 limit, 5 seconds by default
@@ -153,7 +153,7 @@ thread_fn writer(box: http::Box) {
 
 </details>
 
-## Long CPU work goes to a lane
+## 6.3 Long CPU work goes to a lane
 
 Short CPU work stays in the route: parsing, formatting, a query on embedded SQLite.
 When the workers already use every core, a lane adds no throughput for it
@@ -219,7 +219,7 @@ input with no `cx`, so a test calls them without a server, a thread, or a databa
 
 **5. The reply wakes the route.** The route continues in its `resume` case function,
 which answers 401 for a wrong password, or opens the session
-([A route with two slow steps](#a-route-with-two-slow-steps)).
+([A route with two slow steps](#652-a-route-with-two-slow-steps)).
 
 <details>
 <summary>The rules, and the hasher's thread</summary>
@@ -285,9 +285,9 @@ answering every other route.
 
 Work that reads and then computes, such as a report, needs no separate lane for the
 computation. One job on the reports lane reads the entries and calls the rule to sum them
-([Choosing which work is refused under load](#choosing-which-work-is-refused-under-load)).
+([Choosing which work is refused under load](#64-choosing-which-work-is-refused-under-load)).
 
-## Choosing which work is refused under load
+## 6.4 Choosing which work is refused under load
 
 Give work that the product can do without under load, such as reports and exports,
 its own lane with a small box. When too many reports arrive, that box fills and refuses
@@ -317,7 +317,7 @@ their jobs waited in the box:
 The lane then spends its time only on reports that clients are still waiting for
 ([A client that has gone](../tutorial/13-limits.md#a-client-that-has-gone)).
 
-## Continuing a route when the reply comes
+## 6.5 Continuing a route when the reply comes
 
 A route that asks a lane returns at once, and the worker serves other connections. When
 the reply arrives, the worker calls the route again, at a `resume` case function: the
@@ -341,9 +341,9 @@ enum Waiting {
 Every route that waits, and each of its steps, is then listed in one place, so a
 reader sees the order before opening a domain's files. Each variant is named for its
 domain, and for the operation or what the route waits for
-([Concepts and naming](concepts.md#slow-work-lanes-jobs-and-queries)).
+([Concepts and naming](concepts.md#154-slow-work-lanes-jobs-and-queries)).
 
-### A route with one slow step
+### 6.5.1 A route with one slow step
 
 Most routes have one piece of slow work: they ask for it once, and answer from the
 reply. Creating an entry asks the writer and waits as `Waiting.EntryCreate`. Its
@@ -361,7 +361,7 @@ fn resume(w: Waiting.EntryCreate, cx) {
 }
 ```
 
-### A route with two slow steps
+### 6.5.2 A route with two slow steps
 
 When a route's second piece of slow work, on another lane, needs the first one's result,
 the route asks for it from the first step's `resume`, and waits again under another
@@ -379,7 +379,7 @@ A wrong password fails at the first step, and the writer never sees it. Keep a r
 one slow step where you can: each wait has its own time limit and its own 503, and a 503
 at the second step comes after the first lane has done its work.
 
-### Structuring a route that waits
+### 6.5.3 Structuring a route that waits
 
 A domain's `routes.goose` holds each route's whole flow, in the order it runs: the
 route, the job it asks for, the `resume` that answers, and for a second step, the next
@@ -424,11 +424,11 @@ fn resume(w: Waiting.AuthSession, cx) {
 
 A job takes no `cx`, so a test calls it as a plain function, as it does a rule. When a
 domain's `routes.goose` grows too long, it splits by operation
-([When a domain grows](layout.md#when-a-domain-grows)).
+([When a domain grows](layout.md#23-when-a-domain-grows)).
 
 Each `resume` also needs a one-line function in the global namespace that forwards the
 call to it. The program declares `Waiting` in `app.goose`, in the global namespace
-([Layout by domain](layout.md#the-programs-types-are-in-appgoose)), so the worker's call
+([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose)), so the worker's call
 `resume(cx.state.waiting, cx)` finds only global functions:
 
 ```rust

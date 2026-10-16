@@ -129,7 +129,7 @@ does with `timed`:
     };
 ```
 
-The [reference](../reference.md#middleware) has each middleware's options.
+The [reference](../reference.md#2-middleware) has each middleware's options.
 
 ---
 

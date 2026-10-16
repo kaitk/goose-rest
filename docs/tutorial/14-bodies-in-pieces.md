@@ -239,7 +239,7 @@ and the time the request came. The answer `resume` writes at the `END` gets the 
 CORS fields and a `Server-Timing` measured from the request, as does a 413 for a body
 past its limit. A browser that uploads from another origin reads that answer as it
 reads one written in the route. An answer to a lane's reply gets them the same way
-([reference](../reference.md#middleware)).
+([reference](../reference.md#2-middleware)).
 
 ---
 

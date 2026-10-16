@@ -371,7 +371,7 @@ connection (`rest::upgrade`) gives a `Waiting` variant, as `rest::ask` does, and
 `rest::serve` calls the handler again for each event of the exchange, `rest::resumed`,
 with `cx.kind` saying which: `BODY`, `END`, `MORE`, or `CLOSED`, which comes once to a
 route that ended early, so that its case function releases what the state holds. Built
-in `pieces.goose`; the [reference](reference.md#later-calls) has each call. One case
+in `pieces.goose`; the [reference](reference.md#4-later-calls) has each call. One case
 function per variant handles every kind, rather than a name per kind: §8.2 needs an
 overload of each name for every variant, and a generic fallback beside them takes the
 whole enum, so the call never dispatches (checked on `v2026.1`). Goose can't keep a
@@ -491,6 +491,23 @@ Rejected: each test declaring its own copy of the program's types, which drift f
 the real ones, so a test would pass against types the program doesn't have; and an
 application running its tests with goose-rest's runner, which finds only goose-rest's
 own tests and would make every application depend on this repository's layout.
+
+## Numbered sections
+
+Decided (2026-10-16): the Best practices pages and `reference.md` number their
+sections as Goose's `goose_spec.md` does, so a review can cite one in a few
+characters, as "Layout §2.3" or "Reference §2.1", the way these docs cite "goose_spec
+§11.1". A Best practices page takes its place in the section's index as its number,
+`# 2. Layout by domain`, and its sections `## 2.1`, `### 2.1.1`; the reference numbers
+its own, `## 1.`, `### 1.1`. The number is part of the heading, so it's part of the
+GitHub anchor (`layout.md#23-when-a-domain-grows`): renumbering a heading changes its
+anchor, and the same change fixes every link to it, in goose-rest and goose-http. A new
+section goes at the end of its page where it can, so the numbers already cited keep
+naming the same rule. The tutorial, `architecture.md`, `decisions.md`, and
+`development.md` stay unnumbered: they're read in order or searched, not cited by
+rule. Rejected: a number outside the heading, such as an HTML anchor of its own, which
+keeps old links working but lets the number and the heading disagree; and numbering
+every page, which gives citations no one makes.
 
 ## Spike results (2026-10-13)
 

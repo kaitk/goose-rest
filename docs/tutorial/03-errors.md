@@ -46,7 +46,7 @@ fn format(out: u8[>..]&, i: const Imported&) { rest::format_fields(out, i); }
 
 It writes every field, so a writer that leaves one out keeps its own code, as
 `02-routes`' does for `archived`. So does one that renames a key or writes an optional
-string. The [reference](../reference.md#json-from-a-structs-fields) lists what each field
+string. The [reference](../reference.md#11-json-from-a-structs-fields) lists what each field
 type becomes.
 
 A type without its own `format` still compiles, but is written in Goose's default
@@ -70,7 +70,7 @@ fn find_project(cx, id: i64) -> const Project& {
 
 Every error goose-rest writes, the framework's or the program's, has the same
 shape: `{"error": code}`, with `detail` for parameter or body errors and `at` for
-the position where the body reader stopped. The [reference](../reference.md#errors)
+the position where the body reader stopped. The [reference](../reference.md#5-errors)
 lists each status and code. The first answer wins: a route that answers and then
 fails keeps its answer.
 
@@ -113,7 +113,7 @@ for `rest::from_request`, on the next page.
 
 *Note: once an application has several domains, the best practices keep one error
 shape and each domain's codes in one place
-([Errors](../best-practices/errors.md#each-domains-codes-in-one-place)).*
+([Errors](../best-practices/errors.md#42-each-domains-codes-in-one-place)).*
 
 ---
 

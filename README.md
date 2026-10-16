@@ -28,20 +28,20 @@ pass their tests on arm64 Linux.
 
 | | Feature | Notes |
 |---|---|---|
-| 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#context-and-routes)). |
+| 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#1-context-and-routes)). |
 | 🟢 | Scopes | Prefixes, each with its own middleware. |
-| 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#extractors)). |
-| 🟢 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool`, and multipart fields and files of a gathered body through `rest::part`, `rest::part_int`, `rest::part_bool`, and `rest::file_part` ([reference](docs/reference.md#extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
+| 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#3-extractors)). |
+| 🟢 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool`, and multipart fields and files of a gathered body through `rest::part`, `rest::part_int`, `rest::part_bool`, and `rest::file_part` ([reference](docs/reference.md#3-extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
 | 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
 | 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
-| 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#errors)). |
+| 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#5-errors)). |
 | 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/11-waiting.md)). |
-| 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#testing)). |
+| 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#6-testing)). |
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
-| 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#later-calls)). |
-| 🟢 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, `rest::begin` sends a response in pieces as the client takes them, and `rest::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#later-calls)). |
-| 🔴 | WebSocket | Currently out of scope, as in goose-http; `rest::upgrade` hands an upgraded connection's bytes to the route ([reference](docs/reference.md#later-calls)). |
+| 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#4-later-calls)). |
+| 🟢 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, `rest::begin` sends a response in pieces as the client takes them, and `rest::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#4-later-calls)). |
+| 🔴 | WebSocket | Currently out of scope, as in goose-http; `rest::upgrade` hands an upgraded connection's bytes to the route ([reference](docs/reference.md#4-later-calls)). |
 
 ### Middleware
 
@@ -50,10 +50,10 @@ pass their tests on arm64 Linux.
 | 🟢 | CORS | Preflight requests, allowed origins, and credentials. |
 | 🟢 | Bearer tokens | 401 with `WWW-Authenticate`; passes the token to your verifier. |
 | 🟢 | Server-Timing and access log | Combined middleware, or timing alone. |
-| 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#middleware)). |
+| 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#2-middleware)). |
 | ⚪ | JWT | No built-in verifier; use your own with the bearer middleware. |
 | ⚪ | Sessions | No session store yet; read cookies with `rest::cookie`. |
-| 🟢 | Compression | gzip, deflate, and zstd according to `Accept-Encoding`, in an optional module, for answers written whole and responses sent in pieces; files go as they are ([reference](docs/reference.md#compression)). |
+| 🟢 | Compression | gzip, deflate, and zstd according to `Accept-Encoding`, in an optional module, for answers written whole and responses sent in pieces; files go as they are ([reference](docs/reference.md#21-compression)). |
 | ⚪ | Rate limiting | No limiter yet; goose-http's per-connection limits and timeouts apply. |
 | ⚪ | Default headers | No middleware yet; add headers to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
 
@@ -137,13 +137,13 @@ flowchart LR
 - **Routes are code.** Goose has no function values to store in a table, so a route is an
   `if` that matches a method and a path, and a generated router uses a `match`.
   Unmatched requests receive 404, 405, or an `OPTIONS` response
-  ([routes](docs/reference.md#context-and-routes)).
+  ([routes](docs/reference.md#1-context-and-routes)).
 - **One context.** Every call takes `cx`: the request, the response being written,
   worker state, and request state.
 - **Middleware is a block** around the routes it applies to. It compiles into the
-  handler, so a layer adds no function call ([middleware](docs/reference.md#middleware)).
+  handler, so a layer adds no function call ([middleware](docs/reference.md#2-middleware)).
 - **Errors return to the route.** A failure anywhere within a route ends it with a JSON
-  error in a customizable format ([errors](docs/reference.md#errors)).
+  error in a customizable format ([errors](docs/reference.md#5-errors)).
 - **Workers share nothing and never block**, as in
   [goose-http](https://github.com/kaitk/goose-http#concepts). I/O-bound work, such as a
   query to a database server, runs on a lane, a thread of its own: the route sends it a
