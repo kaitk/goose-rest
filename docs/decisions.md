@@ -282,6 +282,29 @@ construction (spike 05). A returned `T` is built at the caller's destination. Th
 form, `take<T>(cx) { v => ... }`, would hand the block a copy of a local (goose-http's
 findings).
 
+### A JSON writer from a struct's fields
+
+Decided (2026-10-16, task 041): `rest::format_fields(out, v)` writes a struct's fields
+as a JSON object, through Goose's `const for` over `fields<T>` (spec §6, Goose
+`v2026.2`), and a program opts a type in from its own `format` overload. A writer that
+follows the struct can't fall behind it, as a hand-written field list can. The writer
+takes every field under its declared name, since `const for` v1 has no annotations;
+renamed keys and left-out fields stay with hand-written writers and the generator's.
+
+Each field's writer is an overload chosen by its type. An untyped catch-all, which
+hands a struct or enum to the program's `format`, ties with `T[]` and with a slice
+reached by coercion (§7.1 makes a tie an error, and a bounded or fixed array matches
+no `T[]` exactly). So every writer takes a trailing `i32`, which the catch-all
+declares `f64`: an integer converted to a float is resolution's last resort, so the
+catch-all loses to every other writer. The integer types get one writer each, because
+a widening is a coercion too. Rejected: a writer for `T?`, which any value reaches by
+coercion, tying with the integer and slice writers; an optional goes through the
+catch-all, so an optional string isn't quoted.
+
+Rejected for now: a generic reader. Choosing how to read a field needs its type, which
+`const for` v1 doesn't bind (its design's future work, `<N, A, U>`), and the expected
+result type never selects an overload (§7.1). Readers stay hand-written or generated.
+
 ### Handlers
 
 `rest::fail` leaves through `return ... from rest::route`, and `Failure`'s code is an

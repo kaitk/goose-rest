@@ -46,6 +46,33 @@ true for every call after a request's first.
 status)` answers without a body: 204 and 304 omit `Content-Length`, and other statuses write
 `Content-Length: 0`.
 
+### JSON from a struct's fields
+
+`rest::format_fields(out, v)` writes the struct `v` as a JSON object: every field, in
+declaration order, keyed by its name as declared. A program's `format` overload calls
+it, which `rest::json` then finds:
+
+```rust
+fn format(out: u8[>..]&, p: const Project&) { rest::format_fields(out, p); }
+```
+
+| Field type | Written as |
+|---|---|
+| An integer type | a number |
+| `f64`, `f32` | a number, by `json::format_number` |
+| `bool` | `true` or `false` |
+| A `u8` array or slice of any kind (`u8[..64]`, `u8[]`, `u8[16]`, `const u8[:]`) | a string, by `http::json_string` |
+| Another array or slice | an array, each element by these rules |
+| A struct or enum | by the program's `format` overload for it |
+| An optional | `null`, or its value by Goose's `format` |
+
+A struct or enum without its own `format` gets Goose's default format, which isn't
+JSON, and an optional string's value isn't quoted: give either type a `format`, or
+write the outer struct's by hand. `format_fields` doesn't rename a key, leave out a
+field, or read JSON: a writer that needs those stays hand-written, and the generator
+writes both from a schema. It builds on Goose's `const for` over `fields<T>` (spec
+§6), whose first version names each field and reaches it but doesn't give its type.
+
 ## Middleware
 
 Middleware is a block around the routes it applies to, inlined into the handler: a scope

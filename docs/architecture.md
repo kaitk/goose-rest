@@ -30,9 +30,12 @@ spec.
 - **Extractors by overload.** Generics are monomorphized and re-checked per
   instantiation (§7.7), so `rest::take<T>(cx)` calls `from_request(cx, v: const T?)`
   and overloading chooses by `T`, as Actix's `FromRequest` trait does.
-- **No derive.** Goose has no macros, reflection, or compile-time evaluation. What Rust
-  gets from serde's derive, goose-rest gets from a `format` overload and a reader
-  written by hand, or from the generator.
+- **Half a derive.** Goose has no macros, and its one compile-time expansion, `const
+  for` (spec §6), names a struct's fields without their types. So
+  `rest::format_fields` writes any struct's fields as JSON, as serde's derived
+  `Serialize` does, but a reader, a renamed key, or a left-out field still comes from
+  code written by hand or from the generator
+  ([decisions](decisions.md#a-json-writer-from-a-structs-fields)).
 - **No shared memory.** Workers share nothing but `const` data and messages (§11.2). A
   cache, a rate limiter, or a session store is worker state, or lane data, which a
   thread of its own keeps and workers mail.

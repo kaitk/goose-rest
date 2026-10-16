@@ -17,11 +17,7 @@ let UPLOAD_LIMIT: i64 = 2 * 1024 * 1024;
 
 struct Upload { name: const u8[:], bytes: i64 }
 
-fn format(out: u8[>..]&, u: const Upload&) {
-    out.append("{\"name\":");
-    http::json_string(out, u.name);
-    format(out, ",\"bytes\":", u.bytes, "}");
-}
+fn format(out: u8[>..]&, u: const Upload&) { rest::format_fields(out, u); }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

@@ -28,9 +28,7 @@ struct MailReply { id: i64 }
 
 struct Invited { project: i64, user: i64, mail: i64 }
 
-fn format(out: u8[>..]&, i: const Invited&) {
-    format(out, "{\"project\":", i.project, ",\"user\":", i.user, ",\"mail\":", i.mail, "}");
-}
+fn format(out: u8[>..]&, i: const Invited&) { rest::format_fields(out, i); }
 
 enum Waiting {
     None,

@@ -16,9 +16,9 @@ of these calls:
 ## A value as JSON
 
 `rest::json` calls `format(out, v)`, Goose's one type-directed hook, and Goose finds the
-overload in the namespace that declares `v`'s type. There is no derive mechanism: a type gets
-its JSON representation from a `format` overload you write or from the generator
-([JSON bodies](04-json.md)).
+overload in the namespace that declares `v`'s type. A type gets its JSON representation
+from a `format` overload you write, one that calls `rest::format_fields`, or the
+generator's ([JSON bodies](04-json.md)).
 From [`02-routes`](02-routes/main.goose):
 
 ```rust
@@ -34,6 +34,21 @@ fn format(out: u8[>..]&, p: const Project&) {
 `http::json_string` writes a string as JSON: quoted, with the bytes JSON requires
 escaped. It checks 16 bytes at a time for a byte to escape, so write strings with it
 rather than with `json::format_string`, whose output is the same.
+
+A writer whose keys are its struct's fields, in order, can be one call.
+`rest::format_fields` writes each field under its declared name, from the struct's
+declaration. From [`10-large-bodies`](10-large-bodies/main.goose):
+
+```rust
+struct Imported { project: i64, imported: i64 }
+
+fn format(out: u8[>..]&, i: const Imported&) { rest::format_fields(out, i); }
+```
+
+It writes every field, so a writer that leaves one out keeps its own code, as
+`02-routes`' does for `archived`. So does one that renames a key or writes an optional
+string. The [reference](../reference.md#json-from-a-structs-fields) lists what each field
+type becomes.
 
 A type without its own `format` still compiles, but is written in Goose's default
 format, such as `app::Session { 1, 2 }`, which isn't JSON. Strings use the standard

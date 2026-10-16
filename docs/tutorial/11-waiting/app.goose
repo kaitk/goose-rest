@@ -8,19 +8,13 @@ import database;
 
 struct Project { id: i64, name: u8[..64], owner: i64 }
 
-fn format(out: u8[>..]&, p: const Project&) {
-    format(out, "{\"id\":", p.id, ",\"name\":");
-    http::json_string(out, p.name);
-    format(out, ",\"owner\":", p.owner, "}");
-}
+fn format(out: u8[>..]&, p: const Project&) { rest::format_fields(out, p); }
 
 fn project_of(p: const db::Project&) -> Project { Project { id: p.id, name: p.name, owner: p.owner } }
 
 struct Assigned { task: i64, assignee: i64 }
 
-fn format(out: u8[>..]&, a: const Assigned&) {
-    format(out, "{\"task\":", a.task, ",\"assignee\":", a.assignee, "}");
-}
+fn format(out: u8[>..]&, a: const Assigned&) { rest::format_fields(out, a); }
 
 // What each route that waits needs when its reply comes.
 enum Waiting {

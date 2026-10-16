@@ -47,13 +47,9 @@ struct StatusJob { id: i64 }
 // A report's state, as GET /v1/reports/:id answers it.
 struct Report { status: i32 = 200, code: u8[..32] = "", id: i64 = 0, project: i64 = 0, left: i64 = STEPS, tasks: i64 = 0 }
 
-fn format(out: u8[>..]&, s: const Summary&) {
-    format(out, "{\"project\":", s.project, ",\"tasks\":", s.tasks, "}");
-}
+fn format(out: u8[>..]&, s: const Summary&) { rest::format_fields(out, s); }
 
-fn format(out: u8[>..]&, g: const Gone&) {
-    format(out, "{\"skipped\":", g.skipped, ",\"dropped\":", g.dropped, "}");
-}
+fn format(out: u8[>..]&, g: const Gone&) { rest::format_fields(out, g); }
 
 fn format(out: u8[>..]&, r: const Report&) {
     format(out, "{\"id\":", r.id, ",\"project\":", r.project, ",\"state\":");

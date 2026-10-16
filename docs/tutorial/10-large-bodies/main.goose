@@ -28,15 +28,11 @@ struct App { tasks: Task[>..]& }
 
 struct Imported { project: i64, imported: i64 }
 
-fn format(out: u8[>..]&, i: const Imported&) {
-    format(out, "{\"project\":", i.project, ",\"imported\":", i.imported, "}");
-}
+fn format(out: u8[>..]&, i: const Imported&) { rest::format_fields(out, i); }
 
 struct Count { project: i64, tasks: i64 }
 
-fn format(out: u8[>..]&, c: const Count&) {
-    format(out, "{\"project\":", c.project, ",\"tasks\":", c.tasks, "}");
-}
+fn format(out: u8[>..]&, c: const Count&) { rest::format_fields(out, c); }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

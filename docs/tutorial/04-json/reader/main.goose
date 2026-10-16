@@ -8,13 +8,7 @@ import rest from "../../../../";
 
 struct Project { id: i64, name: u8[..256] }
 
-fn format(out: u8[>..]&, p: const Project&) {
-    out.append("{\"id\":");
-    format(out, p.id);
-    out.append(",\"name\":");
-    http::json_string(out, p.name);
-    out.push('}');
-}
+fn format(out: u8[>..]&, p: const Project&) { rest::format_fields(out, p); }
 
 // What POST /projects takes: {"name": "..."}, 1 to 64 code points.
 struct ProjectCreate { name: u8[..256] }
