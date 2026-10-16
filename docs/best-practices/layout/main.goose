@@ -14,7 +14,7 @@ import dispatch;
 import projects.structs;
 import teams.structs;
 
-// The worker's state: what stands in for the database until goose-rest has
+// The worker state: what stands in for the database until goose-rest has
 // database helpers.
 struct App { projects: projects::Project[>..]&, teams: const teams::Team[:] }
 

@@ -37,7 +37,7 @@ fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
     rest::json_body(cx) { r, scratch => read_create(r, scratch) }
 }
 
-// The worker's state, which the handlers get by reference.
+// The worker state, which the handlers get by reference.
 struct App { projects: Project[>..]& }
 
 fn handle(cx) {

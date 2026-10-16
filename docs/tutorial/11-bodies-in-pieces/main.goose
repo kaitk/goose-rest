@@ -42,7 +42,7 @@ struct St {
     note: u8[..128] = [],
 }
 
-// The worker's state: where attachments go, and the next one's id.
+// The worker state: where attachments go, and the next one's id.
 struct App { dir: const u8[:], next: i64 = 1 }
 
 struct Attached { project: i64, id: i64, size: i64, note: const u8[:] = "" }

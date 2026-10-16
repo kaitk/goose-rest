@@ -7,6 +7,8 @@ import middleware;
 
 // Routes anyone may call.
 inline fn public_routes<F>(cx) {
+    // The request's route: a fail from any depth inside, a stack's 401 or a
+    // rule's 422, is answered here.
     rest::route(cx) { F(); };
 }
 

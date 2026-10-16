@@ -108,8 +108,9 @@ build a list of middleware at run time, as Actix's `wrap` or Tower's `Layer` doe
 
 How to name stacks and middleware, and how many stacks to write, is in
 [Middleware and stacks](../best-practices/middleware.md): a stack per audience, such
-as `member_routes`, and a middleware named by a verb. [Naming](../best-practices/naming.md)
-has the rest of an application's names.
+as `member_routes`, and a middleware named by a verb.
+[Concepts and naming](../best-practices/concepts.md) has the rest of an application's
+names.
 
 A stack keeps the rules of the nesting it replaces:
 

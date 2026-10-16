@@ -5,7 +5,7 @@ answers in one file, `errors.goose`, with the status and code of each.
 
 The code on this page is from [`errors/`](errors/).
 
-## One shape
+## One error shape for the whole API
 
 Answer every error in goose-rest's shape, `{"error": code}`, which the framework's own
 errors already use ([Errors](../reference.md#errors)). If the API needs another shape,
@@ -25,19 +25,22 @@ From [`errors/projects/errors.goose`](errors/projects/errors.goose):
 ```rust
 enum Error { None, NotFound, NameTaken, Archived }
 
-// Fails the route with e's status and code, or returns for Error.None.
+// Fails the route with e's status and code, or returns for Error.None. A
+// case function per variant: check(e, cx) runs the one for e's variant, and
+// the program doesn't compile while a variant has none.
 fn check(e: Error.None, cx) {}
 fn check(e: Error.NotFound, cx) { rest::fail(cx, 404, "project_not_found"); }
 fn check(e: Error.NameTaken, cx) { rest::fail(cx, 409, "project_name_taken"); }
 fn check(e: Error.Archived, cx) { rest::fail(cx, 409, "project_archived"); }
 ```
 
-A rule returns an `Error` ([Routes and rules](routes-and-rules.md#a-rule-takes-typed-input-and-has-no-cx)),
+A rule returns an `Error` ([Routes and rules](routes-and-rules.md#what-a-rule-does)),
 and the route passes it to `check`:
 
 ```rust
 fn show(cx) {
     let id = rest::param_int(cx, "id");
+    // Ends the route with the rule's refusal, or goes on for Error.None.
     check(readable(id), cx);
     rest::text(cx, 200, str("project ", id));
 }
@@ -45,8 +48,41 @@ fn show(cx) {
 
 Every code the domain answers is then in one file, which a client's developer can read
 whole. Rules stay free of HTTP: they name the refusal, and `check` gives it a status.
-The compiler checks that every variant has its `check`, as it does for any case
-function, so a new variant can't go out without a status and code.
+Because the compiler requires a `check` for every variant, a new variant can't go out
+without a status and code.
+
+<details>
+<summary>The projects' routes, with a domain's and a shared error</summary>
+
+From [`errors/projects/routes.goose`](errors/projects/routes.goose):
+
+```rust
+fn routes(cx) {
+    if rest::on(cx, "GET", "/:id") {
+        show(cx);
+    } else if rest::on(cx, "DELETE", "/:id") {
+        remove(cx);
+    } else {
+        rest::otherwise(cx);
+    }
+}
+
+fn show(cx) {
+    let id = rest::param_int(cx, "id");
+    // Ends the route with the rule's refusal, or goes on for Error.None.
+    check(readable(id), cx);
+    rest::text(cx, 200, str("project ", id));
+}
+
+fn remove(cx) {
+    let role, has = rest::header(cx, "X-Role");
+    guard has && role == "admin" else { common::check(common::Error.NotAnAdmin, cx); }
+    check(removable(rest::param_int(cx, "id")), cx);
+    rest::empty(cx, 204);
+}
+```
+
+</details>
 
 ## A code names the entity and what went wrong
 
@@ -78,7 +114,7 @@ fn check(e: Error.NotAnAdmin, cx) { rest::fail(cx, 403, "not_an_admin"); }
 As with other shared code, an error moves here when a second domain answers it
 ([Shared code moves to `common/`](layout.md#shared-code-moves-to-common)).
 
-## The status says who must act
+## Choosing the status code
 
 | Status | When | From |
 |---|---|---|
@@ -94,4 +130,5 @@ again, or show the user why the domain refused.
 
 ---
 
-[Best practices](README.md) · Previous: [State](state.md) · Next: [Naming](naming.md)
+[Best practices](README.md) · Previous: [Routes and rules](routes-and-rules.md) · Next:
+[Middleware and stacks](middleware.md)

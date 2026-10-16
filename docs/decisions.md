@@ -167,7 +167,7 @@ From spec §3, §4.3, §7.8, and §11.2, condensed in the language author's thre
   `$ref` cycle) needs a reader of another shape. Until one exists, the generator rejects
   it.
 - A job sent to another thread and its reply are flat values, copied whole through a
-  mailbox as `to_bytes` images, with no JSON between threads.
+  box as `to_bytes` images, with no JSON between threads.
 
 ### With a schema
 
@@ -185,7 +185,7 @@ generates and the build needs no generator, or generate it in its build.
 ## The API
 
 Decided (2026-10-14): the context is `Cx<S, A, R>`, with the
-request's state, the worker's state, and the router's type. `rest::routes` supplies
+request state, the worker state, and the router's type. `rest::routes` supplies
 `http::Router`; outside its block, including a WAKE, the context has `rest::NoRouter`.
 Calls that match a route or read its parameters therefore fail to compile without a
 router. A generated-only server builds none. `routes` builds a local context because
@@ -198,7 +198,7 @@ state argument from handlers, security checks, resume functions, and `dispatch`,
 with no measured cost. With request state alone, the program passes a `rest::NoState`
 placeholder by reference. `rest::serve_one(text[, app[, fresh]])` has the same state
 forms, with an optional `http::Config` after `fresh`, and after `fresh` the replies of
-a route that waits, `rest::Wake`s, which stand in for its service (2026-10-15).
+a route that waits, `rest::Wake`s, which stand in for its lane (2026-10-15).
 
 Decided (2026-10-14): `rest::routes` does not open `rest::route`. Opening a
 route for every request costs more to save one line. The program opens one around
@@ -296,18 +296,42 @@ connection, so that the client sees it cut short rather than an error inside it.
 ## Waiting on another thread
 
 Checked by spike 06; built in `waiting.goose`. Goose can't store a function to call
-later, so the per-request state holds a fixed-mode enum of what each waiting route
+later, so the request state holds a fixed-mode enum of what each waiting route
 needs, and the app writes a case function per variant. The compiler dispatches on the
 tag and checks that every variant has its case (§8.2). The enum is fixed-mode because
 each request overwrites the slot (§3.5).
 
-The default is a service: a thread that owns the connections, to which a route sends one
+The default is a lane: a thread that owns the connections, to which a route sends one
 job naming the whole use case, and which does it start to end with blocking calls, in
 one transaction (2026-10-14). A route then waits once, with one time limit and one place
-a full box refuses work, and a use case is tested as a plain call. A route waits more than
-once only for what one service can't do: a second service in turn. The tutorial builds
+a full box refuses work, and a job is tested as a plain call. A route waits more than
+once only for what one lane can't do: a second lane in turn. The tutorial builds
 both, from [work that waits](tutorial/13-waiting.md) to
 [limits](tutorial/15-limits.md).
+
+Decided (2026-10-16), replacing the name "service" (2026-10-14): the thread a route
+sends work to is a *lane*, and what it sends is a *job*. In Spring, Laravel, and ASP.NET a
+service is the use-case code, the job here, not a thread, so "service" misleads a reader
+coming from them. One lane also runs jobs of many domains, and a domain's jobs may run
+on several lanes, so the thread and the code can't be one unit with one name. A lane is
+one thread, or several that run the same jobs, each with its box. Rejected: *pool* and
+*executor*, which suggest work spread freely rather than queued by kind; *actor*, which
+suggests state per entity; *worker*, which names the HTTP threads already; and plain
+*thread*, which covers neither a lane's several threads nor the box in front of them.
+snowtime-native calls the same thing a lane. In an application
+([Best practices](best-practices/lanes.md)), a domain's jobs are in its `routes.goose`,
+after the route that asks for each, in the order the flow runs, and a domain that grows
+splits by operation into `routes/`, not by layer into a file of jobs: the files of a
+domain share its namespace, so moving a function between them changes no call.
+
+Decided (2026-10-16): the five places data lives have one name each, in the docs and
+the package's comments: a *constant* (a global with a literal value), the *store*
+(goose-http's `http.store`), *lane data*, *worker state* (`App`, `cx.app`), and
+*request state* (`St`, `cx.state`). A lane's queue is its *box* (`http::Box`), which a
+job reaches *by mail*. They replace "per-worker state", "the worker's state",
+"per-request state", "shared store", and "mailbox", which the docs used side by side,
+so that one place had two or three names. `App` and `St` keep their names: the tutorial
+uses them from page 8 on, and `App` matches Actix.
 
 Decided (2026-10-15): every call after a request's first goes through the same case
 functions, not only a reply. A route that reads its body in pieces (`rest::body_in_pieces`),
@@ -437,7 +461,7 @@ Nothing blocks the design; three checks need a workaround, which the design take
 | `return ... from rest::route` (03) | Works across namespaces, and calling `fail` outside `route` is a compile error. The returned value can't hold a slice from the request ([findings](goose-findings.md#a-long-distance-return-cant-carry-a-slice-a-caller-passed-in)). | `route` and `fail` follow the stdlib's `exception` module: `route`'s inner handler returns `Failure[]`, empty or one element, and `Failure`'s code is an owned `u8[]` built with `str()`. Built so in `runtime.goose`. |
 | Inlining to straight-line C (04) | Works. Nested middleware and `route` collapse into one C function, each early answer a `goto`, also when a block is passed on by name, `run(F)`. | `rest::route` passes `F` on by name. `route` is goose-rest's own, not `exception::try`: it answers the failure, and it's `inline fn` ([findings](goose-findings.md#a-function-called-once-isnt-inlined-past-a-size)). |
 | Filling `u8[]` fields from JSON (05) | Can't fill them key by key; collecting slices, then building once, costs no copy. | Readers collect, then build once ([above](#gooses-data-model-in-generated-code)). |
-| Resuming a waiting route (06) | Works, under `http::serve` too. The job crosses as a `to_bytes` image, `Waiting` lives in the per-request state, and a `WAKE` event dispatches to one case function per variant. A missing case fails to compile, with an error that doesn't name it ([findings](goose-findings.md#a-case-function-call-missing-a-variant-doesnt-name-it)). | Replies larger than a slot come in pieces ([Architecture](architecture.md#waiting-on-a-service)). |
+| Resuming a waiting route (06) | Works, under `http::serve` too. The job crosses as a `to_bytes` image, `Waiting` lives in the request state, and a `WAKE` event dispatches to one case function per variant. A missing case fails to compile, with an error that doesn't name it ([findings](goose-findings.md#a-case-function-call-missing-a-variant-doesnt-name-it)). | Replies larger than a slot come in pieces ([Architecture](architecture.md#waiting-on-a-lane)). |
 | The `format` hook from `rest::json` (07) | Works with no workaround, for nested types and types in a third namespace, beside `rest`'s own `format`. A type with no overload renders as `app::Session { 1, 2 }`, not JSON, and compiles. | `rest::json` calls `format`. The generator writes an overload per schema type, strings through `http::json_string`. |
 
 ## Later uses

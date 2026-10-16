@@ -1,6 +1,6 @@
 // Waiting on another thread: a route asks a thread, such as a database's,
 // with rest::ask, and resumes when its reply comes. Goose can't keep a
-// function to call later, so the per-request state keeps what the route
+// function to call later, so the request state keeps what the route
 // needs in a field waiting, a fixed-mode enum of the program's, and the
 // handler resumes through a case function per variant (spike 06):
 //
@@ -72,7 +72,7 @@ fn asked<J>(bytes: const u8[:]) -> Ask<J>, bool {
 
 // Whether the route that asked a still waits for its reply: false once its
 // client has gone, its wait has timed out, or its worker has stopped. A
-// service checks it before work worth skipping. It's a snapshot: the route
+// lane checks it before work worth skipping. It's a snapshot: the route
 // can still go before the reply, which reply then reports.
 fn still_wanted(a) -> bool { http::mail_live(a.reply) }
 

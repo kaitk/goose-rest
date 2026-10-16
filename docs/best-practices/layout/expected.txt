@@ -12,3 +12,4 @@ GET /organization/projects 200 [{"id":1,"name":"goose"}]
 GET /organization/teams 200 [{"id":2,"name":"support"}]
 DELETE /organization/teams 405 {"error":"method_not_allowed"}
 GET /organization/members 404 {"error":"not_found"}
+GET /organization/members 401 {"error":"unauthenticated"}

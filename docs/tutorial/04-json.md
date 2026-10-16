@@ -137,8 +137,8 @@ A limited array always takes its full capacity, so without `format: ascii` a fie
 `maxLength: n` holds `4n` bytes in every value, whatever its content. A `color` of
 `maxLength: 7` would take 28 bytes to hold `#00ff00`, which is 7. In a request that
 costs nothing, because the body lives only as long as the request. It adds up where a
-program keeps records of the type, as a cache does, and in per-request state, which
-every connection's slot holds ([State](08-state.md#per-worker)).
+program keeps records of the type, as a cache does, and in request state, which
+every connection's slot holds ([State](08-state.md#worker-state)).
 
 For example, a record with a 36-character `code` and a 7-character `color`:
 
@@ -164,7 +164,7 @@ Note these limits before you use it:
 
 It suits codes, identifiers, and tokens, not text that people type, such as a name or a
 description. A program that keeps many of those holds them as ranges into one byte
-array ([State](08-state.md#per-worker)).
+array ([State](08-state.md#worker-state)).
 
 ---
 

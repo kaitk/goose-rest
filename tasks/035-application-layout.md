@@ -60,6 +60,10 @@ tag (below) is that step, later.
    wait, and "service" keeps the meaning it has in goose-rest, the thread a route asks.
    Validation runs in the route, before the ask. The data-access layer's name is open:
    `dao`, or `queries` as snowtime calls its own, one query per function.
+   Decided (2026-10-16), replacing the names above: the thread is a *lane* and the use
+   case a *job* (`docs/decisions.md`, "Waiting on another thread"); a domain's jobs are
+   in its `routes.goose`, after the route that asks for each, in flow order; data access
+   is `queries.goose`; a growing domain splits by operation into `routes/`.
 8. **Testing** (2026-10-15). Goose's own convention, which every one of these packages
    follows ([decisions](../docs/decisions.md#tests)):
    - **A top-level `test/`, a folder per domain**: `test/projects/`, `test/entries/`.
@@ -141,8 +145,23 @@ which many schemas already set; a schema's is the domain of the operations that 
 it, or `common/` for one that several domains use. An extension (`x-goose-domain`)
 only overrides that, and a configuration names the folders.
 
+## Open: authentication when sessions are in the database (2026-10-16)
+
+The middleware page's `authenticate` reads sessions from a global. With sessions in a
+database, a stack can't look one up without waiting, and page 13 puts a database check
+that comes before the route's work in the route's job. snowtime-native does the same:
+its session check runs on the database lane, in the call that serves the route.
+Proposed: the stack checks only what needs no database (the token's form, and a signed
+token's HMAC), and the job checks the session and the member's role in its
+transaction, as it needs the member's scope for its queries anyway. Not decided: the
+stacks' shape changes with it, so the middleware page waits for the decision.
+
 ## Acceptance criteria
 
+- [x] `docs/best-practices/lanes.md`: a lane for each kind of slow work, CPU work on a
+      lane, reports behind a small box of their own, a route on two lanes,
+      and the domains' `resume` forwarded from global ones (2026-10-16)
+- [ ] The decision above, and the middleware page and its program changed to it
 - [x] `docs/best-practices/`, an index (`README.md`) that says once that it's the
       recommended way and not required, and a page per topic above, or fewer where
       they're short; each rule with its reason, and an anchor a review can link
@@ -151,15 +170,16 @@ only overrides that, and a configuration names the folders.
 - [x] Each page's excerpts come from a small program of its own under
       `docs/best-practices/`, and `scripts/test.sh` checks them as it checks the
       tutorial's code
-- [x] Each kind of code (structs, routes, services, data access) has one file name and
-      place in every domain and in `common/`, given in one table (data access's file
-      is named with the data-access page, below)
+- [x] Each kind of code (structs, routes and jobs, queries) has one file name and place
+      in every domain and in `common/`, given in one table (2026-10-16)
+- [x] `concepts.md` in place of `naming.md`: each concept, its Spring, Actix-web, and
+      Axum equivalent, and its name (2026-10-16)
 - [x] Each convention given once, and linked from the tutorial page it builds on (page
       7 links its naming, page 8 its state, page 16 its testing); the tutorial's index
       and last page, and the README, link the section
 - [ ] Later, once goose-rest has database helpers and transactions: the data-access
-      page (point 7), with its layer's name decided; open, as goose-rest has no database
-      helpers yet
+      page (point 7), with `queries.goose` in the lanes program; open, as goose-rest has
+      no database helpers yet
 - [ ] Later, once goose-rest also has a JWT implementation: a full example application
       laid out this way, in `examples/`; open, as it would fake its data access and
       authentication

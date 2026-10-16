@@ -1,15 +1,15 @@
-# 14. Two services, or a reply in pieces
+# 14. Two lanes, or a reply in pieces
 
-One job per route covers a use case that one service can handle alone. Two cases need
-more: a reply too large for one message, and a route that waits on one service and then
+One job per route covers a use case that one lane can handle alone. Two cases need
+more: a reply too large for one message, and a route that waits on one lane and then
 another. Both use the same `Waiting` enum and case functions as
 [the previous page](13-waiting.md).
 
 ## A reply in pieces
 
-A project's tasks, as JSON, can be longer than a message. The service replies with
+A project's tasks, as JSON, can be longer than a message. The lane replies with
 `rest::reply`, which sends a reply longer than the worker's message size in pieces. From
-[`14-two-services`](14-two-services/main.goose), whose worker takes messages of 64
+[`14-two-lanes`](14-two-lanes/main.goose), whose worker takes messages of 64
 bytes, so that a project's tasks arrive in several pieces:
 
 ```rust
@@ -33,14 +33,14 @@ fn resume(w: Waiting.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
 GET /v1/projects/2/tasks 200 [{"id":6,"title":"Name it","assignee":2}]
 ```
 
-The worker holds one piece at a time, however long the reply. The service writes the
+The worker holds one piece at a time, however long the reply. The lane writes the
 whole reply first, so it holds all of it. Data too large for that is made a piece at a
 time as the client takes it ([long responses](12-long-responses.md)).
 
-## Two services in turn
+## Two lanes in turn
 
 Inviting a user to a project adds a member to the database, then sends an email through
-a separate mailer service. Neither service can do both, so the route waits on one and
+a separate mailer lane. Neither lane can do both, so the route waits on one and
 then the other, using a `Waiting` variant for each step:
 
 ```rust
@@ -52,7 +52,7 @@ enum Waiting {
 }
 ```
 
-The first case function asks the second service, and waits again:
+The first case function asks the second lane, and waits again:
 
 ```rust
 // The database added the member: ask the mailer next, and wait again.
@@ -81,14 +81,14 @@ POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}
 
 | The route needs | Shape |
 |---|---|
-| One service, a reply that fits a message | One job, one case function ([Work that waits](13-waiting.md)) |
-| One service, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
-| Two services in turn | A `Waiting` variant per wait; the first case function requests work from the next service |
+| One lane, a reply that fits a message | One job, one case function ([Work that waits](13-waiting.md)) |
+| One lane, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
+| Two lanes in turn | A `Waiting` variant per wait; the first case function requests work from the next lane |
 
-Each wait has its own time limit, and each request can encounter a full mailbox, so a
+Each wait has its own time limit, and each request can encounter a full box, so a
 route that waits twice can fail at either step. A 503 at the second step comes after the
-first service has finished its work. If the second step can happen later, such as
-sending an email, the service can forward the work itself and the route waits only once.
+first lane has finished its work. If the second step can happen later, such as
+sending an email, the lane can forward the work itself and the route waits only once.
 
 ---
 

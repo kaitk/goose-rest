@@ -1,57 +1,81 @@
 # Routes and rules
 
-A route is where HTTP ends: it reads the request and writes the answer. A rule is where
-the domain's decisions are: it takes typed values and returns a result or an error. The
-two live in a domain's `routes.goose` and `rules.goose`
+The first code to get hard to change in a web application is often the handler that
+does everything: it reads the request, decides what the domain allows, writes to the
+database, and builds the answer. Its decisions can then be tested only through HTTP,
+and a change to the request's shape sits in the same function as a change to the
+domain's logic. Most frameworks' guides warn against this "fat controller". goose-rest's
+applications split the work three ways:
+
+- The **route** handles HTTP: it reads the request, checks its shape, and answers.
+- The **rule** decides: it takes typed values, and returns a result or the reason the
+  domain refuses.
+- The **job** does the slow work, such as the database's, on a lane, and calls the
+  rules ([Lanes and jobs](lanes.md)).
+
+A domain's routes and jobs are in its `routes.goose`, and its rules in `rules.goose`
 ([Layout by domain](layout.md#the-same-files-in-every-domain)).
 
-The code on this page is from [`routes-and-rules/`](routes-and-rules/), whose projects
-live in the worker's memory in place of a database.
+This page follows one request, `POST /projects` with a name, through its route and its
+rule. The code is from [`routes-and-rules/`](routes-and-rules/), whose projects live in
+the worker's memory in place of a database; with one, the route would ask a job, which
+calls the same rule.
 
-## A route extracts, calls one rule, and answers
+## What a route does
 
-A route reads what it needs from the request, calls one rule or one service job, and
+A route reads what it needs from the request, makes one call, a rule or a job, and
 answers with the result or the error. From
 [`routes-and-rules/projects/routes.goose`](routes-and-rules/projects/routes.goose):
 
 ```rust
 fn create(cx) {
     let name, has = rest::form(cx, "name");
+    // 400 invalid_parameter for a request without a name: the rule never runs.
     rest::require(cx, "name", has);
     let project, err = new_project(CreateInput { name: name }, cx.app.projects.len + 1);
+    // The rule's refusal, such as 422 project_name_required, ends the route.
     check(err, cx);
+    // In place of a job on a lane, as the program has no database.
     cx.app.projects.push(project);
     rest::json(cx, 201, project);
 }
 ```
 
-`check` fails the route with the error's status and code, or returns for `Error.None`
-([Errors](errors.md#each-domains-codes-in-one-place)). The program stores the project in
-the worker's list; with a database, the route asks a service job instead, which applies
-the same rule.
+Everything here is about HTTP; the decision is the rule's, and `check` turns its
+refusal into a status and code ([Errors](errors.md#each-domains-codes-in-one-place)). A
+route kept to this shape fits on one screen, and reads the same in every domain.
 
-A route kept to this shape fits on one screen, and the decisions it leads to are in
-functions that a test calls without a request.
+<details>
+<summary>The projects' other route, <code>archive</code>, and their entry</summary>
 
-## The route checks the request, the rule checks the domain
+From [`routes-and-rules/projects/routes.goose`](routes-and-rules/projects/routes.goose):
 
-The route rejects a request that is malformed: a field missing, or not a number. The
-extractors do that, with 400 `invalid_parameter`, before the rule runs. The rule rejects
-a request that is well formed but that the domain refuses: an empty name, a project
-already archived.
-
-```text
-POST /projects 400 {"error":"invalid_parameter","detail":"name: required"}
-POST /projects 422 {"error":"project_name_required"}
-POST /projects/1/archive 409 {"error":"project_already_archived"}
+```rust
+fn routes(cx) {
+    if rest::on(cx, "POST", "") {
+        create(cx);
+    } else if rest::on(cx, "POST", "/:id/archive") {
+        archive(cx);
+    } else {
+        rest::otherwise(cx);
+    }
+}
 ```
 
-A malformed request is a bug in the client, and its 400 names the field. A refused
-request comes from the user's input or the data's state, and its code says which rule refused it, in the
-domain's words. Each check is in one place: a rule doesn't check what the extractors
-did.
+```rust
+fn archive(cx) {
+    let id = rest::param_int(cx, "id");
+    guard id >= 1 && id <= cx.app.projects.len else { check(Error.NotFound, cx); }
+    let project, err = archived(cx.app.projects[id - 1]);
+    check(err, cx);
+    cx.app.projects[id - 1] = project;
+    rest::json(cx, 200, project);
+}
+```
 
-## A rule takes typed input, and has no `cx`
+</details>
+
+## What a rule does
 
 A rule takes plain values, its domain's structs and numbers, and returns its result and
 an `Error`, `Error.None` when it succeeds. From
@@ -74,21 +98,58 @@ fn archived(p: Project) -> Project, Error {
 }
 ```
 
-Without `cx`, a rule can't read a header, answer, or fail the route, so everything it
-depends on is in its parameters. A test calls it as a plain function, and a service job
-calls the same rule on its own thread, where there is no request.
+A rule has no `cx`, so it can't read a header, answer, or fail the route, and it does no
+I/O: everything it depends on is in its parameters. That includes the time. A rule that
+depends on it takes `now`, and the job that calls the rule reads the clock once. From
+[`lanes/entries/`](lanes/entries/):
 
-## Work that waits goes to a service, one job per route
+```rust
+// The entry that input creates, with id, or why it can't: it ends after it
+// starts, and no later than now.
+fn new_entry(input: CreateInput, id: i64, now: i64) -> Entry, Error {
+```
 
-A route that needs the database asks a service with `rest::ask`, once, and the service
-does the whole use case as one job in one transaction, applying the domain's rules. The
-job's function is in the domain's `service.goose`.
+```rust
+    let e, err = new_entry(j.input, all.len + 1, time() as i64);
+```
 
-One wait per route gives one time limit, one place where a full mailbox refuses work,
-and one transaction per use case
-([Why one job per route](../tutorial/13-waiting.md#why-one-job-per-route)).
+## Which check goes where
+
+The route rejects a request that is malformed: a field missing, or not a number. The
+extractors do that, with 400 `invalid_parameter`, before the rule runs. The rule rejects
+a request that is well formed but that the domain refuses: an empty name, a project
+already archived.
+
+```text
+POST /projects 400 {"error":"invalid_parameter","detail":"name: required"}
+POST /projects 422 {"error":"project_name_required"}
+POST /projects/1/archive 409 {"error":"project_already_archived"}
+```
+
+A malformed request is a bug in the client, and its 400 names the field. A refused
+request comes from the user's input or the data's state, and its code names the rule
+that refused it, in the domain's words. Each check is in one place: a rule doesn't
+repeat what the extractors checked.
+
+## Why the split pays
+
+A test calls a rule as a plain function, in microseconds, with no server, thread, or
+database. From [`routes-and-rules/test.goose`](routes-and-rules/test.goose):
+
+```rust
+    let p, err = projects::new_project(projects::CreateInput { name: "goose" }, 1);
+    assert(err == projects::Error.None && p.name == "goose" && !p.archived);
+    let unnamed, why = projects::new_project(projects::CreateInput { name: "" }, 2);
+    assert(why == projects::Error.NameRequired);
+```
+
+The domain's logic is then tested where it's written, every case of it, and a route's
+test covers only what the route adds: its extractors and its answer
+([Testing the application](../tutorial/16-testing.md)). A job on a lane calls the same
+rules where there is no request, and a change to a decision is a diff to one small
+function, which a review reads on its own.
 
 ---
 
 [Best practices](README.md) · Previous: [Layout by domain](layout.md) · Next:
-[Middleware and stacks](middleware.md)
+[Errors](errors.md)

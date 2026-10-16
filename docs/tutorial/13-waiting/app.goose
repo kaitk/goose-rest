@@ -4,7 +4,7 @@ import std;
 import http;
 import rest;
 import db;
-import service;
+import database;
 
 struct Project { id: i64, name: u8[..64], owner: i64 }
 
@@ -31,8 +31,8 @@ enum Waiting {
 
 struct St { waiting: Waiting = Waiting.None }
 
-// The worker's state: a connection of its own, for the route that queries
-// in place, and where the service takes jobs.
+// The worker state: a connection of its own, for the route that queries
+// in place, and where the database lane takes jobs.
 struct App { conn: db::Conn&, db: http::MailAddress }
 
 fn handle(cx) {
@@ -55,18 +55,18 @@ fn v1(cx) {
         guard found else { rest::fail(cx, 404, "project_not_found"); }
         rest::json(cx, 200, project_of(p));
     } else if rest::on(cx, "GET", "/projects/:id") {
-        let job = service::ProjectJob { id: rest::param_int(cx, "id") };
-        rest::ask(cx, cx.app.db, service::PROJECT, job, Waiting.Project);
+        let job = database::ProjectJob { id: rest::param_int(cx, "id") };
+        rest::ask(cx, cx.app.db, database::PROJECT, job, Waiting.Project);
     } else if rest::on(cx, "PUT", "/projects/:id/tasks/:task/assignee") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let assignee, has_assignee = rest::query_int(cx, "user");
         rest::require(cx, "user", has_assignee);
-        let job = service::AssignJob {
+        let job = database::AssignJob {
             project: rest::param_int(cx, "id"), task: rest::param_int(cx, "task"),
             user: rest::int_of(cx, user, "X-User"), assignee: assignee,
         };
-        rest::ask(cx, cx.app.db, service::ASSIGN, job, Waiting.Assign { task: job.task, assignee: assignee });
+        rest::ask(cx, cx.app.db, database::ASSIGN, job, Waiting.Assign { task: job.task, assignee: assignee });
     } else {
         rest::otherwise(cx);
     }
@@ -76,14 +76,14 @@ fn v1(cx) {
 fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 fn resume(w: Waiting.Project, cx) {
-    let r, ok = rest::read_reply<service::ProjectReply>(cx);
+    let r, ok = rest::read_reply<database::ProjectReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, project_of(r.project));
 }
 
 fn resume(w: Waiting.Assign, cx) {
-    let r, ok = rest::read_reply<service::AssignReply>(cx);
+    let r, ok = rest::read_reply<database::AssignReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, Assigned { task: w.task, assignee: w.assignee });

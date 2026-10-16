@@ -1,7 +1,7 @@
 // docs/tutorial/13-waiting.md: routes that wait on a database. One queries
-// in place and holds up the worker; the others ask a service thread, which
+// in place and holds up the worker; the others ask a lane, a thread that
 // owns the connection, and resume when it answers. The routes are in
-// app.goose, and the service in service.goose.
+// app.goose, and the lane in database.goose.
 //
 //   goose build -o build/waiting docs/tutorial/13-waiting/main.goose
 //   build/waiting 8080
@@ -12,7 +12,7 @@ import os;
 import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../../";
 import db from "../db/";
-import .service;
+import .database;
 import .app;
 
 // How long each statement takes, as a query over a network would.
@@ -42,9 +42,9 @@ fn main() {
     let box, e = http::mail_open(64, 256);
     http::exit_on_error(e);
     let to = http::address(box, 0);
-    let st = thread_spawn(service::run, box, DELAY_MS);
+    let st = thread_spawn(database::run, box, DELAY_MS);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     thread_wait(thread_spawn(worker, cfg, to));
-    http::mail_send(to, service::STOP, "");
+    http::mail_send(to, database::STOP, "");
     thread_wait(st);
 }

@@ -235,7 +235,7 @@ fn cookie(cx, name: const u8[:]) -> const u8[:], bool {
 }
 
 // A value computed on first use and kept for the rest of the request. A
-// field of the per-request state, which starts each request undone.
+// field of the request state, which starts each request undone.
 struct Once<T> { done: bool = false, value: T }
 
 // slot's value, computed by F() the first time a request asks for it.

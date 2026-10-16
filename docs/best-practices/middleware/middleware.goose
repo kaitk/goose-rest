@@ -17,12 +17,14 @@ let SESSIONS = [
 
 // Runs F with the user the bearer token names, or fails with 401.
 inline fn authenticate<F>(cx) {
+    // The token, or 401 for a request that has none.
     rest::bearer(cx) { token =>
         var user: i64 = 0;
         for s in SESSIONS {
             if s.token == token { user = s.user; }
         }
         guard user != 0 else { rest::invalid_token(cx); }
+        // F is the block the caller gave: the next middleware, or the route.
         F(users::User { id: user });
     };
 }

@@ -25,8 +25,8 @@ too. It has no `Date` or `Server` header. `serve_one` behaves like the server:
 - goose-http's limits apply. A rejected request, such as one with a body exceeding
   `max_body`, gets goose-http's rejection response. A block that writes no answer gets
   500. The full call is `rest::serve_one(text, app, fresh, cfg)`: `app` is the worker
-  state, `fresh` is the per-request state, and the optional `cfg` changes the limits.
-  Omit `fresh` when there is no per-request state, or both state arguments when neither
+  state, `fresh` is the request state, and the optional `cfg` changes the limits.
+  Omit `fresh` when there is no request state, or both state arguments when neither
   kind of state is needed.
 - An HTTP/1.1 request without `Host` is given `Host: localhost`, so a test request can
   leave it out.

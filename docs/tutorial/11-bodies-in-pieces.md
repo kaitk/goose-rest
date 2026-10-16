@@ -36,7 +36,7 @@ returned, even for a body that came with its head, so after the call the route c
 needed to handle the pieces, such as `part_path` here.
 
 The handler is then called again for each piece of the body, and `rest::resumed` sends
-each call to the variant's case function, as for a reply from a service. `cx.kind`
+each call to the variant's case function, as for a reply from a lane. `cx.kind`
 says which call it is: `http::BODY` with a piece in `cx.body`, `http::END` once the body
 has all come, or `http::CLOSED`:
 
@@ -75,7 +75,7 @@ fn store(cx, bytes: const u8[:]) {
 }
 ```
 
-What the route keeps between pieces goes in the per-request state, which starts fresh
+What the route keeps between pieces goes in the request state, which starts fresh
 for each request: the file's path and the number of bytes received so far. What doesn't change, such as
 the project, goes in the variant:
 
@@ -196,7 +196,7 @@ POST /v1/projects/1/attachments/form 400 {"error":"invalid_multipart"}
 ```
 
 `http::Multipart` holds up to 2 KB of a part's head between pieces. It's part of the
-request's state, which goose-http keeps in each connection's slot, so every connection
+request state, which goose-http keeps in each connection's slot, so every connection
 holds those 2 KB, whichever route it's on.
 
 ## Answers written at the END
@@ -208,7 +208,7 @@ so each middleware keeps what it decided with the exchange: the allowed origin's
 and the time the request came. The answer `resume` writes at the `END` gets the same
 CORS fields and a `Server-Timing` measured from the request, as does a 413 for a body
 past its limit. A browser that uploads from another origin reads that answer as it
-reads one written in the route. An answer to a service's reply gets them the same way
+reads one written in the route. An answer to a lane's reply gets them the same way
 ([reference](../reference.md#middleware)).
 
 ---

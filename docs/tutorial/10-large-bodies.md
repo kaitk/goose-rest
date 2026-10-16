@@ -118,7 +118,7 @@ closes the connection. The client can send it again a second later, once the bod
 gathered meanwhile have been answered.
 The default, 64 MB, lets a worker gather 63 bodies at the 1 MB limit at once, since each
 takes its head too. The import sets a budget of its own, in the `rest::Config` it
-passes to `rest::serve` after the per-request state, here none:
+passes to `rest::serve` after the request state, here none:
 
 ```rust
 // The most bytes the worker gathers at once: 15 imports at the limit, with

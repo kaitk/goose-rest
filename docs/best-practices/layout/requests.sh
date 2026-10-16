@@ -14,3 +14,5 @@ req GET /organization/projects -H 'Authorization: Bearer ada' -H 'X-Organization
 req GET /organization/teams -H 'Authorization: Bearer grace' -H 'X-Organization: 2'
 req DELETE /organization/teams -H 'Authorization: Bearer grace' -H 'X-Organization: 2'
 req GET /organization/members -H 'Authorization: Bearer grace' -H 'X-Organization: 2'
+# Behind the member stack, a path no domain has is 401 to a stranger, not 404.
+req GET /organization/members

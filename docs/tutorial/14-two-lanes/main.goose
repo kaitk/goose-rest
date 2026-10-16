@@ -1,8 +1,8 @@
-// docs/tutorial/14-two-services.md: what one job per route can't do. A
+// docs/tutorial/14-two-lanes.md: what one job per route can't do. A
 // project's tasks come back from the database in pieces, sent on as they
 // come, and an invitation waits on the database, then on a mailer.
 //
-//   goose build -o build/invite docs/tutorial/14-two-services/main.goose
+//   goose build -o build/invite docs/tutorial/14-two-lanes/main.goose
 //   build/invite 8080
 //   curl -s localhost:8080/v1/projects/1/tasks
 //   curl -s -X POST 'localhost:8080/v1/projects/1/members?user=3'

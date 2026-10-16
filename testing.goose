@@ -8,7 +8,7 @@ import http from "github.com/kaitk/goose-http@v0.3.5";
 
 // What serve answers to text, one request's bytes, through H(cx) inside
 // rest::route: the status line, the fields, and the body, without Date or
-// Server. app is the worker's state, fresh the per-request state, cfg the
+// Server. app is the worker state, fresh the request state, cfg the
 // limits goose-http applies, and limits goose-rest's. A body that doesn't
 // fit in cfg.max_head with its head comes in pieces of cfg.max_head bytes:
 // gathered as serve gathers it, within limits.gather_budget, so H runs
@@ -48,7 +48,7 @@ struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, early
 // if nothing; one with a response open is a client that goes, and H gets
 // http::CLOSED.
 //
-//   let reply = rest::value_bytes(service::AssignReply { .. });
+//   let reply = rest::value_bytes(database::AssignReply { .. });
 //   let out = rest::serve_one(text, app, St { .. }, [rest::Wake { data: reply }]) { cx => handle(cx) };
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:],
                       cfg: http::Config = http::Config { .. }, limits: Config = Config { .. }) -> u8[>..] {
@@ -173,7 +173,7 @@ fn deliver<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, sp
     if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => route(cx) { H(cx); }; }; }
 }
 
-// serve_one for a program that keeps no per-request state.
+// serve_one for a program that keeps no request state.
 fn serve_one<A, H>(text: const u8[:], app: A&) -> u8[>..] {
     return serve_one(text, app, NoState { .. }) { cx => H(cx) };
 }

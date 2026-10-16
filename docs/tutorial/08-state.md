@@ -1,13 +1,21 @@
 # 8. State
 
-Workers share nothing, so state lives in one of three places: within a worker, within a
-request, or on a dedicated thread
-([goose-http's state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)).
-Which to choose for a piece of data is in
+Workers share nothing, so data lives in one of five places, each with a name of its
+own:
+
+- a *constant*, a global with a literal value, compiled into the program;
+- the *store*, goose-http's `http.store`, loaded once at startup and read by every
+  worker;
+- *worker state*, `cx.app`, which each worker keeps for itself;
+- *request state*, `cx.state`, which each request starts afresh;
+- *lane data*, owned by a thread of its own, a lane, which workers ask.
+
+This page shows worker and request state, and how to reach the store and a lane. Which
+place to choose for a piece of data is in
 [State](../best-practices/state.md#choose-the-place-by-what-the-data-is), among the
 best practices.
 
-## Per worker
+## Worker state
 
 The worker's `thread_fn` owns its state in local variables. `rest::serve(cfg, app)`
 gives each request `cx.app`, a reference to a struct containing references to those
@@ -27,14 +35,14 @@ thread_fn worker(cfg: http::Config) {
 
 Each worker has its own `projects`, so a project created on one worker isn't available
 on another. For that reason, tutorial programs that store projects use one worker. A
-cache or rate limiter can be per-worker; data that every worker must see goes on a
-dedicated thread, as described below.
+cache or rate limiter can be worker state; data that every worker must see is lane
+data, as described below.
 
 Data that every worker only reads, such as a catalog loaded at startup, is the
 exception: don't load it into globals in `main` before the workers start.
 `thread_spawn` copies each global a worker uses, the worker keeps both the copy it was
 sent and its own, and `main` keeps the original, so four workers hold about ten copies.
-goose-http's shared store, `import http.store`, keeps one copy that every worker reads
+The store, `import http.store`, keeps one copy that every worker reads
 ([goose-http's state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)).
 
 To keep many records in memory, hold their strings as ranges into one byte array, not
@@ -45,7 +53,7 @@ string with a `maxLength` is such a field, four bytes per code point
 an identifier, `format: ascii` sizes it at one byte per code point
 ([JSON bodies](04-json.md#size-a-string-in-bytes)).
 
-## Per request
+## Request state
 
 `rest::serve(cfg, app, fresh)` gives each request `cx.state`, a fresh copy of `fresh`.
 The state type determines the error format ([Answers and errors](03-errors.md#errors)).
@@ -55,10 +63,10 @@ A `rest::Once<T>` field computes a value on its first use within the request. Fr
 ```rust
 struct User { name: u8[..64] }
 
-// The per-request state, which starts from St { .. } for each request.
+// The request state, which starts from St { .. } for each request.
 struct St { user: rest::Once<User> }
 
-// The per-worker state, which lasts as long as the worker.
+// The worker state, which lasts as long as the worker.
 struct App { lookups: i64 }
 
 type Cx = rest::Cx<St, App, http::Router>;
@@ -88,11 +96,11 @@ GET /me 200 ada, lookups so far: 1
 GET /me 200 grace, lookups so far: 2
 ```
 
-## On another thread
+## Lane data
 
-A database connection, or other state used by every worker, lives on a dedicated
-thread. Workers send it requests by message. A route uses `rest::ask` and resumes when
-the reply arrives: [Work that waits](13-waiting.md).
+A database connection, or other data that every worker uses and changes, belongs to a
+lane, a thread of its own. Workers send it jobs by mail. A route uses `rest::ask` and
+resumes when the reply arrives: [Work that waits](13-waiting.md).
 
 ---
 

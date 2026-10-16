@@ -8,7 +8,7 @@ import http;
 import rest;
 import api_gen;
 
-// The worker's state, dispatch's state: the projects and whether each is
+// The worker state, dispatch's state: the projects and whether each is
 // still there, by reference.
 struct App { projects: api::Project[>..]&, live: bool[>..]&, token: const u8[:] }
 

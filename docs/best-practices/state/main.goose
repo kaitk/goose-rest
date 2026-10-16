@@ -26,7 +26,7 @@ let HOLIDAYS = [
     Holiday { date: "2026-06-24", name: "Midsummer Day" },
 ];
 
-// The worker's own state: it lasts as long as the worker, and no other
+// The worker state: it lasts as long as the worker, and no other
 // worker sees it.
 struct App { lookups: i64 }
 
@@ -36,7 +36,9 @@ fn handle(cx) {
             rest::text(cx, 200, "ok");
         } else if rest::on(cx, "GET", "/holidays") {
             rest::route(cx) {
+                // This worker's own count: each worker keeps one.
                 cx.app.lookups++;
+                // The global, compiled into the program, which every worker reads.
                 rest::json(cx, 200, HOLIDAYS);
             };
         } else if rest::on(cx, "GET", "/lookups") {
@@ -48,6 +50,7 @@ fn handle(cx) {
 }
 
 thread_fn worker(cfg: http::Config) {
+    // Each worker's own App, which its routes reach as cx.app.
     var app = App { lookups: 0 };
     let e = rest::serve(cfg, app) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }

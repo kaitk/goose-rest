@@ -102,8 +102,8 @@ which git ignores.
    compares the answers with its `expected.txt`. A port in use there fails the run. A
    request that gives up, such as one with `-m`, is recorded as status `000` without a
    body: `docs/tutorial/15-limits` closes two clients early that way, and expects its
-   database to count them, with a margin of 0.5 s. Then each tutorial program's
-   `test.goose`, through TinyCC, and each `rust` and `json` block of the tutorial's and
+   database to count them, with a margin of 0.5 s. Then each tutorial and
+   best-practices program's `test.goose`, through TinyCC, and each `rust` and `json` block of the tutorial's and
    the best practices' pages, which must appear as it is in a program or an example.
    `examples/device` reads its fake sysfs from `build/examples/` and takes paths of up
    to 1 KB ([known issues](known-issues.md#tests)).

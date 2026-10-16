@@ -1,11 +1,11 @@
 // docs/tutorial/03-errors.md: a program's own error shape, picked by the
-// type of its per-request state.
+// type of its request state.
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../../";
 
-// The per-request state. This program keeps nothing in it: its type picks
+// The request state. This program keeps nothing in it: its type picks
 // the error shape.
 struct St { unused: bool = false }
 

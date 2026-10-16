@@ -1,7 +1,7 @@
-// The database service: the jobs routes send it, the replies it answers,
-// and a function per job that does it start to end on the service's thread,
-// with plain blocking calls. test.goose calls them without HTTP.
-namespace service;
+// The database lane: the jobs routes send it, the replies it answers, and a
+// function per job that does it start to end on the lane's thread, with plain
+// blocking calls. test.goose calls them without HTTP.
+namespace database;
 
 import std;
 import http;
@@ -48,7 +48,7 @@ fn assign(c: db::Conn&, j: AssignJob) -> AssignReply {
     return AssignReply { .. };
 }
 
-// The service's thread: it owns the connection, and takes jobs from its box
+// The lane's thread: it owns the connection, and takes jobs from its box
 // until STOP, one at a time.
 thread_fn run(box: http::Box, delay_ms: i64) {
     var c = db::open(delay_ms);

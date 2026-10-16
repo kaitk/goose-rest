@@ -174,7 +174,7 @@ ends.
 | Data it makes as it goes, such as an export | `rest::begin`, `rest::send` at each `MORE`, `rest::end` |
 | A file | `rest::file` and `rest::send_file` |
 | Events over time, such as Server-Sent Events | `rest::begin`, `rest::send` and `rest::pause` at each `TIMEOUT`, `rest::end` |
-| A service's reply, in pieces | `rest::relay` ([page 14](14-two-services.md)) |
+| A lane's reply, in pieces | `rest::relay` ([page 14](14-two-lanes.md)) |
 
 A response begun in the route, as both here are, has the CORS fields and `Server-Timing`
 in its head. One begun at a later call, such as at a body's `END`, gets the fields the

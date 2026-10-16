@@ -1,14 +1,14 @@
 # 15. Limits
 
-Every wait is bounded: a route waits up to a time limit, a service's mailbox holds a
-fixed number of jobs, and a worker holds a fixed number of waiting routes. This page
-shows what the client receives at each limit and what the service does when a client
+Every wait is bounded: a route waits up to a time limit, a lane's box holds a fixed
+number of jobs, and a worker holds a fixed number of waiting routes. This page shows
+what the client receives at each limit and what the lane does when a client
 stops waiting. [goose-http's limits](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits)
 explains the event-loop side: its bounds, slow clients, and the resources held by a wait.
 
 [`15-limits`](15-limits/main.goose) requests a project's summary from the database. The
 `ms` parameter adds that many milliseconds to simulate a slow query. The route waits
-at most 200 ms, and the database's mailbox holds two jobs:
+at most 200 ms, and the database lane's box holds two jobs:
 
 ```rust
 // The longest a route waits for the database, in milliseconds.
@@ -40,8 +40,8 @@ route is waiting for its reply.
 
 ## 503 for a full box
 
-While the database processes one job, subsequent jobs wait in its mailbox. If the
-mailbox is full, the job isn't sent: `rest::ask` immediately answers 503
+While the database processes one job, subsequent jobs wait in its box. If the box is
+full, the job isn't sent: `rest::ask` immediately answers 503
 `unavailable` rather than queuing work the database won't reach in time:
 
 ```text
@@ -51,15 +51,15 @@ GET /v1/projects/1/summary 000                              gave up, its job wai
 GET /v1/projects/1/summary 503 {"error":"unavailable"}
 ```
 
-Size a box for the jobs a service can finish within the routes' time limit: more slots
-only queue work whose clients get 504 before it starts. For more work at once, start
-several service threads, each with its own box, and send each job to one of them.
+Size a box for the jobs a lane can finish within the routes' time limit: more slots
+only queue work whose clients get 504 before it starts. For more work at once, give the
+lane several threads, each with its own box, and send each job to one of them.
 
 ## A client that has gone
 
 A client can stop waiting while its job is queued or running: its connection closes,
 or its wait times out. `rest::still_wanted(a)` says whether the route is still waiting,
-so the service skips a job nobody waits for. `rest::reply_value` returns false once
+so the lane skips a job nobody waits for. `rest::reply_value` returns false once
 the route has gone:
 
 ```rust
@@ -130,5 +130,5 @@ that clients must find after a restart belong in the database.
 
 ---
 
-[Index](README.md) · Previous: [14. Two services, or a reply in pieces](14-two-services.md)
+[Index](README.md) · Previous: [14. Two lanes, or a reply in pieces](14-two-lanes.md)
 · Next: [16. Testing the application](16-testing.md)

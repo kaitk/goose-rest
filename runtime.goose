@@ -8,7 +8,7 @@ import json;
 import http from "github.com/kaitk/goose-http@v0.3.5";
 
 // A request's context: its head, its body, where its answer goes, the
-// application's per-request state, which goose-http keeps in the
+// application's request state, which goose-http keeps in the
 // connection's slot and starts from fresh for each request, the worker's
 // state, app, which every request of the worker shares, and scratch for
 // what the extractors decode, which lasts until the handler returns. kind
@@ -62,7 +62,7 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     F(&c);   // a block given the local itself gets a copy of it
 }
 
-// The per-request state, or the worker's, of a program that keeps none.
+// The request state, or the worker state, of a program that keeps none.
 struct NoState { unused: bool = false }
 
 // The most bytes of a body rest::body takes unless a route says otherwise.
@@ -135,8 +135,8 @@ struct Slot<S> { state: S, ex: Exchange = Exchange { .. } }
 // Serves cfg with goose-http's loop, calling H(cx) for each request, and again
 // for each later event a route asked for: a reply from another thread
 // (waiting.goose), or a piece of a body, room to send more, or an upgraded
-// connection's bytes (pieces.goose). app, the worker's state, is in cx.app,
-// and the per-request state, starting from fresh, in cx.state. A body that
+// connection's bytes (pieces.goose). app, the worker state, is in cx.app,
+// and the request state, starting from fresh, in cx.state. A body that
 // doesn't come with its head is gathered when a route asks for it
 // (rest::body), and H runs again once it's whole, within limits'
 // gather_budget. Each worker calls serve, so the spill, a local of this
@@ -168,7 +168,7 @@ fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = C
     };
 }
 
-// serve for a program that keeps no per-request state.
+// serve for a program that keeps no request state.
 fn serve<A, H>(cfg: http::Config, app: A&) -> http::Error {
     return serve(cfg, app, NoState { .. }) { cx => H(cx) };
 }
@@ -905,7 +905,7 @@ fn otherwise(cx, r: const http::Router&) {
 }
 
 // Answers an error with the body error_body writes for the type of st, the
-// per-request state, an Allow field when allow isn't empty, a
+// request state, an Allow field when allow isn't empty, a
 // WWW-Authenticate field when challenge isn't, and a Retry-After when
 // retry_after isn't.
 fn write_error(out: http::Reply, st, status: i32, code: const u8[:], detail: const u8[:], at: i64,
@@ -921,7 +921,7 @@ fn write_error(out: http::Reply, st, status: i32, code: const u8[:], detail: con
 
 // The error shape: {"error": code}, with "detail" when detail isn't empty,
 // and "at" when at isn't negative. A program writes its own shape with an
-// overload for its per-request state's type, which wins over this generic
+// overload for its request state's type, which wins over this generic
 // one: fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32,
 // code: const u8[:], detail: const u8[:], at: i64).
 fn error_body(body: u8[>..]&, st, status: i32, code: const u8[:], detail: const u8[:], at: i64) {

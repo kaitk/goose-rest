@@ -6,7 +6,7 @@ in order, and the [generator reference](generator.md) covers what `goose-rest ge
 
 ## Context and routes
 
-`rest::serve(cfg, app) { cx => handle(cx) };` serves requests with the worker's state
+`rest::serve(cfg, app) { cx => handle(cx) };` serves requests with the worker state
 by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each request's
 `cx.state` from `fresh`. A program with no state can call `rest::serve(cfg)`.
 With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
@@ -14,7 +14,7 @@ With request state alone, bind `var app = rest::NoState { .. };` and pass it bes
 a `rest::Config`: its `gather_budget` bounds the bodies a worker gathers at once
 ([Extractors](#extractors)). `rest::serve_epoll` has the same forms.
 
-The context is `rest::Cx<S, A, R>`: the request's state, the worker's state, and the
+The context is `rest::Cx<S, A, R>`: the request state, the worker state, and the
 router type. Its `req`, `body`, `out`, and `scratch` carry the request and response.
 It has `rest::NoRouter` outside a `rest::routes` block, including when a waiting route
 resumes. The block receives a context with an `http::Router`:
@@ -282,7 +282,7 @@ rest::route(cx) {
 
 `rest::once(cx.state.profile) { load_profile(...) }` computes a value on its first call
 in a request and returns it from then on. The slot is a `rest::Once<T>` field of the
-per-request state, so each request starts it anew.
+request state, so each request starts it anew.
 
 ## Later calls
 
@@ -299,7 +299,7 @@ rest::serve(cfg, app, St { .. }) { cx =>
 ```
 
 `cx.kind` says which event it is, and `cx.req` is empty. A variant carries the request
-data its route needs, and the per-request state holds the route's progress.
+data its route needs, and the request state holds the route's progress.
 
 | The route called | The case function gets `cx.kind` | goose-rest handles |
 |---|---|---|
@@ -329,7 +329,7 @@ response cut short.
 | `rest::pause(cx, ms)` | Pauses the response `rest::begin` began, for events sent over time such as Server-Sent Events: `TIMEOUT` comes after `ms` milliseconds, and the case function sends the next piece and pauses again, or ends. What was sent still goes out meanwhile, and no `MORE` comes until the pause ends; a `TIMEOUT` call that neither pauses nor ends gets `MORE` next. Call it in the route, or at `MORE` or `TIMEOUT`. Needs `Config.mail_slots` and `max_waiting`: past `max_waiting`, goose-http has no timer and gives `TIMEOUT` at once, which goose-rest tells from the pause's own by the clock, halfway to `ms`, and answers by ending the response. | 500 `not_sending` without a response begun and open; 500 `not_served` outside `rest::serve` and `serve_one` |
 | `rest::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `rest::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
-| `rest::file(cx, path, body, w, content_type)` | `http::serve_file`'s answer, with `ETag`, `Last-Modified`, and `Accept-Ranges`, and a type by `path`'s extension when `content_type` is empty. `body`, an `http::FileBody` in the per-request state, holds what's left to send. | 404 `file_not_found`, 403 `forbidden`, 500 `file_unreadable` |
+| `rest::file(cx, path, body, w, content_type)` | `http::serve_file`'s answer, with `ETag`, `Last-Modified`, and `Accept-Ranges`, and a type by `path`'s extension when `content_type` is empty. `body`, an `http::FileBody` in the request state, holds what's left to send. | 404 `file_not_found`, 403 `forbidden`, 500 `file_unreadable` |
 | `rest::send_file(cx, body)` | For the case function: at `MORE`, the next piece of up to 64 KB, and the end after the last; at `CLOSED`, closes the file. | |
 | `rest::upgrade(cx, protocol, w)` | `http::upgrade`'s 101. The client's bytes then come as `BODY`, with no `END` and no limit, and `rest::send` writes bytes as they are. `http::upgrade_of(cx.req)` is what the request asks to switch to. | |
 
@@ -420,7 +420,7 @@ member`, or a syntax error from `json`, such as `expected a string`.
 The first answer wins: a route that answers and then fails keeps its answer.
 
 A program that needs another shape, such as an API whose errors also carry the status,
-writes every error's body itself with an overload for its per-request state's type. It
+writes every error's body itself with an overload for its request state's type. It
 gets the status, the code, and the detail and `at` the table names (empty and -1 where
 there are none); the status line and the fields stay goose-rest's:
 
@@ -440,8 +440,8 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 | Call | Answers |
 |---|---|
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
-| `rest::serve_one(text, app) { cx => ... }` | The same, with the worker's state by reference in `cx.app` |
-| `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the per-request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
+| `rest::serve_one(text, app) { cx => ... }` | The same, with the worker state by reference in `cx.app` |
+| `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
 | `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
 | `rest::Wake { data, tag, timeout, early, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, or with `timeout: true`, the end of the wait, which is a `rest::pause`'s time come; with `early: true` as well, goose-http's `TIMEOUT` at once, for want of a timer; on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
 | `rest::value_bytes(v)` | The bytes `rest::reply_value` sends of `v`, a flat value, for a `Wake`'s `data` |

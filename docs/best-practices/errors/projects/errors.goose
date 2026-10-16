@@ -6,7 +6,9 @@ import rest;
 
 enum Error { None, NotFound, NameTaken, Archived }
 
-// Fails the route with e's status and code, or returns for Error.None.
+// Fails the route with e's status and code, or returns for Error.None. A
+// case function per variant: check(e, cx) runs the one for e's variant, and
+// the program doesn't compile while a variant has none.
 fn check(e: Error.None, cx) {}
 fn check(e: Error.NotFound, cx) { rest::fail(cx, 404, "project_not_found"); }
 fn check(e: Error.NameTaken, cx) { rest::fail(cx, 409, "project_name_taken"); }

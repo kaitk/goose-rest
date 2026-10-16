@@ -1,4 +1,4 @@
-// docs/tutorial/13-waiting.md and 16-testing.md: the service's use cases,
+// docs/tutorial/13-waiting.md and 16-testing.md: the database lane's jobs,
 // called as plain functions on a job, and the routes and their case
 // functions, answered without a socket or threads. scripts/test.sh runs it through
 // TinyCC:
@@ -8,10 +8,10 @@ import std;
 import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../../";
 import db from "../db/";
-import .service;
+import .database;
 import .app;
 
-fn expect(got: service::AssignReply, status: i32, code: const u8[:]) {
+fn expect(got: database::AssignReply, status: i32, code: const u8[:]) {
     if got.status != status || got.code != code {
         print("got:  ", got.status, " ", got.code, "\nwant: ", status, " ", code);
         assert(false);
@@ -37,13 +37,13 @@ fn put(target: const u8[:], fields: const u8[:]) -> u8[>..] {
 
 fn main() {
     var c = db::open(0);
-    expect(service::assign(c, service::AssignJob { project: 1, task: 3, user: 1, assignee: 2 }), 200, "");
+    expect(database::assign(c, database::AssignJob { project: 1, task: 3, user: 1, assignee: 2 }), 200, "");
     assert(assignee(c, 3) == 2);
-    expect(service::assign(c, service::AssignJob { project: 1, task: 4, user: 3, assignee: 2 }), 403, "not_a_member");
-    expect(service::assign(c, service::AssignJob { project: 1, task: 4, user: 1, assignee: 3 }), 409, "assignee_not_a_member");
+    expect(database::assign(c, database::AssignJob { project: 1, task: 4, user: 3, assignee: 2 }), 403, "not_a_member");
+    expect(database::assign(c, database::AssignJob { project: 1, task: 4, user: 1, assignee: 3 }), 409, "assignee_not_a_member");
     assert(assignee(c, 4) == 0);
 
-    // The routes, with a box of the test's own where the service's would be:
+    // The routes, with a box of the test's own where the lane's would be:
     // nothing takes from it but the test.
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
@@ -67,18 +67,18 @@ fn main() {
     expect(answer(put("/v1/projects/1/tasks/4/assignee?user=2", user1)),
            "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
     let n = http::mail_take(box) { key, tag, bytes =>
-        let a, ok = rest::asked<service::AssignJob>(bytes);
-        assert(ok && tag == service::ASSIGN);
-        expect(service::assign(c, a.job), 200, "");
+        let a, ok = rest::asked<database::AssignJob>(bytes);
+        assert(ok && tag == database::ASSIGN);
+        expect(database::assign(c, a.job), 200, "");
     };
     assert(n == 1 && assignee(c, 4) == 2);
 
-    // The case functions, given the replies the service would send. Each
+    // The case functions, given the replies the lane would send. Each
     // route still sends its job, so the test empties the box after them.
-    let done = rest::value_bytes(service::AssignReply { .. });
+    let done = rest::value_bytes(database::AssignReply { .. });
     expect(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { data: done }]),
            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 23\r\n\r\n{\"task\":5,\"assignee\":2}");
-    let missing = rest::value_bytes(service::AssignReply { status: 404, code: "task_not_found" });
+    let missing = rest::value_bytes(database::AssignReply { status: 404, code: "task_not_found" });
     expect(body_of(answer(put("/v1/projects/1/tasks/9/assignee?user=2", user1), [rest::Wake { data: missing }])),
            "{\"error\":\"task_not_found\"}");
     assert(http::mail_take(box) { key, tag, bytes => } == 2);

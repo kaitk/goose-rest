@@ -21,9 +21,12 @@ fn routes(cx) {
 
 fn create(cx) {
     let name, has = rest::form(cx, "name");
+    // 400 invalid_parameter for a request without a name: the rule never runs.
     rest::require(cx, "name", has);
     let project, err = new_project(CreateInput { name: name }, cx.app.projects.len + 1);
+    // The rule's refusal, such as 422 project_name_required, ends the route.
     check(err, cx);
+    // In place of a job on a lane, as the program has no database.
     cx.app.projects.push(project);
     rest::json(cx, 201, project);
 }

@@ -92,7 +92,7 @@ the same `main`, some with `workers: 1`.
 
 Each worker gets its own copy of the globals it uses when it starts, so data `main`
 loads before it spawns them is copied into every worker. Data that every worker reads
-goes in goose-http's shared store instead ([page 8](08-state.md#per-worker)).
+goes in goose-http's store, `http.store`, instead ([page 8](08-state.md#worker-state)).
 
 Build with `goose build`. The in-process TinyCC backend used by `goose run` can't run
 the threads a server needs:

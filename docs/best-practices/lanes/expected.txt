@@ -1,0 +1,13 @@
+GET /health 200 ok
+POST /entries 201 {"id":1,"project":1,"started":1767250800,"stopped":1767254400}
+POST /entries 422 {"error":"entry_ends_before_start"}
+POST /entries 422 {"error":"entry_in_future"}
+GET /reports/projects/1 200 {"project":1,"entries":2,"seconds":10800}
+GET /reports/projects/1?ms=500 000
+GET /reports/projects/1 000
+GET /reports/projects/1 000
+GET /reports/projects/1 503 {"error":"unavailable"}
+POST /entries 201 {"id":2,"project":2,"started":1767268800,"stopped":1767270600}
+POST /auth/session 201 {"session":1,"user":1}
+POST /auth/session 401 {"error":"invalid_credentials"}
+POST /auth/session 401 {"error":"invalid_credentials"}

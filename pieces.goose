@@ -141,7 +141,7 @@ fn release_coded(x, fd: i32) {}
 // 200, 206 for a range, 304 when the request's validators match, or 416,
 // with ETag, Last-Modified, and Accept-Ranges, and a Content-Type of
 // content_type, or by path's extension when it's empty
-// (http::content_type_of). body, a field of the per-request state, holds
+// (http::content_type_of). body, a field of the request state, holds
 // what is left to send, and w goes in cx.state.waiting: the case function
 // calls rest::send_file(cx, body) for each call, which sends the rest and
 // closes the file. A response with nothing to send, as for HEAD or 304,

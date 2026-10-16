@@ -21,6 +21,7 @@ fn routes(cx) {
 
 fn show(cx) {
     let id = rest::param_int(cx, "id");
+    // Ends the route with the rule's refusal, or goes on for Error.None.
     check(readable(id), cx);
     rest::text(cx, 200, str("project ", id));
 }

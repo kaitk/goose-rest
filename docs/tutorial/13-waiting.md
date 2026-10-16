@@ -2,8 +2,8 @@
 
 The projects now move into a database. Its driver blocks: a query sends a statement,
 and the call returns when the rows come back. This page first runs queries in the route,
-then moves them to a service thread that owns the connection, showing why the service
-thread is the recommended approach.
+then moves them to a lane, a thread that owns the connection, showing why the lane is
+the recommended approach.
 
 The database here is the tutorial's own [`db`](db/db.goose): in-memory rows read and
 written by the statements used in these pages. Each statement sleeps for 20 ms to
@@ -30,18 +30,22 @@ While this query waits, every other connection on the worker waits too: 20 ms he
 each connection. Each worker also has its own copy of the program's state, so it needs
 its own database connection and cannot see another worker's transaction.
 
-## Behind a service
+## Behind a lane
 
-Work that waits goes to a dedicated thread in the program: a *service* that owns the
-database connections. A route sends it a job by message and returns. The worker serves
-its other connections, then calls the handler again when the reply arrives:
+Work that waits goes to a *lane*: a thread of the program, or several threads that run
+the same jobs, for one kind of slow work, here the database's, with the connections it
+owns. A route sends the lane a *job*, one use case as a message, and returns. The
+worker serves its other connections, then calls the handler again when the reply
+arrives. A lane is what a `TaskExecutor` behind `@Async` is in Spring, or a
+`SyncArbiter` in Actix, and a job what a `@Transactional` service method or an Actix
+`Message` is ([Concepts and naming](../best-practices/concepts.md)):
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant C2 as Another client
     participant W as Worker
-    participant S as Service thread
+    participant S as Lane (a thread)
     participant D as Database
     C->>W: PUT /v1/projects/1/tasks/3/assignee
     Note over W: the route checks the request,<br/>then rest::ask(ASSIGN, job)
@@ -50,7 +54,7 @@ sequenceDiagram
     S->>D: begin
     S->>D: the project, the two members
     C2->>W: GET /health
-    Note over W: a route that needs no service,<br/>answered while the service works
+    Note over W: a route that needs no lane,<br/>answered while the lane works
     W->>C2: 200 ok
     S->>D: update the task
     S->>D: commit
@@ -59,20 +63,20 @@ sequenceDiagram
     W->>C: 200 {"task":3,"assignee":2}
 ```
 
-The worker never blocks on the database. The service thread does nothing else, and its
+The worker never blocks on the database. The lane's thread does nothing else, and its
 calls block for as long as the statements take: a slow query holds up only the jobs
 queued behind it, not the worker's connections. The limits apply on the route's side:
-how long the route waits and how many jobs the service's box holds ([Limits](15-limits.md)).
+how long the route waits and how many jobs the lane's box holds ([Limits](15-limits.md)).
 goose-http's [slow work](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#slow-work)
 shows the same exchange at the loop's level, with its time limit, and
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
 explains how messages cross between threads.
 
-The job represents a complete use case, which the service performs from start to finish
+The job represents a complete use case, which the lane performs from start to finish
 with plain blocking calls, as the body of an Axum or Express handler would. Assigning
 a task checks that the project exists and that both the requesting user and the
 assignee are members, then updates the task: four statements in one transaction. From
-[`service.goose`](13-waiting/service.goose):
+[`database.goose`](13-waiting/database.goose):
 
 ```rust
 // Assigns a task, for a user who is a member of its project, to another
@@ -108,7 +112,7 @@ struct AssignJob { project: i64, task: i64, user: i64, assignee: i64 }
 struct AssignReply { status: i32 = 200, code: u8[..32] = "" }
 ```
 
-The service thread takes each job from its box with `rest::asked<J>` and replies
+The lane's thread takes each job from its box with `rest::asked<J>` and replies
 with `rest::reply_value`:
 
 ```rust
@@ -120,7 +124,7 @@ with `rest::reply_value`:
 ## The route asks, and resumes
 
 The route reads and validates the request, then calls `rest::ask` once, passing the
-service address, the job tag, the job, and the state needed when the reply arrives. From
+lane's address, the job tag, the job, and the state needed when the reply arrives. From
 [`app.goose`](13-waiting/app.goose), which holds the routes apart from `main` so that
 a test can import them:
 
@@ -130,11 +134,11 @@ a test can import them:
         rest::require(cx, "X-User", has_user);
         let assignee, has_assignee = rest::query_int(cx, "user");
         rest::require(cx, "user", has_assignee);
-        let job = service::AssignJob {
+        let job = database::AssignJob {
             project: rest::param_int(cx, "id"), task: rest::param_int(cx, "task"),
             user: rest::int_of(cx, user, "X-User"), assignee: assignee,
         };
-        rest::ask(cx, cx.app.db, service::ASSIGN, job, Waiting.Assign { task: job.task, assignee: assignee });
+        rest::ask(cx, cx.app.db, database::ASSIGN, job, Waiting.Assign { task: job.task, assignee: assignee });
 ```
 
 Goose has no `async` and can't store a closure to call later. Instead, the state the
@@ -168,7 +172,7 @@ compiler checks that every variant has one:
 
 ```rust
 fn resume(w: Waiting.Assign, cx) {
-    let r, ok = rest::read_reply<service::AssignReply>(cx);
+    let r, ok = rest::read_reply<database::AssignReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
     rest::json(cx, 200, Assigned { task: w.task, assignee: w.assignee });
@@ -183,14 +187,14 @@ PUT /v1/projects/1/tasks/3/assignee?user=3 409 {"error":"assignee_not_a_member"}
 PUT /v1/projects/1/tasks/6/assignee?user=2 404 {"error":"task_not_found"}
 ```
 
-`main` opens the service's mailbox, starts its thread, and enables waiting. Waiting is
+`main` opens the lane's box, starts its thread, and enables waiting. Waiting is
 disabled until `Config.mail_slots` and `max_waiting` are set:
 
 ```rust
     let box, e = http::mail_open(64, 256);
     http::exit_on_error(e);
     let to = http::address(box, 0);
-    let st = thread_spawn(service::run, box, DELAY_MS);
+    let st = thread_spawn(database::run, box, DELAY_MS);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
 ```
 
@@ -211,17 +215,17 @@ because:
 
 ```rust
     var c = db::open(0);
-    expect(service::assign(c, service::AssignJob { project: 1, task: 3, user: 1, assignee: 2 }), 200, "");
+    expect(database::assign(c, database::AssignJob { project: 1, task: 3, user: 1, assignee: 2 }), 200, "");
     assert(assignee(c, 3) == 2);
 ```
 
 The trade-offs are that jobs and replies must cross thread boundaries as flat values,
 and the HTTP layer and use cases live in separate functions. Checks that need the
 database before the route's work, such as looking up a session by its cookie, go in the
-job so the route still waits only once. A route using two services in sequence needs
-more than one wait: [the next page](14-two-services.md).
+job so the route still waits only once. A route using two lanes in sequence needs more
+than one wait: [the next page](14-two-lanes.md).
 
 ---
 
 [Index](README.md) · Previous: [12. Long responses and files](12-long-responses.md) · Next:
-[14. Two services, or a reply in pieces](14-two-services.md)
+[14. Two lanes, or a reply in pieces](14-two-lanes.md)

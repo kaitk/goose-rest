@@ -25,7 +25,7 @@ let PROGRESS_MS = 100;
 
 struct Task { id: i64, project: i64, title: u8[..64], assignee: u8[..32] }
 
-// The worker's state: the tasks, and where each project's files are.
+// The worker state: the tasks, and where each project's files are.
 struct App { tasks: Task[>..]&, files: const u8[:] }
 
 // What each route that sends in pieces needs at each call.

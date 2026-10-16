@@ -5,9 +5,9 @@
 # test/gen/, examples/, and docs/tutorial/ against its golden file, the
 # TypeScript helper's tests where tsc is installed (ts/), each example and
 # each tutorial and best-practices program served and requested
-# (scripts/test-examples.sh), each tutorial test.goose, the code blocks of
-# the tutorial's and the best practices' pages against the programs they
-# quote, then each spike, whose output must match the
+# (scripts/test-examples.sh), each tutorial and best-practices test.goose,
+# the code blocks of the tutorial's and the best practices' pages against the
+# programs they quote, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
 # also keep main as its only Goose function: everything else inlined. And
@@ -102,7 +102,7 @@ step "test-examples.sh"
 # shellcheck disable=SC2086
 "$root/scripts/test-examples.sh" "$root"/examples/*/ $programs
 
-for t in $(find "$root/docs/tutorial" -name test.goose | sort); do
+for t in $(find "$root/docs/tutorial" "$root/docs/best-practices" -name test.goose | sort); do
     step "${t#"$root"/}"
     "$goose" "$t"
 done

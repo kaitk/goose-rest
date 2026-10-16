@@ -20,7 +20,7 @@ struct Board {
     token: u8[..1024] = "secret",
 }
 
-// The worker's state, cx.app: the settings by reference, so that a change
+// The worker state, cx.app: the settings by reference, so that a change
 // outlives the request.
 struct App { board: Board, settings: api::Settings& }
 

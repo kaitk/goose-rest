@@ -2,7 +2,7 @@
 
 goose-rest is a REST framework for Goose on `goose-http`. It follows Actix's model,
 changed where Goose differs, and costs nothing over a hand-written `http::router` if
-chain wherever the language allows. Routing, extractors, middleware, errors, per-worker
+chain wherever the language allows. Routing, extractors, middleware, errors, worker
 state, and JSON are the framework. A generator that writes types, readers, writers, and
 a router from an OpenAPI document is an optional layer on top; a program without a
 schema uses all of the rest.
@@ -34,10 +34,10 @@ spec.
   gets from serde's derive, goose-rest gets from a `format` overload and a reader
   written by hand, or from the generator.
 - **No shared memory.** Workers share nothing but `const` data and messages (§11.2). A
-  cache, a rate limiter, or a session store is per worker, or lives on a thread of its
-  own that workers mail.
+  cache, a rate limiter, or a session store is worker state, or lane data, which a
+  thread of its own keeps and workers mail.
 - **No async.** A handler that waits on another thread splits in two around the reply,
-  with its state in the connection ([Waiting on a service](#waiting-on-a-service)).
+  with its state in the connection ([Waiting on a lane](#waiting-on-a-lane)).
 
 ## Actix, and where goose-rest differs
 
@@ -56,7 +56,7 @@ spec.
 ## A request's path
 
 Each worker's thread builds its own state and calls `rest::serve`, which puts that
-state in `cx.app`, starts the per-request state `cx.state` fresh for each request, and
+state in `cx.app`, starts the request state `cx.state` fresh for each request, and
 calls the program's handler with one context, `cx`. The handler is plain code:
 
 ```rust
@@ -102,7 +102,7 @@ connection, so the client sees it cut short rather than an error inside it.
 
 A check that must run, such as a session lookup, fails the route. Work that can wait,
 such as loading a profile, is a lazy extractor: `rest::once` runs it on first call and
-keeps the result in `cx.state` for the request. The per-request state is fixed-size,
+keeps the result in `cx.state` for the request. The request state is fixed-size,
 kept in a pool slot, and reset per request ([State](tutorial/08-state.md)).
 
 `GET /projects/42` then costs a router match, an integer parse, the session check, the
@@ -136,24 +136,23 @@ many it holds, and compiles to the same code as the nesting written out
 ([A stack of your own](tutorial/07-middleware.md#a-stack-of-your-own)). A stack is code,
 not a value: a program can't build a list of middleware at run time.
 
-## Waiting on a service
+## Waiting on a lane
 
 Workers share no memory, so I/O-bound work, such as a query to a database server, runs
-on a thread of its own, a service, which workers mail: the synchronous half of
-goose-http's
+on a lane, which workers mail: a thread of its own, or several that run the same jobs,
+for one kind of work. It's the synchronous half of goose-http's
 [half-sync/half-async split](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#slow-work).
 In the route, the worker's core would sit idle through each wait while the worker's
 other connections queue. CPU-bound work, including a query on embedded SQLite, runs in
-the route. When the workers already use every core, a service adds no throughput for
-it; it helps only work long enough to hold up the worker's other connections, which a
-service lets the operating system interleave with it. A route sends the service one job
-naming the whole use case with `rest::ask`, and the service does it start to end with
-blocking calls, in one transaction. The route waits once, with one time limit and one
-place where a full mailbox refuses work, and the use case can be tested as a plain call.
-A route waits more than once only for what one service can't do: a second service in
-turn.
+the route. When the workers already use every core, a lane adds no throughput for it;
+it helps only work long enough to hold up the worker's other connections, which a lane
+lets the operating system interleave with it. A route sends the lane one job naming the
+whole use case with `rest::ask`, and the lane does it start to end with blocking calls,
+in one transaction. The route waits once, with one time limit and one place where a
+full box refuses work, and the job can be tested as a plain call. A route waits more
+than once only for what one lane can't do: a second lane in turn.
 
-Goose can't store a function to call later, so the per-request state holds a
+Goose can't store a function to call later, so the request state holds a
 fixed-mode enum of what each waiting route needs, and the program writes a case
 function per variant. The compiler dispatches on the tag and checks that every variant
 has its case:
@@ -167,11 +166,11 @@ rest::serve(cfg, app, St { .. }) { cx =>
 };
 ```
 
-The job crosses as a `to_bytes` image, with no JSON between threads, and the mailbox
-carries bytes in fixed-size slots, as goose-http's
+The job crosses as a `to_bytes` image, with no JSON between threads, and the lane's
+box carries bytes in fixed-size slots, as goose-http's
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
 explains. A reply larger than a slot comes in pieces; `rest::relay` sends each as a
-chunk. `rest::still_wanted` tells the service whether the route still waits, so it can
+chunk. `rest::still_wanted` tells the lane whether the route still waits, so it can
 skip the work of a client that has gone. A route that never waits keeps nothing on the
 connection. The tutorial builds this from [work that waits](tutorial/13-waiting.md) to
 [limits](tutorial/15-limits.md).
@@ -247,8 +246,8 @@ start, so a long chain costs more per request than a generated router
 - **Inlining has rules.** A route nested in a route, a large function that fails, or a
   plain `fn` that takes a block keeps the handler out of line, and the program still
   works, at a call per layer.
-- **Per-worker state.** A cache or session store is per worker, or a service that
-  workers mail; nothing is shared by reference between workers.
+- **Worker state.** A cache or session store is worker state, or lane data that
+  workers mail for; nothing is shared by reference between workers.
 - **Waiting splits a handler.** A route that waits writes its state into a `Waiting`
   variant and resumes in a case function, instead of continuing after an `await`.
   Replies come through fixed-size mail slots, and a larger one in pieces.

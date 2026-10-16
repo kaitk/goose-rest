@@ -1,5 +1,5 @@
-// docs/tutorial/08-state.md: state per worker, and per request. One
-// worker, so that the count below is the server's.
+// docs/tutorial/08-state.md: worker state and request state. One worker, so
+// that the count below is the server's.
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.3.5";
@@ -7,10 +7,10 @@ import rest from "../../../";
 
 struct User { name: u8[..64] }
 
-// The per-request state, which starts from St { .. } for each request.
+// The request state, which starts from St { .. } for each request.
 struct St { user: rest::Once<User> }
 
-// The per-worker state, which lasts as long as the worker.
+// The worker state, which lasts as long as the worker.
 struct App { lookups: i64 }
 
 type Cx = rest::Cx<St, App, http::Router>;

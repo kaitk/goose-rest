@@ -6,7 +6,7 @@ import std;
 import rest;
 import api_gen;
 
-// The worker's state, which each handler reads as cx.app.
+// The worker state, which each handler reads as cx.app.
 struct App { projects: api::Project[>..]&, token: const u8[:] }
 
 // The scheme token: a bearer token, whose user the handlers it guards get.

@@ -8,7 +8,7 @@ An application's tests follow Goose's own convention
   the domain's rules as plain functions, and its routes, middleware, and stacks through
   `rest::serve_one` ([Testing](../reference.md#testing)).
 - **Scenarios over HTTP.** A folder per scenario under `test/` runs the real program, its
-  workers and service threads, and compares its answers with a golden file.
+  workers and lanes, and compares its answers with a golden file.
 - **`// error:` fixtures** for what must not compile, such as a route given the wrong
   state type.
 
@@ -20,4 +20,4 @@ shows the calls the small tests make.
 
 ---
 
-[Best practices](README.md) · Previous: [Naming](naming.md)
+[Best practices](README.md) · Previous: [State](state.md)

@@ -113,7 +113,7 @@ A limited array takes its full capacity whatever the string's length, so a field
 `maxLength: 200` takes 800 bytes, and 200 with one of the ASCII formats above. That
 suits a request's body, which lives for the request. A program that keeps many records
 of a generated type, such as in a cache, keeps their strings as ranges into one byte array
-instead ([tutorial](tutorial/08-state.md#per-worker)), or marks a string that holds
+instead ([tutorial](tutorial/08-state.md#worker-state)), or marks a string that holds
 only codes or identifiers `format: ascii`
 ([tutorial](tutorial/04-json.md#size-a-string-in-bytes)).
 
@@ -251,8 +251,8 @@ fn get_project(cx, s, id: i64) { ... }    // in app, the handlers' namespace
 fn security_session(cx) -> Session { ... }
 ```
 
-Handlers and security checks reach the worker's state through `cx.app` and the
-request's through `cx.state`. `rest::serve(cfg, app, fresh)` supplies both, and
+Handlers and security checks reach the worker state through `cx.app` and the request
+state through `cx.state`. `rest::serve(cfg, app, fresh)` supplies both, and
 `rest::serve(cfg, app)` uses `rest::NoState` for the request.
 
 An operation's `security: []` overrides the document's. A path item's `parameters`
