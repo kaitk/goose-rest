@@ -27,31 +27,28 @@ whose `bench/rest.sh` this repository's wraps.
 
 | Workload | goose-rest | goose-http | Goose compiler | Date | Command |
 |---|---|---|---|---|---|
-| Tiers A to D, F, R, and M, Goose servers | `v0.1.0` | `v0.3.3` | `v2026.1` | 2026-10-15 | `bench/all.sh` |
+| Tiers A to D, F, R, and M, Goose servers, and instructions per request | `v0.1.0` | `v0.3.3` | `v2026.1` | 2026-10-15 | `bench/all.sh` |
 | Tiers A to D, F, R, and M, Axum, actix-web, dusty | | | | 2026-10-15 | `bench/rest.sh run` |
-| Instructions per request | `v0.0.1` | `v0.3.1` | `bc3c1f1` | 2026-10-15 | `bench/rest.sh count` |
 
 goose-rest's binary was built from `9cfcb73`, which differs from `v0.1.0` only in an
 example. goose-http's measured code is `v0.3.3`'s. The frameworks' cells come from the
 earlier session of the same day on the same machine, at the same fixed rates: axum
 0.8.9, actix-web 4.16.0, dusty `ae164fa` with zio 0.19.1 on Zig 0.16.0, hyper 1.12.0,
-rustc 1.99.0. The instruction counts are from that session too, on goose-rest `v0.0.1`,
-goose-http `v0.3.1`, and Goose `bc3c1f1`, four commits before `v2026.1`.
+rustc 1.99.0.
 
 ```sh
 GOOSE_HTTP=<goose-http checkout> bench/all.sh
 SERVERS="axum actix-web dusty-routes dusty hyper" EXTRA="axum actix-web dusty-routes" \
     RATE_A=100000 RATE_B=24000 RATE_C=1700 bench/rest.sh run
-bench/rest.sh count
 ```
 
 The Goose servers' run is in `bench/results/`:
-[A to D](../bench/results/2026-10-15T2102-rest-Tiamat/summary.md) and
-[F, R, M](../bench/results/2026-10-15T2102-rest-Tiamat/summary-extra.md). The
-frameworks' run and the counts are in goose-http's `bench/results/`:
-[A to D](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-15T1539-rest-Tiamat/summary.md),
-[F, R, M](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-15T1539-rest-Tiamat/summary-extra.md),
-and [counts](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-14T2039-rest-Tiamat-frm/count.txt).
+[A to D](../bench/results/2026-10-15T2102-rest-Tiamat/summary.md),
+[F, R, M](../bench/results/2026-10-15T2102-rest-Tiamat/summary-extra.md), and
+[counts](../bench/results/2026-10-15T2102-rest-Tiamat/count.txt). The frameworks' run is
+in goose-http's `bench/results/`:
+[A to D](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-15T1539-rest-Tiamat/summary.md) and
+[F, R, M](https://github.com/kaitk/goose-http/blob/main/bench/results/2026-10-15T1539-rest-Tiamat/summary-extra.md).
 
 ## The tiers
 
@@ -175,7 +172,7 @@ Tiers F, R, and M, req/s and, for M, CPU per request:
 - goose-rest is within 0.0-3.9% of goose-http's rate on every tier but A on epoll,
   4.1-4.9% behind.
 - The generated router serves tier R 34% faster than the if chain, which pays about
-  175 instructions per route it passes, 35,100 more at route 201.
+  176 instructions per route it passes, 35,250 more at route 201.
 
 ### Uploads and memory
 
@@ -194,25 +191,25 @@ the reads beside them had a p99 of 0.44-2.78 ms against 0.51-1.37 ms.
 
 ### Instructions per request
 
-User instructions per request, from the earlier session (goose-rest `v0.0.1`):
+User instructions per request:
 
 | Case | goose-http alone | goose-rest |
 |---|---:|---:|
-| Tier A `GET /api/items/1`, 200 | 4,061 | 4,239 |
-| Tier A `GET /api/me` without a user, 401 | 4,047 | 4,517 |
-| Tier A `GET /nothing`, 404 | 2,569 | 3,144 |
-| Tier M `GET /api/items/1` without a token, 401 | | 5,830 |
-| Tier F `GET /` | 2,376 (bare) | 2,278 |
-| Tier F `GET /id/1?name=bun` | 2,956 (bare) | 3,204 |
-| Tier R, route 1, `GET /authorizations`: if chain, generated | | 3,168, 2,852 |
-| Tier R, route 201, `GET /user/keys/id201`: if chain, generated | | 38,422, 3,299 |
+| Tier A `GET /api/items/1`, 200 | 4,084 | 4,229 |
+| Tier A `GET /api/me` without a user, 401 | 4,046 | 4,527 |
+| Tier A `GET /nothing`, 404 | 2,567 | 3,161 |
+| Tier M `GET /api/items/1` without a token, 401 | | 5,866 |
+| Tier F `GET /` | 2,362 (bare) | 2,308 |
+| Tier F `GET /id/1?name=bun` | 2,942 (bare) | 3,225 |
+| Tier R, route 1, `GET /authorizations`: if chain, generated | | 3,195, 2,958 |
+| Tier R, route 201, `GET /user/keys/id201`: if chain, generated | | 38,445, 3,403 |
 
-- A tier A item costs 178 instructions more on goose-rest.
-- goose-rest's 401 and 404 cost 470 and 575 more, and answer with a JSON body where
+- A tier A item costs 145 instructions more on goose-rest.
+- goose-rest's 401 and 404 cost 481 and 594 more, and answer with a JSON body where
   goose-http's server sends none.
-- Tier F's `/id` costs 248 more than goose-http's router and query; goose-rest's `/`
-  costs 98 fewer.
-- Tier M's stack costs 1,313 instructions on a 401, against tier A's 401.
+- Tier F's `/id` costs 283 more than goose-http's router and query; goose-rest's `/`
+  costs 54 fewer.
+- Tier M's stack costs 1,339 instructions on a 401, against tier A's 401.
 
 ## Where goose-rest loses
 
