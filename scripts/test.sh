@@ -17,8 +17,9 @@
 # the handler and library leaves stay functions.
 #
 # GOOSE names the compiler (default: the pinned release, scripts/goose.sh),
-# and TSC the TypeScript compiler's command (default: tsc on PATH), such as
-# "npx -p typescript tsc". JS names the runtime that runs the helper
+# and TSC the TypeScript compiler's command (default: tsc on PATH, or else
+# the TypeScript release below, which npx or bunx fetches, such as
+# "npx -y -p typescript@7.0.2 tsc"). JS names the runtime that runs the helper
 # (default: node, or else bun), and PYTHON the one that runs
 # test/run_tests.py (default: python3, or else python).
 set -eu
@@ -26,7 +27,16 @@ set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 . "$root/scripts/goose.sh"
 goose=$GOOSE
-TSC=${TSC:-tsc}
+# The TypeScript release the helper's tests last passed with, which npx or
+# bunx fetches where no tsc is on PATH.
+typescript=typescript@7.0.2
+if [ -z "${TSC:-}" ]; then
+    if command -v tsc >/dev/null 2>&1; then TSC=tsc
+    elif command -v npx >/dev/null 2>&1; then TSC="npx -y -p $typescript tsc"
+    elif command -v bunx >/dev/null 2>&1; then TSC="bunx -p $typescript tsc"
+    else TSC=
+    fi
+fi
 JS=${JS:-$(command -v node || command -v bun || echo node)}
 PYTHON=${PYTHON:-$(command -v python3 || command -v python || echo python3)}
 
@@ -52,14 +62,15 @@ for f in "$root"/test/gen/*.json "$root"/examples/*/api.json \
     diff -u "$dir/${name}_gen.goose" "$root/build/gen/${name}_gen.goose"
 done
 
-# The TypeScript helper, only where tsc is: tsc checks ts/, where
+# The TypeScript helper, only where TSC runs: offline, npx and bunx can't
+# fetch it, and the step is skipped. tsc checks ts/, where
 # ts/test/reject.mts holds what tsc must refuse. Then JS runs the documents
 # written with the helper, each of which must be the JSON it copies and pass
 # the generator, and ts/test/generator.mts's, each of which the generator must
 # refuse with the error it names.
 ts=$root/build/ts
-if command -v "${TSC%% *}" >/dev/null 2>&1; then
-    step "tsc ts/"
+if [ -n "$TSC" ] && $TSC --version >/dev/null 2>&1; then
+    step "tsc ts/ ($($TSC --version))"
     $TSC -p "$root/ts"
     for pair in ts/test/projects.mts:test/gen/api.json ts/test/schema.mts:examples/schema/api.json \
                 ts/test/routes.mts:test/gen/routes.json docs/tutorial/05-schema/api.mts:docs/tutorial/05-schema/api.json; do
@@ -94,7 +105,8 @@ if command -v "${TSC%% *}" >/dev/null 2>&1; then
     echo "$(wc -l <"$ts/cases" | tr -d ' ') refused"
 else
     step "ts/"
-    echo "skipped: no ${TSC%% *} on PATH (TSC names another)"
+    echo "skipped: no tsc on PATH, and no npx or bunx to fetch $typescript, or the fetch"
+    echo "failed; install Node or Bun, or set TSC to a TypeScript compiler's command"
 fi
 
 # A program of the docs is a folder under docs/tutorial/ or

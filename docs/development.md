@@ -93,8 +93,8 @@ which git ignores.
    failure among them ([below](#run-the-tests-by-area)).
 2. The generator on each schema under `test/gen/`, `examples/`, and `docs/tutorial/`,
    whose output must match the golden `_gen.goose` beside it byte for byte. A change to
-   the generator regenerates them ([generator.md](generator.md#tests)).
-   Then the TypeScript helper's tests, where `tsc` is installed
+   the generator regenerates them ([generator.md](generator.md#8-tests)).
+   Then the TypeScript helper's tests, with `tsc`, or one npx or bunx fetches
    ([below](#run-the-typescript-helpers-tests)).
 3. `scripts/test-examples.sh`, which builds each example under `examples/` and each
    program under `docs/tutorial/` and `docs/best-practices/`, serves it on `127.0.0.1`
@@ -184,12 +184,13 @@ Git Bash, and set a Git identity in WSL before committing from it
 JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
 `ts/tsconfig.json`, which also covers the tutorial's `.mts` files, then runs
 `ts/test/*.mts` and `docs/tutorial/05-schema/api.mts` with `JS`: `node`, or `bun` where
-Node isn't installed. Without `tsc`, it prints `skipped` and goes on. With Node or Bun
-installed and no `tsc`, npx or bunx fetches one for the run:
+Node isn't installed. Without `tsc` on `PATH`, npx or bunx fetches TypeScript 7.0.2 for
+the run, the release `scripts/test.sh` pins. With neither, or offline, it prints
+`skipped` and goes on. `TSC` names another compiler:
 
 ```sh
-TSC="npx -y -p typescript tsc" scripts/test.sh
-TSC="bunx -p typescript tsc" scripts/test.sh
+TSC="npx -y -p typescript@7.0.2 tsc" scripts/test.sh
+TSC="bunx -p typescript@7.0.2 tsc" scripts/test.sh
 ```
 
 Node and Bun run the `.mts` files directly, stripping their types; Node needs 22.18 or
