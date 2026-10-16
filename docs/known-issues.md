@@ -33,7 +33,9 @@ Traps met while writing the generator and its tests (2026-10-13):
 ## WSL2 on Windows
 
 - Windows npx on WSL's `PATH` accepts neither the Linux paths the suite passes nor its
-  Linux TypeScript package. Put Linux Node and npx first.
+  Linux TypeScript package. Put Linux Node and npx first. `scripts/test.sh` falls back
+  to npx when no `tsc` is installed, so `bench/all.sh` needs it too: its test step
+  stopped with `error TS5058: The specified path does not exist` on `ts/` (2026-10-16).
 - Ubuntu's Node 22.22.1 was built without TypeScript support, despite its version;
   Node 24.14.1's Linux distribution runs the `.mts` files.
 - Git Bash's converted paths differ from the exact generator diagnostics the suite
