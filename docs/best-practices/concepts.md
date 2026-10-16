@@ -25,6 +25,9 @@ side.
 - **Constant**, **store**, and **lane data**: the other places data lives: compiled into
   the program, loaded once at startup into `http.store`, and owned by a lane.
 - **Job**: one use case, run on a lane from start to end, in one transaction.
+- **Background task**: work of minutes that a route answers with 202 at once, and the
+  client polls. It's made of jobs: one that starts it, and one for each poll
+  ([Background tasks](../tutorial/13-limits.md#background-tasks)).
 - **Query**: a function per database statement, which jobs call.
 - **`Waiting` step and `resume`**: where a route that waits continues when the reply
   comes.
@@ -54,8 +57,9 @@ side.
 NestJS follows Spring's model, with modules, controllers, and providers, so Spring's
 column reads for it too. Go gives each request a goroutine that may block, so it needs
 no `Waiting`; a lane there is a fixed set of goroutines reading one buffered channel,
-its box. In Akka, a lane is a dispatcher. A Sidekiq or Celery job is durable, kept in a
-store until it runs; a goose-rest job is lost if the server stops.
+its box. In Akka, a lane is a dispatcher. A Sidekiq or Celery job is a background task
+kept in a store until it runs; a goose-rest background task lives in its lane's memory,
+and is lost if the server stops.
 
 </details>
 

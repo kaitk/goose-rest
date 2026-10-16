@@ -39,10 +39,8 @@ cache or rate limiter can be worker state; data that every worker must see is la
 data, as described below.
 
 Data that every worker only reads, such as a catalog loaded at startup, is the
-exception: don't load it into globals in `main` before the workers start.
-`thread_spawn` copies each global a worker uses, the worker keeps both the copy it was
-sent and its own, and `main` keeps the original, so four workers hold about ten copies.
-The store, `import http.store`, keeps one copy that every worker reads
+exception: don't load it into globals in `main` before the workers start, because each
+worker then holds it more than once. The store, `import http.store`, keeps one copy that every worker reads
 ([goose-http's state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)).
 
 To keep many records in memory, hold their strings as ranges into one byte array, not
@@ -100,7 +98,7 @@ GET /me 200 grace, lookups so far: 2
 
 A database connection, or other data that every worker uses and changes, belongs to a
 lane, a thread of its own. Workers send it jobs by mail. A route uses `rest::ask` and
-resumes when the reply arrives: [Work that waits](13-waiting.md).
+resumes when the reply arrives: [Work that waits](11-waiting.md).
 
 ---
 

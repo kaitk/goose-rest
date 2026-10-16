@@ -1,10 +1,10 @@
-// docs/tutorial/11-bodies-in-pieces.md: attachments of any size, written to
+// docs/tutorial/14-bodies-in-pieces.md: attachments of any size, written to
 // a file a piece at a time as they arrive, never held whole; and a multipart
 // form of a note and a file, read the same way. Attachments go in the
 // directory ATTACHMENTS names, "attachments" by default. One worker: the
 // next attachment's id lives in the worker.
 //
-//   goose build -o build/attachments docs/tutorial/11-bodies-in-pieces/main.goose
+//   goose build -o build/attachments docs/tutorial/14-bodies-in-pieces/main.goose
 //   build/attachments 8080
 //   curl -s --data-binary @photo.jpg localhost:8080/v1/projects/1/attachments
 //   curl -s -F note=Plans -F file=@plans.pdf localhost:8080/v1/projects/1/attachments/form
@@ -82,9 +82,7 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 // written a piece at a time.
 fn attach(cx, project: i64) {
     let id = cx.app.next;
-    // Reads nothing yet. A Content-Length over the limit gets 413, which leaves
-    // the route here; otherwise the body's pieces come later, to
-    // resume(Waiting.Attachment), once this route has returned.
+    // Returns at once, reading nothing; the pieces come to resume(Waiting.Attachment).
     rest::body_in_pieces(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
     // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;

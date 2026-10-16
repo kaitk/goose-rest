@@ -226,7 +226,7 @@ with the name asked for through goose-http's `http::find_part`, whose rules deci
 what is malformed. What they return are slices of the body, never copies. An upload
 read as it arrives goes through goose-http's `http::each_part`
 ([goose-http's API](https://github.com/kaitk/goose-http/blob/main/docs/api.md)), a
-piece at a time with `rest::body_in_pieces` ([tutorial](tutorial/11-bodies-in-pieces.md#a-multipart-form)).
+piece at a time with `rest::body_in_pieces` ([tutorial](tutorial/14-bodies-in-pieces.md#a-multipart-form)).
 
 A program that builds its own `http::Router` can still pass it explicitly to
 `rest::param(cx, r, name)`, `rest::param_int(cx, r, name)`, and `rest::otherwise(cx, r)`.
@@ -365,8 +365,8 @@ fn resume(w: Waiting.Asked, cx) {
 
 A WebSocket's framing isn't provided: a package on top of
 `rest::upgrade` can add it. The tutorial builds an upload with `body_in_pieces`
-([page 11](tutorial/11-bodies-in-pieces.md)), and an export and downloads with `begin`
-and `file` ([page 12](tutorial/12-long-responses.md));
+([page 14](tutorial/14-bodies-in-pieces.md)), and an export and downloads with `begin`
+and `file` ([page 15](tutorial/15-long-responses.md));
 [`examples/upgrade`](../examples/upgrade/main.goose) echoes an upgraded connection.
 
 ## Errors

@@ -69,6 +69,7 @@ fn count_tasks(cx, project: i64) {
 fn import_tasks(cx, project: i64) {
     let kind, has_kind = rest::header(cx, "Content-Type");
     guard has_kind && starts_with(kind, "text/csv") else { rest::fail(cx, 415, "unsupported_media_type"); }
+    // Leaves the route until the body is whole; the lines above then run again.
     let text = rest::body(cx, IMPORT_LIMIT);
     var good = true;
     let ok = csv::each_record(text) { f =>

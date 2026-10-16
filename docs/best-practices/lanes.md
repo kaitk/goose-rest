@@ -12,7 +12,7 @@ database, and not to compute for long. That work goes to a lane, as a job:
 - A **job** is one use case, such as "create this entry". A route sends it to a lane
   with `rest::ask`, as a small message, and serves its worker's other connections until
   the reply comes back. On the lane, a plain function runs the job from start to end, in
-  one transaction ([Work that waits](../tutorial/13-waiting.md)).
+  one transaction ([Work that waits](../tutorial/11-waiting.md)).
 
 What other frameworks call them is in [Concepts and naming](concepts.md#the-concepts).
 
@@ -62,7 +62,7 @@ function is in its domain, beside the route that asks for it
 ## How many jobs a box holds
 
 Size a box by how long its lane's jobs take. A route waits for its reply up to a time
-limit, 5 seconds by default ([504 for a late reply](../tutorial/15-limits.md#504-for-a-late-reply)),
+limit, 5 seconds by default ([504 for a late reply](../tutorial/13-limits.md#504-for-a-late-reply)),
 so a box needs only as many slots as jobs its lane finishes within that limit. From
 [`lanes/main.goose`](lanes/main.goose):
 
@@ -81,7 +81,7 @@ A job queued past what its lane finishes in time starts after its client has alr
 had a 504, so its work is wasted. Refused at once instead, the client gets 503 and can
 try again later. To run more jobs at once, give the lane more threads, each with its
 own box, rather than make one box larger
-([503 for a full box](../tutorial/15-limits.md#503-for-a-full-box)).
+([503 for a full box](../tutorial/13-limits.md#503-for-a-full-box)).
 
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
@@ -314,7 +314,7 @@ they waited in the box:
 ```
 
 The lane's time then goes only to reports that a client still waits for
-([A client that has gone](../tutorial/15-limits.md#a-client-that-has-gone)).
+([A client that has gone](../tutorial/13-limits.md#a-client-that-has-gone)).
 
 ## Continuing a route when the reply comes
 
@@ -364,7 +364,7 @@ fn resume(w: Waiting.EntryCreate, cx) {
 
 A route whose second piece of slow work needs the first one's result, on another lane,
 asks for it from the first step's `resume`, and waits again under another variant
-([Two lanes in turn](../tutorial/14-two-lanes.md#two-lanes-in-turn)). Signing in takes
+([Two lanes in turn](../tutorial/12-two-lanes.md#two-lanes-in-turn)). Signing in takes
 three steps:
 
 | Step | Does | Then |

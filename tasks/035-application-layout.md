@@ -148,7 +148,7 @@ only overrides that, and a configuration names the folders.
 ## Open: authentication when sessions are in the database (2026-10-16)
 
 The middleware page's `authenticate` reads sessions from a global. With sessions in a
-database, a stack can't look one up without waiting, and page 13 puts a database check
+database, a stack can't look one up without waiting, and page 11 puts a database check
 that comes before the route's work in the route's job. snowtime-native does the same:
 its session check runs on the database lane, in the call that serves the route.
 Proposed: the stack checks only what needs no database (the token's form, and a signed

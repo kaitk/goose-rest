@@ -8,7 +8,7 @@ reader has to work out again how this particular application was put together.
 
 This section expects you to know Goose, and what the tutorial teaches: workers that
 serve many connections each, routes, extractors, and middleware, and above all its
-pages on [work that waits](../tutorial/13-waiting.md), where a route asks another thread
+pages on [work that waits](../tutorial/11-waiting.md), where a route asks another thread
 and resumes in a case function. The pages here use those mechanisms without explaining
 them again.
 

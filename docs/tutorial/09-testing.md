@@ -1,5 +1,11 @@
 # 9. Testing without sockets
 
+A test of a route's answers needs no port, no threads, and no client: it gives the route
+a request and checks the response, in milliseconds. goose-rest runs one request this
+way, through the same code the server runs.
+
+## One request, in process
+
 `rest::serve_one(text, app) { cx => ... }` takes the bytes of one request, answers it
 through the block as `rest::serve` would, and returns the response bytes. The test needs
 no sockets, threads, or goose-http types. It runs in-process through TinyCC with

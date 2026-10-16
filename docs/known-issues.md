@@ -26,7 +26,9 @@ Traps met while writing the generator and its tests (2026-10-13):
   1 KB, so a checkout deeper than that fails its run as "no answer on port", with
   "THERMAL is too long" in `build/examples/device.log`.
 - `scripts/test-examples.sh` serves from port 18081 up, and a port in use there fails
-  the run.
+  the run. Two runs at once in one checkout also share `build/examples/body`, so each
+  can print the other's bodies against its own statuses: a diff of shifted answers in
+  examples that didn't change (2026-10-16). Run one at a time.
 
 ## WSL2 on Windows
 

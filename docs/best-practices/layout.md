@@ -63,7 +63,7 @@ each with its stack in `stacks.goose`. The domains:
   and its jobs run on a lane of their own, so that under load they are refused before
   other work ([Lanes and jobs](lanes.md#choosing-which-work-is-refused-under-load)).
   An export's entries are a long answer, sent in pieces
-  ([A reply in pieces](../tutorial/14-two-lanes.md#a-reply-in-pieces)). Its five
+  ([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)). Its five
   operations each have a file in `reports/routes/`
   ([When a domain grows](#when-a-domain-grows)).
 - **`availability`**: the hours each member expects to work on each weekday, which

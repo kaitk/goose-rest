@@ -1,9 +1,9 @@
-// docs/tutorial/15-limits.md: the limits of work that waits. A route that
+// docs/tutorial/13-limits.md: the limits of work that waits. A route that
 // waits too long gets 504, a full box 503, and the database skips the work
 // of a client that has gone. A report that takes longer than a client should
-// wait runs as a job the client asks about.
+// wait runs as a background task, which the client polls.
 //
-//   goose build -o build/limits docs/tutorial/15-limits/main.goose
+//   goose build -o build/limits docs/tutorial/13-limits/main.goose
 //   build/limits 8080
 //   curl -s 'localhost:8080/v1/projects/1/summary?ms=500'
 //   curl -s -X POST localhost:8080/v1/projects/1/reports

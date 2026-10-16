@@ -1,12 +1,18 @@
 # 2. Routes, path, query, and headers
 
+A request names its route by method and path, and carries what the route needs in the
+path, the query string, and the headers. goose-rest has no table of handlers: routes are
+an `if` chain, and a route reads each part of the request with a call where it needs
+the value.
+
+## Matching a route
+
 Routes go in a `rest::routes` block, whose context holds the router for the request.
 Each route uses `rest::on` with a method and a pattern: literal segments, `:name` for one
 segment, and `*name` at the end for the rest of the path. Patterns match the path without
 the query string, so `/v1/projects` matches `/v1/projects?q=g`. `GET` routes also accept
-`HEAD`. When a route's path matches but its method doesn't, the route adds its method
-to the router's `Allow` list. At the end of the chain, `rest::otherwise` answers 405 with
-`Allow` if the path exists, or 404 if it doesn't. It also answers OPTIONS itself.
+`HEAD`. At the end of the chain, `rest::otherwise` answers 405 with `Allow` when another
+method's route has the path, 404 when none has, and `OPTIONS` itself.
 
 `rest::scope` removes a prefix from the path, so the routes inside it match the rest. From
 [`02-routes`](02-routes/main.goose):
@@ -24,6 +30,8 @@ fn handle(cx) {
     };
 }
 ```
+
+## Reading the request
 
 Each extractor reads one part of the request: `rest::param` and `rest::param_int` read a
 path parameter; `rest::query`, `rest::query_int`, and `rest::query_bool` read a query string

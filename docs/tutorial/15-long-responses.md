@@ -1,4 +1,4 @@
-# 12. Long responses and files
+# 15. Long responses and files
 
 A project's tasks can be exported as CSV, and its files downloaded. Either can be larger
 than a worker should build whole: the worker holds a response it builds until the client
@@ -7,13 +7,14 @@ made or read when the client has taken the one before. For how goose-http sends 
 this way, see
 [goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses).
 
-## An export, made as the client takes it
+## A response sent in pieces
 
 `rest::begin(cx, status, content_type, length, w)` starts the response, with a length of
--1 when it isn't known yet, which sends it chunked. Like `rest::body_in_pieces`
-([page 11](11-bodies-in-pieces.md)), it keeps a `Waiting` variant, `w`, in the state.
+-1 when it isn't known yet, which sends it chunked. Like `rest::ask` and
+`rest::body_in_pieces` ([page 14](14-bodies-in-pieces.md)), it keeps a `Waiting`
+variant, `w`, in the state, and later calls go to its case function.
 The route can send the first piece at once with `rest::send`. From
-[`12-long-responses`](12-long-responses/main.goose):
+[`15-long-responses`](15-long-responses/main.goose):
 
 ```rust
 // GET /v1/projects/:id/tasks.csv: the header now, and the rows as the
@@ -73,9 +74,10 @@ alone, and no calls.
 
 ## Files
 
-`rest::file(cx, path, body, w)` answers with a file, as goose-http's `http::serve_file`
-does: 200, 206 for a range, 304 when the client's copy is current, or 416 for a range
-past the end, with `ETag`, `Last-Modified`, and `Accept-Ranges`. It fails with 404
+`rest::file(cx, path, body, w)` answers with a file, with the statuses and fields of
+goose-http's
+[`http::serve_file`](https://github.com/kaitk/goose-http/blob/main/docs/api.md#files):
+200, 206 for a range, 304 when the client's copy is current, or 416. It fails with 404
 `file_not_found` when there is no file, and 403 `forbidden` when the program can't read
 it. `http::file_path` joins the project's folder and the name from the path, decoded,
 and refuses a name that would leave the folder:
@@ -110,7 +112,7 @@ GET /v1/projects/1/files/missing.txt 404 {"error":"file_not_found"}
 GET /v1/projects/1/files/a%5Cb 400 {"error":"bad_path"}
 ```
 
-## Events over time
+## A paused response
 
 A client that watches a project gets its task count as
 [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html),
@@ -154,17 +156,18 @@ GET /v1/projects/2/progress?n=3 200 id: 1 data: {"tasks":2} ... id: 3 data: {"ta
 GET /v1/projects/2/progress?n=0 400 {"error":"invalid_n"}
 ```
 
-A pause takes one of goose-http's timers, so the worker's `http::Config` sets
-`mail_slots` and `max_waiting`, as for [work that waits](13-waiting.md):
+A pause is a wait, so the worker's `http::Config` sets `mail_slots` and `max_waiting`,
+as for [work that waits](11-waiting.md):
 
 ```rust
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
 ```
 
-With all `max_waiting` timers taken, goose-http gives `TIMEOUT` at once. goose-rest
-tells that from the pause's own by the clock, and ends the response, and the case
-function gets `CLOSED`. A client of Server-Sent Events reconnects to a stream that
-ends.
+When the worker already holds `max_waiting` waits, goose-http gives `TIMEOUT` at once
+([answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
+goose-rest tells that `TIMEOUT` from the pause's own by the clock, ends the response,
+and the case function gets `CLOSED`. A client of Server-Sent Events reconnects to a
+stream that ends.
 
 ## Which answer to use
 
@@ -174,11 +177,11 @@ ends.
 | Data it makes as it goes, such as an export | `rest::begin`, `rest::send` at each `MORE`, `rest::end` |
 | A file | `rest::file` and `rest::send_file` |
 | Events over time, such as Server-Sent Events | `rest::begin`, `rest::send` and `rest::pause` at each `TIMEOUT`, `rest::end` |
-| A lane's reply, in pieces | `rest::relay` ([page 14](14-two-lanes.md)) |
+| A lane's reply, in pieces | `rest::relay` ([page 12](12-two-lanes.md)) |
 
 A response begun in the route, as both here are, has the CORS fields and `Server-Timing`
 in its head. One begun at a later call, such as at a body's `END`, gets the fields the
-middleware kept at the request ([page 11](11-bodies-in-pieces.md#answers-written-at-the-end)).
+middleware kept at the request ([page 14](14-bodies-in-pieces.md#middleware-on-later-calls)).
 
 ## Compressed
 
@@ -194,5 +197,5 @@ compressed this way.
 
 ---
 
-[Index](README.md) · Previous: [11. Bodies read as they arrive](11-bodies-in-pieces.md) ·
-Next: [13. Work that waits](13-waiting.md)
+[Index](README.md) · Previous: [14. Bodies read as they arrive](14-bodies-in-pieces.md) ·
+Next: [16. Testing the application](16-testing.md)

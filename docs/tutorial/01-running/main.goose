@@ -23,6 +23,7 @@ fn hello(cx, name: const u8[:]) {
 }
 
 fn greeting(cx, name: const u8[:]) -> u8[>..] {
+    // Answers 400, and leaves every caller up to the rest::route around hello.
     guard name.len <= 20 else { rest::fail(cx, 400, "name_too_long"); }
     return str("hello, ", name);
 }

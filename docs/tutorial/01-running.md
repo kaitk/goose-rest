@@ -1,15 +1,16 @@
 # 1. Running something
 
-A goose-rest server is a few worker threads, each running goose-http's event loop with
-your handler inlined into it ([goose-http's concepts](https://github.com/kaitk/goose-http#concepts)).
-Workers share only constants and messages: each has its own copy of the globals,
-and there are no locks. Each worker builds its own state, and a request runs from start
-to finish on the worker that read it.
+A route checks its request in many places: a parameter in one function, a record in
+another. In Actix or Axum, each check returns a `Result`, and every caller passes it up
+to the handler, which turns it into a response. goose-rest answers the error where the
+check fails, and the route ends there, so the functions in between return plain values.
+This page runs a server with one such route.
 
-## The one idea
+## Failing from any depth
 
-Within a worker, a route runs inside `rest::route`. A call to `rest::fail` answers the
-request from any depth in the route's call chain. From [`01-running`](01-running/main.goose):
+A route runs inside `rest::route`. A call to `rest::fail` anywhere in the route's call
+chain answers the request and leaves the route. From
+[`01-running`](01-running/main.goose):
 
 ```rust
 fn handle(cx) {
@@ -27,6 +28,7 @@ fn hello(cx, name: const u8[:]) {
 }
 
 fn greeting(cx, name: const u8[:]) -> u8[>..] {
+    // Answers 400, and leaves every caller up to the rest::route around hello.
     guard name.len <= 20 else { rest::fail(cx, 400, "name_too_long"); }
     return str("hello, ", name);
 }
@@ -45,8 +47,8 @@ functions:
   inside `rest::routes`, or a router the generator writes as a `match`.
 - Middleware is a block around routes, inlined into the handler, so it costs no call
   and no boxing. A `rest::fail` inside it leaves the whole route.
-- State that requests modify lives in the worker or on a dedicated thread that workers
-  send messages to ([State](08-state.md)).
+- Data that requests change is worker state, or lane data, which a thread of its own
+  owns and workers reach by mail ([State](08-state.md)).
 
 ## Workers and `main`
 
@@ -60,6 +62,11 @@ import rest from "github.com/kaitk/goose-rest@v0.1.1";
 
 The tutorial's programs live in this repository, so they import goose-rest by its path
 instead (`import rest from "../../../";`).
+
+A server is a few worker threads, each running goose-http's event loop with your handler
+inlined into it ([goose-http's concepts](https://github.com/kaitk/goose-http#concepts)).
+Workers share no memory and take no locks: each has its own copy of the globals and
+builds its own state, and a request runs from start to end on the worker that read it.
 
 A worker is a `thread_fn` that calls `rest::serve`. For each request, `rest::serve`
 calls its block with a `rest::Cx`, the request context:

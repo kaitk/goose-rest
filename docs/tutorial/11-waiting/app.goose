@@ -66,6 +66,7 @@ fn v1(cx) {
             project: rest::param_int(cx, "id"), task: rest::param_int(cx, "task"),
             user: rest::int_of(cx, user, "X-User"), assignee: assignee,
         };
+        // Returns at once; the reply comes to resume(Waiting.Assign).
         rest::ask(cx, cx.app.db, database::ASSIGN, job, Waiting.Assign { task: job.task, assignee: assignee });
     } else {
         rest::otherwise(cx);
@@ -83,6 +84,7 @@ fn resume(w: Waiting.Project, cx) {
 }
 
 fn resume(w: Waiting.Assign, cx) {
+    // The lane's reply, read as the struct it sent; not one is a bug: 502.
     let r, ok = rest::read_reply<database::AssignReply>(cx);
     guard ok else { rest::fail(cx, 502, "bad_reply"); }
     guard r.status < 400 else { rest::fail(cx, r.status, r.code); }

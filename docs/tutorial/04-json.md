@@ -1,11 +1,16 @@
 # 4. JSON bodies
 
+A client creates a project by sending it as JSON, and the route needs it as a struct,
+checked against the API's rules before any of it is used. `rest::take<T>` reads the body
+into a `T`, through a reader you write by hand or one the generator writes from a
+schema.
+
 goose-http reads requests into an 8 KB buffer. A JSON body that fits alongside the
 request head reaches the route in full, as most do
 ([goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies)).
 A larger body is gathered when the route asks for it: [Large bodies](10-large-bodies.md).
 
-## Read by hand
+## A reader written by hand
 
 `rest::take<T>(cx)` is goose-rest's type-based extractor, corresponding to Actix's
 `web::Json<T>`. It calls the `rest::from_request(cx, v: const T?)` overload that you or
@@ -59,7 +64,7 @@ POST /projects 415 {"error":"unsupported_media_type"}
 Specify `T` explicitly, as in `take<ProjectCreate>`: Goose can't infer it from the
 assignment target.
 
-## Generated from a schema
+## A reader generated from a schema
 
 Writing readers by hand gets repetitive. The generator writes the struct, reader,
 `format` writer, and `from_request` overload for each schema in an OpenAPI document's

@@ -1,6 +1,8 @@
 # 17. Embedded Linux
 
-goose-rest is written in Goose with no C of its own, so its programs cross-build for
+A board that runs embedded Linux has megabytes of memory, not gigabytes, and its
+programs are built on another machine, with the board's cross compiler. goose-rest is
+written in Goose with no C of its own, so its programs cross-build for
 embedded Linux boards in the same way as goose-http programs: with `goose build --cc`
 and the board's C cross compiler. goose-http's
 [embedded Linux guide](https://github.com/kaitk/goose-http/blob/main/docs/embedded.md)

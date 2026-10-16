@@ -1,11 +1,11 @@
-// docs/tutorial/12-long-responses.md: a project's tasks exported as CSV,
+// docs/tutorial/15-long-responses.md: a project's tasks exported as CSV,
 // made and sent 500 rows at a time as the client takes them, and its files
 // downloaded, with ranges and conditional requests, and its task count sent
 // as Server-Sent Events over time. The files are in the directory FILES
 // names, "files" by default, a folder per project. One worker: the tasks
 // live in the worker.
 //
-//   goose build -o build/exports docs/tutorial/12-long-responses/main.goose
+//   goose build -o build/exports docs/tutorial/15-long-responses/main.goose
 //   build/exports 8080
 //   curl -s localhost:8080/v1/projects/1/tasks.csv
 //   curl -s -r 0-99 localhost:8080/v1/projects/1/files/plans.txt

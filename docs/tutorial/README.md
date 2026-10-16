@@ -24,14 +24,14 @@ what the page shows matches what the code does.
 8. [State](08-state.md): `cx.app`, `cx.state`, `rest::once`
 9. [Testing without sockets](09-testing.md): `rest::serve_one`
 
-## Part two: bodies, waits, and limits
+## Part two: waits, bodies, and limits
 
 10. [Large bodies](10-large-bodies.md): `rest::body`, a CSV import gathered whole up to a limit
-11. [Bodies read as they arrive](11-bodies-in-pieces.md): `rest::body_in_pieces`, attachments of any size, a multipart form
-12. [Long responses and files](12-long-responses.md): `rest::begin`, `rest::send`, an export in pieces, `rest::file`, Server-Sent Events with `rest::pause`
-13. [Work that waits](13-waiting.md): a database behind a lane, `rest::ask`, `rest::reply_value`
-14. [Two lanes, or a reply in pieces](14-two-lanes.md): `rest::relay`, a case function that asks again
-15. [Limits](15-limits.md): 504, 503, a client that has gone, a slow client, a job the client polls
+11. [Work that waits](11-waiting.md): a database behind a lane, `rest::ask`, `rest::reply_value`
+12. [Two lanes, or a reply in pieces](12-two-lanes.md): `rest::relay`, a case function that asks again
+13. [Limits](13-limits.md): 504, 503, a client that has gone, a slow client, a background task the client polls
+14. [Bodies read as they arrive](14-bodies-in-pieces.md): `rest::body_in_pieces`, attachments of any size, a multipart form
+15. [Long responses and files](15-long-responses.md): `rest::begin`, `rest::send`, an export in pieces, `rest::file`, Server-Sent Events with `rest::pause`
 16. [Testing the application](16-testing.md): use cases as plain calls, routes and their case functions given replies, timing over HTTP
 17. [Embedded Linux](17-embedded-linux.md): one worker and small limits on a board
 

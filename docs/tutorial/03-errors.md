@@ -1,6 +1,8 @@
 # 3. Answers and errors
 
-A route answers once, using one of these calls:
+Every route ends in an answer: a value as JSON, text, no body, or an error that a
+client can read the same way whichever route wrote it. A route answers once, using one
+of these calls:
 
 | Call | Answers |
 |---|---|
@@ -10,6 +12,8 @@ A route answers once, using one of these calls:
 | `rest::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
 | `rest::fail(cx, status, code)` | `{"error": code}`, from anywhere inside `rest::route` |
 | `http::start`, `http::field`, `http::finish` | anything else, such as a page |
+
+## A value as JSON
 
 `rest::json` calls `format(out, v)`, Goose's one type-directed hook, and Goose finds the
 overload in the namespace that declares `v`'s type. There is no derive mechanism: a type gets
@@ -92,6 +96,10 @@ POST /projects/1 405 {"error":{"code":"method_not_allowed","status":405}}
 The overload is declared in the `rest` namespace, `fn rest::error_body`, because a
 generic function finds names where it's defined, not where it's called. The same holds
 for `rest::from_request`, on the next page.
+
+*Note: once an application has several domains, the best practices keep one error
+shape and each domain's codes in one place
+([Errors](../best-practices/errors.md#each-domains-codes-in-one-place)).*
 
 ---
 

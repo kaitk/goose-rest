@@ -1,9 +1,9 @@
-// docs/tutorial/13-waiting.md: routes that wait on a database. One queries
+// docs/tutorial/11-waiting.md: routes that wait on a database. One queries
 // in place and holds up the worker; the others ask a lane, a thread that
 // owns the connection, and resume when it answers. The routes are in
 // app.goose, and the lane in database.goose.
 //
-//   goose build -o build/waiting docs/tutorial/13-waiting/main.goose
+//   goose build -o build/waiting docs/tutorial/11-waiting/main.goose
 //   build/waiting 8080
 //   curl -s localhost:8080/v1/projects/1
 //   curl -s -X PUT -H 'X-User: 1' 'localhost:8080/v1/projects/1/tasks/3/assignee?user=2'

@@ -1,27 +1,27 @@
-# 11. Bodies read as they arrive
+# 14. Bodies read as they arrive
 
 The projects get attachments: photos, scans, and exports, up to 1 GB each. No worker can
 hold a body that large, and a worker holds every body it gathers until its route
 returns ([page 10](10-large-bodies.md)). So an attachment is read as it arrives, a piece
 at a time, and each piece goes to a file before the next comes. The worker holds one
-piece, however large the attachment is. For how goose-http reads a body this way, see
+piece, however large the attachment is. The pieces come to the route's case function,
+as a lane's reply does on [page 11](11-waiting.md). For how goose-http reads a body this
+way, see
 [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
 
-## The route receives, and resumes for each piece
+## A body read in pieces
 
 `rest::body_in_pieces(cx, limit, w)` takes the body in pieces, up to `limit` bytes. Like
-`rest::ask` ([page 13](13-waiting.md)), it keeps a `Waiting` variant in the request's
-state, `w`, and the route returns without an answer. From
-[`11-bodies-in-pieces`](11-bodies-in-pieces/main.goose):
+`rest::ask`, it keeps a `Waiting` variant in the request's state, `w`, and the route
+returns without an answer. From
+[`14-bodies-in-pieces`](14-bodies-in-pieces/main.goose):
 
 ```rust
 // POST /v1/projects/:id/attachments: any size up to the project's limit,
 // written a piece at a time.
 fn attach(cx, project: i64) {
     let id = cx.app.next;
-    // Reads nothing yet. A Content-Length over the limit gets 413, which leaves
-    // the route here; otherwise the body's pieces come later, to
-    // resume(Waiting.Attachment), once this route has returned.
+    // Returns at once, reading nothing; the pieces come to resume(Waiting.Attachment).
     rest::body_in_pieces(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
     // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
@@ -30,24 +30,52 @@ fn attach(cx, project: i64) {
 ```
 
 `rest::body_in_pieces` reads nothing itself: it accepts the body or refuses it, and says where
-its pieces go. The code before and after it runs once: unlike `rest::body`, it leaves
-the route only when it refuses the body. No piece comes before the route has
-returned, even for a body that came with its head, so after the call the route can still set the state
+its pieces go. A `Content-Length` over the limit gets 413, which leaves the route at the
+call. The code before and after it runs once: unlike `rest::body`, it leaves the route
+only when it refuses the body. No piece comes before the route has returned, even for a
+body that came with its head, so after the call the route can still set the state
 needed to handle the pieces, such as `part_path` here.
 
-The handler is then called again for each piece of the body, and `rest::resumed` sends
-each call to the variant's case function, as for a reply from a lane. `cx.kind`
-says which call it is: `http::BODY` with a piece in `cx.body`, `http::END` once the body
-has all come, or `http::CLOSED`:
+<details>
+<summary>The routes, which check the project first</summary>
 
 ```rust
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
-        } else {
-            handle(cx);
-        }
-    };
+        } else if rest::on(cx, "POST", "/v1/projects/:id/attachments") {
+            rest::route(cx) { attach(cx, project(cx)); };
+        } else if rest::on(cx, "POST", "/v1/projects/:id/attachments/form") {
+            rest::route(cx) { attach_form(cx, project(cx)); };
+```
+
+```rust
+fn project(cx) -> i64 {
+    let id = rest::param_int(cx, "id");
+    guard id >= 1 && id <= PROJECTS else { rest::fail(cx, 404, "project_not_found"); }
+    return id;
+}
+
+fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_LIMIT } }
+```
+
+</details>
+
+The handler is then called again for each piece of the body, through the same
+`rest::resumed` block as a lane's reply
+([page 11](11-waiting.md#asking-a-lane-and-resuming)), and goes to the variant's case
+function. `cx.kind` says which call it is: `http::BODY` with a piece in `cx.body`,
+`http::END` once the body has all come, or `http::CLOSED`:
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant W as Worker
+    C->>W: POST /v1/projects/1/attachments, the head
+    Note over W: attach: rest::body_in_pieces,<br/>then returns without an answer
+    loop each piece as it arrives
+        C->>W: a piece of the body
+        Note over W: resume(Waiting.Attachment):<br/>BODY, append it to the .part file
+    end
+    Note over W: resume: END,<br/>rename the file, answer
+    W->>C: 201 {"project":1,"id":2,"size":2000000}
 ```
 
 ```rust
@@ -115,7 +143,7 @@ A body whose `Content-Length` is over the limit fails at `rest::body_in_pieces` 
 before the client sends it. A chunked body has no length, so goose-rest counts its bytes as they
 arrive, and answers 413 and closes the connection when it passes the limit. `http::Config`'s
 `max_body` still caps every route, so `main` raises it to the largest limit, as
-[page 10](10-large-bodies.md#three-limits) explains:
+[page 10](10-large-bodies.md#body-limits-and-the-gather-budget) explains:
 
 ```rust
     let cfg = http::Config { port: port as i32, workers: 1, max_body: LARGE_LIMIT, .. };
@@ -195,11 +223,11 @@ POST /v1/projects/1/attachments/form 415 {"error":"unsupported_media_type"}
 POST /v1/projects/1/attachments/form 400 {"error":"invalid_multipart"}
 ```
 
-`http::Multipart` holds up to 2 KB of a part's head between pieces. It's part of the
-request state, which goose-http keeps in each connection's slot, so every connection
-holds those 2 KB, whichever route it's on.
+The `http::Multipart` is in the request state, so every connection holds its 2 KB,
+whichever route it's on
+([goose-http's helpers](https://github.com/kaitk/goose-http/blob/main/docs/api.md#helpers-for-apis)).
 
-## Answers written at the END
+## Middleware on later calls
 
 This program uses no middleware. In one that wraps `handle` in `rest::cors` and
 `rest::timed`, as [page 7](07-middleware.md)'s does, they run when the request comes,
@@ -213,5 +241,5 @@ reads one written in the route. An answer to a lane's reply gets them the same w
 
 ---
 
-[Index](README.md) · Previous: [10. Large bodies](10-large-bodies.md) · Next:
-[12. Long responses and files](12-long-responses.md)
+[Index](README.md) · Previous: [13. Limits](13-limits.md) · Next:
+[15. Long responses and files](15-long-responses.md)

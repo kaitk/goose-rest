@@ -306,8 +306,8 @@ job naming the whole use case, and which does it start to end with blocking call
 one transaction (2026-10-14). A route then waits once, with one time limit and one place
 a full box refuses work, and a job is tested as a plain call. A route waits more than
 once only for what one lane can't do: a second lane in turn. The tutorial builds
-both, from [work that waits](tutorial/13-waiting.md) to
-[limits](tutorial/15-limits.md).
+both, from [work that waits](tutorial/11-waiting.md) to
+[limits](tutorial/13-limits.md).
 
 Decided (2026-10-16), replacing the name "service" (2026-10-14): the thread a route
 sends work to is a *lane*, and what it sends is a *job*. In Spring, Laravel, and ASP.NET a
@@ -323,6 +323,12 @@ snowtime-native calls the same thing a lane. In an application
 after the route that asks for each, in the order the flow runs, and a domain that grows
 splits by operation into `routes/`, not by layer into a file of jobs: the files of a
 domain share its namespace, so moving a function between them changes no call.
+
+Decided (2026-10-16): work of minutes that a route answers with `202 Accepted`, and that
+the client then polls, is a *background task*, in goose-rest's docs and goose-http's.
+"Job" had named both it and the use case a route sends a lane; a background task is
+made of jobs, one that starts it and one for each poll, so the two need names of their
+own.
 
 Decided (2026-10-16): the five places data lives have one name each, in the docs and
 the package's comments: a *constant* (a global with a literal value), the *store*

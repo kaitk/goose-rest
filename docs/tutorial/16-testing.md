@@ -29,8 +29,8 @@ How an application lays out its tests, by domain and by scenario, is in
 
 A lane's job is a function that takes a connection and the job's struct, so a test calls
 it directly, using the [`db`](db/db.goose) package with no delay per statement. From
-[`13-waiting/test.goose`](13-waiting/test.goose), after the call that assigns task 3,
-which [Work that waits](13-waiting.md#why-one-job-per-route) shows:
+[`11-waiting/test.goose`](11-waiting/test.goose), after the call that assigns task 3,
+which [Work that waits](11-waiting.md#one-job-per-route) shows:
 
 ```rust
     expect(database::assign(c, database::AssignJob { project: 1, task: 4, user: 3, assignee: 2 }), 403, "not_a_member");
@@ -43,7 +43,7 @@ This is where a use case's rules are tested, each in microseconds, without a req
 
 ## The routes, up to their ask
 
-The routes and their case functions are in [`app.goose`](13-waiting/app.goose), separate
+The routes and their case functions are in [`app.goose`](11-waiting/app.goose), separate
 from `main`, so the test can import them as `main.goose` does. The worker state
 holds the lane's address, and the test gives it a box of its own. A box needs no
 thread to open, send to, or take from
@@ -92,7 +92,7 @@ lane does, and passes it to the job's function:
 
 That covers the request's path parameters, header, and query on their way into the
 job. The box has two slots, so two asks fill it, and the next route gets the 503 that
-[Limits](15-limits.md#503-for-a-full-box) shows, without a socket:
+[Limits](13-limits.md#503-for-a-full-box) shows, without a socket:
 
 ```rust
     answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1));
@@ -131,7 +131,7 @@ last argument to split a reply as the server does: `rest::relay` sends the piece
 chunks, and `rest::read_reply` can't read a value from them.
 
 `scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; to run one on its own, use
-`goose docs/tutorial/13-waiting/test.goose`.
+`goose docs/tutorial/11-waiting/test.goose`.
 
 ## The running server
 
@@ -139,9 +139,9 @@ Each of part two's programs has a `requests.sh` and an `expected.txt`, which
 `scripts/test-examples.sh` runs as [Testing without sockets](09-testing.md#the-whole-server)
 describes: it builds the program, starts it with its lanes, and compares each
 `METHOD PATH STATUS BODY` line. These test the routes with their lanes running:
-[`13-waiting`](13-waiting/requests.sh) has each of the lane's answers in the error
-shape, [`14-two-lanes`](14-two-lanes/requests.sh) a reply in four pieces and a route
-that waits on two lanes in turn, and [`15-limits`](15-limits/requests.sh) the
+[`11-waiting`](11-waiting/requests.sh) has each of the lane's answers in the error
+shape, [`12-two-lanes`](12-two-lanes/requests.sh) a reply in four pieces and a route
+that waits on two lanes in turn, and [`13-limits`](13-limits/requests.sh) the
 limits.
 
 A request whose client gives up, such as with `curl -m`, prints status `000` with no
@@ -151,7 +151,7 @@ between requests.
 ### What the timing-dependent cases rely on
 
 These limit tests depend on timing: a wait expires, a box fills while the database is busy,
-and a client disconnects before its job starts. [`15-limits`](15-limits/requests.sh)
+and a client disconnects before its job starts. [`13-limits`](13-limits/requests.sh)
 uses fixed delays to produce each condition, with enough margin that the time curl takes
 to start doesn't matter:
 
@@ -196,5 +196,5 @@ the route's wait, `WAIT_MS`, below the job's whole time: its `ms` and the 20 ms 
 
 ---
 
-[Index](README.md) · Previous: [15. Limits](15-limits.md) · Next:
+[Index](README.md) · Previous: [15. Long responses and files](15-long-responses.md) · Next:
 [17. Embedded Linux](17-embedded-linux.md)

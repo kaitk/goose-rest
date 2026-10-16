@@ -172,8 +172,8 @@ box carries bytes in fixed-size slots, as goose-http's
 explains. A reply larger than a slot comes in pieces; `rest::relay` sends each as a
 chunk. `rest::still_wanted` tells the lane whether the route still waits, so it can
 skip the work of a client that has gone. A route that never waits keeps nothing on the
-connection. The tutorial builds this from [work that waits](tutorial/13-waiting.md) to
-[limits](tutorial/15-limits.md).
+connection. The tutorial builds this from [work that waits](tutorial/11-waiting.md) to
+[limits](tutorial/13-limits.md).
 
 ## Bodies and responses in pieces
 

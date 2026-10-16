@@ -1,7 +1,9 @@
 # 5. The API from a schema
 
-When the schema includes `paths`, the generator also writes the router,
-`api::dispatch(cx)`. You write the handlers it calls. [`05-schema`](05-schema/) has
+An API described in OpenAPI has its routes in the schema too: the paths, their
+parameters, and which need a token. Written again by hand as an `if` chain, they can
+drift from the schema unnoticed. When the schema includes `paths`, the generator writes
+the router, `api::dispatch(cx)`, and you write the handlers it calls. [`05-schema`](05-schema/) has
 three files besides the schema: the generated `api_gen.goose`, `app.goose` with the
 handlers, and `main.goose` with the workers. Here are the paths from its `api.json`:
 
@@ -35,7 +37,7 @@ handlers, and `main.goose` with the workers. Here are the paths from its `api.js
   },
 ```
 
-## Handlers
+## The handlers the router calls
 
 Each operation calls a handler in the `app` namespace, named after its `operationId` in
 snake_case: `listProjects` calls `app::list_projects`. A handler's arguments come in this

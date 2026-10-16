@@ -1,8 +1,8 @@
-// docs/tutorial/14-two-lanes.md: what one job per route can't do. A
+// docs/tutorial/12-two-lanes.md: what one job per route can't do. A
 // project's tasks come back from the database in pieces, sent on as they
 // come, and an invitation waits on the database, then on a mailer.
 //
-//   goose build -o build/invite docs/tutorial/14-two-lanes/main.goose
+//   goose build -o build/invite docs/tutorial/12-two-lanes/main.goose
 //   build/invite 8080
 //   curl -s localhost:8080/v1/projects/1/tasks
 //   curl -s -X POST 'localhost:8080/v1/projects/1/members?user=3'
@@ -67,8 +67,7 @@ fn handle(cx) {
 
 fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
-// Called for each piece of the reply: rest::relay sends the first, and the
-// ones after it, as a chunked response.
+// Called once per piece: the first starts a chunked response, the rest go as chunks.
 fn resume(w: Waiting.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
 
 // The database added the member: ask the mailer next, and wait again.

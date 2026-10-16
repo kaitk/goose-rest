@@ -24,6 +24,7 @@ let IMPORT_LIMIT: i64 = 256 * 1024;
 fn import_tasks(cx, project: i64) {
     let kind, has_kind = rest::header(cx, "Content-Type");
     guard has_kind && starts_with(kind, "text/csv") else { rest::fail(cx, 415, "unsupported_media_type"); }
+    // Leaves the route until the body is whole; the lines above then run again.
     let text = rest::body(cx, IMPORT_LIMIT);
     var good = true;
     let ok = csv::each_record(text) { f =>
@@ -76,7 +77,7 @@ fn project(cx) -> i64 {
 Tasks are added after `rest::body`, during the run with the complete body, so each task
 is added only once.
 
-## Three limits
+## Body limits and the gather budget
 
 Three limits apply to each body, and the smallest wins; a fourth, the gather budget,
 applies to the bodies a worker gathers at once:
@@ -132,9 +133,9 @@ let LIMITS = rest::Config { gather_budget: 16 * IMPORT_LIMIT };
 
 A body too large to gather, such as an attachment of any size, or an import of many
 megabytes, is read in pieces as it arrives, which the budget doesn't count:
-[the next page](11-bodies-in-pieces.md).
+[page 14](14-bodies-in-pieces.md).
 
 ---
 
 [Index](README.md) · Previous: [9. Testing without sockets](09-testing.md) · Next:
-[11. Bodies read as they arrive](11-bodies-in-pieces.md)
+[11. Work that waits](11-waiting.md)

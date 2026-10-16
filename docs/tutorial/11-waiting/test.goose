@@ -1,9 +1,9 @@
-// docs/tutorial/13-waiting.md and 16-testing.md: the database lane's jobs,
+// docs/tutorial/11-waiting.md and 16-testing.md: the database lane's jobs,
 // called as plain functions on a job, and the routes and their case
 // functions, answered without a socket or threads. scripts/test.sh runs it through
 // TinyCC:
 //
-//   goose docs/tutorial/13-waiting/test.goose
+//   goose docs/tutorial/11-waiting/test.goose
 import std;
 import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../../";
@@ -90,5 +90,5 @@ fn main() {
     answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1));
     answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1));
     expect(body_of(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1))), "{\"error\":\"unavailable\"}");
-    print("13-waiting: ok");
+    print("11-waiting: ok");
 }
