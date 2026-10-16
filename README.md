@@ -156,7 +156,7 @@ For differences from Actix and the reasons behind them, see the
 
 ## Benchmarks
 
-goose-rest `v0.1.0` and Goose `v2026.1` on a Ryzen 7 5800X3D (WSL2), 4 workers per
+goose-rest `v0.1.1` and Goose `v2026.1` on a Ryzen 7 5800X3D (WSL2), 4 workers per
 server. [All results, the method, and the losses](docs/benchmarks.md).
 
 Every framework serves the same REST APIs through its own router, extractors, and
@@ -170,15 +170,15 @@ middleware.
 
 | Workload | goose-rest | dusty (Zig) | actix-web | Axum |
 |---|:---|---:|---:|---:|
-| [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **584k req/s** (97%) | 339k | 260k | 244k |
-| [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **312k req/s** (98%) | 160k | 142k | 135k |
-| [C](docs/benchmarks.md#the-tiers): records, up to 728 KB | **61.3k req/s** (99%) | 24.0k | 31.3k | 34.3k |
-| C, templates | **139k req/s** (96%) | 130k | 91.6k | 87.3k |
-| [F](docs/benchmarks.md#the-tiers): one route | **508k req/s** (99%) | 361k | 269k | 250k |
-| [R](docs/benchmarks.md#the-tiers): 203 routes | **447k req/s** | 355k | 143k | 245k |
-| [M](docs/benchmarks.md#the-tiers): A with middleware | **494k req/s** | 321k | 218k | 180k |
-| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,090 req/s (99%) | **1,191** | 1,117 | 1,119 |
-| [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **133 MB**, uploads beside forms | 781 MB, uploads beside forms | 388 MB, C templates | 587 MB, C templates |
+| [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **586k req/s** (97%) | 349k | 262k | 242k |
+| [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **311k req/s** (100%) | 163k | 143k | 139k |
+| [C](docs/benchmarks.md#the-tiers): records, up to 728 KB | **61.8k req/s** (99%) | 23.8k | 31.9k | 34.6k |
+| C, templates | **142k req/s** (96%) | 133k | 92.6k | 89.1k |
+| [F](docs/benchmarks.md#the-tiers): one route | **494k req/s** (99%) | 372k | 271k | 256k |
+| [R](docs/benchmarks.md#the-tiers): 203 routes | **466k req/s** | 360k | 145k | 253k |
+| [M](docs/benchmarks.md#the-tiers): A with middleware | **489k req/s** | 334k | 221k | 184k |
+| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,127 req/s (99%) | **1,225** | 1,142 | 1,153 |
+| [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **133 MB**, uploads beside forms | 781 MB, uploads beside forms | 395 MB, C templates | 579 MB, C templates |
 
 *Note: percentages, such as (97%), are goose-rest's share of goose-http's rate with no
 framework.*
