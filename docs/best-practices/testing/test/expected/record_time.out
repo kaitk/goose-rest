@@ -1,0 +1,6 @@
+GET /health 200 ok
+POST /projects 201 {"id":1,"name":"goose","archived":false}
+POST /entries 201 {"id":1,"project":1,"started":1767250800,"stopped":1767254400}
+POST /entries 201 {"id":2,"project":1,"started":1767254400,"stopped":1767258000}
+POST /entries 422 {"error":"entry_ends_before_start"}
+POST /projects/1/archive 200 {"id":1,"name":"goose","archived":true}

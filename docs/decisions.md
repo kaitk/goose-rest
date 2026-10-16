@@ -479,6 +479,19 @@ Goose's compiler already leaves out of a release what its root doesn't import, s
 separate `test/` costs nothing and matches the convention any reader of Goose's own
 repository knows.
 
+Decided (2026-10-16), replacing Best practices' rule that the program's types are in
+`main.goose`: an application declares `App`, `St`, `Waiting`, and its job tags in
+`app.goose`, its entry, which imports the routes; `main.goose` keeps the lanes'
+threads, the workers, and `main`. A test under `test/<domain>/` has a `main` of its
+own, so it can't import `main.goose`, and Goose reaches a parent folder only as a
+package: `import app from "../../";` loads `app.goose` and what it imports. The
+application keeps its own `test/run_tests.py`, as Goose and goose-rest each do, and
+the example in `docs/best-practices/testing/` has one that `scripts/test.sh` runs.
+Rejected: each test declaring its own copy of the program's types, which drift from
+the real ones, so a test would pass against types the program doesn't have; and an
+application running its tests with goose-rest's runner, which finds only goose-rest's
+own tests and would make every application depend on this repository's layout.
+
 ## Spike results (2026-10-13)
 
 On Goose `a6249a4`, and again on `46356c2` with the same results except for spike 04, whose

@@ -1,0 +1,6 @@
+create: 201 {"id":1,"name":"goose","archived":false}
+create with no name: 400 {"error":"invalid_parameter","detail":"name: required"}
+create with an empty name: 422 {"error":"project_name_required"}
+archive: 200 {"id":1,"name":"goose","archived":true}
+archive again: 409 {"error":"project_already_archived"}
+archive another: 404 {"error":"project_not_found"}

@@ -47,7 +47,7 @@ keep doesn't cost a message to another thread.
 ## Data known at build time is a constant
 
 Write data that ships with a release as a constant, a global with a literal value. From
-[`state/main.goose`](state/main.goose):
+[`state/app.goose`](state/app.goose):
 
 ```rust
 // Known at build time: compiled into the program, for every worker to read.
@@ -66,7 +66,8 @@ code change, reviewed and released with the code. Don't load data into a global 
 
 Keep in `cx.app` only data whose value may differ from one worker to the next without a
 wrong answer: a cache, a count, a connection of the worker's own. Its type is `App`,
-declared in `main.goose` ([Layout by domain](layout.md#the-programs-types-are-in-maingoose)):
+declared in `app.goose` ([Layout by domain](layout.md#the-programs-types-are-in-appgoose)),
+and each worker builds its own in `main.goose`:
 
 ```rust
 // The worker state: it lasts as long as the worker, and no other
@@ -84,7 +85,7 @@ thread_fn worker(cfg: http::Config) {
 <details>
 <summary>The routes that read the global and count in <code>cx.app</code></summary>
 
-From [`state/main.goose`](state/main.goose):
+From [`state/app.goose`](state/app.goose):
 
 ```rust
 fn handle(cx) {

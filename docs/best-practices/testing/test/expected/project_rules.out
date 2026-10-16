@@ -1,0 +1,4 @@
+new_project goose: Error.None {"id":1,"name":"goose","archived":false}
+new_project with no name: Error.NameRequired
+archived: Error.None {"id":1,"name":"goose","archived":true}
+archived again: Error.AlreadyArchived

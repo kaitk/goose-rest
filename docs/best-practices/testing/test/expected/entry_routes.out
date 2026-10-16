@@ -1,0 +1,6 @@
+create with no project: 400 {"error":"invalid_parameter","detail":"project: required"}
+the job: true 1 1767250800 1767254400
+created: 201 {"id":1,"project":1,"started":1767250800,"stopped":1767254400}
+refused: 422 {"error":"entry_in_future"}
+no reply in time: 504 {"error":"timeout"}
+full box: 503 {"error":"unavailable"}

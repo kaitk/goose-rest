@@ -1,7 +1,7 @@
 # 035: Best practices, a section of the docs on laying out an application
 
-Status: built (2026-10-15); the testing page, the data-access page, and a full example
-application open (asked for 2026-10-15; a docs section, not a tutorial part)
+Status: built (2026-10-15); the testing page built (2026-10-16); the data-access page
+and a full example application open (asked for 2026-10-15; a docs section, not a tutorial part)
 
 The tutorial's pages teach goose-rest's mechanisms one at a time, and leave how a whole
 application is laid out to the reader. A "Best practices" section of its own, beside
@@ -165,8 +165,10 @@ stacks' shape changes with it, so the middleware page waits for the decision.
 - [x] `docs/best-practices/`, an index (`README.md`) that says once that it's the
       recommended way and not required, and a page per topic above, or fewer where
       they're short; each rule with its reason, and an anchor a review can link
-- [ ] The testing page's examples: a stub states the rule until task 038 moves
-      goose-rest's own tests to the convention the page shows
+- [x] The testing page's examples (2026-10-16): `testing/`, with its own
+      `test/run_tests.py`, small tests per domain, a fixture, and a scenario; the
+      program's types moved to `app.goose` so tests can import them
+      (`docs/decisions.md`, "Tests")
 - [x] Each page's excerpts come from a small program of its own under
       `docs/best-practices/`, and `scripts/test.sh` checks them as it checks the
       tutorial's code

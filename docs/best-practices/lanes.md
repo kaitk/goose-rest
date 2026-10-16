@@ -325,7 +325,7 @@ one for the `Waiting` variant that the route passed to `rest::ask`. The variant 
 the step the route is at.
 
 Group each route's steps in `Waiting`, in the order they run, and name the route in a
-comment. From [`lanes/main.goose`](lanes/main.goose):
+comment. From [`lanes/app.goose`](lanes/app.goose):
 
 ```rust
 // The steps of every route that waits, a route's steps together and in the
@@ -427,8 +427,8 @@ domain's `routes.goose` grows too long, it splits by operation
 ([When a domain grows](layout.md#when-a-domain-grows)).
 
 Each `resume` also needs a one-line function in the global namespace that forwards the
-call to it. The program declares `Waiting` in `main.goose`, in the global namespace
-([Layout by domain](layout.md#the-programs-types-are-in-maingoose)), so the worker's call
+call to it. The program declares `Waiting` in `app.goose`, in the global namespace
+([Layout by domain](layout.md#the-programs-types-are-in-appgoose)), so the worker's call
 `resume(cx.state.waiting, cx)` finds only global functions:
 
 ```rust

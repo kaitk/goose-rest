@@ -10,7 +10,8 @@ audiences, laid out like this:
 
 ```text
 app/
-  main.goose            App, St, and Waiting, the lanes, the workers, and rest::serve
+  main.goose            the lanes, the workers, and rest::serve
+  app.goose             App, St, Waiting, and the job tags: what the tests import
   dispatch.goose        each audience's scope and stack, then each domain's routes
   stacks.goose          public_routes, user_routes, member_routes
   middleware.goose      authenticate, resolve_organization
@@ -33,6 +34,7 @@ app/
   settings/             (structs, routes, queries)
   availability/         (structs, errors, rules, routes, queries)
   auth/                 (structs, errors, rules, routes, queries)
+  test/                 a folder per domain, a folder per scenario, and expected/
 ```
 
 In the data model below, each domain's tables share a box, with a few columns from
@@ -212,13 +214,18 @@ Every route's path and the stack that guards it are then in one file, so a revie
 see that no route skips authentication. A domain doesn't depend on its prefix, so
 moving it to another path changes one line.
 
-## The program's types are in `main.goose`
+## The program's types are in `app.goose`
 
-Declare three types in `main.goose`, beside the workers that pass them to
-`rest::serve`: `App`, the worker state; `St`, the request state; and `Waiting`, the
-steps of the routes that wait.
+Declare three types in `app.goose`, the application's entry: `App`, the worker state;
+`St`, the request state; and `Waiting`, the steps of the routes that wait. The job tags
+go there too, and `app.goose` imports `dispatch.goose`, which imports the domains.
+`main.goose` keeps only what a test must not run: the lanes' threads, the workers, and
+`main`.
 
-Each is one type for the whole program: every domain's routes get the same `cx`, so no
+A test has a `main` of its own, so it can't import `main.goose`; it reaches the
+application through `app.goose` instead ([Testing](testing.md)).
+
+Each type is one for the whole program: every domain's routes get the same `cx`, so no
 domain owns them. A domain still owns its `Waiting` variants, named for it, and their
 `resume` functions are in its `routes.goose`
 ([Structuring a route that waits](lanes.md#structuring-a-route-that-waits)).

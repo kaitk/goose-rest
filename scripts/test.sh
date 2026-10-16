@@ -6,6 +6,7 @@
 # TypeScript helper's tests where tsc is installed (ts/), each example and
 # each tutorial and best-practices program served and requested
 # (scripts/test-examples.sh), each tutorial and best-practices test.goose,
+# the tests of docs/best-practices/testing/ by its own test/run_tests.py,
 # the code blocks of the tutorial's and the best practices' pages against the
 # programs they quote, then each spike, whose output must match the
 # expected.txt beside it, the output its README records; a spike that spawns
@@ -96,8 +97,9 @@ fi
 
 # A program of the docs is a folder under docs/tutorial/ or
 # docs/best-practices/ with a requests.sh, one level down or two, for a page
-# with several programs.
-programs=$(find "$root/docs/tutorial" "$root/docs/best-practices" -name requests.sh -exec dirname {} \; | sort)
+# with several programs. A requests.sh under a program's test/ is one of its
+# scenarios, which its own test/run_tests.py runs.
+programs=$(find "$root/docs/tutorial" "$root/docs/best-practices" -name requests.sh ! -path '*/test/*' -exec dirname {} \; | sort)
 step "test-examples.sh"
 # shellcheck disable=SC2086
 "$root/scripts/test-examples.sh" "$root"/examples/*/ $programs
@@ -106,6 +108,10 @@ for t in $(find "$root/docs/tutorial" "$root/docs/best-practices" -name test.goo
     step "${t#"$root"/}"
     "$goose" "$t"
 done
+
+# An application's tests, run as the application runs them.
+step "docs/best-practices/testing/test/run_tests.py"
+GOOSE=$goose "$PYTHON" "$root/docs/best-practices/testing/test/run_tests.py"
 
 # The rust and json blocks of the tutorial's and the best practices' pages
 # quote the programs beside them and the examples: each run of lines between

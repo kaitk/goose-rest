@@ -1,0 +1,4 @@
+an hour, ended: Error.None
+ending at now: Error.None
+ending before it starts: Error.EndsBeforeStart
+ending in the future: Error.InFuture
