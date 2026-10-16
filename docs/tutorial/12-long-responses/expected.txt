@@ -11,3 +11,13 @@ GET /v1/projects/1/files/plans.txt 416
 GET /v1/projects/1/files/plans.txt 304
 GET /v1/projects/1/files/missing.txt 404 {"error":"file_not_found"}
 GET /v1/projects/1/files/a%5Cb 400 {"error":"bad_path"}
+GET /v1/projects/2/progress?n=3 200 id: 1
+data: {"tasks":2}
+
+id: 2
+data: {"tasks":2}
+
+id: 3
+data: {"tasks":2}
+GET /v1/projects/2/progress?n=0 400 {"error":"invalid_n"}
+GET /health 200 ok

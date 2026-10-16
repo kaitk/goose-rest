@@ -184,7 +184,10 @@ response in pieces (`rest::begin`, `rest::file`), or takes an upgraded connectio
 (`rest::upgrade`) gives a `Waiting` variant, as `rest::ask` does. `rest::serve` then
 calls the handler again for each event of the exchange, with `cx.kind` saying which:
 `BODY`, `END`, `MORE`, or `CLOSED`. `CLOSED` comes once to a route that ended early, so
-that its case function releases what the state holds. One case function per variant
+that its case function releases what the state holds. A route that began a response
+can pause it with `rest::pause`, and gets `TIMEOUT` when the time has passed, for
+events sent over time: the exchange keeps the pause's deadline, so that goose-rest
+ends the response when goose-http, with no timer free, gives `TIMEOUT` at once. One case function per variant
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#later-calls) has each call and event.
 

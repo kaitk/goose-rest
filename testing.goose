@@ -31,19 +31,22 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
 
 // What serve_one gives a route that waits, in place of the thread it asked:
 // data with tag, as rest::reply sends them, or with timeout, the end of the
-// wait, which rest::ask answers with 504. A flat value's data is
-// rest::value_bytes of it. sent is what the client of an upgraded
+// wait, which rest::ask answers with 504, and rest::pause's route gets as
+// http::TIMEOUT. early makes that timeout goose-http's own, given at once
+// when it has no timer: a pause then ends its response. A flat value's
+// data is rest::value_bytes of it. sent is what the client of an upgraded
 // connection sends while the route waits, which comes as one http::BODY
 // before the reply or the timeout; on any other connection, goose-http
 // holds it back, and serve_one drops it.
-struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, sent: const u8[:] = "" }
+struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, early: bool = false, sent: const u8[:] = "" }
 
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
 // pieces of cfg.mail_size bytes, or with the timeout. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
 // no wake left ends the exchange with what the route wrote so far, or 500
-// if nothing.
+// if nothing; one with a response open is a client that goes, and H gets
+// http::CLOSED.
 //
 //   let reply = rest::value_bytes(service::AssignReply { .. });
 //   let out = rest::serve_one(text, app, St { .. }, [rest::Wake { data: reply }]) { cx => handle(cx) };
@@ -132,6 +135,8 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         if w.timeout {
             stream.waiting = false;
             stream.rearm = false;
+            // The time a rest::pause asked for has come, or with early hasn't.
+            st.ex.due = if w.early { 1 << 62 } else { 0 };
             deliver(http::Event { kind: http::TIMEOUT, req: gone, data: "", whole: false, trailers: "" },
                     st, app, reply, spill, budget) { cx => H(cx) };
             continue;
@@ -150,6 +155,13 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             at = end;
             tag = REPLY_CONT;
         }
+    }
+    // A response still open with no wake left is a client that goes.
+    if stream.open && stream.waiting {
+        stream.waiting = false;
+        stream.rearm = false;
+        deliver(http::Event { kind: http::CLOSED, req: gone, data: "", whole: false, trailers: "" },
+                st, app, reply, spill, budget) { cx => H(cx) };
     }
     if out.len == 0 { http::refuse(out, 500, ""); }
     return out;

@@ -30,3 +30,10 @@ etag=$(curl -s -o /dev/null -D - "http://127.0.0.1:$port/v1/projects/1/files/pla
 req GET /v1/projects/1/files/plans.txt -H "If-None-Match: $etag"
 req GET /v1/projects/1/files/missing.txt
 req GET '/v1/projects/1/files/a%5Cb'
+# Three progress events, 100 ms apart, then the end.
+req GET '/v1/projects/2/progress?n=3' -N
+req GET '/v1/projects/2/progress?n=0'
+# A client that goes between events, after a quarter of a second, from a
+# stream with no end: the worker goes on.
+curl -s -N -m 0.25 -o /dev/null "http://127.0.0.1:$port/v1/projects/1/progress" || true
+req GET /health

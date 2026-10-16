@@ -334,6 +334,41 @@ variant, not in goose-rest's slot, so that a program that serves no files keeps 
 bytes for one. A failure with a response begun leaves it unended, and goose-http closes
 the connection: its head has gone, so the first answer wins (["Handlers"](#handlers)).
 
+Decided (2026-10-16): a route that began a response asks for a call at a time of its
+own with `rest::pause(cx, ms)`, which calls goose-http's `http::later` on the open
+response, and its case function gets `http::TIMEOUT` with the response still open.
+goose-http already arms a timer on an open response and delivers `TIMEOUT`; goose-rest
+had been taking that `TIMEOUT` for a 504 it couldn't write. Now a `TIMEOUT` on a
+response begun with `rest::begin` goes to the route, whatever asked for it, since a
+504 can't follow a head. The name says what the call does to the response, as
+goose-http's docs do, and keeps it apart from `WAKE`, a reply's event. Three
+questions, settled:
+
+- The deadline lives in `Exchange`, as `due`: `pause` reads the clock once and stores
+  the time halfway to `ms`, and a `TIMEOUT` reads it once more. goose-http gives
+  `TIMEOUT` at once when it has no timer for the wait (`Config.max_waiting`), and the
+  route can't tell that from its own except by the clock. Halfway, as goose-http's
+  `examples/device/` checks, because goose-http's timer falls due by the loop's clock,
+  read before the handler, so a real `TIMEOUT` can come a little before `ms`. Rejected:
+  leaving the check to each route, which then repeats it or streams on with no timer;
+  a mode bit for "paused", since a `TIMEOUT` on an open response needs the route
+  whatever asked for it; and no clock read, since nothing goose-http hands the handler
+  tells the two apart.
+- An early `TIMEOUT` ends the response, cleanly for a chunked one, and the route then
+  gets `CLOSED`, as for any response that ends other than by its `rest::end`. A
+  Server-Sent Events client reconnects to a stream that ends. Rejected: passing it to
+  the route with a flag, a second kind of `TIMEOUT` for every case function to handle;
+  and leaving the stream open, which goose-http then calls with `MORE` or not at all.
+- A route that doesn't pause again at `TIMEOUT` gets what goose-http gives an open
+  response that doesn't wait: `MORE` once the client has taken what it sent, and a
+  `MORE` that neither sends nor ends closes the connection. Rejected: ending the
+  response for it, which would make `TIMEOUT` differ from `MORE` for the same omission.
+
+A client that goes during a pause gets the route `CLOSED`, as goose-http cancels the
+timer. `rest::serve_one` takes a `Wake { timeout: true }` as the pause's time come, and
+`early: true` as goose-http's `TIMEOUT` at once; a pause with no wake left is a client
+that goes.
+
 Decided (2026-10-16): an upgraded connection that waits on `rest::ask` keeps one
 variant, the one in `cx.state.waiting`, for every later call. From goose-http v0.3.3 the
 client's bytes keep coming as `BODY` while an upgraded exchange waits, so the case

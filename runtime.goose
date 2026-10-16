@@ -126,6 +126,7 @@ struct Exchange {
     len: i64 = 0,
     cap: i64 = 0,
     head: i64 = 0,
+    due: i64 = 0,            // the clock_ns from which a TIMEOUT is rest::pause's own, not goose-http's at once
 }
 
 // goose-http's state for each request: the program's, and the exchange's.
@@ -432,6 +433,17 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, 
         return http::NO_EVENT;
     }
     if k == http::CLOSED { return k; }
+    // A response begun can't be answered with 504: the route gets its
+    // TIMEOUT, unless goose-http gave it at once, before the time
+    // rest::pause asked for, having no timer: then the response ends.
+    if k == http::TIMEOUT && (x.mode & SENDING) != 0 && out.stream.open {
+        guard clock_ns() >= x.due else {
+            if (x.mode & CODED) != 0 { end_coded(x, out, ""); } else { http::end(out); }
+            x.mode &= KEPT;
+            return http::CLOSED;
+        }
+        return k;
+    }
     if k == http::BODY && (x.mode & RECEIVING) != 0 {
         x.len += ev.data.len;
         guard x.len <= x.limit else {

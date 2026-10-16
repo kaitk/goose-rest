@@ -41,13 +41,15 @@ fn resume(w: Waiting.Export, cx) {
 `tasks_csv` appends up to 500 rows to `piece`, starting at the task `cx.state.next`, and
 returns where the next piece starts, or -1 after the last row. So the call that sends the
 last rows also ends the response. The export's progress goes in the request's
-state:
+state, beside what the other routes on this page keep:
 
 ```rust
 struct St {
     waiting: Waiting = Waiting.None,
     next: i64 = 0,                                // the export's next task
     file: http::FileBody = http::FileBody { .. }, // what's left of a download
+    events: i64 = 0,                              // progress events sent
+    left: i64 = 0,                                // and still to send, or -1 for no end
 }
 ```
 
@@ -108,6 +110,62 @@ GET /v1/projects/1/files/missing.txt 404 {"error":"file_not_found"}
 GET /v1/projects/1/files/a%5Cb 400 {"error":"bad_path"}
 ```
 
+## Events over time
+
+A client that watches a project gets its task count as
+[Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html),
+one every 100 ms, over one response. The client takes each event at once, so `MORE`
+can't space them: `rest::pause(cx, ms)` pauses the response, and the case function is
+called with `http::TIMEOUT` once `ms` milliseconds have passed, the response still open:
+
+```rust
+// GET /v1/projects/:id/progress?n=N: the project's task count as Server-Sent
+// Events, PROGRESS_MS apart; N of them, or without N until the client goes.
+fn progress(cx, project: i64) {
+    let n, given = rest::query_int(cx, "n");
+    guard !given || n > 0 else { rest::fail(cx, 400, "invalid_n"); }
+    cx.state.left = if given { n } else { -1 };
+    rest::begin(cx, 200, "text/event-stream", -1, Waiting.Progress { project: project });
+    progress_event(cx, project);
+}
+
+fn resume(w: Waiting.Progress, cx) {
+    guard cx.kind == http::TIMEOUT else { return; }   // CLOSED: the state holds nothing to release
+    progress_event(cx, w.project);
+}
+
+// Sends the next event, then pauses until the one after, or ends after the
+// last.
+fn progress_event(cx, project: i64) {
+    cx.state.events++;
+    rest::send(cx, str("id: ", cx.state.events, "\ndata: {\"tasks\":", count(cx.app.tasks, project), "}\n\n"));
+    if cx.state.left > 0 { cx.state.left--; }
+    if cx.state.left == 0 { rest::end(cx); } else { rest::pause(cx, PROGRESS_MS); }
+}
+```
+
+Each call sends an event and pauses again, or ends after the last. The event sent
+before a pause goes to the client meanwhile, and no `MORE` comes while the response is
+paused. A client that goes during a pause gets the case function `http::CLOSED`, and
+goose-http cancels the timer:
+
+```text
+GET /v1/projects/2/progress?n=3 200 id: 1 data: {"tasks":2} ... id: 3 data: {"tasks":2}
+GET /v1/projects/2/progress?n=0 400 {"error":"invalid_n"}
+```
+
+A pause takes one of goose-http's timers, so the worker's `http::Config` sets
+`mail_slots` and `max_waiting`, as for [work that waits](13-waiting.md):
+
+```rust
+    let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
+```
+
+With all `max_waiting` timers taken, goose-http gives `TIMEOUT` at once. goose-rest
+tells that from the pause's own by the clock, and ends the response, and the case
+function gets `CLOSED`. A client of Server-Sent Events reconnects to a stream that
+ends.
+
 ## Which answer to use
 
 | The route has | Use |
@@ -115,6 +173,7 @@ GET /v1/projects/1/files/a%5Cb 400 {"error":"bad_path"}
 | A value that fits in memory | `rest::json`, `rest::text` ([page 3](03-errors.md)) |
 | Data it makes as it goes, such as an export | `rest::begin`, `rest::send` at each `MORE`, `rest::end` |
 | A file | `rest::file` and `rest::send_file` |
+| Events over time, such as Server-Sent Events | `rest::begin`, `rest::send` and `rest::pause` at each `TIMEOUT`, `rest::end` |
 | A service's reply, in pieces | `rest::relay` ([page 14](14-two-services.md)) |
 
 A response begun in the route, as both here are, has the CORS fields and `Server-Timing`

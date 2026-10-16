@@ -70,6 +70,29 @@ fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], leng
     x.mode |= SENDING;
 }
 
+// Pauses the response rest::begin began for ms milliseconds, for events
+// sent over time, such as Server-Sent Events: the handler is called again
+// with http::TIMEOUT then, the response still open, and sends the next
+// piece, pauses again, or ends. What was sent before still goes to the
+// client meanwhile, and no MORE comes until the pause ends. A TIMEOUT call
+// that neither pauses nor ends gets MORE once the client has taken what it
+// sent. A client that goes meanwhile ends the pause, and the handler gets
+// http::CLOSED. Needs Config.mail_slots and max_waiting, as rest::ask does.
+// Past max_waiting, goose-http has no timer for the pause, and gives
+// TIMEOUT at once: goose-rest tells it from the pause's own by the clock,
+// and ends the response, and the handler gets CLOSED. 500 not_sending
+// without a response begun and open, and 500 not_served outside serve and
+// serve_one.
+fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64) {
+    var x .= cx.ex;
+    guard x else { fail(cx, 500, "not_served"); }
+    guard (x.mode & SENDING) != 0 && cx.out.stream.open else { fail(cx, 500, "not_sending"); }
+    // goose-http's timer falls due by its loop's clock, which can lag this
+    // one: a TIMEOUT halfway to its time is the pause's.
+    x.due = clock_ns() + max(ms, 0) * 500000;
+    http::later(cx.out, ms);
+}
+
 // Sends data, the next piece of the response rest::begin began, or bytes as
 // they are on a connection rest::upgrade took.
 fn send(cx, data: const u8[:]) {
