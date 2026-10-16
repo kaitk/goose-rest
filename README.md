@@ -31,7 +31,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#context-and-routes)). |
 | 🟢 | Scopes | Prefixes, each with its own middleware. |
 | 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#extractors)). |
-| 🟡 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool` ([reference](docs/reference.md#extractors)). Multipart forms have no extractor yet: read them with goose-http's `http::each_part`. |
+| 🟢 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool`, and multipart fields and files of a gathered body through `rest::part`, `rest::part_int`, `rest::part_bool`, and `rest::file_part` ([reference](docs/reference.md#extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
 | 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
 | 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
 | 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#errors)). |

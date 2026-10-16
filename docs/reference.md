@@ -204,6 +204,9 @@ returns. Otherwise the extractor returns the request's own bytes.
 | `rest::query_int(cx, "page")`, `rest::query_bool(cx, "all")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `page: integer`, `all: boolean` |
 | `rest::form(cx, "name")` | the field of an `application/x-www-form-urlencoded` body, decoded with `+` as a space, and whether it's there | `name: encoding`; 415 `unsupported_media_type` for another media type |
 | `rest::form_int(cx, "n")`, `rest::form_bool(cx, "on")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `n: integer`, `on: boolean` |
+| `rest::part(cx, "name")` | the text of a part of a `multipart/form-data` body, as sent, and whether it's there | 415 `unsupported_media_type` for another media type or a missing or unusable boundary; `body: multipart` for a body that isn't multipart |
+| `rest::part_int(cx, "n")`, `rest::part_bool(cx, "on")` | an `i64` or a `bool` (`true`, `false`), and whether it's there | `n: integer`, `on: boolean`, and `part`'s |
+| `rest::file_part(cx, "pic")` | a part's bytes, its filename (`""` without one), its content type (`application/octet-stream` without one), and whether it's there | `part`'s |
 | `rest::header(cx, "X-Request-Id")`, `rest::cookie(cx, "sid")` | the value, and whether it's there | |
 | `rest::int_of(cx, v, "name")`, `rest::bool_of(cx, v, "name")` | `v` as an `i64` or a `bool` | `name: integer`, `name: boolean` |
 | `rest::require(cx, "q", found)` | | `q: required` |
@@ -216,8 +219,12 @@ name is compared as sent, without decoding it.
 The form extractors read the body with `rest::body`, which gathers it as described below.
 They accept a Content-Type with parameters, such as
 `application/x-www-form-urlencoded; charset=utf-8`. A route that accepts a form over
-1 MB calls `rest::body(cx, limit)` before the first form extractor. Multipart forms
-have no extractor; goose-http's `http::each_part` reads them
+1 MB calls `rest::body(cx, limit)` before the first form extractor.
+
+The multipart extractors read the whole body the same way and take the first part
+with the name asked for through goose-http's `http::find_part`, whose rules decide
+what is malformed. What they return are slices of the body, never copies. An upload
+read as it arrives goes through goose-http's `http::each_part`
 ([goose-http's API](https://github.com/kaitk/goose-http/blob/main/docs/api.md)), a
 piece at a time with `rest::body_in_pieces` ([tutorial](tutorial/11-bodies-in-pieces.md#a-multipart-form)).
 
@@ -386,7 +393,7 @@ another shape, as the end of this section shows:
 | 403 | `forbidden` | `rest::file`: a file the program may not read |
 | 404 | `file_not_found` | `rest::file`: no file, or a directory, at the path |
 | 413 | `payload_too_large` | `rest::body`, `rest::body_in_pieces`, `rest::take` of a schema type, and the form extractors: a body over the limit |
-| 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded` |
+| 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded`; the multipart extractors: a body that isn't `multipart/form-data` with a usable boundary |
 | 500 | `already_waiting` | `rest::ask` while the route waits already, as at an upgraded connection's `BODY` during a wait |
 | 500 | `body_already_read` | `rest::body_in_pieces` after `rest::body`, or `rest::body` after `rest::body_in_pieces` |
 | 500 | `file_unreadable` | `rest::file`: a file that couldn't be opened for another reason |

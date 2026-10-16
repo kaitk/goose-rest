@@ -183,6 +183,45 @@ fn form_bool(cx, name: const u8[:]) -> bool, bool {
     return bool_of(cx, v, name), true;
 }
 
+// The text of the part name in a multipart/form-data body, as sent, and
+// whether the body has it; the first, if it repeats. The body is read with
+// rest::body, so a route runs twice up to its first part call when the body
+// is gathered. The value is a slice of the body. 415 for a body of another
+// media type or without a usable boundary, 400 for one that isn't multipart.
+// Uploads read as they arrive are goose-http's http::each_part.
+fn part<S, A, R>(cx: Cx<S, A, R>&, name: const u8[:]) -> const u8[:], bool {
+    let v, filename, kind, found = file_part(cx, name);
+    return v, found;
+}
+
+// The part name as an integer, and whether the body has it.
+fn part_int(cx, name: const u8[:]) -> i64, bool {
+    let v, found = part(cx, name);
+    guard found else { return 0, false; }
+    return int_of(cx, v, name), true;
+}
+
+// The part name as true or false, and whether the body has it.
+fn part_bool(cx, name: const u8[:]) -> bool, bool {
+    let v, found = part(cx, name);
+    guard found else { return false, false; }
+    return bool_of(cx, v, name), true;
+}
+
+// The part name of a multipart/form-data body as a file: its bytes, its
+// filename ("" without one), its content type (application/octet-stream
+// without one), and whether the body has it; the first, if it repeats. Failures
+// and lifetime are part's; all three are slices of the body.
+fn file_part<S, A, R>(cx: Cx<S, A, R>&, name: const u8[:]) -> const u8[:], const u8[:], const u8[:], bool {
+    let v, fields, status = http::find_part(cx.req, body(cx), name);
+    guard status != http::PART_TYPE else { fail(cx, 415, "unsupported_media_type"); }
+    guard status != http::PART_BAD else { fail_param(cx, "body: multipart"); }
+    guard status == http::PART_FOUND else { return v, v, v, false; }
+    let n, filename, ok = http::disposition(fields);
+    let t, typed = http::field_in(fields, "content-type");
+    return v, filename, if typed { t } else { "application/octet-stream" }, true;
+}
+
 // The header field name's value, its name compared ignoring case, and
 // whether the request has it; the first, if it repeats.
 fn header(cx, name: const u8[:]) -> const u8[:], bool {
