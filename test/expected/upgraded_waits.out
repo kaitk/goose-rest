@@ -1,0 +1,6 @@
+[BODY to asked: during][WAKE to asked: reply][BODY to echo: after] closed: 1
+[BODY to asked: during][TIMEOUT to asked: ][BODY to echo: after] closed: 1
+[BODY to echo: ask][BODY to asked: during][WAKE to asked: reply] closed: 1
+[BODY to asked: again] closed: 1
+[BODY to asked: check][waiting][WAKE to asked: reply][BODY to echo: after] closed: 1
+jobs sent: 5

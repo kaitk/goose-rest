@@ -17,7 +17,10 @@ import http from "github.com/kaitk/goose-http@v0.3.4";
 // Content-Length is a client that hung up midway: its pieces come, then
 // http::CLOSED in place of http::END. A response sent in pieces
 // (rest::begin) is taken to its end, H called with http::MORE as for a
-// client that keeps up. An HTTP/1.1 request
+// client that keeps up. The bytes after the head of a request that
+// rest::upgrade answered are what its client sends: they come as one
+// http::BODY once the route doesn't wait, then http::CLOSED, as the client
+// closing. An HTTP/1.1 request
 // without Host is given "Host: localhost". A request goose-http refuses gets
 // its refusal, and H that doesn't answer 500, as from the server. A route
 // that waits (rest::ask) gets no reply here: see the serve_one below.
@@ -29,8 +32,11 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
 // What serve_one gives a route that waits, in place of the thread it asked:
 // data with tag, as rest::reply sends them, or with timeout, the end of the
 // wait, which rest::ask answers with 504. A flat value's data is
-// rest::value_bytes of it.
-struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false }
+// rest::value_bytes of it. sent is what the client of an upgraded
+// connection sends while the route waits, which comes as one http::BODY
+// before the reply or the timeout; on any other connection, goose-http
+// holds it back, and serve_one drops it.
+struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, sent: const u8[:] = "" }
 
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
@@ -81,16 +87,25 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
     }
     // MORE while a response is open, as the loop calls it for a client that
     // keeps up. A MORE that neither sends nor ends closes the connection, as
-    // the loop closes it, and so does an upgraded connection's client here.
+    // the loop closes it, and so does an upgraded connection's client here,
+    // once it has sent the bytes after the request's head.
     let none = http::Event { kind: http::MORE, req: req, data: "", whole: false, trailers: "" };
     let gone = http::Request { .. };
     let piece = max(cfg.mail_size as i64, 1);
+    let after = full[min(full.len, req.len + req.body)..];
+    var sent_after = false;
     var next = 0;
     loop {
         while stream.open && !stream.waiting {
             let before = out.len;
             stream.moved = false;
             let raw = stream.framing == http::Framing.Raw;
+            if raw && !sent_after && after.len > 0 {
+                sent_after = true;
+                deliver(http::Event { kind: http::BODY, req: gone, data: after, whole: false, trailers: "" },
+                        st, app, reply, spill, budget) { cx => H(cx) };
+                continue;
+            }
             if !raw {
                 deliver(none, st, app, reply, spill, budget) { cx => H(cx) };
             }
@@ -103,6 +118,17 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         guard stream.waiting && next < wakes.len else { break; }
         let w = wakes[next];
         next++;
+        if w.sent.len > 0 && stream.framing == http::Framing.Raw {
+            deliver(http::Event { kind: http::BODY, req: gone, data: w.sent, whole: false, trailers: "" },
+                    st, app, reply, spill, budget) { cx => H(cx) };
+            // An end, or a failure that cut the connection, stops the wait,
+            // as goose-http stops it.
+            if !stream.open {
+                stream.waiting = false;
+                stream.rearm = false;
+                continue;
+            }
+        }
         if w.timeout {
             stream.waiting = false;
             stream.rearm = false;

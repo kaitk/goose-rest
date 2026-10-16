@@ -296,7 +296,7 @@ data its route needs, and the per-request state holds the route's progress.
 
 | The route called | The case function gets `cx.kind` | goose-rest handles |
 |---|---|---|
-| `rest::ask` | `http::WAKE`, the reply in `cx.reply` | `TIMEOUT`: 504 `timeout` |
+| `rest::ask` | `http::WAKE`, the reply in `cx.reply`; on an upgraded connection, also `http::BODY` per arrival during the wait, and `http::TIMEOUT` | `TIMEOUT`: 504 `timeout`, except on an upgraded connection |
 | `rest::body_in_pieces` | `http::BODY` per piece, in `cx.body`; then `http::END`; or `http::CLOSED` | the limit: 413 |
 | `rest::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
 | `rest::file` | `http::MORE`; `http::CLOSED`, both for `rest::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
@@ -327,9 +327,34 @@ response cut short.
 `http::Config`'s `max_body` caps `rest::body_in_pieces`'s limit as it caps `rest::body`'s. A
 piece of about 16 KB at each `MORE` keeps within `Config.max_queued`
 ([goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses)).
-A route that upgraded can't yet ask another thread (`rest::ask`): the client's bytes
-during the wait go to the ask's case function, and the upgrade's isn't called again
-after the reply. A WebSocket's framing isn't provided: a package on top of
+A route that upgraded can ask another thread (`rest::ask`), at the request or at a
+`BODY`. Every later call goes to the case function of the variant in
+`cx.state.waiting`, and `rest::ask` puts its own there, so while the route waits, that
+case function gets the client's bytes as `BODY`, and `rest::send` can answer them. It
+then gets the reply as `WAKE`, or `TIMEOUT` when the time limit passes, in place of a
+504, which can't follow the 101. A case function that does nothing at `TIMEOUT` leaves
+the connection open, no longer waiting. To get the bytes where they went before the
+wait, the case function sets `cx.state.waiting` back to the upgrade's variant at the
+`WAKE` and the `TIMEOUT`; nothing restores it otherwise. A route that wants one case
+function for the whole connection asks with the upgrade's variant, and tells the
+events apart by `cx.kind`. `rest::end` during the wait ends it and closes the
+connection. A `rest::ask` while the route waits already, as at a `BODY` during a wait,
+fails with 500 `already_waiting`, which closes the connection: an exchange has one wait,
+whose reply a second job would share. A client can send at any time, so a route that
+asks at a `BODY` checks `rest::is_waiting(cx)` first.
+
+```rust
+fn resume(w: Waiting.Asked, cx) {
+    if cx.kind == http::BODY {
+        rest::send(cx, cx.body);   // bytes during the wait
+    } else if cx.kind == http::WAKE || cx.kind == http::TIMEOUT {
+        rest::send(cx, if cx.kind == http::WAKE { cx.reply } else { "timeout" });
+        cx.state.waiting = Waiting.Echo;   // the bytes after go to the upgrade's again
+    }
+}
+```
+
+A WebSocket's framing isn't provided: a package on top of
 `rest::upgrade` can add it. The tutorial builds an upload with `body_in_pieces`
 ([page 11](tutorial/11-bodies-in-pieces.md)), and an export and downloads with `begin`
 and `file` ([page 12](tutorial/12-long-responses.md));
@@ -360,6 +385,7 @@ another shape, as the end of this section shows:
 | 404 | `file_not_found` | `rest::file`: no file, or a directory, at the path |
 | 413 | `payload_too_large` | `rest::body`, `rest::body_in_pieces`, `rest::take` of a schema type, and the form extractors: a body over the limit |
 | 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded` |
+| 500 | `already_waiting` | `rest::ask` while the route waits already, as at an upgraded connection's `BODY` during a wait |
 | 500 | `body_already_read` | `rest::body_in_pieces` after `rest::body`, or `rest::body` after `rest::body_in_pieces` |
 | 500 | `file_unreadable` | `rest::file`: a file that couldn't be opened for another reason |
 | 500 | `not_served` | `rest::body_in_pieces` with a context that `rest::serve` or `serve_one` didn't make |
@@ -407,7 +433,7 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 | `rest::serve_one(text, app) { cx => ... }` | The same, with the worker's state by reference in `cx.app` |
 | `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the per-request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
 | `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
-| `rest::Wake { data, tag, timeout }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, or with `timeout: true`, the end of the wait |
+| `rest::Wake { data, tag, timeout, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, or with `timeout: true`, the end of the wait; on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
 | `rest::value_bytes(v)` | The bytes `rest::reply_value` sends of `v`, a flat value, for a `Wake`'s `data` |
 
 A body that doesn't fit in `cfg.max_head` with its head comes in pieces of
@@ -415,8 +441,9 @@ A body that doesn't fit in `cfg.max_head` with its head comes in pieces of
 so the block runs again once it's whole, or passed to a route that called `rest::body_in_pieces`. A body shorter than its
 `Content-Length` is a client that hung up midway: its pieces come, then `http::CLOSED`
 in place of `http::END`. A response begun with `rest::begin` or `rest::file` is taken to
-its end, `http::MORE` at a time, as by a client that keeps up; an upgraded connection's
-client closes at once. A request goose-http refuses gets its
+its end, `http::MORE` at a time, as by a client that keeps up. On a connection the route
+upgraded, the bytes of `text` after the request's head are the client's: they come as
+one `http::BODY` once the route doesn't wait, and then the client closes. A request goose-http refuses gets its
 refusal, and a block that writes no answer gets 500. An HTTP/1.1 request without `Host`
 is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 `Content-Length`. The response has no `Date` or `Server` field
@@ -425,7 +452,9 @@ is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 A route that calls `rest::ask` sends its job, or gets 503 for a full box. `serve_one`
 then calls the handler again with the wait's `Wake`, as `rest::serve` calls it when the
 reply comes: as `http::WAKE`, in pieces of `cfg.mail_size` bytes with the tags
-`rest::reply` gives them, or as the timeout's 504. A piece that comes once the route
+`rest::reply` gives them, or as the timeout's 504, which an upgraded connection gets
+as `http::TIMEOUT`. On an upgraded connection, the `Wake`'s `sent` comes first, as one
+`http::BODY` during the wait. A piece that comes once the route
 no longer waits is dropped. A wait with no `Wake` left ends the exchange: the answer is
 what the route wrote, or 500 for nothing. No thread runs and no time passes, so a reply
 that comes late, or a client that goes while its job waits, is tested over HTTP

@@ -32,13 +32,22 @@ let REPLY_MORE: i32 = 0x40000000;
 // A job as it crosses to the thread that replies to it.
 struct Ask<J> { reply: http::MailAddress = http::MailAddress { .. }, piece: i64 = 0, job: J }
 
+// Whether the route waits on rest::ask now, as an upgraded connection's
+// route can at a BODY, where a second ask would fail.
+fn is_waiting(cx) -> bool { cx.out.stream.waiting }
+
 // Sends job, a flat value, with tag to the thread at to, and waits for its
 // reply for at most ms milliseconds, with w in cx.state.waiting. The handler
 // is called again when the reply comes, or answers 504 timeout if it doesn't.
-// Fails with 503 unavailable when the thread's box is full or closed. Needs
-// Config.mail_slots and max_waiting; without them the route gets 504 at
-// once.
+// Fails with 503 unavailable when the thread's box is full or closed, and
+// with 500 already_waiting when the route waits already, as at an upgraded
+// connection's BODY during a wait: goose-http's exchange has one wait, which
+// a second job's reply would share. Needs Config.mail_slots and max_waiting;
+// without them the route gets 504 at once. On an upgraded connection, the
+// case function of w gets the client's bytes as BODY while it waits, and
+// TIMEOUT in place of 504.
 fn ask<J>(cx, to: http::MailAddress, tag: i32, job: J, w, ms: i64 = 5000) {
+    if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
     cx.state.waiting = w;
     let back = http::later(cx.out, ms);
     let piece = http::mail_slot_size(back);

@@ -189,8 +189,10 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 
 // What serve does with each of goose-http's events: H(cx) at REQUEST and at
 // the first message of a reply; the later pieces of a reply relay sends on
-// itself; and 504 when a reply doesn't come in time. A reply cut short by its
-// time limit leaves the response open, and goose-http closes the connection.
+// itself; and 504 when a reply doesn't come in time, except on an upgraded
+// connection, whose route on_later calls with the TIMEOUT. A reply cut short
+// by its time limit leaves the response open, and goose-http closes the
+// connection.
 // An answer after REQUEST gets the fields its middleware kept (stash_kept).
 // Returns out.buf.len from before its call to H, or -1 for none, for
 // on_later, which the caller then calls for a route that reads, sends, or
@@ -443,8 +445,10 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, 
         }
         return k;
     }
-    if (k == http::BODY && (x.mode & UPGRADED) != 0) || (k == http::END && (x.mode & RECEIVING) != 0) ||
-       (k == http::MORE && (x.mode & SENDING) != 0) {
+    // An upgraded connection's TIMEOUT can't be answered with 504, its 101
+    // being sent: the route gets it.
+    if ((k == http::BODY || k == http::TIMEOUT) && (x.mode & UPGRADED) != 0) ||
+       (k == http::END && (x.mode & RECEIVING) != 0) || (k == http::MORE && (x.mode & SENDING) != 0) {
         return k;
     }
     return http::NO_EVENT;

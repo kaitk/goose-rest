@@ -188,6 +188,12 @@ that its case function releases what the state holds. One case function per vari
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#later-calls) has each call and event.
 
+Each call goes to the variant that is in `cx.state.waiting` at the time, and goose-rest
+keeps no other. An upgraded connection that waits on `rest::ask` therefore gets the
+client's bytes in the ask's case function, which also gets the `TIMEOUT`, since a 504
+can't follow the 101, and which sets the upgrade's variant back when the wait ends. An
+exchange has one wait, so a second `rest::ask` during it fails.
+
 A route's middleware keeps what it decided with the exchange, so an answer written at a
 later call still gets the CORS fields and `Server-Timing`. A file being sent lives in
 the program's state, so a program that serves no files keeps no bytes for one.

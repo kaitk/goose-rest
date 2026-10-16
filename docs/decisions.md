@@ -334,6 +334,27 @@ variant, not in goose-rest's slot, so that a program that serves no files keeps 
 bytes for one. A failure with a response begun leaves it unended, and goose-http closes
 the connection: its head has gone, so the first answer wins (["Handlers"](#handlers)).
 
+Decided (2026-10-16): an upgraded connection that waits on `rest::ask` keeps one
+variant, the one in `cx.state.waiting`, for every later call. From goose-http v0.3.3 the
+client's bytes keep coming as `BODY` while an upgraded exchange waits, so the case
+function of the ask's variant gets them, then the `WAKE`, or the `TIMEOUT`, which can't
+be a 504 after the 101 and so goes to the route. The route sets the upgrade's variant
+back when it wants the bytes where they went before, or asks with the upgrade's variant
+and tells the events apart by `cx.kind`. A `rest::ask` while the route waits already
+fails with 500 `already_waiting`: goose-http's `later` at a `BODY` restarts the one wait
+the exchange has, so a second job's reply would share it. This rejected:
+
+- goose-rest keeping the upgrade's variant aside and handing the bytes to it during the
+  wait. The variant's type is the program's, which `Slot<S>` can't name, and `on_later`
+  can't swap `st.state.waiting` in and out: it is checked for every state type, and a
+  program whose state has no `waiting` field would stop compiling. Keeping the
+  variant's bytes in the spill would work around both, at the cost of a run per waiting
+  connection and a copy at each event.
+- A second state field for the ask's variant, beside `waiting`: a new name every
+  program's state would carry, for one combination of calls.
+- `rest::ask` at a `BODY` during a wait sending its job anyway, or only restarting the
+  time limit: the first gets two replies for one exchange, the second drops the job.
+
 ## Tests
 
 Decided (2026-10-15), for goose-rest, goose-http, and goose-compress alike: tests

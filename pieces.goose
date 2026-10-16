@@ -147,8 +147,9 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, w, 
 // writes with rest::send, bytes as they are, until rest::end closes the
 // connection. It gets http::CLOSED once if the client closes first, or the
 // route fails. http::upgrade_of(cx.req) says what the request asks to switch
-// to. While the route waits on another thread (rest::ask), goose-http reads
-// none of the client's bytes.
+// to. A route that then waits on another thread (rest::ask) gets the bytes
+// that come meanwhile in the case function of the ask's variant, and sets
+// cx.state.waiting back to w's to get them where they went before.
 fn upgrade<S, A, R>(cx: Cx<S, A, R>&, protocol: const u8[:], w) {
     http::upgrade(cx.out, protocol);
     cx.state.waiting = w;
