@@ -1,7 +1,7 @@
 // goose-rest gen's errors for paths, operations, parameters, request
 // bodies, and security outside its subset.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../";
 import rest.gen.gen;
 import common;

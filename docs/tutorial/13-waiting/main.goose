@@ -9,7 +9,7 @@
 //   curl -s -X PUT -H 'X-User: 1' 'localhost:8080/v1/projects/1/tasks/3/assignee?user=2'
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../../";
 import db from "../db/";
 import .service;

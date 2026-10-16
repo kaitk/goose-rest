@@ -2,7 +2,7 @@
 // inside it rest::file's does. Writes test_compression.tmp in the working
 // directory.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import compress from "github.com/kaitk/goose-compress@v0.1.0";
 import rest from "../../";
 import rest.compression;

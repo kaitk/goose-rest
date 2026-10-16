@@ -1,7 +1,7 @@
 // rest::otherwise: 404, 405 with Allow, OPTIONS, 501, and a program's own
 // http::router given to it.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../";
 import expect from "../";
 import common;

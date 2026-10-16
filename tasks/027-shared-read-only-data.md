@@ -88,7 +88,7 @@ A module of its own, `rest.shared` (`shared.goose`), which `rest` doesn't import
 The program:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "github.com/kaitk/goose-rest@<tag>";
 import rest.shared;
 

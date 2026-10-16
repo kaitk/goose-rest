@@ -3,14 +3,14 @@
 // program that imports this module needs goose-compress, which its root file
 // declares at the tag goose-http's compression.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@v0.3.4";
+//   import http from "github.com/kaitk/goose-http@v0.3.5";
 //   import compress from "github.com/kaitk/goose-compress@v0.1.0";
 //   import rest from "github.com/kaitk/goose-rest@<tag>";
 //   import rest.compression;
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import compress from "github.com/kaitk/goose-compress@v0.1.0";
 import http.compression;
 

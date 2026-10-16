@@ -1,7 +1,7 @@
 // rest::scope: prefix scopes over an if chain, nested, with 404, 405, and
 // OPTIONS across them, an escaped prefix, and the paths that aren't in one.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../";
 import expect from "../";
 import common;

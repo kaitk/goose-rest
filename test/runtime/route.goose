@@ -1,7 +1,7 @@
 // rest::route: an answer, a failure from two calls below it, one with text
 // the failure owns, and a failure after an answer, which leaves it.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../";
 import expect from "../";
 import common;

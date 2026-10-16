@@ -5,7 +5,7 @@
 //
 //   goose docs/tutorial/13-waiting/test.goose
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../../";
 import db from "../db/";
 import .service;

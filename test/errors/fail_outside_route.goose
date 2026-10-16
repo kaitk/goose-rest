@@ -2,7 +2,7 @@
 // rest::fail outside rest::route: serve's handler runs outside any route, so
 // the failure has no route to leave.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import rest from "../../";
 
 fn main() {

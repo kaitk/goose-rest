@@ -1,7 +1,7 @@
 // rest::compressed: a large answer compressed in each coding the client
 // takes, at the default level and at a level of the program's.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.4";
+import http from "github.com/kaitk/goose-http@v0.3.5";
 import compress from "github.com/kaitk/goose-compress@v0.1.0";
 import rest from "../../";
 import rest.compression;
