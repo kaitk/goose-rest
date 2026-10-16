@@ -2,6 +2,22 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.1.1 (2026-10-16)
+
+A faster generated router, and goose-http's fix for its emulated ring. Goose `v2026.1`
+(`ac759c3`), goose-http `v0.3.4`.
+
+- The generator writes each operation as a function of its own, which `dispatch` calls,
+  where it wrote every operation inside `dispatch`. With them all inline, `dispatch`'s
+  stack frame grew with the document's routes, and the C compiler's stack probes
+  touched it page by page on every request: on 203 routes, more than half a request's
+  cycles. Regenerate a router to take it.
+- goose-http `v0.3.4`: the ring's emulation over epoll, and over kqueue on macOS, no
+  longer leaves a connection waiting for seconds under load.
+- The README and the architecture name the event-loop and offload patterns: I/O-bound
+  work goes to services, CPU-bound work stays in routes. The best practices show the
+  example app's domains and data model.
+
 ## v0.1.0 (2026-10-15)
 
 Bodies and responses in pieces, files and upgraded connections, forms, compression, and
