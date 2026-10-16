@@ -51,6 +51,12 @@ Traps met counting the routers' instructions (2026-10-13, h2load 1.70.0):
 - h2load's POSTs ran at a tenth of its GETs' rate against the same server, which kept
   the connection open: about 35,000 requests a second against 330,000. The kernel's
   share then buries a router's cost, so `bench/routes.sh` sends only GETs.
+- Ubuntu 26.04's sudo ignores `-E` ("preserving the entire environment is not
+  supported") and passes no variables on, so a root step lost `GOOSE_HTTP` and cloned
+  goose-http as root into `build/`. `bench/all.sh` names each variable with `env`
+  (2026-10-16).
+- A Windows update rebooted the desktop 2 h 30 min into `bench/all.sh`, and WSL ended
+  with it. Pause updates before an unattended session (2026-10-16).
 
 ### The REST benchmark on macOS
 

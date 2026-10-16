@@ -56,7 +56,10 @@ step() {
 }
 
 as_root() {
-    if [ "$(id -u)" = 0 ]; then "$@"; else sudo -n -E env PATH="$PATH" "$@"; fi
+    # Name each variable: sudo may refuse -E and keep none of them.
+    if [ "$(id -u)" = 0 ]; then "$@"; else
+        sudo -n env PATH="$PATH" GOOSE="$GOOSE" GOOSE_HTTP="$GOOSE_HTTP" MACHINE="$MACHINE" "$@"
+    fi
 }
 
 windows_cpu() {
