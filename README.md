@@ -145,11 +145,11 @@ flowchart LR
 - **Errors return to the route.** A failure anywhere within a route ends it with a JSON
   error in a customizable format ([errors](docs/reference.md#errors)).
 - **Workers share nothing and never block**, as in
-  [goose-http](https://github.com/kaitk/goose-http#concepts). Blocking work, such as a
-  database, runs on a service thread: the route sends it a
+  [goose-http](https://github.com/kaitk/goose-http#concepts). I/O-bound work, such as a
+  query to a database server, runs on a service thread: the route sends it a
   [message](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
-  and resumes when the reply arrives, the half-sync/half-async pattern ([tutorial](docs/tutorial/13-waiting.md),
-  [why](docs/architecture.md#waiting-on-a-service)).
+  and resumes when the reply arrives, the half-sync/half-async pattern
+  ([tutorial](docs/tutorial/13-waiting.md), [why](docs/architecture.md#waiting-on-a-service)).
 
 For differences from Actix and the reasons behind them, see the
 [architecture](docs/architecture.md#actix-and-where-goose-rest-differs).

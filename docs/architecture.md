@@ -138,14 +138,20 @@ not a value: a program can't build a list of middleware at run time.
 
 ## Waiting on a service
 
-Workers share no memory, so a database or other blocking work lives on a thread of its
-own, a service, which workers mail: the synchronous half of goose-http's
+Workers share no memory, so I/O-bound work, such as a query to a database server, runs
+on a thread of its own, a service, which workers mail: the synchronous half of
+goose-http's
 [half-sync/half-async split](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#slow-work).
-A route sends the service one job naming the whole
-use case with `rest::ask`, and the service does it start to end with blocking calls, in
-one transaction. The route waits once, with one time limit and one place where a full
-mailbox refuses work, and the use case can be tested as a plain call. A route waits more
-than once only for what one service can't do: a second service in turn.
+In the route, the worker's core would sit idle through each wait while the worker's
+other connections queue. CPU-bound work, including a query on embedded SQLite, runs in
+the route. When the workers already use every core, a service adds no throughput for
+it; it helps only work long enough to hold up the worker's other connections, which a
+service lets the operating system interleave with it. A route sends the service one job
+naming the whole use case with `rest::ask`, and the service does it start to end with
+blocking calls, in one transaction. The route waits once, with one time limit and one
+place where a full mailbox refuses work, and the use case can be tested as a plain call.
+A route waits more than once only for what one service can't do: a second service in
+turn.
 
 Goose can't store a function to call later, so the per-request state holds a
 fixed-mode enum of what each waiting route needs, and the program writes a case
