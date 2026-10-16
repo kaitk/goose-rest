@@ -2,6 +2,28 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.1.2 (2026-10-16)
+
+A JSON writer from a struct's fields, multipart extractors, and pauses for events sent
+over time. Goose `v2026.2` (`3ee3871`), goose-http `v0.3.6`, goose-compress `v0.1.1`.
+
+- `rest::format_fields(out, v)` writes a struct as a JSON object, every field under its
+  declared name, through Goose's new `const for`: a program's `format` overload can be
+  one line. It doesn't rename a key, leave out a field, or read JSON
+  ([reference](docs/reference.md#11-json-from-a-structs-fields)).
+- `rest::part`, `part_int`, `part_bool`, and `file_part` read a part of a whole
+  `multipart/form-data` body as slices of it, over goose-http's `http::find_part`.
+- `rest::pause(cx, ms)` pauses a response begun with `rest::begin`, for events sent over
+  time such as Server-Sent Events: the handler is called again with `http::TIMEOUT` and
+  sends the next piece.
+- An upgraded route that waits with `rest::ask` gets its client's bytes as `BODY`
+  meanwhile, and `TIMEOUT` in place of a 504. A second `ask` while one waits fails with
+  500 `already_waiting`.
+- The REST benchmark server imports goose-http's shared application module, so it does
+  the same work outside the framework as goose-http's server.
+- The docs call the threads a program asks "lanes", and the Best practices have a
+  Testing page.
+
 ## v0.1.1 (2026-10-16)
 
 A faster generated router, and goose-http's fix for its emulated ring. Goose `v2026.1`
