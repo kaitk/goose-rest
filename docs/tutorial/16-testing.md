@@ -2,8 +2,8 @@
 
 Part two's application is tested in two ways, as part one's is
 ([Testing without sockets](09-testing.md)): in-process through TinyCC, with no
-socket or thread, and against the running server over HTTP. Each approach covers
-what the other can't:
+socket or thread, and against the running server over HTTP. Each covers what the
+other can't:
 
 | What | Without sockets | Over HTTP |
 |---|---|---|
@@ -22,8 +22,8 @@ this way, one reply per answer it gives. Test over HTTP what needs real threads 
 time: that the lane replies at all, a reply after the route's wait has ended, and a
 client that goes while its job waits.
 
-The Best practices guide explains how to organize tests by domain and scenario in
-[Testing](../best-practices/testing.md).
+Best practices' [Testing](../best-practices/testing.md) lays out the tests by domain
+and by scenario.
 
 ## The use cases, as plain calls
 
@@ -65,7 +65,7 @@ thread to open, send to, or take from
 The block is the one `main.goose`'s worker gives `rest::serve`. The request state,
 `St { .. }`, is what `rest::ask` keeps its `Waiting` variant in, and `wakes` holds the
 replies the [next section](#the-case-functions-given-a-reply) gives.
-A route that doesn't wait produces a complete answer, as does one that fails before it asks:
+A route that doesn't wait gives a complete answer, as does one that fails before it asks:
 
 ```rust
     expect(body_of(answer(get("/v1/in-place/projects/1"))), "{\"id\":1,\"name\":\"goose\",\"owner\":1}");
@@ -121,7 +121,7 @@ turn gets two:
 ```
 
 The database isn't touched. The reply says task 5 was assigned, and the test checks
-that the case function's answer contains the task and assignee from the `Waiting`
+that the case function's answer holds the task and assignee from the `Waiting`
 variant. Each route still sends its job, so the test empties the box before its two
 slots fill.
 
@@ -150,9 +150,9 @@ between requests.
 
 ### What the timing-dependent cases rely on
 
-These limit tests depend on timing: a wait expires, a box fills while the database is busy,
+These limit tests depend on timing: a wait runs out, a box fills while the database is busy,
 and a client disconnects before its job starts. [`13-limits`](13-limits/requests.sh)
-uses fixed delays to produce each condition, with enough margin that the time curl takes
+uses fixed delays to bring about each case, with enough margin that the time curl takes
 to start doesn't matter:
 
 ```sh

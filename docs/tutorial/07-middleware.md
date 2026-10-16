@@ -1,7 +1,7 @@
 # 7. Middleware and scopes
 
-A middleware function takes a block containing the routes it wraps. goose-rest
-provides three middleware functions, and you can write your own the same way. From
+A middleware is a function that takes the routes it wraps as a block. goose-rest
+has three, and you can write your own the same way. From
 [`07-middleware`](07-middleware/main.goose):
 
 ```rust
@@ -45,9 +45,11 @@ fn handle(cx) {
 
 ## Where a middleware goes
 
-Placement determines which routes middleware applies to. `/health` is public; every
+Where a middleware sits decides which routes it applies to. `/health` is public; every
 route under `/v1` requires a tenant, and every route under `/admin` requires a token.
-These checks run before matching the route within the scope. Middleware that adds
+These checks run before the route inside the scope is matched.
+
+Middleware that adds
 headers to every answer, such as `timed` and `cors`, goes outside `rest::route` so
 the errors the route answers get the headers too. Middleware that can fail, such as
 `bearer` and `resolve_tenant`, goes inside it. A request has one `rest::route`:
@@ -65,10 +67,9 @@ inline fn resolve_tenant<F>(cx) {
 }
 ```
 
-Declare it `inline fn`. Goose inlines a plain function called once only if it is below
-a size threshold. A block of routes immediately exceeds that threshold, so a plain
-`fn` remains a function call and prevents the surrounding middleware from being
-inlined too. `inline fn` folds the middleware into the handler, which compiles to one
+Declare it `inline fn`. Goose inlines a plain function called once only if it's below
+a size limit, and a block of routes is over that limit at once, so a plain `fn` stays
+a call and keeps the middleware around it out of line too. `inline fn` folds the middleware into the handler, which compiles to one
 C function with a jump for each early answer
 ([architecture](../architecture.md#middleware-and-inlining)).
 
@@ -112,14 +113,10 @@ as `member_routes`, and a middleware named by a verb.
 [Concepts and naming](../best-practices/concepts.md) has the rest of an application's
 names.
 
-A stack keeps the rules of the nesting it replaces:
-
-- Middleware that adds fields to every answer, such as `timed` and `cors`, goes outside
-  `rest::route`, and middleware that can fail goes inside it.
-- A request opens one `rest::route`. A stack makes it clear whether it opens that
-  route, as `member_routes` does. Code inside that route opens no additional routes.
-- A stack is an `inline fn`. A plain `fn` that takes a block of routes stays a call and
-  keeps the middleware around it out of line.
+A stack keeps the rules of the nesting it replaces, given above: each middleware on its
+side of `rest::route`, one `rest::route` per request, and an `inline fn`, never a plain
+`fn`. It also makes clear whether it opens the request's route, as `member_routes`
+does, and code inside that route opens no other.
 
 ## Middleware with a schema
 

@@ -47,8 +47,10 @@ flowchart LR
 
 A job then waits only behind jobs of its own kind. A slow report holds a reader, not the
 writer, so entries can still be written. A password check occupies the hasher without
-holding up the database. A full box refuses a job at once with 503 while the other
-boxes continue accepting theirs. The program's database stands in for one over the
+holding up the database. A full box refuses a job at once with 503, while the other
+boxes still take theirs.
+
+The program's database stands in for one over the
 network, where each lane's thread holds its own connection. With embedded SQLite, a
 short query runs in the route instead, as short CPU work does
 ([Long CPU work goes to a lane](#long-cpu-work-goes-to-a-lane)), and a lane takes only
@@ -79,8 +81,8 @@ let HASHER_SLOTS: i32 = 16;
 ```
 
 A job queued beyond what its lane can finish in time starts after its client has
-already received a 504, so the work is wasted. Refusing the job at once instead gives
-the client a 503 and a chance to try again later. To run more jobs at once, give the
+already received a 504, so the work is wasted. Refusing it at once instead gives the
+client a 503, and a chance to try again later. To run more jobs at once, give the
 lane more threads, each with its own box, rather than make one box larger
 ([503 for a full box](../tutorial/13-limits.md#503-for-a-full-box)).
 
@@ -181,7 +183,7 @@ fn sign_in(cx) {
 }
 ```
 
-**2. The hasher's thread takes the job and runs it.** It recognizes the job by its tag,
+**2. The hasher's thread takes the job and runs it.** It knows the job by its tag,
 `VERIFY_PASSWORD`, calls the domain's job function, and replies with its result. From
 [`lanes/main.goose`](lanes/main.goose):
 
@@ -278,7 +280,7 @@ thread_fn hasher(box: http::Box) {
 </details>
 
 One hasher thread limits sign-ins to one core. During a burst, sign-in jobs wait in
-the hasher's box. Once it's full, further sign-ins get 503 while the workers keep
+the hasher's box. Once it's full, more sign-ins get 503 while the workers keep
 answering every other route.
 
 Work that reads and then computes, such as a report, needs no separate lane for the
@@ -289,7 +291,7 @@ computation. One job on the reports lane reads the entries and calls the rule to
 
 Give work that the product can do without under load, such as reports and exports,
 its own lane with a small box. When too many reports arrive, that box fills and refuses
-them with 503. The other lanes continue handling work from every other route:
+them with 503. The other lanes go on with every other route's work:
 
 ```text
 GET /reports/projects/1?ms=500 000
@@ -336,8 +338,8 @@ enum Waiting {
 }
 ```
 
-Every route that waits and all its steps are then listed in one place. Readers can
-see the sequence before opening a domain's files. Each variant is named for its
+Every route that waits, and each of its steps, is then listed in one place, so a
+reader sees the order before opening a domain's files. Each variant is named for its
 domain, and for the operation or what the route waits for
 ([Concepts and naming](concepts.md#slow-work-lanes-jobs-and-queries)).
 
@@ -361,8 +363,9 @@ fn resume(w: Waiting.EntryCreate, cx) {
 
 ### A route with two slow steps
 
-A route whose second piece of slow work needs the first one's result, on another lane,
-asks for it from the first step's `resume`, and waits again under another variant
+When a route's second piece of slow work, on another lane, needs the first one's result,
+the route asks for it from the first step's `resume`, and waits again under another
+variant
 ([Two lanes in turn](../tutorial/12-two-lanes.md#two-lanes-in-turn)). Signing in takes
 three steps:
 
@@ -423,21 +426,19 @@ A job takes no `cx`, so a test calls it as a plain function, as it does a rule. 
 domain's `routes.goose` grows too long, it splits by operation
 ([When a domain grows](layout.md#when-a-domain-grows)).
 
-Each `resume` also needs a one-line forwarding function in the global namespace.
-The program declares `Waiting` in `main.goose`, in the global namespace
+Each `resume` also needs a one-line function in the global namespace that forwards the
+call to it. The program declares `Waiting` in `main.goose`, in the global namespace
 ([Layout by domain](layout.md#the-programs-types-are-in-maingoose)), so the worker's call
-`resume(cx.state.waiting, cx)` finds only global functions. The domain therefore
-declares a global `resume` for each of its variants to forward the call to its own
-implementation:
+`resume(cx.state.waiting, cx)` finds only global functions:
 
 ```rust
 fn ::resume(w: Waiting.AuthPassword, cx) { auth::resume(w, cx); }
 fn ::resume(w: Waiting.AuthSession, cx) { auth::resume(w, cx); }
 ```
 
-The code stays in the domain's own `resume`. A function declared as `::resume` is global,
-so Goose looks up names in its body in the global namespace (goose_spec §11.1). Code
-written there would need to qualify each name from the domain, as in `auth::Verified`.
+Keep the code in the domain's own `resume`. A function declared as `::resume` is global,
+so Goose looks up the names in its body in the global namespace (goose_spec §11.1), and
+code there would have to qualify each of the domain's names, as in `auth::Verified`.
 
 ---
 

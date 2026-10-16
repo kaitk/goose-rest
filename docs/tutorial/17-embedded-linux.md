@@ -3,15 +3,15 @@
 A board that runs embedded Linux has megabytes of memory, not gigabytes, and its
 programs are built on another machine, with the board's cross compiler. goose-rest is
 written in Goose with no C of its own, so its programs cross-build for
-embedded Linux boards in the same way as goose-http programs: with `goose build --cc`
+embedded Linux boards the same way goose-http's do: with `goose build --cc`
 and the board's C cross compiler. goose-http's
 [embedded Linux guide](https://github.com/kaitk/goose-http/blob/main/docs/embedded.md)
 covers distribution cross compilers, Yocto SDKs, board requirements, and checks to run
 on the board.
 
 [`examples/device`](../../examples/device/) defines a board API from a schema. It
-provides temperature and uptime from sysfs and `/proc`, settings that control an LED's
-brightness through sysfs and are validated against schema bounds, a firmware upload,
+serves temperature and uptime from sysfs and `/proc`, settings that set an LED's
+brightness through sysfs and are checked against the schema's bounds, a firmware upload,
 bearer-token protection for writes, CORS, and a web page. It runs on one worker with
 small limits:
 
@@ -22,8 +22,8 @@ small limits:
     };
 ```
 
-Environment variables (`THERMAL`, `LED`, `UPTIME`) specify the hardware paths, so the
-example also runs on a laptop; its test uses files to simulate sysfs.
+Environment variables (`THERMAL`, `LED`, `UPTIME`) name the hardware paths, so the
+example also runs on a laptop, and its test uses files in place of sysfs.
 `scripts/test-aarch64.sh` cross-builds every example for aarch64 in an amd64 container,
 then runs the checks in an arm64 container and prints each example's peak RSS:
 
@@ -33,7 +33,7 @@ scripts/test-aarch64.sh
 
 In that test, `examples/device` reached a peak RSS of 4,728 kB with one worker. None of
 the examples has run on a board yet. [Development](../development.md#run-the-examples-on-arm64)
-covers the setup and measurement method.
+covers the setup, and how it measures.
 
 ---
 

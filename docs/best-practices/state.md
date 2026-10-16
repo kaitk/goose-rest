@@ -1,9 +1,9 @@
 # State
 
-Workers share nothing, so where data lives determines who can see it and what access
+Workers share nothing, so where data lives decides who can see it and what reaching it
 costs. Data lives in one of five places, each with its own name.
-[State](../tutorial/08-state.md) shows how to access each one. This page explains which
-to use.
+[State](../tutorial/08-state.md) shows how to reach each one, and this page which to
+use.
 
 The code on this page is from [`state/`](state/).
 
@@ -57,8 +57,8 @@ let HOLIDAYS = [
 ];
 ```
 
-The program compiles it in rather than loading it at startup. Changes to it are code
-changes, reviewed and released with the code. Don't load data into a global in
+The program compiles it in rather than loading it at startup, so a change to it is a
+code change, reviewed and released with the code. Don't load data into a global in
 `main` before the workers start: each worker gets a copy of it
 ([State](../tutorial/08-state.md#worker-state)).
 
@@ -116,7 +116,7 @@ section and the tutorial keep projects in worker state only because they run one
 ## Rate limits: worker state or lane data
 
 Keep the count for a limit that protects an account, such as failed sign-ins per user,
-in lane data, so requests from every worker contribute to the same count. Use worker
+in lane data, so requests on every worker add to the same count. Use worker
 state only for limits that protect the worker itself from load.
 
 A client's connections may reach any worker, so a count per worker multiplies the limit

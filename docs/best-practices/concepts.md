@@ -1,8 +1,7 @@
 # Concepts and naming
 
-The concepts an application is built from, what each one is, and how each is named.
-The other pages define each concept where they use it; this page puts them side by
-side.
+Each page defines a concept where it first needs it. This page puts them side by
+side: what each one is, and how it's named.
 
 ## The concepts
 
@@ -18,15 +17,15 @@ side.
 - **Rule**: a plain function that takes typed input and makes a decision, with no I/O.
 - **Lane**: a thread, or several that run the same jobs, for one kind of slow work
   ([Lanes and jobs](lanes.md)).
-- **Box**: a queue with a fixed number of slots, from which a lane's thread takes jobs
-  sent by mail.
+- **Box**: a queue with a fixed number of slots. Jobs arrive in it by mail, and the
+  lane's threads take them from it.
 - **Worker state** and **request state**: what a worker keeps for itself, `cx.app`, and
   what one request keeps, `cx.state` ([State](state.md)).
 - **Constant**, **store**, and **lane data**: the other places data lives: compiled into
   the program, loaded once at startup into `http.store`, and owned by a lane.
 - **Job**: one use case, run on a lane from start to end, in one transaction.
-- **Background task**: work of minutes that a route answers with 202 at once, and the
-  client polls. It's made of jobs: one that starts it, and one for each poll
+- **Background task**: work that takes minutes. The route answers 202 at once, and
+  the client polls. It's made of jobs: one that starts it, and one for each poll
   ([Background tasks](../tutorial/13-limits.md#background-tasks)).
 - **Query**: a function per database statement, which jobs call.
 - **`Waiting` step and `resume`**: where a route that waits continues when the reply
@@ -56,8 +55,8 @@ side.
 
 NestJS follows Spring's model, with modules, controllers, and providers, so the Spring
 column applies to it too. Go gives each request a goroutine that may block, so it needs
-no `Waiting`. Its equivalent of a lane is a fixed set of goroutines reading from one
-buffered channel, which serves as the box. In Akka, a lane is a dispatcher. A Sidekiq
+no `Waiting`. A lane there is a fixed set of goroutines reading from one buffered
+channel, and the channel is the box. In Akka, a lane is a dispatcher. A Sidekiq
 or Celery job is a background task kept in a store until it runs; a goose-rest
 background task lives in its lane's memory, and is lost if the server stops.
 
@@ -69,13 +68,12 @@ Each domain is a namespace ([Layout by domain](layout.md#a-domain-is-a-namespace
 a name inside it leaves the domain out: `projects::CreateInput`, not
 `projects::ProjectCreateInput`, and `projects::routes`, not `projects::project_routes`.
 
-Calls from outside already name the domain through its namespace. Within the domain,
-the shorter name is unambiguous.
+Calls from outside already name the domain through its namespace, and inside the
+domain the short name is unambiguous.
 
 ## A domain is plural, as its paths are
 
-Name a domain for the entity it holds, using the plural to match its paths:
-`projects`, as in `/organization/projects/42`. Names inside the domain are singular:
+Name a domain for the entity it holds, in the plural: `projects`, as in `/organization/projects/42`. Names inside the domain are singular:
 the struct `Project`, the code `project_not_found`. A domain that covers an area rather
 than an entity is named for the area: `timer`, `auth`, `settings`.
 
@@ -86,16 +84,16 @@ it: `projects::Project`, where a singular domain would read `project::Project`.
 ## Each layer has a shape of its own
 
 A route's name is a bare verb, a job's is a verb and a noun, and a query's is a query
-verb and a noun. The names show which layer each call belongs to:
+verb and a noun. So a name shows which layer a call belongs to:
 
 ```text
 projects::create  ->  create_project  ->  find_project, insert_project
    route              job                  queries
 ```
 
-The noun in a job's or a query's name is the exception to the first rule: it
-distinguishes a job or a query from the route that calls it, and distinguishes the
-queries of a job that touches several entities from each other.
+The noun in a job's or a query's name is the exception to the first rule. It tells a
+job or a query apart from the route that calls it, and tells apart the queries of a job
+that touches several entities.
 
 ## Naming each part
 

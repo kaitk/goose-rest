@@ -3,8 +3,8 @@
 The projects now move into a database. Its driver blocks: a query sends a statement,
 and the call returns when the rows come back. A worker serves thousands of connections
 on one thread, so a route that waits for the database makes all of them wait. This page
-runs a query in the route first, to show the cost, then moves the queries to a lane, a
-thread that owns the connection, while the worker serves its other connections.
+runs a query in the route first, to show the cost, then moves the queries to a lane that
+owns the connection, so the worker serves its other connections meanwhile.
 
 The route then returns before it answers, and the worker calls the handler again when
 the reply comes. Every later call works this way, through the same case functions: the
@@ -13,8 +13,8 @@ pieces of a body on [page 14](14-bodies-in-pieces.md), and of a response on
 
 The database here is the tutorial's own [`db`](db/db.goose): in-memory rows read and
 written by the statements used in these pages. Each statement sleeps for 20 ms to
-simulate a query over a network. Its calls resemble those of a Rust driver such as
-sqlx: a connection, a statement with bound parameters, and rows read into structs.
+stand in for a query over the network. Its calls look like a Rust driver's, such as
+sqlx's: a connection, a statement with bound parameters, and rows read into structs.
 A real driver can replace it without changing the pages.
 
 ## Blocking the worker
@@ -33,15 +33,14 @@ the route. From [`11-waiting`](11-waiting/app.goose):
 
 While this query waits, every other connection on the worker waits too: 20 ms here for
 each connection. Each worker also has its own copy of the program's state, so it needs
-its own database connection and cannot see another worker's transaction.
+its own database connection and can't see another worker's transaction.
 
 ## Lanes and jobs
 
 Work that waits goes to a *lane*: a thread of the program, or several threads that run
 the same jobs, for one kind of slow work, here the database's, with the connections it
-owns. A route sends the lane a *job*, one use case as a message, and returns. The
-worker serves its other connections, then calls the handler again when the reply
-arrives. [Concepts and naming](../best-practices/concepts.md) has what other frameworks
+owns. A route sends the lane a *job*, one use case as a message, and returns.
+[Concepts and naming](../best-practices/concepts.md) has what other frameworks
 call each:
 
 ```mermaid
@@ -77,7 +76,7 @@ shows the same exchange at the event loop's level, and
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
 how a box works.
 
-The job is a complete use case, which the lane performs from start to finish with plain
+The job is a complete use case, which the lane runs from start to end with plain
 blocking calls, as the body of an Axum or Express handler would. Assigning a task checks
 that the project exists and that both the requesting user and the assignee are members,
 then updates the task: four statements in one transaction. From
@@ -174,8 +173,8 @@ From [`main.goose`](11-waiting/main.goose):
 
 ## Asking a lane, and resuming
 
-The route reads and validates the request, then calls `rest::ask` once, passing the
-lane's address, the job tag, the job, and the state needed when the reply arrives. From
+The route reads and checks the request, then calls `rest::ask` once, passing the
+lane's address, the job tag, the job, and the state it needs when the reply comes. From
 [`app.goose`](11-waiting/app.goose), which holds the routes apart from `main` so that
 a test can import them:
 
@@ -243,8 +242,8 @@ PUT /v1/projects/1/tasks/6/assignee?user=2 404 {"error":"task_not_found"}
 ## One job per route
 
 A route could instead ask once per query and resume after each, forming a state machine
-with a `Waiting` variant and a case function per query. One job per route is the default
-for these reasons:
+with a `Waiting` variant and a case function per query. One job per route is the default,
+for three reasons:
 
 - A use case reads as one function, next to its data, and its queries share one
   transaction. A route that waits once per query can't hold a transaction across its

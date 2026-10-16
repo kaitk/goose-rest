@@ -12,15 +12,15 @@ A larger body is gathered when the route asks for it: [Large bodies](10-large-bo
 
 ## A reader written by hand
 
-`rest::take<T>(cx)` is goose-rest's type-based extractor, corresponding to Actix's
+`rest::take<T>(cx)` is goose-rest's type-based extractor, like Actix's
 `web::Json<T>`. It calls the `rest::from_request(cx, v: const T?)` overload that you or
 the generator declare for `T`. `v` is always null; only its type matters.
 
 For a hand-written body reader, the overload passes the reader to `rest::json_body`,
-which answers 415 unless the request specifies `application/json`, or 400
+which answers 415 unless the request says `application/json`, or 400
 `invalid_body` if the reader rejects the body. The reader collects the members as
-slices, validates them, and constructs the struct at the end: a struct containing a
-string can't be filled field by field. From
+slices, checks them, and builds the struct at the end: a struct that holds a string
+can't be filled field by field. From
 [`04-json/reader`](04-json/reader/main.goose):
 
 ```rust
@@ -133,8 +133,8 @@ POST /projects 400 {"error":"invalid_body","detail":"unknown member","at":26}
 Never edit the generated file by hand: change the schema and regenerate.
 `scripts/test.sh` regenerates every `api_gen.goose` in this repository and fails if any
 result differs from the committed file. The [generator reference](../generator.md#the-subset)
-lists the supported schema keywords. The generator rejects unsupported constructs with
-their JSON pointers rather than silently dropping them.
+lists the supported schema keywords. A construct outside that subset is refused with
+its JSON pointer, never silently dropped.
 
 ## Size a string in bytes
 

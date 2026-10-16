@@ -48,8 +48,8 @@ what the page shows matches what the code does.
 - [Architecture](../architecture.md): the ideas goose-rest takes from Actix and
   Elysia, and how Goose shapes the design.
 - [goose-http's patterns](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md):
-  how the event loop reads, sends, and waits, underpinning every page of part two.
+  how the event loop reads, sends, and waits, which every page of part two builds on.
 
 Clients can be generated from the same `api.json`. Standard OpenAPI tools, such as
 [OpenAPI Generator](https://openapi-generator.tech/), generate clients in Python, C,
-and most other languages, so the server and client use the same contract.
+and most other languages, so the server and its clients share one contract.

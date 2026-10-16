@@ -36,8 +36,7 @@ fn handle(cx) {
 Each extractor reads one part of the request: `rest::param` and `rest::param_int` read a
 path parameter; `rest::query`, `rest::query_int`, and `rest::query_bool` read a query string
 parameter; `rest::header` reads a header field; and `rest::cookie` reads a cookie. These
-are plain function calls made where the handler needs the value, rather than handler
-arguments as in Actix or Axum:
+are plain calls, not handler arguments as in Actix or Axum:
 
 ```rust
 fn v1(cx) {
@@ -59,10 +58,10 @@ fn v1(cx) {
 }
 ```
 
-An optional value comes with a `bool` indicating whether it is present in the request.
-A value that doesn't parse fails the route with 400. `rest::require` also fails the route
-if the value is missing. Query values are percent-decoded, with `+` decoded as a space.
-For a repeated key, the first value is returned:
+An optional value comes with a `bool` that says whether the request has it.
+A value that doesn't parse fails the route with 400. `rest::require` fails it too when the
+value is missing. Query values are percent-decoded, with `+` decoded as a space.
+A repeated key gives its first value:
 
 ```text
 GET /v1/projects?q=g&limit=1   200 [{"id":1,"name":"goose"}]
@@ -72,9 +71,9 @@ GET /v1/me                     400 {"error":"invalid_parameter","detail":"X-User
 DELETE /v1/projects/2          405 {"error":"method_not_allowed"}
 ```
 
-An extractor returns a slice of the request when no decoding is needed; otherwise, it
-decodes into `cx.scratch`. In either case, the value remains valid until the handler
-returns. Copy it if it must outlive the request. The
+An extractor returns a slice of the request when nothing needs decoding, and otherwise
+decodes into `cx.scratch`. Either way, the value stays valid until the handler returns,
+so copy it if it must outlive the request. The
 [reference](../reference.md#extractors) lists every extractor and the errors it can return.
 
 ---

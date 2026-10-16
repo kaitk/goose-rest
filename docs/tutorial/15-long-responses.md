@@ -3,9 +3,8 @@
 A project's tasks can be exported as CSV, and its files downloaded. Either can be larger
 than a worker should build whole: the worker holds a response it builds until the client
 has taken all of it, and a slow client takes a long time. So these go in pieces, each
-made or read when the client has taken the one before. For how goose-http sends a response
-this way, see
-[goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses).
+made or read when the client has taken the one before. [goose-http's long responses](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#long-responses)
+covers how goose-http sends a response this way.
 
 ## A response sent in pieces
 
@@ -94,8 +93,8 @@ fn download(cx, project: i64) {
 }
 ```
 
-The open file and what's left to send are held in an `http::FileBody`, `body`, in the
-state, so a program that serves no files keeps no file state. The case function hands each call
+An `http::FileBody` in the state, `body`, holds the open file and what's left to
+send, so a program that serves no files keeps no file state. The case function hands each call
 to `rest::send_file`, which sends the next piece of up to 64 KB at each `MORE`, ends
 the response after the last, and closes the file at `CLOSED`:
 

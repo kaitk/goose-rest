@@ -2,12 +2,12 @@
 
 Every wait is bounded: a route waits up to a time limit, a lane's box holds a fixed
 number of jobs, and a worker holds a fixed number of waiting routes. This page shows
-what the client receives at each limit and what the lane does when a client
+what the client gets at each limit, and what the lane does when a client
 stops waiting. The [goose-http limits guide](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#limits)
-explains the event-loop side: its bounds, slow clients, and the resources held by a wait.
+explains the event loop's side: its bounds, slow clients, and the resources a wait holds.
 
 [`13-limits`](13-limits/main.goose) requests a project's summary from the database. The
-`ms` parameter adds that many milliseconds to simulate a slow query. The route waits
+`ms` parameter adds that many milliseconds, as a slow query would. The route waits
 at most 200 ms, and the database lane's box holds two jobs:
 
 ```rust
@@ -24,7 +24,7 @@ let WAIT_MS: i64 = 200;
 ## 504 for a late reply
 
 The last argument to `rest::ask` is the time limit, which defaults to 5 seconds. When
-the limit expires, the route answers 504 `timeout` and the worker drops the reply
+the time is up, the route answers 504 `timeout` and the worker drops the reply
 when it arrives:
 
 ```rust
@@ -35,14 +35,14 @@ when it arrives:
 GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
 ```
 
-A job can't be stopped from outside. The database continues the 500 ms query, but no
+A job can't be stopped from outside. The database goes on with the 500 ms query, but no
 route is waiting for its reply.
 
 ## 503 for a full box
 
-While the database processes one job, subsequent jobs wait in its box. If the box is
-full, the job isn't sent: `rest::ask` immediately answers 503
-`unavailable` rather than queuing work the database won't reach in time:
+While the database runs one job, the next ones wait in its box. If the box is
+full, the job isn't sent: `rest::ask` answers 503 `unavailable` at once,
+rather than queue work the database won't reach in time:
 
 ```text
 GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}

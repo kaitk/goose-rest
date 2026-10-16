@@ -1,9 +1,9 @@
 # Middleware and stacks
 
-An application's middleware lives in `middleware.goose`. Its stacks live in
-`stacks.goose`, with one per audience. Every scope runs behind one stack.
+An application's middleware lives in `middleware.goose`, and its stacks, one per
+audience, in `stacks.goose`. Every scope runs behind one stack.
 [Middleware and scopes](../tutorial/07-middleware.md) explains how middleware and stacks
-work and where each kind belongs in relation to `rest::route`.
+work and where each kind sits relative to `rest::route`.
 
 The code on this page is from [`middleware/`](middleware/).
 
@@ -62,7 +62,7 @@ condition already met.
 
 ## A block's parameter is named for what it's given
 
-The parameter of a middleware's or a stack's block is named for the value it receives:
+The parameter of a middleware's or a stack's block is named for the value it's given:
 `user` from `authenticate`, `member` from `resolve_organization`.
 
 The block's code uses that name throughout, so the name says what the route may rely

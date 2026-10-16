@@ -7,9 +7,8 @@ way, through the same code the server runs.
 ## One request, in process
 
 `rest::serve_one(text, app) { cx => ... }` takes the bytes of one request, answers it
-through the block as `rest::serve` would, and returns the response bytes. The test needs
-no sockets, threads, or goose-http types. It runs in-process through TinyCC with
-`goose test.goose`. From [`05-schema/test.goose`](05-schema/test.goose):
+through the block as `rest::serve` would, and returns the response bytes. Nor does the test
+need goose-http's types, and it runs in-process through TinyCC with `goose test.goose`. From [`05-schema/test.goose`](05-schema/test.goose):
 
 ```rust
     fn answer(text: const u8[:]) -> u8[>..] {
@@ -28,12 +27,11 @@ too. It has no `Date` or `Server` header. `serve_one` behaves like the server:
   `rest::body` gathers it, then the block runs again with the whole body. A test with
   a large body therefore covers the rule from [Large bodies](10-large-bodies.md): code
   before a route's first `rest::body` runs twice.
-- goose-http's limits apply. A rejected request, such as one with a body exceeding
+- goose-http's limits apply. A rejected request, such as one with a body over
   `max_body`, gets goose-http's rejection response. A block that writes no answer gets
   500. The full call is `rest::serve_one(text, app, fresh, cfg)`: `app` is the worker
   state, `fresh` is the request state, and the optional `cfg` changes the limits.
-  Omit `fresh` when there is no request state, or both state arguments when neither
-  kind of state is needed.
+  Leave out `fresh` when there's no request state, and both when there's neither.
 - An HTTP/1.1 request without `Host` is given `Host: localhost`, so a test request can
   leave it out.
 
@@ -45,15 +43,15 @@ too. It has no `Date` or `Server` header. `serve_one` behaves like the server:
 ```
 
 The test imports `api_gen.goose` and `app.goose`, just as `main.goose` does, so it can't
-import `main.goose` itself. Keep the handlers outside the file containing `main`.
-[`test/router/same_as_chain.goose`](../../test/router/same_as_chain.goose) uses the same
-approach to compare the generated router with an `if` chain of the same 60 routes.
+import `main.goose` itself. Keep the handlers outside the file that holds `main`.
+[`test/router/same_as_chain.goose`](../../test/router/same_as_chain.goose) does the same
+to compare the generated router with an `if` chain of the same 60 routes.
 [`test/serve_one/bodies.goose`](../../test/serve_one/bodies.goose) counts how many times a
 route runs for a large body.
 
 ## The whole server
 
-To test the whole server, the tutorial programs and examples follow the same pattern.
+The tutorial's programs and the examples test the whole server the same way.
 Each `requests.sh` lists requests as `req METHOD PATH [curl options]`.
 `scripts/test-examples.sh` builds the program, starts it on a local port, runs the
 requests with `curl`, and compares the `METHOD PATH STATUS BODY` lines with `expected.txt`.

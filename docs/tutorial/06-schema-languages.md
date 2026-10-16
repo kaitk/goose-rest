@@ -1,12 +1,12 @@
 # 6. The schema in TypeScript, Python, or Rust
 
-`api.json` is plain OpenAPI 3.1. Any tool that produces OpenAPI can generate it, as long
-as the output stays within the generator's supported [subset](../generator.md#the-subset).
+`api.json` is plain OpenAPI 3.1. Any tool that writes OpenAPI can make it, as long as
+the output stays within the generator's [subset](../generator.md#the-subset).
 
 ## TypeScript
 
-goose-rest provides [`ts/api.mts`](../../ts/api.mts), with TypeScript types covering
-only that subset. Pass the document to `api()`, and `tsc` rejects unsupported keywords
+goose-rest provides [`ts/api.mts`](../../ts/api.mts), with TypeScript types for only
+that subset. Pass the document to `api()`, and `tsc` rejects unsupported keywords
 and structures while you write it. TypeScript also lets you use comments and shared
 constants, which JSON lacks. [`05-schema/api.mts`](05-schema/api.mts) produces the same
 `api.json` as [the previous page](05-schema.md):

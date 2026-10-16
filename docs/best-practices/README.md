@@ -40,14 +40,14 @@ when it applies and when your application is the exception.
 4. [Errors](errors.md): one shape, and each domain's codes in one place.
 5. [Middleware and stacks](middleware.md): middleware named by a verb, a stack per
    audience, and each scope behind one stack.
-6. [Lanes and jobs](lanes.md): a lane, a thread, for each kind of slow work, long CPU
-   work off the workers, how many jobs a lane's box holds, and which work is refused
-   under load.
+6. [Lanes and jobs](lanes.md): a lane for each kind of slow work, long CPU work kept
+   off the workers, how many jobs a lane's box holds, and which work is refused under
+   load.
 7. [State](state.md): where data lives, by what it is.
 8. [Testing](testing.md): small tests per domain, and scenarios over HTTP.
 
 Every page draws its examples from one time-tracking API.
-[Layout by domain](layout.md) describes its domains, routes, and data. Each page quotes
-code from a small program in the folder of the same name, covering part of that API.
+[Layout by domain](layout.md) describes its domains, routes, and data. Each page quotes a
+small program, in the folder of the same name, that covers part of that API.
 `scripts/test.sh` builds these programs and sends them requests, as it does for the
 tutorial's programs.

@@ -1,15 +1,16 @@
 # 10. Large bodies
 
-Projects now have tasks, imported from a spreadsheet as CSV. Thousands of lines exceed
-the 8 KB buffer that goose-http reads requests into. goose-rest gathers the whole body,
-up to a limit set by the route, then calls the route with it. For how goose-http reads a body
-and the other ways to read one, see [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
+Projects now have tasks, imported from a spreadsheet as CSV. Thousands of lines don't fit
+in the 8 KB buffer that goose-http reads requests into. goose-rest gathers the whole
+body, up to a limit the route sets, then calls the route with it.
+[goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies)
+covers how goose-http reads a body, and the other ways to read one.
 
 ## Gathered whole, up to a limit
 
 A body that fits alongside its head in the read buffer reaches the handler whole. A longer
 body is gathered only when a route asks for it with `rest::body(cx, limit)` or
-`rest::take` of a JSON type. The latter calls `rest::body` with its default of 1 MB. From
+`rest::take` of a JSON type, which calls `rest::body` with its default of 1 MB. From
 [`10-large-bodies`](10-large-bodies/main.goose):
 
 ```rust
@@ -99,13 +100,13 @@ the default. A route that accepts more raises `max_body` to its limit, as
 
 `api::MAX_BODY` is the largest `x-body-limit` in the schema, or 1 MB.
 
-A body whose `Content-Length` exceeds the limit is rejected before it is sent; a
-chunked body is rejected once it exceeds the limit. The first call sets the limit for
-the request. To accept a JSON body over 1 MB, call `rest::body` with the required limit
-before `rest::take`, as generated routes do for `x-body-limit`.
+A body whose `Content-Length` is over the limit is refused before it's sent, and a
+chunked body once it passes the limit. The first call sets the limit for the request.
+To accept a JSON body over 1 MB, call `rest::body` with the limit it needs before
+`rest::take`, as generated routes do for `x-body-limit`.
 
 The worker holds each body it gathers until the route returns, so the limit also bounds
-the memory used for that body by each connection importing at the same time. The
+the memory that each connection importing at the same time uses for its body. The
 worker keeps that memory after the request, for the bodies it gathers next: the most it
 has gathered at once stays with it for its life. The route then reads the whole body in
 one call, and the worker answers no other request meanwhile.
@@ -117,6 +118,7 @@ it grows. If the worker has no room within the budget, it answers 503 with
 happens at once, before the client sends it. For a chunked body, it happens when the
 body can no longer grow, and the connection closes. The client can try again a second
 later, once the worker has answered the requests whose bodies it gathered in the meantime.
+
 The default, 64 MB, lets a worker gather 63 bodies at the 1 MB limit at once, since each
 takes its head too. The import sets a budget of its own, in the `rest::Config` it
 passes to `rest::serve` after the request state, here none:

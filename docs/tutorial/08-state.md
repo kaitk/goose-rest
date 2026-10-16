@@ -8,17 +8,17 @@ own:
   worker;
 - *worker state*, `cx.app`, which each worker keeps for itself;
 - *request state*, `cx.state`, which each request starts afresh;
-- *lane data*, owned by a thread of its own, a lane, which workers ask.
+- *lane data*, owned by a lane, a thread of its own or several, which workers ask.
 
-This page shows worker state, request state, and how to access the store and a lane.
-The Best practices guide explains where to keep each kind of data in
+This page shows worker state and request state, and how to reach the store and a lane.
+Which place suits which data is in Best practices'
 [State](../best-practices/state.md#choose-the-place-by-what-the-data-is).
 
 ## Worker state
 
 The worker's `thread_fn` owns its state in local variables. `rest::serve(cfg, app)`
-gives each request `cx.app`, a reference to a struct containing references to those
-variables. This serves the role of Actix's `web::Data`, but without the `Arc`. From
+gives each request `cx.app`, a reference to a struct of references to those
+variables. It plays the part of Actix's `web::Data`, without the `Arc`. From
 [`05-schema`](05-schema/main.goose):
 
 ```rust
@@ -32,14 +32,14 @@ thread_fn worker(cfg: http::Config) {
     let e = rest::serve(cfg, app) { cx =>
 ```
 
-Each worker has its own `projects`, so a project created on one worker isn't available
-on another. For that reason, tutorial programs that store projects use one worker. A
+Each worker has its own `projects`, so a project created on one worker isn't there on
+another, which is why the tutorial's programs that store projects use one worker. A
 cache or rate limiter can be worker state; data that every worker must see is lane
 data, as described below.
 
 Data that every worker only reads, such as a catalog loaded at startup, is the
-exception: don't load it into globals in `main` before the workers start, because each
-worker then holds it more than once. The store, `import http.store`, keeps one copy that every worker reads
+exception: don't load it into globals in `main` before the workers start, because every
+worker then holds a copy of its own. The store, `import http.store`, keeps one copy that every worker reads
 ([goose-http's state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)).
 
 To keep many records in memory, hold their strings as ranges into one byte array, not
@@ -53,7 +53,7 @@ an identifier, `format: ascii` sizes it at one byte per code point
 ## Request state
 
 `rest::serve(cfg, app, fresh)` gives each request `cx.state`, a fresh copy of `fresh`.
-The state type determines the error format ([Answers and errors](03-errors.md#errors)).
+The state's type decides the error shape ([Answers and errors](03-errors.md#errors)).
 A `rest::Once<T>` field computes a value on its first use within the request. From
 [`08-state`](08-state/main.goose):
 
@@ -81,9 +81,9 @@ fn user(cx: Cx&) -> User& {
             };
 ```
 
-The alias defines the route's context type: `St` is the request state, `App` is the
-worker state, and `http::Router` is the router supplied by `rest::routes`. Outside that
-block, the context has `rest::NoRouter`, so it cannot be passed to `user`. A generic
+The alias names the route's context type: `St` is the request state, `App` is the
+worker state, and `http::Router` is the router that `rest::routes` supplies. Outside
+that block, the context has `rest::NoRouter`, so it can't be passed to `user`. A generic
 helper can leave its context parameter untyped, as the other examples do.
 
 The route calls `user` twice, and `lookup` runs once:
@@ -96,7 +96,7 @@ GET /me 200 grace, lookups so far: 2
 ## Lane data
 
 A database connection, or other data that every worker uses and changes, belongs to a
-lane, a thread of its own. Workers send it jobs by mail. A route uses `rest::ask` and
+lane, a thread of its own or several. Workers send it jobs by mail. A route uses `rest::ask` and
 resumes when the reply arrives: [Work that waits](11-waiting.md).
 
 ---

@@ -9,12 +9,12 @@ An application's tests follow Goose's own convention
   routes, middleware, and stacks through
   `rest::serve_one` ([Testing](../reference.md#testing)).
 - **Scenarios over HTTP.** A folder per scenario under `test/` runs the real program, its
-  workers, and lanes, and compares its answers with a golden file.
+  workers, and its lanes, and compares its answers with a golden file.
 - **`// error:` fixtures** for what must not compile, such as a route given the wrong
   state type.
 
-A test that needs a socket, a thread, or more than one domain is a scenario. Keep every
-other test in its domain's folder as a small test. Most tests should fall into this group.
+A test that needs a socket, a thread, or more than one domain is a scenario. Every other
+test is a small test in its domain's folder, and most tests should be.
 
 The examples for this page aren't written yet. [Testing the application](../tutorial/16-testing.md)
 shows the calls the small tests make.

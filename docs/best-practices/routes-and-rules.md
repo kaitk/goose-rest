@@ -78,7 +78,7 @@ fn archive(cx) {
 ## What a rule does
 
 A rule takes plain values, such as its domain's structs and numbers. It returns its
-result and an `Error`, using `Error.None` on success. From
+result and an `Error`, which is `Error.None` on success. From
 [`routes-and-rules/projects/rules.goose`](routes-and-rules/projects/rules.goose):
 
 ```rust
@@ -116,9 +116,9 @@ fn new_entry(input: CreateInput, id: i64, now: i64) -> Entry, Error {
 ## Which check goes where
 
 The route rejects malformed requests, such as a missing field or a value that isn't a
-number. The extractors handle these checks before the rule runs, answering 400
+number. Its extractors make these checks before the rule runs, and answer 400
 `invalid_parameter`. The rule rejects well-formed requests that the domain refuses,
-such as an empty name or an attempt to archive a project that's already archived.
+such as an empty name, or archiving a project that's already archived.
 
 ```text
 POST /projects 400 {"error":"invalid_parameter","detail":"name: required"}
@@ -143,11 +143,11 @@ database. From [`routes-and-rules/test.goose`](routes-and-rules/test.goose):
     assert(why == projects::Error.NameRequired);
 ```
 
-Tests cover each case of the domain's logic where it's defined. A route's test covers
+So each case of the domain's logic is tested where it's defined. A route's test covers
 only what the route adds: its extractors and its answer
 ([Testing the application](../tutorial/16-testing.md)). A job on a lane calls the same
 rules without a request. Changing a decision then changes one small function, which a
-reviewer can assess on its own.
+reviewer can judge on its own.
 
 ---
 

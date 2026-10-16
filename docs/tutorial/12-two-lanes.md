@@ -1,6 +1,6 @@
 # 12. Two lanes, or a reply in pieces
 
-One job per route covers a use case that one lane can handle alone. Two cases need
+One job per route covers a use case that one lane can do alone. Two cases need
 more: a reply too large for one message, and a route that waits on one lane and then
 another. Both use the same `Waiting` enum and case functions as
 [the previous page](11-waiting.md).
@@ -20,8 +20,8 @@ bytes, so that a project's tasks arrive in several pieces:
 ```
 
 The route's case function runs for each piece. `rest::relay` starts a chunked response
-with the first piece and sends each subsequent piece as a chunk, waiting again until
-the final piece arrives:
+with the first piece and sends each later piece as a chunk, waiting again until the
+last one arrives:
 
 ```rust
 // Called once per piece: the first starts a chunked response, the rest go as chunks.
@@ -33,14 +33,14 @@ GET /v1/projects/2/tasks 200 [{"id":6,"title":"Name it","assignee":2}]
 ```
 
 The worker holds one piece at a time, however long the reply. The lane writes the
-whole reply first, so it holds all of it. Data too large to hold in full is generated
+whole reply first, so it holds all of it. Data too large to hold in full is written
 one piece at a time as the client reads it ([long responses](15-long-responses.md)).
 
 ## Two lanes in turn
 
 Inviting a user to a project adds a member to the database, then sends an email through
-a separate mailer lane. Neither lane can do both, so the route waits on one and
-then the other, using a `Waiting` variant for each step:
+the mailer, a lane of its own. Neither lane can do both, so the route waits on one and
+then the other, with a `Waiting` variant for each step:
 
 ```rust
 enum Waiting {
@@ -104,9 +104,9 @@ POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}
 |---|---|
 | One lane, a reply that fits a message | One job, one case function ([Work that waits](11-waiting.md)) |
 | One lane, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
-| Two lanes in turn | A `Waiting` variant per wait; the first case function requests work from the next lane |
+| Two lanes in turn | A `Waiting` variant per wait; the first case function asks the next lane |
 
-Each wait has its own time limit, and each request can encounter a full box, so a
+Each wait has its own time limit, and each ask can meet a full box, so a
 route that waits twice can fail at either step. A 503 at the second step comes after the
 first lane has finished its work. If the second step can happen later, such as
 sending an email, the lane can forward the work itself and the route waits only once.

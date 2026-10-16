@@ -43,11 +43,11 @@ Each operation calls a handler in the `app` namespace, named after its `operatio
 snake_case: `listProjects` calls `app::list_projects`. A handler's arguments come in this
 order:
 
-1. `cx`, with `cx.app` referring to the worker state passed to `rest::serve`.
+1. `cx`, whose `cx.app` is the worker state passed to `rest::serve`.
 2. The security check's result, when the operation specifies a scheme.
 3. Typed path parameters in template order: an `integer` becomes an `i64`.
-4. A `<OperationId>Params` struct containing the query, header, and cookie parameters.
-5. The body, using the type named by its `$ref`.
+4. A `<OperationId>Params` struct holding the query, header, and cookie parameters.
+5. The body, of the type its `$ref` names.
 
 So the handlers in [`app.goose`](05-schema/app.goose) are:
 
@@ -110,14 +110,14 @@ api_gen.goose:259: error: unknown function: app::get_project
 
 Declare its `id` as a string instead, and the build fails with
 `argument 2: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
-`api_gen.goose` identifies the call within the generated code for that operation. The
+`api_gen.goose` is the call in that operation's generated code. The
 chain continues for 15 more frames through `rest::serve` and goose-http's event loop,
 because Goose lists every generic function between the error and `main`
 ([Goose findings](../goose-findings.md#an-error-inside-a-generic-function-lists-every-frame-up-to-main)).
 
 The workflow is to change `api.json`, regenerate `api_gen.goose`, and let the compiler
-list the handlers to add or change. This repository commits both files so reviewers
-can see the generated code changes alongside the schema change. Your project can do
+list the handlers to add or change. This repository commits both files, so a reviewer
+sees the generated code change beside the schema's. Your project can do
 the same and build without the generator, or generate `api_gen.goose` during the build
 ([decisions](../decisions.md#with-a-schema)).
 
@@ -129,8 +129,8 @@ gives a literal path priority over a matching template
 
 ## Generated and hand-written routes
 
-`dispatch` answers every request it receives, returning 404 for paths absent from
-the schema. Put routes the schema can't describe, such as those with non-JSON bodies,
+`dispatch` answers every request it gets, with 404 for a path the schema doesn't
+have. Put routes the schema can't describe, such as those with non-JSON bodies,
 before it in the same `rest::routes` block. From
 [`05-schema/main.goose`](05-schema/main.goose):
 
@@ -157,11 +157,12 @@ fn upload(cx) {
 and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with
 `Allow: PUT`, and `OPTIONS` gets 204 with the same header, just as with a single router.
 When hand-written routes and the schema share a path, `Allow` lists the hand-written
-routes' methods first, then the schema's. A hand-written route takes precedence over a
-schema operation with the same method because it comes first. The hand-written route
-calls `app::security_token` itself, performing the same check as the generated routes.
-For how `rest::body` gathers a body larger than the read buffer, and the limits that
-apply, see [Large bodies](10-large-bodies.md).
+routes' methods first, then the schema's. A hand-written route wins over a schema
+operation with the same method, because it comes first.
+
+The hand-written route calls `app::security_token` itself, the same check the generated
+routes make. [Large bodies](10-large-bodies.md) covers how `rest::body` gathers a body
+larger than the read buffer, and the limits that apply.
 
 ---
 

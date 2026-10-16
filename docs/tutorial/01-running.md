@@ -37,18 +37,18 @@ fn greeting(cx, name: const u8[:]) -> u8[>..] {
 `greeting` returns a string, not a `Result`, and `hello` doesn't check anything. When
 the name is too long, `rest::fail` leaves through Goose's `return ... from`, straight
 to the `rest::route` around `hello`, which answers `400 {"error":"name_too_long"}`.
-The compiler checks that every call that can fail runs inside a `rest::route`. A call
+The compiler checks that every call that can fail runs inside a `rest::route`: a call
 outside one doesn't compile.
 
-The rest of goose-rest's design follows from this and from Goose's inability to store
+The rest of goose-rest's design follows from this, and from the fact that Goose can't store
 functions:
 
 - There is no handler table, so routes are code: an `if` chain of `rest::on` calls
   inside `rest::routes`, or a router the generator writes as a `match`.
 - Middleware is a block around routes, inlined into the handler, so it costs no call
   and no boxing. A `rest::fail` inside it leaves the whole route.
-- Data that requests change is worker state, or lane data, which a thread of its own
-  owns and workers reach by mail ([State](08-state.md)).
+- Data that requests change is worker state, or lane data, owned by a thread of its own
+  that workers reach by mail ([State](08-state.md)).
 
 ## Workers and `main`
 
@@ -92,17 +92,17 @@ fn main() {
 }
 ```
 
-`http::worker_count` uses `cfg.workers` when set; otherwise, it chooses one worker per
+`http::worker_count` uses `cfg.workers` when it's set, and otherwise one worker per
 hardware thread (per performance core on macOS). `http::stop_on_signals` makes SIGINT
 and SIGTERM stop the server rather than terminate the process. The other programs use
 the same `main`, some with `workers: 1`.
 
-Each worker gets its own copy of the globals it uses when it starts, so data `main`
-loads before it spawns them is copied into every worker. Data that every worker reads
+When a worker starts, it gets its own copy of the globals it uses, so data `main` loads
+before spawning the workers is copied into every one. Data that every worker reads
 goes in goose-http's store, `http.store`, instead ([page 8](08-state.md#worker-state)).
 
-Build with `goose build`. The in-process TinyCC backend used by `goose run` can't run
-the threads a server needs:
+Build with `goose build`. `goose run` uses the in-process TinyCC backend, which can't
+run the threads a server needs:
 
 ```sh
 goose build -o build/hello docs/tutorial/01-running/main.goose

@@ -20,7 +20,7 @@ project that the domain refuses.
 
 A domain's `errors.goose` holds its `Error` enum, with a variant for each reason the
 domain refuses an operation. It also holds a `check` case function for each variant,
-which fails the route with the corresponding status and code.
+which fails the route with that variant's status and code.
 From [`errors/projects/errors.goose`](errors/projects/errors.goose):
 
 ```rust
@@ -49,8 +49,8 @@ fn show(cx) {
 
 Every error code the domain answers is then in one file that a client developer can
 read in full. Rules stay free of HTTP: they name the refusal, and `check` gives it a
-status. Because the compiler requires a `check` for every variant, each new variant
-needs a status and code.
+status. The compiler wants a `check` for every variant, so each new variant gets a
+status and code.
 
 <details>
 <summary>The projects' routes, with a domain's and a shared error</summary>
@@ -96,7 +96,7 @@ one without reading the status.
 ## Shared codes go in `common/errors.goose`
 
 An error that more than one domain answers, or that middleware answers, goes in
-`common/errors.goose`, laid out as a domain's. From
+`common/errors.goose`, laid out like a domain's. From
 [`errors/common/errors.goose`](errors/common/errors.goose):
 
 ```rust

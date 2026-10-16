@@ -4,10 +4,10 @@ Projects now have attachments: photos, scans, and exports, up to 1 GB each. A bo
 large won't fit in a worker's memory, and the worker holds every body it gathers until
 its route returns ([page 10](10-large-bodies.md)). Instead, the route reads an
 attachment in pieces as it arrives, writing each piece to a file before the next
-arrives. The worker holds one piece at a time, regardless of the attachment's size. The
+comes. The worker holds one piece at a time, however large the attachment. The
 pieces come to the route's case function, as a lane's reply does on
-[page 11](11-waiting.md). For how goose-http reads a body this way, see
-[goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies).
+[page 11](11-waiting.md). [goose-http's request bodies](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#request-bodies)
+covers how goose-http reads a body this way.
 
 ## A body read in pieces
 
@@ -34,7 +34,7 @@ sets where its pieces go. A `Content-Length` over the limit gets 413, which leav
 route at the call. The code before and after the call runs once: unlike `rest::body`, it
 leaves the route only if it refuses the body. No piece arrives before the route returns,
 even if the body came with its head. After the call, the route can still set the state
-needed to handle the pieces, such as `part_path` here.
+it needs for the pieces, such as `part_path` here.
 
 <details>
 <summary>The routes, which check the project first</summary>
@@ -61,7 +61,7 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 The handler is then called again for each piece of the body, through the same
 `rest::resumed` block as a lane's reply
 ([page 11](11-waiting.md#asking-a-lane-and-resuming)), and goes to the variant's case
-function. `cx.kind` identifies the event: `http::BODY` with a piece in `cx.body`,
+function. `cx.kind` says which event it is: `http::BODY` with a piece in `cx.body`,
 `http::END` once the whole body has arrived, or `http::CLOSED`:
 
 ```mermaid
@@ -116,8 +116,8 @@ enum Waiting {
 }
 ```
 
-A body that fits alongside its head in the read buffer comes the same way, as one `BODY`
-and the `END`, so the route handles every size the same way:
+A body that fits alongside its head in the read buffer comes as one `BODY` and the
+`END`, so the route handles every size the same way:
 
 ```text
 POST /v1/projects/1/attachments 201 {"project":1,"id":1,"size":19}         whole, as one piece
@@ -151,7 +151,7 @@ raises it to the largest limit, as
 ```
 
 If reading stops before `END`, the case function gets `http::CLOSED` once. It then
-releases the resources held in the state: here, the `.part` file. This happens when:
+frees what the state holds: here, the `.part` file. This happens when:
 
 - the client disconnects before the whole body arrives;
 - a chunked body passes the limit;
