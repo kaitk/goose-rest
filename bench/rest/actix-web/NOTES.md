@@ -36,8 +36,16 @@ is `1e047d8`), read on 2026-10-13: `frameworks/Rust/actix/Cargo.toml`,
   it on every answer the routes build.
 - Allocator: snmalloc (`snmalloc-rs`) as the global allocator.
 - actix-web with its default features; edition 2024.
-- Release profile: `lto = true`, `opt-level = 3`, `codegen-units = 1`.
+- Release profile: `lto = true` (fat), `opt-level = 3`, `codegen-units = 1`. This
+  server adds `panic = "abort"`, which the entry doesn't set, to share one profile with
+  the other Rust servers ([bench/README.md](../../README.md#servers)).
 - `RUSTFLAGS="-C target-cpu=native"`, from its Dockerfile.
+
+HttpArena's actix entry (MDA2AV/HttpArena `36582d1`, read on 2026-10-17; the entry's last
+change is `a232b94`) runs `HttpServer` in its default configuration, with thin LTO,
+rustls, and the compression middleware, and without a global allocator, so it isn't the
+faster configuration to follow. Its `panic = "abort"` is the one setting it has that
+TechEmpower's entry lacks.
 
 Versions are current where the entry's are older: actix-web 4.16.0 (entry 4.9.0),
 actix-http 3.18.13 (3.9.0), actix-server 2.10.0 (2.2.0), actix-rt 2.15.0 (2.10.0), and

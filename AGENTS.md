@@ -136,6 +136,9 @@ new goose-http names another, change it in the same commit (2026-10-15).
   against Axum, actix-web, and dusty (Zig) in their fastest documented configuration,
   built in release mode, with the same worker count. Each framework serves through its
   own router, extractors, and middleware, not one catch-all handler. Losses are recorded as plainly as wins.
+- A setting one rival's documented configuration has, and the others take as idiomatically
+  (a release profile flag, a CPU target), goes to all of them, and each `NOTES.md` says
+  where it departs from the entry it follows (2026-10-17).
 
 ## Code conventions
 

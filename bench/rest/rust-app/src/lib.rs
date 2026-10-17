@@ -135,7 +135,8 @@ fn load(dir: &str, tier: Tier, template: bool) -> Data {
 
 // Tier R's routes: each line of ROUTES (bench/rest/tiers/github.txt by
 // default), "METHOD /path/:param", as its method and its path with each
-// ":param" written "{param}", as axum's and actix-web's routers take them.
+// ":param" written "{param}", as axum's, actix-web's, and ntex's routers take
+// them.
 pub fn github_routes() -> Vec<(String, String)> {
     let file = std::env::var("ROUTES").unwrap_or_else(|_| "bench/rest/tiers/github.txt".into());
     let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"));

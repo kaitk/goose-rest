@@ -38,13 +38,19 @@ The REST servers live under `rest/`:
   on a body. Both Goose servers do the same work outside the framework, and load, hand
   over, and hold their records the same way, their prebuilt JSON in goose-http's shared
   store.
-- `axum/` and `actix-web/`, with `rust-app/` holding the records and JSON they share.
+- `axum/`, `actix-web/`, and `ntex/`, with `rust-app/` holding the records and JSON they
+  share. Axum and actix-web run on epoll through Tokio; ntex runs on its own runtime,
+  on io_uring on Linux.
 - `dusty/`: dusty with a route per path.
 - `tiers/`: goose-rest's own tiers F, R, and M, with their checker, loads, and summary.
 
 Each framework serves through its own router, extractors or body readers, and JSON,
 built in release mode in its fastest documented configuration; each entry's `NOTES.md`
-records its configuration. `bench/rest.sh` wraps goose-http's `bench/rest.sh`, from that
+records its configuration. Where one rival's configuration has a setting the others
+take as readily, all of them use it: the Rust servers share one release profile, the
+strongest of their TechEmpower entries' (`opt-level = 3`, `codegen-units = 1`, fat LTO,
+`panic = "abort"`), with `-C target-cpu=native`. ntex pins each worker to a CPU, as its
+entry does, and `AFFINITY=0` unpins them; the other servers don't pin theirs. `bench/rest.sh` wraps goose-http's `bench/rest.sh`, from that
 checkout.
 
 `rest/goose-rest/github_gen.goose` is generated from `github.json`, which

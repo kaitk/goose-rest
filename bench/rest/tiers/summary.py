@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.environ.get("GOOSE_HTTP", os.path.join(os.pat
 from summary import k, span, stat, wrk  # noqa: E402
 
 ORDER = ["goose-uring-bare", "goose-epoll-bare", "goose-uring-rest", "goose-epoll-rest", "goose-uring-rest-gen",
-         "goose-epoll-rest-gen", "axum", "actix-web", "dusty-routes"]
+         "goose-epoll-rest-gen", "axum", "actix-web", "ntex", "dusty-routes"]
 
 
 def cells(out):
