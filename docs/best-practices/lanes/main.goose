@@ -1,7 +1,9 @@
 // docs/best-practices/lanes.md: a lane for each kind of slow work. The writer
 // owns the entries and the sessions, the hasher checks passwords, and the
 // reports run on a reader of their own behind a small box, so that they are
-// refused first. One worker, as in the section's other programs.
+// refused first. One worker, as in the section's other programs. A placement
+// file, given with --place or GOOSE_PLACE, may put each lane on cores of its
+// own; without one, every thread floats.
 //
 //   goose build -o build/lanes docs/best-practices/lanes/main.goose
 //   build/lanes 8080
@@ -25,66 +27,49 @@ let HASHER_SLOTS: i32 = 16;
 
 // The writer lane, one thread: the database's one writer. It owns the entries
 // and the sessions, and runs every job that writes, one at a time.
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, at: http::Seat) {
+    // First, before the thread touches memory of its own.
+    http::take_seat(at);
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
-    var running = true;
-    while running {
-        // Sleeps until a job comes, or a second passes.
-        http::mail_wait(box, 1000);
-        // Each job in the box, in order, told apart by its tag.
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == CREATE_ENTRY {
-                // The job, and where reply_value sends the reply.
-                let a, ok = rest::asked<entries::CreateJob>(bytes);
-                if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
-            } else if tag == OPEN_SESSION {
-                let a, ok = rest::asked<auth::OpenJob>(bytes);
-                if ok { rest::reply_value(a, auth::open_session(sessions, a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+    // Each job in the box, in order, told apart by its tag, until main stops
+    // the box.
+    rest::lane(box) { tag, bytes =>
+        if tag == CREATE_ENTRY {
+            // The job, and where reply_value sends the reply.
+            let a, ok = rest::asked<entries::CreateJob>(bytes);
+            if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
+        } else if tag == OPEN_SESSION {
+            let a, ok = rest::asked<auth::OpenJob>(bytes);
+            if ok { rest::reply_value(a, auth::open_session(sessions, a.job)); }
+        }
+    };
 }
 
-// The reports lane, one thread: a reader that runs only reports, so that a
+// A thread of the reports lane: a reader that runs only reports, so that a
 // slow report holds it, not the writer.
-thread_fn reports(box: http::Box) {
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == TOTAL_ENTRIES {
-                let a, ok = rest::asked<reports::TotalsJob>(bytes);
-                // A report whose client has gone isn't run.
-                if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+thread_fn reports(box: http::Box, at: http::Seat) {
+    http::take_seat(at);
+    rest::lane(box) { tag, bytes =>
+        if tag == TOTAL_ENTRIES {
+            let a, ok = rest::asked<reports::TotalsJob>(bytes);
+            // A report whose client has gone isn't run.
+            if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
+        }
+    };
 }
 
-// The hasher lane, one thread: password checks, work that takes CPU, not
+// A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
-thread_fn hasher(box: http::Box) {
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == VERIFY_PASSWORD {
-                // The job, and where reply_value sends the reply.
-                let a, ok = rest::asked<auth::SignInJob>(bytes);
-                if ok { rest::reply_value(a, auth::verify_password(a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+thread_fn hasher(box: http::Box, at: http::Seat) {
+    http::take_seat(at);
+    rest::lane(box) { tag, bytes =>
+        if tag == VERIFY_PASSWORD {
+            // The job, and where reply_value sends the reply.
+            let a, ok = rest::asked<auth::SignInJob>(bytes);
+            if ok { rest::reply_value(a, auth::verify_password(a.job)); }
+        }
+    };
 }
 
 thread_fn worker(cfg: http::Config, app: App) {
@@ -107,22 +92,26 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let wbox, e = http::mail_open(WRITER_SLOTS, 256);
-    http::exit_on_error(e);
-    let rbox, e2 = http::mail_open(REPORTS_SLOTS, 256);
-    http::exit_on_error(e2);
-    let hbox, e3 = http::mail_open(HASHER_SLOTS, 256);
-    http::exit_on_error(e3);
-    let app = App { writer: http::address(wbox, 0), reports: http::address(rbox, 0), hasher: http::address(hbox, 0) };
-    let wt = thread_spawn(writer, wbox);
-    let rt = thread_spawn(reports, rbox);
-    let ht = thread_spawn(hasher, hbox);
-    let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, app));
-    http::mail_send(app.writer, STOP, "");
-    http::mail_send(app.reports, STOP, "");
-    http::mail_send(app.hasher, STOP, "");
-    thread_wait(wt);
-    thread_wait(rt);
-    thread_wait(ht);
+    let place = http::place_load();
+    // The code bounds each lane, and a placement file chooses within the
+    // bounds. One writer, which needs nothing written: max is threads unless
+    // written. Reports may grow to 4 threads, and the hasher to 2.
+    let app = App {
+        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }),
+        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }),
+        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }),
+    };
+    var lanes: i64[>..] = [];
+    for b, i in app.writer.boxes { lanes.push(thread_spawn(writer, b, rest::lane_seat(place, app.writer, i))); }
+    for b, i in app.reports.boxes { lanes.push(thread_spawn(reports, b, rest::lane_seat(place, app.reports, i))); }
+    for b, i in app.hasher.boxes { lanes.push(thread_spawn(hasher, b, rest::lane_seat(place, app.hasher, i))); }
+    let cfg = http::Config { port: port as i32, workers: 1, place: place, mail_slots: 64, max_waiting: 1024, .. };
+    var ids: i64[>..] = [];
+    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg, app)); }
+    for id in ids { thread_wait(id); }
+    // A flag in each box, not a message: a full box can't refuse it.
+    rest::lane_stop(app.writer);
+    rest::lane_stop(app.reports);
+    rest::lane_stop(app.hasher);
+    for id in lanes { thread_wait(id); }
 }

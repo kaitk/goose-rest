@@ -67,16 +67,16 @@ so the lane skips a job nobody waits for. `rest::reply_value` returns false once
 the route has gone:
 
 ```rust
-            if tag == SUMMARY {
-                let a, ok = rest::asked<SummaryJob>(bytes);
-                if ok && !rest::still_wanted(a) {
-                    gone.skipped++;
-                } else if ok {
-                    if a.job.ms > 0 { sleep_ms(a.job.ms); }
-                    let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [a.job.project]);
-                    // False once the client has gone, as after its 504.
-                    if !rest::reply_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
-                }
+        if tag == SUMMARY {
+            let a, ok = rest::asked<SummaryJob>(bytes);
+            if ok && !rest::still_wanted(a) {
+                gone.skipped++;
+            } else if ok {
+                if a.job.ms > 0 { sleep_ms(a.job.ms); }
+                let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [a.job.project]);
+                // False once the client has gone, as after its 504.
+                if !rest::reply_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
+            }
 ```
 
 The jobs for the two clients that gave up were skipped, and the reply to the route
@@ -175,11 +175,12 @@ and then takes a step:
 ```rust
 // The reports' thread: it takes a step of the report running between its
 // messages, so that it replies to a client's question while a report runs.
+// Its wait has a time limit while a report runs, so it writes the loop that
+// rest::lane is, until the box is stopped and empty.
 thread_fn reports(box: http::Box) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];
-    var running = true;
-    while running {
+    while !http::mail_stopped(box) {
         var busy = false;
         for r in all { if r.left > 0 { busy = true; } }
         http::mail_wait(box, if busy { STEP_MS } else { 1000 });
@@ -197,8 +198,6 @@ thread_fn reports(box: http::Box) {
                 } else if ok {
                     rest::reply_value(a, Report { status: 404, code: "report_not_found", .. });
                 }
-            } else if tag == STOP {
-                running = false;
             }
         };
         for &r in all {

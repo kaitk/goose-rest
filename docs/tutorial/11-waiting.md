@@ -120,36 +120,30 @@ The lane's thread takes each job from its box with `rest::asked<J>`, which also 
 where the reply goes, and replies with `rest::reply_value`:
 
 ```rust
-            } else if tag == ASSIGN {
-                let a, ok = rest::asked<AssignJob>(bytes);
-                if ok { rest::reply_value(a, assign(c, a.job)); }
+        } else if tag == ASSIGN {
+            let a, ok = rest::asked<AssignJob>(bytes);
+            if ok { rest::reply_value(a, assign(c, a.job)); }
 ```
 
 <details>
 <summary>The lane's thread, and how <code>main</code> starts it</summary>
 
-The thread sleeps until mail comes, takes each job in its box by its tag, and stops at
-`STOP`. From [`database.goose`](11-waiting/database.goose):
+The thread takes each job in its box by its tag in `rest::lane`, which sleeps until
+mail comes, and returns once `main` stops the box and every job queued before is done.
+From [`database.goose`](11-waiting/database.goose):
 
 ```rust
 thread_fn run(box: http::Box, delay_ms: i64) {
     var c = db::open(delay_ms);
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == PROJECT {
-                let a, ok = rest::asked<ProjectJob>(bytes);
-                if ok { rest::reply_value(a, project(c, a.job)); }
-            } else if tag == ASSIGN {
-                let a, ok = rest::asked<AssignJob>(bytes);
-                if ok { rest::reply_value(a, assign(c, a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+    rest::lane(box) { tag, bytes =>
+        if tag == PROJECT {
+            let a, ok = rest::asked<ProjectJob>(bytes);
+            if ok { rest::reply_value(a, project(c, a.job)); }
+        } else if tag == ASSIGN {
+            let a, ok = rest::asked<AssignJob>(bytes);
+            if ok { rest::reply_value(a, assign(c, a.job)); }
+        }
+    };
 }
 ```
 
@@ -165,7 +159,8 @@ From [`main.goose`](11-waiting/main.goose):
     let st = thread_spawn(database::run, box, DELAY_MS);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     thread_wait(thread_spawn(worker, cfg, to));
-    http::mail_send(to, database::STOP, "");
+    // A flag in the box, not a message: a full box can't refuse it.
+    http::mail_stop(box);
     thread_wait(st);
 ```
 

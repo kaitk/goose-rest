@@ -13,7 +13,6 @@ let CREATE_ENTRY: i32 = 1;
 let TOTAL_ENTRIES: i32 = 2;
 let VERIFY_PASSWORD: i32 = 3;
 let OPEN_SESSION: i32 = 4;
-let STOP: i32 = 5;
 
 // The steps of every route that waits, a route's steps together and in the
 // order they run.
@@ -26,8 +25,9 @@ enum Waiting {
 
 struct St { waiting: Waiting = Waiting.None }
 
-// Where the routes send each lane its jobs.
-struct App { writer: http::MailAddress, reports: http::MailAddress, hasher: http::MailAddress }
+// The lanes the routes send their jobs to: rest::ask takes a lane's least
+// busy thread.
+struct App { writer: rest::Lane, reports: rest::Lane, hasher: rest::Lane }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

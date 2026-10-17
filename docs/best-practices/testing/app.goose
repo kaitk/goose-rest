@@ -9,7 +9,6 @@ import entries.routes;
 
 // A job's tag.
 let CREATE_ENTRY: i32 = 1;
-let STOP: i32 = 2;
 
 // The steps of every route that waits.
 enum Waiting {

@@ -89,30 +89,34 @@ lane more threads, each with its own box, rather than make one box larger
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
 
-`main` opens a box per lane, with slots of 256 bytes to fit the largest job a route
-sends. It gives the workers each box's address in `App`, which a route reads as
-`cx.app.writer`, and starts each lane's thread. At shutdown, it sends each lane `STOP`
-and waits for its thread:
+`main` opens each lane with `rest::lane_open`, a box per thread, with slots of 256 bytes
+to fit the largest job a route sends. It gives the workers the lanes in `App`, which a
+route reads as `cx.app.writer`, and starts each lane's threads. At shutdown, it stops
+each lane with `rest::lane_stop` and waits for its threads:
 
 ```rust
-    let wbox, e = http::mail_open(WRITER_SLOTS, 256);
-    http::exit_on_error(e);
-    let rbox, e2 = http::mail_open(REPORTS_SLOTS, 256);
-    http::exit_on_error(e2);
-    let hbox, e3 = http::mail_open(HASHER_SLOTS, 256);
-    http::exit_on_error(e3);
-    let app = App { writer: http::address(wbox, 0), reports: http::address(rbox, 0), hasher: http::address(hbox, 0) };
-    let wt = thread_spawn(writer, wbox);
-    let rt = thread_spawn(reports, rbox);
-    let ht = thread_spawn(hasher, hbox);
-    let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, app));
-    http::mail_send(app.writer, STOP, "");
-    http::mail_send(app.reports, STOP, "");
-    http::mail_send(app.hasher, STOP, "");
-    thread_wait(wt);
-    thread_wait(rt);
-    thread_wait(ht);
+    let place = http::place_load();
+    // The code bounds each lane, and a placement file chooses within the
+    // bounds. One writer, which needs nothing written: max is threads unless
+    // written. Reports may grow to 4 threads, and the hasher to 2.
+    let app = App {
+        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }),
+        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }),
+        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }),
+    };
+    var lanes: i64[>..] = [];
+    for b, i in app.writer.boxes { lanes.push(thread_spawn(writer, b, rest::lane_seat(place, app.writer, i))); }
+    for b, i in app.reports.boxes { lanes.push(thread_spawn(reports, b, rest::lane_seat(place, app.reports, i))); }
+    for b, i in app.hasher.boxes { lanes.push(thread_spawn(hasher, b, rest::lane_seat(place, app.hasher, i))); }
+    let cfg = http::Config { port: port as i32, workers: 1, place: place, mail_slots: 64, max_waiting: 1024, .. };
+    var ids: i64[>..] = [];
+    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg, app)); }
+    for id in ids { thread_wait(id); }
+    // A flag in each box, not a message: a full box can't refuse it.
+    rest::lane_stop(app.writer);
+    rest::lane_stop(app.reports);
+    rest::lane_stop(app.hasher);
+    for id in lanes { thread_wait(id); }
 ```
 
 </details>
@@ -120,34 +124,29 @@ and waits for its thread:
 <details>
 <summary>What a lane's thread runs</summary>
 
-A lane's thread waits for mail, takes each job from its box by its tag, runs the job's
-function, and replies. The writer:
+A lane's thread takes its seat, then takes each job from its box by its tag in
+`rest::lane`, runs the job's function, and replies. The writer:
 
 ```rust
 // The writer lane, one thread: the database's one writer. It owns the entries
 // and the sessions, and runs every job that writes, one at a time.
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, at: http::Seat) {
+    // First, before the thread touches memory of its own.
+    http::take_seat(at);
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
-    var running = true;
-    while running {
-        // Sleeps until a job comes, or a second passes.
-        http::mail_wait(box, 1000);
-        // Each job in the box, in order, told apart by its tag.
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == CREATE_ENTRY {
-                // The job, and where reply_value sends the reply.
-                let a, ok = rest::asked<entries::CreateJob>(bytes);
-                if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
-            } else if tag == OPEN_SESSION {
-                let a, ok = rest::asked<auth::OpenJob>(bytes);
-                if ok { rest::reply_value(a, auth::open_session(sessions, a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+    // Each job in the box, in order, told apart by its tag, until main stops
+    // the box.
+    rest::lane(box) { tag, bytes =>
+        if tag == CREATE_ENTRY {
+            // The job, and where reply_value sends the reply.
+            let a, ok = rest::asked<entries::CreateJob>(bytes);
+            if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
+        } else if tag == OPEN_SESSION {
+            let a, ok = rest::asked<auth::OpenJob>(bytes);
+            if ok { rest::reply_value(a, auth::open_session(sessions, a.job)); }
+        }
+    };
 }
 ```
 
@@ -188,10 +187,10 @@ fn sign_in(cx) {
 [`lanes/main.goose`](lanes/main.goose):
 
 ```rust
-            if tag == VERIFY_PASSWORD {
-                // The job, and where reply_value sends the reply.
-                let a, ok = rest::asked<auth::SignInJob>(bytes);
-                if ok { rest::reply_value(a, auth::verify_password(a.job)); }
+        if tag == VERIFY_PASSWORD {
+            // The job, and where reply_value sends the reply.
+            let a, ok = rest::asked<auth::SignInJob>(bytes);
+            if ok { rest::reply_value(a, auth::verify_password(a.job)); }
 ```
 
 **3. The job's function finds the user and calls the rule.** The job and its reply are
@@ -257,23 +256,17 @@ fn signed_in(users: const User[:], email: const u8[:], password: const u8[:]) ->
 From [`lanes/main.goose`](lanes/main.goose):
 
 ```rust
-// The hasher lane, one thread: password checks, work that takes CPU, not
+// A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
-thread_fn hasher(box: http::Box) {
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == VERIFY_PASSWORD {
-                // The job, and where reply_value sends the reply.
-                let a, ok = rest::asked<auth::SignInJob>(bytes);
-                if ok { rest::reply_value(a, auth::verify_password(a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+thread_fn hasher(box: http::Box, at: http::Seat) {
+    http::take_seat(at);
+    rest::lane(box) { tag, bytes =>
+        if tag == VERIFY_PASSWORD {
+            // The job, and where reply_value sends the reply.
+            let a, ok = rest::asked<auth::SignInJob>(bytes);
+            if ok { rest::reply_value(a, auth::verify_password(a.job)); }
+        }
+    };
 }
 ```
 
@@ -309,9 +302,9 @@ The reports lane skips jobs whose clients have gone. Here, two clients gave up w
 their jobs waited in the box:
 
 ```rust
-                let a, ok = rest::asked<reports::TotalsJob>(bytes);
-                // A report whose client has gone isn't run.
-                if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
+            let a, ok = rest::asked<reports::TotalsJob>(bytes);
+            // A report whose client has gone isn't run.
+            if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
 ```
 
 The lane then spends its time only on reports that clients are still waiting for

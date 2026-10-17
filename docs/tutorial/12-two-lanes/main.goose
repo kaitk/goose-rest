@@ -18,7 +18,6 @@ let DELAY_MS: i64 = 20;
 let TASKS: i32 = 1;
 let ADD_MEMBER: i32 = 2;
 let SEND: i32 = 3;
-let STOP: i32 = 4;
 
 struct TasksJob { project: i64 }
 struct MemberJob { project: i64, user: i64 }
@@ -112,45 +111,31 @@ fn add_member(c: db::Conn&, j: MemberJob) -> MemberReply {
 
 thread_fn database(box: http::Box) {
     var c = db::open(DELAY_MS);
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == TASKS {
-                let a, ok = rest::asked<TasksJob>(bytes);
-                // In pieces of the worker's message size, 64 bytes here.
-                if ok { rest::reply(a, tasks_json(c, a.job)); }
-            } else if tag == ADD_MEMBER {
-                let a, ok = rest::asked<MemberJob>(bytes);
-                if ok { rest::reply_value(a, add_member(c, a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+    rest::lane(box) { tag, bytes =>
+        if tag == TASKS {
+            let a, ok = rest::asked<TasksJob>(bytes);
+            // In pieces of the worker's message size, 64 bytes here.
+            if ok { rest::reply(a, tasks_json(c, a.job)); }
+        } else if tag == ADD_MEMBER {
+            let a, ok = rest::asked<MemberJob>(bytes);
+            if ok { rest::reply_value(a, add_member(c, a.job)); }
+        }
+    };
 }
 
 // The mailer: it numbers each invitation it sends.
 thread_fn mailer(box: http::Box) {
     var sent = 0;
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == SEND {
-                let a, ok = rest::asked<MailJob>(bytes);
-                if ok {
-                    sleep_ms(DELAY_MS);
-                    sent++;
-                    rest::reply_value(a, MailReply { id: sent });
-                }
-            } else if tag == STOP {
-                running = false;
+    rest::lane(box) { tag, bytes =>
+        if tag == SEND {
+            let a, ok = rest::asked<MailJob>(bytes);
+            if ok {
+                sleep_ms(DELAY_MS);
+                sent++;
+                rest::reply_value(a, MailReply { id: sent });
             }
-        };
-    }
-    http::mail_close(box);
+        }
+    };
 }
 
 thread_fn worker(cfg: http::Config, to_db: http::MailAddress, to_mailer: http::MailAddress) {
@@ -183,8 +168,8 @@ fn main() {
     let mt = thread_spawn(mailer, mbox);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, mail_size: 64, max_waiting: 1024, .. };
     thread_wait(thread_spawn(worker, cfg, to_db, to_mailer));
-    http::mail_send(to_db, STOP, "");
-    http::mail_send(to_mailer, STOP, "");
+    http::mail_stop(dbox);
+    http::mail_stop(mbox);
     thread_wait(dt);
     thread_wait(mt);
 }

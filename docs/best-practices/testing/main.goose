@@ -20,19 +20,12 @@ let WRITER_SLOTS: i32 = 64;
 // writes, one at a time.
 thread_fn writer(box: http::Box) {
     var all: entries::Entry[>..] = [];
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == CREATE_ENTRY {
-                let a, ok = rest::asked<entries::CreateJob>(bytes);
-                if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+    rest::lane(box) { tag, bytes =>
+        if tag == CREATE_ENTRY {
+            let a, ok = rest::asked<entries::CreateJob>(bytes);
+            if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
+        }
+    };
 }
 
 thread_fn worker(cfg: http::Config, writer: http::MailAddress) {
@@ -62,6 +55,6 @@ fn main() {
     let wt = thread_spawn(writer, box);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     thread_wait(thread_spawn(worker, cfg, to));
-    http::mail_send(to, STOP, "");
+    http::mail_stop(box);
     thread_wait(wt);
 }

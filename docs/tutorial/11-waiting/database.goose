@@ -11,7 +11,6 @@ import db;
 // A job's tag.
 let PROJECT: i32 = 1;
 let ASSIGN: i32 = 2;
-let STOP: i32 = 3;
 
 struct ProjectJob { id: i64 }
 struct ProjectReply { status: i32 = 200, code: u8[..32] = "", project: db::Project = db::Project { .. } }
@@ -48,24 +47,17 @@ fn assign(c: db::Conn&, j: AssignJob) -> AssignReply {
     return AssignReply { .. };
 }
 
-// The lane's thread: it owns the connection, and takes jobs from its box
-// until STOP, one at a time.
+// The lane's thread: it owns the connection, and takes jobs from its box one
+// at a time, until main stops the box and every job queued before is done.
 thread_fn run(box: http::Box, delay_ms: i64) {
     var c = db::open(delay_ms);
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == PROJECT {
-                let a, ok = rest::asked<ProjectJob>(bytes);
-                if ok { rest::reply_value(a, project(c, a.job)); }
-            } else if tag == ASSIGN {
-                let a, ok = rest::asked<AssignJob>(bytes);
-                if ok { rest::reply_value(a, assign(c, a.job)); }
-            } else if tag == STOP {
-                running = false;
-            }
-        };
-    }
-    http::mail_close(box);
+    rest::lane(box) { tag, bytes =>
+        if tag == PROJECT {
+            let a, ok = rest::asked<ProjectJob>(bytes);
+            if ok { rest::reply_value(a, project(c, a.job)); }
+        } else if tag == ASSIGN {
+            let a, ok = rest::asked<AssignJob>(bytes);
+            if ok { rest::reply_value(a, assign(c, a.job)); }
+        }
+    };
 }

@@ -30,7 +30,6 @@ let SUMMARY: i32 = 1;
 let GONE: i32 = 2;
 let START: i32 = 3;
 let STATUS: i32 = 4;
-let STOP: i32 = 5;
 
 // ms makes the database take that much longer, as a slow query would.
 struct SummaryJob { project: i64, ms: i64 }
@@ -129,38 +128,32 @@ fn resume(w: Waiting.Report, cx) {
 thread_fn database(box: http::Box) {
     var c = db::open(DELAY_MS);
     var gone = Gone { .. };
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == SUMMARY {
-                let a, ok = rest::asked<SummaryJob>(bytes);
-                if ok && !rest::still_wanted(a) {
-                    gone.skipped++;
-                } else if ok {
-                    if a.job.ms > 0 { sleep_ms(a.job.ms); }
-                    let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [a.job.project]);
-                    // False once the client has gone, as after its 504.
-                    if !rest::reply_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
-                }
-            } else if tag == GONE {
-                let a, ok = rest::asked<GoneJob>(bytes);
-                if ok { rest::reply_value(a, gone); }
-            } else if tag == STOP {
-                running = false;
+    rest::lane(box) { tag, bytes =>
+        if tag == SUMMARY {
+            let a, ok = rest::asked<SummaryJob>(bytes);
+            if ok && !rest::still_wanted(a) {
+                gone.skipped++;
+            } else if ok {
+                if a.job.ms > 0 { sleep_ms(a.job.ms); }
+                let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [a.job.project]);
+                // False once the client has gone, as after its 504.
+                if !rest::reply_value(a, Summary { project: a.job.project, tasks: ts.len }) { gone.dropped++; }
             }
-        };
-    }
-    http::mail_close(box);
+        } else if tag == GONE {
+            let a, ok = rest::asked<GoneJob>(bytes);
+            if ok { rest::reply_value(a, gone); }
+        }
+    };
 }
 
 // The reports' thread: it takes a step of the report running between its
 // messages, so that it replies to a client's question while a report runs.
+// Its wait has a time limit while a report runs, so it writes the loop that
+// rest::lane is, until the box is stopped and empty.
 thread_fn reports(box: http::Box) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];
-    var running = true;
-    while running {
+    while !http::mail_stopped(box) {
         var busy = false;
         for r in all { if r.left > 0 { busy = true; } }
         http::mail_wait(box, if busy { STEP_MS } else { 1000 });
@@ -178,8 +171,6 @@ thread_fn reports(box: http::Box) {
                 } else if ok {
                     rest::reply_value(a, Report { status: 404, code: "report_not_found", .. });
                 }
-            } else if tag == STOP {
-                running = false;
             }
         };
         for &r in all {
@@ -227,8 +218,8 @@ fn main() {
     let rt = thread_spawn(reports, rbox);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     thread_wait(thread_spawn(worker, cfg, app));
-    http::mail_send(app.db, STOP, "");
-    http::mail_send(app.reports, STOP, "");
+    http::mail_stop(dbox);
+    http::mail_stop(rbox);
     thread_wait(dt);
     thread_wait(rt);
 }

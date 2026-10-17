@@ -13,10 +13,10 @@ A project's tasks, as JSON, can be longer than a message. The lane replies with
 bytes, so that a project's tasks arrive in several pieces:
 
 ```rust
-            if tag == TASKS {
-                let a, ok = rest::asked<TasksJob>(bytes);
-                // In pieces of the worker's message size, 64 bytes here.
-                if ok { rest::reply(a, tasks_json(c, a.job)); }
+        if tag == TASKS {
+            let a, ok = rest::asked<TasksJob>(bytes);
+            // In pieces of the worker's message size, 64 bytes here.
+            if ok { rest::reply(a, tasks_json(c, a.job)); }
 ```
 
 The route's case function runs for each piece. `rest::relay` starts a chunked response
