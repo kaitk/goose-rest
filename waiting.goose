@@ -22,6 +22,7 @@ namespace rest;
 
 import std;
 import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
+import .lane;
 
 // A reply message's tag: the sender's tag in REPLY_TAG's bits; REPLY_MORE
 // when more of the reply follows; REPLY_CONT on every piece after the first.
@@ -47,11 +48,29 @@ fn is_waiting(cx) -> bool { cx.out.stream.waiting }
 // case function of w gets the client's bytes as BODY while it waits, and
 // TIMEOUT in place of 504.
 fn ask<J>(cx, to: http::MailAddress, tag: i32, job: J, w, ms: i64 = 5000) {
+    ask_with(cx, job, w, ms) { image => http::mail_send(to, tag, image) };
+}
+
+// ask to a lane (lane.goose): its least busy thread takes the job, and 503
+// comes only when every thread's box is full.
+fn ask<J>(cx, to: Lane, tag: i32, job: J, w, ms: i64 = 5000) {
+    ask_with(cx, job, w, ms) { image => lane_send(to, tag, image) };
+}
+
+// ask to the thread of lane that key always picks, so that one key's jobs
+// run in the order they were asked; 503 when that thread's box is full.
+fn ask_by<J>(cx, to: Lane, key: u64, tag: i32, job: J, w, ms: i64 = 5000) {
+    ask_with(cx, job, w, ms) { image => lane_send_by(to, key, tag, image) };
+}
+
+// ask, with SEND sending the job's image and returning mail_send's result.
+fn ask_with<J, SEND>(cx, job: J, w, ms: i64) {
     if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
     cx.state.waiting = w;
     let back = http::later(cx.out, ms);
     let piece = http::mail_slot_size(back);
-    guard http::mail_send_value(to, tag, Ask<J> { reply: back, piece: piece, job: job }) == http::SENT else {
+    let image = value_bytes(Ask<J> { reply: back, piece: piece, job: job });
+    guard SEND(image[..]) == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
         fail(cx, 503, "unavailable");
