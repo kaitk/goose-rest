@@ -9,7 +9,7 @@
 //       curl -s telnet://localhost:8080
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.3.6";
+import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
 import rest from "../../";
 
 enum Waiting { None, Echo }

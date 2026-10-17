@@ -1,7 +1,7 @@
 // rest::body_in_pieces: a body that came with its head, an empty one, a
 // longer one a piece at a time, and one over the limit.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.6";
+import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
 import rest from "../../";
 import expect from "../";
 import common;
