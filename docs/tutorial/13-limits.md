@@ -32,11 +32,11 @@ when it arrives:
 ```
 
 ```text
-GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
+GET /v1/projects/1/summary?ms=1000 504 {"error":"timeout"}
 ```
 
-A job can't be stopped from outside. The database goes on with the 500 ms query, but no
-route is waiting for its reply.
+A job can't be stopped from outside. The database goes on with the one-second query, but
+no route is waiting for its reply.
 
 ## 503 for a full box
 
@@ -45,7 +45,7 @@ full, the job isn't sent: `rest::ask` answers 503 `unavailable` at once,
 rather than queue work the database won't reach in time:
 
 ```text
-GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
+GET /v1/projects/1/summary?ms=1000 504 {"error":"timeout"}
 GET /v1/projects/1/summary 000                              gave up, its job waiting
 GET /v1/projects/1/summary 000                              gave up, its job waiting
 GET /v1/projects/1/summary 503 {"error":"unavailable"}

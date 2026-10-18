@@ -30,6 +30,26 @@ Traps met while writing the generator and its tests (2026-10-13):
   can print the other's bodies against its own statuses: a diff of shifted answers in
   examples that didn't change (2026-10-16). Run one at a time.
 
+## Git Bash on Windows
+
+Traps met making the suite pass natively (2026-10-18). goose-http's
+[Git Bash](https://github.com/kaitk/goose-http/blob/main/docs/known-issues.md#git-bash)
+traps apply too.
+
+- Git Bash hands a native program a path as `C:/...`, so a program's message names it
+  that way, not as the `/c/...` the script holds. Compare against `cygpath -m`'s form.
+- An argument with a non-ASCII character reaches a native program, curl included, in
+  the ANSI code page, not UTF-8. Send such a body through stdin
+  (`printf ... | req ... --data-binary @-`).
+- curl's `telnet://` reads stdin as text and sends each CRLF as a bare LF, which the
+  server refuses with 400. Pass the bytes as an upload, `-T -`, which sends them as
+  they are.
+- `sleep_ms` rounds up to Windows' timer tick, about 15.6 ms, and starting curl takes
+  longer than on Linux. A request script that times a server's work against several
+  curl runs needs a wider margin than on Linux.
+- A PNG among the files searched for a docs excerpt makes Git Bash's `bash` warn about
+  null bytes in each command substitution; the excerpt check leaves images out.
+
 ## WSL2 on Windows
 
 - Windows npx on WSL's `PATH` accepts neither the Linux paths the suite passes nor its
@@ -38,8 +58,6 @@ Traps met while writing the generator and its tests (2026-10-13):
   stopped with `error TS5058: The specified path does not exist` on `ts/` (2026-10-16).
 - Ubuntu's Node 22.22.1 was built without TypeScript support, despite its version;
   Node 24.14.1's Linux distribution runs the `.mts` files.
-- Git Bash's converted paths differ from the exact generator diagnostics the suite
-  checks, so the suite fails there. Run it in WSL.
 - The Ubuntu distribution runs as `root`. Without a global Git identity there, Git
   records the author as `root@<hostname>`, so set `user.name` and `user.email` in WSL
   before committing from it (2026-10-14).

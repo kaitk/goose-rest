@@ -24,6 +24,22 @@ mkdir -p "$out"
 
 peak() { sed -n 's/^VmHWM:[[:space:]]*//p' "/proc/$pid/status"; }
 
+# In Git Bash, a program is named in full, since a Linux build in the same
+# tree leaves an ELF beside the .exe that the shell would run first, and
+# stopped with taskkill, since kill doesn't always end a native program.
+case $(uname -s) in
+MINGW* | MSYS*) exe=.exe ;;
+*) exe= ;;
+esac
+stop() {
+    if [ -n "$exe" ] && [ -r "/proc/$pid/winpid" ]; then
+        taskkill //F //PID "$(cat "/proc/$pid/winpid")" >/dev/null 2>&1 || true
+    else
+        kill "$pid" 2>/dev/null || true
+    fi
+    wait "$pid" 2>/dev/null || true
+}
+
 [ "$#" -gt 0 ] || set -- "$root"/examples/*/
 
 port=18081
@@ -34,14 +50,14 @@ for dir in "$@"; do
     echo "== example $name"
     [ -n "${PREBUILT:-}" ] || "$goose" build -o "$out/$name" "$dir/main.goose"
     [ ! -f "$dir/setup.sh" ] || . "$dir/setup.sh"
-    "$out/$name" "$port" 2>"$out/$name.log" &
+    "$out/$name$exe" "$port" 2>"$out/$name.log" &
     pid=$!
     tries=0
     until curl -s -o /dev/null "http://127.0.0.1:$port/health"; do
         tries=$((tries + 1))
         if [ "$tries" -gt 100 ]; then
             echo "example $name: no answer on port $port"
-            kill "$pid" 2>/dev/null || true
+            stop
             exit 1
         fi
         sleep 0.1
@@ -62,8 +78,7 @@ for dir in "$@"; do
     status=0
     . "$dir/requests.sh" >"$out/$name.out" || status=$?
     [ -z "$rss" ] || echo "$name: peak RSS $rss at start, $(peak) after the requests"
-    kill "$pid"
-    wait "$pid" 2>/dev/null || true
+    stop
     [ "$status" -eq 0 ] || { echo "example $name: a request failed"; exit 1; }
     diff -u "$dir/expected.txt" "$out/$name.out"
     port=$((port + 1))

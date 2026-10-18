@@ -156,9 +156,9 @@ uses fixed delays to bring about each case, with enough margin that the time cur
 to start doesn't matter:
 
 ```sh
-# The database takes 500 ms, past the route's 200: 504. It goes on with the
-# job, and its answer is dropped.
-req GET '/v1/projects/1/summary?ms=500'
+# The database takes a second, past the route's 200 ms: 504. It goes on with
+# the job, and its answer is dropped.
+req GET '/v1/projects/1/summary?ms=1000'
 # The database is still busy: these two jobs wait in the box's two slots,
 # and their clients give up (curl prints 000). The database skips them later.
 req GET /v1/projects/1/summary -m 0.05
@@ -170,28 +170,28 @@ req GET /v1/gone
 ```
 
 ```text
-GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
+GET /v1/projects/1/summary?ms=1000 504 {"error":"timeout"}
 GET /v1/projects/1/summary 000
 GET /v1/projects/1/summary 000
 GET /v1/projects/1/summary 503 {"error":"unavailable"}
 GET /v1/gone 200 {"skipped":2,"dropped":1}
 ```
 
-- **504.** The job takes 520 ms: its 500 ms delay plus a 20 ms statement. The route waits
-  200, so it answers 504 however fast the machine is.
-- **503.** The database works on the first job for 520 ms from its start, and the four
+- **504.** The job takes 1,020 ms: its 1,000 ms delay plus a 20 ms statement. The route
+  waits 200, so it answers 504 however fast the machine is.
+- **503.** The database works on the first job for 1,020 ms from its start, and the four
   requests must all reach the worker within that time. Their fixed waits total 300 ms:
-  200 for the 504, and 50 for each of the two clients. That leaves about 200 ms for starting curl
-  four times. This is the narrowest margin.
+  200 for the 504, and 50 for each of the two clients. That leaves about 700 ms for
+  starting curl four times, which takes longest on Windows. This is the narrowest margin.
 - **A client that has gone.** `-m 0.05` gives up at 50 ms, well before the route's
   200, so its connection closes while its job waits in the box. A client that waited
-  for the 504 instead would delay the next requests until after the 520 ms.
-- **The counts.** `sleep 1` lets the database finish the first job, about 100 ms after
-  the 503, and skip the two that wait, before `/v1/gone` reads its counts.
+  for the 504 instead would delay the next requests until after the 1,020 ms.
+- **The counts.** `sleep 1` lets the database finish the first job, less than a second
+  after the 503, and skip the two that wait, before `/v1/gone` reads its counts.
 
 The reports at the end work the same way: a report runs for 500 ms, so a request right
 after the `POST` finds it running, and one after `sleep 1` finds it done. On a machine
-slow enough to break these margins, raise `ms=500` and the sleeps together, and keep
+slow enough to break these margins, raise `ms=1000` and the sleeps together, and keep
 the route's wait, `WAIT_MS`, below the job's whole time: its `ms` and the 20 ms statement.
 
 ---

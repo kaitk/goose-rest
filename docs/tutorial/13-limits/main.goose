@@ -5,7 +5,7 @@
 //
 //   goose build -o build/limits docs/tutorial/13-limits/main.goose
 //   build/limits 8080
-//   curl -s 'localhost:8080/v1/projects/1/summary?ms=500'
+//   curl -s 'localhost:8080/v1/projects/1/summary?ms=1000'
 //   curl -s -X POST localhost:8080/v1/projects/1/reports
 //   curl -s localhost:8080/v1/reports/1
 import std;

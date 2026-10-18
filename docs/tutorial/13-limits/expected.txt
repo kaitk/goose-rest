@@ -1,6 +1,6 @@
 GET /health 200 ok
 GET /v1/projects/1/summary 200 {"project":1,"tasks":5}
-GET /v1/projects/1/summary?ms=500 504 {"error":"timeout"}
+GET /v1/projects/1/summary?ms=1000 504 {"error":"timeout"}
 GET /v1/projects/1/summary 000
 GET /v1/projects/1/summary 000
 GET /v1/projects/1/summary 503 {"error":"unavailable"}

@@ -1,9 +1,9 @@
 # The requests scripts/test-examples.sh sends to this program, in order.
 req GET /health
 req GET /v1/projects/1/summary
-# The database takes 500 ms, past the route's 200: 504. It goes on with the
-# job, and its answer is dropped.
-req GET '/v1/projects/1/summary?ms=500'
+# The database takes a second, past the route's 200 ms: 504. It goes on with
+# the job, and its answer is dropped.
+req GET '/v1/projects/1/summary?ms=1000'
 # The database is still busy: these two jobs wait in the box's two slots,
 # and their clients give up (curl prints 000). The database skips them later.
 req GET /v1/projects/1/summary -m 0.05

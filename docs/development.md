@@ -160,12 +160,31 @@ and its tests are in [known issues](known-issues.md#goose).
 | C compiler | Apple clang 21.0.0 (`clang-2100.0.123.102`) | `goose build`, and reading the generated C (spike 04) |
 | Node or Bun, TypeScript (optional) | Node 24.14.1, Bun 1.4.2, TypeScript 7.0.2 through npx or bunx (2026-10-14) | the TypeScript helper's tests |
 
+### Windows
+
+**OS:** tested on Windows 11 Pro 10.0.26300, in Git Bash, with MSVC 19.51, Python
+3.14.6, Node 24.18.0, TypeScript 7.0.2, and Git for Windows' curl 8.7.1 (2026-10-18).
+
+The package runs natively on Windows on goose-http's IOCP loop. Set up the C compiler as
+goose-http's
+[Windows](https://github.com/kaitk/goose-http/blob/main/docs/development.md#windows)
+section says, then run the suite in Git Bash:
+
+```sh
+nice -n 19 scripts/test.sh
+```
+
+`nice -n 19` starts native programs in the Idle priority class. The scripts name each
+program they build with its `.exe`, so a Linux build left in the same tree by WSL
+doesn't run instead. Git Bash has traps of its own
+([known issues](known-issues.md#git-bash-on-windows)).
+
 ### Windows through WSL
 
 **OS:** tested on WSL2 Ubuntu 26.04.1, with Clang 21.1.8, Node 24.14.1, and TypeScript
 7.0.2 (2026-10-14).
 
-Run the suite in WSL, set up as goose-http's
+WSL runs the suite on Linux, with io_uring. Set it up as goose-http's
 [WSL2 on Windows](https://github.com/kaitk/goose-http/blob/main/docs/development.md#wsl2-on-windows)
 says. Select the Ubuntu distribution explicitly from PowerShell:
 
@@ -174,8 +193,8 @@ wsl -d Ubuntu -e bash -lc 'cd <repository-path-in-WSL> && GOOSE_CC=clang TSC="np
 ```
 
 Keep the actual paths in git-ignored `CLAUDE.local.md`. Put Linux Node and npx first on
-WSL's `PATH`, use Node 24.14.1's Linux distribution, run this suite in WSL rather than
-Git Bash, and set a Git identity in WSL before committing from it
+WSL's `PATH`, use Node 24.14.1's Linux distribution, and set a Git identity in WSL
+before committing from it
 ([known issues](known-issues.md#wsl2-on-windows) says why).
 
 ### Run the TypeScript helper's tests

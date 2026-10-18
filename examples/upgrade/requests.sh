@@ -2,9 +2,11 @@
 #
 # upgraded sends a request's bytes, and then the client's bytes, raw, with
 # curl's telnet:// for up to the seconds given, and prints the status and
-# what came back after the head, its lines joined with |.
+# what came back after the head, its lines joined with |. The bytes go as an
+# upload, -T -: on Windows, curl's telnet otherwise reads stdin as text and
+# sends each CRLF as a bare LF, which the server refuses.
 upgraded() {
-    printf "$2" | curl -s -m "$1" "telnet://127.0.0.1:$port" >"$out/body" || true
+    printf "$2" | curl -s -m "$1" -T - "telnet://127.0.0.1:$port" >"$out/body" || true
     code=$(head -n 1 "$out/body" | cut -d ' ' -f 2)
     echoed=$(tr -d '\r' <"$out/body" | sed '1,/^$/d' | paste -s -d '|' -)
     echo "UPGRADE /echo $code $echoed"

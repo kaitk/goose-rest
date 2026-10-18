@@ -88,6 +88,10 @@ if [ -n "$TSC" ] && $TSC --version >/dev/null 2>&1; then
     step "ts/test/generator.mts"
     "$JS" "$root/ts/test/generator.mts" >"$ts/cases"
     tab=$(printf '\t')
+    # The path as the generator prints it: on Windows, Git Bash hands a native
+    # program C:/..., not /c/....
+    ts_shown=$ts
+    if command -v cygpath >/dev/null 2>&1; then ts_shown=$(cygpath -m "$ts"); fi
     while IFS=$tab read -r want doc; do
         printf '%s\n' "$doc" >"$ts/api.json"
         if "$goose" "$root/gen/main.goose" -- gen "$ts/api.json" -o "$ts/api_gen.goose" 2>"$ts/err"; then
@@ -96,7 +100,7 @@ if [ -n "$TSC" ] && $TSC --version >/dev/null 2>&1; then
         fi
         # The error, without the section of docs/generator.md it ends with,
         # which test/generator/sections.goose checks.
-        if ! sed 's/ (generator\.md [^)]*)$//' "$ts/err" | grep -qxF "goose-rest: $ts/api.json: $want"; then
+        if ! sed 's/ (generator\.md [^)]*)$//' "$ts/err" | grep -qxF "goose-rest: $ts_shown/api.json: $want"; then
             echo "want: $want"
             grep '^goose-rest' "$ts/err"
             exit 1
@@ -143,7 +147,7 @@ for section in tutorial best-practices; do
         inside && /^ *\.\.\.$/ { part++; file = dir "/" page "." n "." part; next }
         inside { print > file }
     ' "$root/docs/$section"/*.md
-    sources=$(find "$root/docs/$section" "$root/examples" -type f ! -name '*.md' | sort)
+    sources=$(find "$root/docs/$section" "$root/examples" -type f ! -name '*.md' ! -name '*.png' | sort)
     for b in "$blocks"/*; do
         want=$(cat "$b")
         found=
@@ -160,12 +164,18 @@ for section in tutorial best-practices; do
 done
 
 mkdir -p "$root/build"
+# In Git Bash, a program is named in full: a Linux build in the same tree
+# leaves an ELF beside the .exe, which the shell would run first.
+case $(uname -s) in
+MINGW* | MSYS*) exe=.exe ;;
+*) exe= ;;
+esac
 for f in "$root"/spikes/*/main.goose "$root"/spikes/*/*/main.goose; do
     step "spike ${f#"$root"/}"
     # TinyCC can't run threads: a spike that spawns one is built and run.
     if grep -q thread_spawn "$f"; then
         "$goose" build -o "$root/build/spike" "$f"
-        "$root/build/spike" >"$root/build/spike.out"
+        "$root/build/spike$exe" >"$root/build/spike.out"
     else
         "$goose" "$f" >"$root/build/spike.out"
     fi
