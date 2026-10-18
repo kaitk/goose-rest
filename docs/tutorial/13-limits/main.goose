@@ -217,7 +217,7 @@ fn main() {
     let dt = thread_spawn(database, dbox);
     let rt = thread_spawn(reports, rbox);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, app));
+    http::run(cfg, app, worker);
     http::mail_stop(dbox);
     http::mail_stop(rbox);
     thread_wait(dt);

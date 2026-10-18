@@ -159,7 +159,7 @@ From [`main.goose`](11-waiting/main.goose):
     let to = http::address(box, 0);
     let st = thread_spawn(database::run, box, DELAY_MS);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, to));
+    http::run(cfg, to, worker);
     // A flag in the box, not a message: a full box can't refuse it.
     http::mail_stop(box);
     thread_wait(st);

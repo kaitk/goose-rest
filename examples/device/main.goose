@@ -66,5 +66,5 @@ fn main() {
         port: port as i32, workers: 1, max_body: api::MAX_BODY,
         max_conns: 64, ring_entries: 256, ring_buffers: 64, ..
     };
-    thread_wait(thread_spawn(worker, cfg, b));
+    http::run(cfg, b, worker);
 }

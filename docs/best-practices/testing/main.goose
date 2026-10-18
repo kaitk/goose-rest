@@ -54,7 +54,7 @@ fn main() {
     let to = http::address(box, 0);
     let wt = thread_spawn(writer, box);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, to));
+    http::run(cfg, to, worker);
     http::mail_stop(box);
     thread_wait(wt);
 }

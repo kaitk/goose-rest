@@ -202,5 +202,5 @@ fn main() {
     http::exit_on_error(http::stop_on_signals());
     // The server's limit goes up to the largest route's.
     let cfg = http::Config { port: port as i32, workers: 1, max_body: LARGE_LIMIT, .. };
-    thread_wait(thread_spawn(worker, cfg, fixed));
+    http::run(cfg, fixed, worker);
 }

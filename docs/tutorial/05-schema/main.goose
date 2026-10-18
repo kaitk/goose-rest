@@ -54,5 +54,5 @@ fn main() {
     }
     http::exit_on_error(http::stop_on_signals());
     let cfg = http::Config { port: port as i32, workers: 1, max_body: max(api::MAX_BODY, UPLOAD_LIMIT), .. };
-    thread_wait(thread_spawn(worker, cfg));
+    http::run(cfg, worker);
 }

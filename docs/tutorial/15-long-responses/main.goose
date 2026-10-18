@@ -180,5 +180,5 @@ fn main() {
     // The progress events' pauses need a timer each: max_waiting of them,
     // which goose-http keeps with a box of mail_slots.
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, files));
+    http::run(cfg, files, worker);
 }

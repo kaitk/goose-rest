@@ -86,14 +86,14 @@ fn main() {
     }
     http::exit_on_error(http::stop_on_signals());
     let cfg = http::Config { port: port as i32, .. };
-    var ids: i64[>..] = [];
-    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg)); }
-    for id in ids { thread_wait(id); }
+    http::run(cfg, worker);
 }
 ```
 
-`http::worker_count` uses `cfg.workers` when it's set, and otherwise one worker per
-hardware thread (per performance core on macOS). `http::stop_on_signals` makes SIGINT
+`http::run` spawns the workers, each a `worker` with its own copy of `cfg`, and
+returns once they have all returned. It starts `cfg.workers` when it's set, and
+otherwise one worker per hardware thread (per performance core on macOS); values of
+the program's for every worker go between `cfg` and `worker`. `http::stop_on_signals` makes SIGINT
 and SIGTERM stop the server rather than terminate the process. The other programs use
 the same `main`, some with `workers: 1`.
 

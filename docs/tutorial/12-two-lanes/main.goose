@@ -167,7 +167,7 @@ fn main() {
     let dt = thread_spawn(database, dbox);
     let mt = thread_spawn(mailer, mbox);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, mail_size: 64, max_waiting: 1024, .. };
-    thread_wait(thread_spawn(worker, cfg, to_db, to_mailer));
+    http::run(cfg, to_db, to_mailer, worker);
     http::mail_stop(dbox);
     http::mail_stop(mbox);
     thread_wait(dt);
