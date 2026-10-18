@@ -445,6 +445,45 @@ the exchange has, so a second job's reply would share it. This rejected:
 - `rest::ask` at a `BODY` during a wait sending its job anyway, or only restarting the
   time limit: the first gets two replies for one exchange, the second drops the job.
 
+Decided (2026-10-18): a lane of N threads has a box per thread, and `rest::ask` to it
+sends each job to the least busy thread, the box with the fewest jobs queued by
+`http::mail_queued`, and to the others in turn while each is full. Built in
+`lane.goose`; [Architecture](architecture.md#waiting-on-a-lane) has how the pick works. A
+box per thread keeps each box with one owner, as goose-http's boxes have, and a
+thread's jobs in the order they came. `rest::ask_by` sends one key's jobs to one thread,
+the key modulo N, for jobs that must not overtake each other within a run. This
+rejected:
+
+- The first box with room, which queues jobs behind a busy thread while another is
+  idle.
+- Round-robin, which ignores how busy each thread is, so a slow job holds up every job
+  dealt to its thread after it.
+
+Decided (2026-10-18): the code bounds a lane, and a placement file chooses within the
+bounds. A lane opens from a `rest::LaneConfig` literal, as `http::Config` does, with
+`threads` (1) where the file gives no count, and `max`, which is `threads` unless
+written. A file may give any count up to `max`, and a count above it is cut, with a
+warning. The code knows which lanes can grow at all: a writer that owns its data, or
+SQLite's one writer, can't, and needs nothing written. The file knows the machine: how
+many cores it has and which a lane should take
+([best practices](best-practices/lanes.md#67-placing-lanes-per-machine)). Rejected: the
+count in code alone, which a new kind of machine changes by a build; and the count in
+the file alone, unbounded, which could give a writer a second thread.
+
+Decided (2026-10-18): `rest::lane_open` ends the program when a box fails to open, as
+a configuration that can't start does, rather than return an error. Lanes open at the
+start, before any request, and a lane with fewer threads than its bounds and placement
+gave would run without saying so. Rejected: returning an error, which adds a check to
+every `lane_open` for a failure a program can't serve around.
+
+Decided (2026-10-18): a lane stops by goose-http's `http::mail_stop`, a flag in its box,
+not by a message. `rest::lane_stop` sets it on each of a lane's boxes, and
+`rest::lane`, the thread's loop, returns once its box is stopped and empty, so the jobs
+queued before the stop are still done. A full box can't refuse the flag, and the
+program's job tags need none reserved. Rejected: a stop message with a tag of the
+program's, which a full box refuses, and which each lane's loop had to handle with a
+flag of its own.
+
 ## Tests
 
 Decided (2026-10-15), for goose-rest, goose-http, and goose-compress alike: tests
