@@ -147,7 +147,8 @@ thread_fn run(box: http::Box, delay_ms: i64) {
 }
 ```
 
-`main` opens the lane's box, starts its thread, and gives the worker the box's address.
+`main` opens the lane's box, starts its thread, gives the worker the box's address, and
+stops the box with `http::mail_stop` once the worker returns.
 Waiting is off until `Config.mail_slots` and `max_waiting` are set
 ([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
 From [`main.goose`](11-waiting/main.goose):

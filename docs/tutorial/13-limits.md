@@ -53,7 +53,11 @@ GET /v1/projects/1/summary 503 {"error":"unavailable"}
 
 Size a box for the jobs a lane can finish within the routes' time limit: more slots
 only queue work whose clients get 504 before it starts. For more work at once, give the
-lane several threads, each with its own box, and send each job to one of them.
+lane several threads, each with its own box.
+
+A lane of several threads opens with `rest::lane_open`, and `rest::ask` to it sends
+each job to its least busy thread, with 503 only when every thread's box is full. The
+best practices build one ([Lanes of several threads](../best-practices/lanes.md#66-lanes-of-several-threads)).
 
 *Note: the best practices size each box by how long its lane's jobs take, and give work
 the product can do without under load, such as reports, a small box of its own, so that
@@ -170,7 +174,9 @@ From [`main.goose`](13-limits/main.goose):
 ```
 
 The thread waits for mail at most a step's time while a report runs, answers what came,
-and then takes a step:
+and then takes a step. `rest::lane` waits with no time limit, so this thread writes its
+own loop, which ends as `rest::lane`'s does: once `http::mail_stopped` finds the box
+stopped by `main` and empty:
 
 ```rust
 // The reports' thread: it takes a step of the report running between its
