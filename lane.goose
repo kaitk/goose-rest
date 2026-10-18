@@ -2,13 +2,10 @@
 // lane is the threads of one role, such as a database's readers. The code
 // gives each lane its bounds in a LaneConfig, and a placement file
 // (http::place_load) may give it any count up to max and say where its
-// threads run:
+// threads run. lane_open spawns them:
 //
 //   let place = http::place_load();
-//   let reports = rest::lane_open(place, rest::LaneConfig { role: "reports", threads: 2, max: 8, .. });
-//   for i in reports.boxes.len {
-//       ids.push(thread_spawn(reader, reports.boxes[i], rest::lane_seat(place, reports, i)));
-//   }
+//   let reports = rest::lane_open(place, rest::LaneConfig { role: "reports", threads: 2, max: 8, .. }, reader);
 //
 //   thread_fn reader(box: http::Box, at: http::Seat) {
 //       http::take_seat(at);            // first, before its own memory
@@ -18,8 +15,7 @@
 // A route asks the lane with rest::ask, which takes its least busy thread,
 // or with rest::ask_by, which takes the thread a key picks in a run, so that
 // one key's jobs run in order. rest::lane_stop stops every thread once the
-// workers are done. The program spawns the threads itself: thread_spawn can't
-// take a thread_fn passed through a generic function in another module.
+// workers are done, and waits for them.
 namespace rest;
 
 import std;
@@ -41,18 +37,31 @@ struct LaneConfig {
 // The most threads one lane has.
 let LANE_MOST: i64 = 64;
 
-// A lane's boxes, one per thread, and its role. Flat, so that it crosses
-// thread_spawn in an application's state.
-struct Lane { role: u8[..32], boxes: http::Box[..64] }
+// A lane's boxes, and its threads' ids, one of each per thread. Flat, so
+// that it crosses thread_spawn in an application's state.
+struct Lane { boxes: http::Box[..64], threads: i64[..64] }
 
 // Where this thread's next lane_send starts its scan. Each thread has its
 // own copy of a global, so it needs no synchronization.
 var lane_turn: i64 = 0;
 
-// Opens the boxes of a lane of cfg's role, as many as place gives it within
-// cfg's bounds, or cfg.threads. A box that fails to open ends the program, as
-// a configuration that can't start does.
-fn lane_open(place: const http::Place&, cfg: LaneConfig) -> Lane {
+// Opens a lane of cfg's role, as many threads as place gives it within cfg's
+// bounds, or cfg.threads, each the thread_fn W with a box of its own, the
+// seat place gives it, and a, where given. A box that fails to open ends the
+// program, as a configuration that can't start does.
+//
+//   rest::lane_open(place, cfg, reader);       // thread_fn reader(box: http::Box, at: http::Seat)
+//   rest::lane_open(place, cfg, db, reader);   // thread_fn reader(box: http::Box, at: http::Seat, db: Db)
+fn lane_open<W>(place: const http::Place&, cfg: LaneConfig) -> Lane {
+    return lane_spawn(place, cfg) { b, at => thread_spawn(W, b, at) };
+}
+fn lane_open<W>(place: const http::Place&, cfg: LaneConfig, a) -> Lane {
+    return lane_spawn(place, cfg) { b, at => thread_spawn(W, b, at, a) };
+}
+
+// lane_open's work: SPAWN starts a thread with its box and seat and returns
+// its id.
+fn lane_spawn<SPAWN>(place: const http::Place&, cfg: LaneConfig) -> Lane {
     let t = max(cfg.threads, 1);
     let most = min(if cfg.max > 0 { max(cfg.max, t) } else { t }, LANE_MOST);
     var n = http::place_threads(place, cfg.role, t, most);
@@ -61,25 +70,22 @@ fn lane_open(place: const http::Place&, cfg: LaneConfig) -> Lane {
         write_stderr(str("lane ", cfg.role, ": ", n, " threads cut to the most, ", most, "\n"));
         n = most;
     }
-    var lane = Lane { role: cfg.role, .. };
+    var lane = Lane { .. };
     for i in n {
         let b, e = http::mail_open(cfg.slots, cfg.size);
         http::exit_on_error(e);
         lane.boxes.push(b);
+        lane.threads.push(SPAWN(b, http::place_seat(place, cfg.role, i)));
     }
     return lane;
 }
 
-// Where thread i of lane runs, as place says: the thread takes it with
-// http::take_seat.
-fn lane_seat(place: const http::Place&, lane: const Lane&, i: i64) -> http::Seat {
-    return http::place_seat(place, lane.role, i);
-}
-
-// Stops every thread of lane: each takes what its box holds and returns
-// from rest::lane. Any thread may call it, and a full box can't refuse it.
+// Stops every thread of lane, each of which takes what its box holds and
+// returns from rest::lane, and waits for them. A full box can't refuse the
+// stop. The thread that opened the lane calls it, once the workers are done.
 fn lane_stop(lane: const Lane&) {
     for b in lane.boxes { http::mail_stop(b); }
+    for id in lane.threads { thread_wait(id); }
 }
 
 // A lane thread's loop: F with each job's tag and bytes, in the order they

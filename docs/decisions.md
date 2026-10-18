@@ -484,6 +484,19 @@ program's job tags need none reserved. Rejected: a stop message with a tag of th
 program's, which a full box refuses, and which each lane's loop had to handle with a
 flag of its own.
 
+Decided (2026-10-18): `rest::lane_open(place, cfg, W)` spawns the lane's threads, each
+the program's `thread_fn` `W` with its box and its seat, and one value of the
+program's where given; `rest::lane_stop` stops the boxes and then waits for the
+threads, whose ids the `Lane` keeps. goose-http's `http::run` spawns the workers the
+same way. Goose `fb5698125` lets a generic function spawn the `thread_fn` its caller
+binds; before it, every program wrote a spawn loop per lane, with `rest::lane_seat` for
+each thread's seat, and waited for the ids it kept itself. With the lane's role, which
+only `lane_seat` read, both are gone. `lane_stop` waits because the lane's threads are
+the lane's: the thread that opened the lane calls it, once the workers have returned.
+The cost is that a lane always has its threads, so a test of the lane's bounds starts
+them, and every `App` copy holds the ids, 8 bytes a thread. Rejected: keeping the
+program's loops beside `lane_open`, two ways to start a lane.
+
 ## Tests
 
 Decided (2026-10-15), for goose-rest, goose-http, and goose-compress alike: tests

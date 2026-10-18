@@ -21,17 +21,31 @@ fn handle(cx) {
     }
 }
 
+// What a lane thread took, by its box's slot, once its box is stopped.
+struct Took { slot: i32, jobs: i64, tags: i64 }
+
+thread_fn taker(box: http::Box, at: http::Seat) {
+    var t = Took { slot: box.handle.slot, .. };
+    rest::lane(box) { tag, bytes =>
+        t.jobs++;
+        if tag == JOB { t.tags++; }
+    };
+    qput(t);
+}
+
 fn main() {
     let nowhere = http::Place { .. };
-    let lane = rest::lane_open(nowhere, rest::LaneConfig { threads: 2, slots: 4, .. });
+    let lane = rest::lane_open(nowhere, rest::LaneConfig { threads: 2, slots: 4, .. }, taker);
     var app = App { lane: lane };
     let out = rest::serve_one("GET / HTTP/1.1\r\n\r\n", app, St { .. }, []) { cx => handle(cx) };
     print("answer: ", out.len, " bytes");
-    for b, i in lane.boxes {
-        var tags = 0;
-        let n = http::mail_take(b) { key, tag, bytes => if tag == JOB { tags++; } };
-        print("box ", i, ": ", n, " job(s), ", tags, " with the tag");
+    rest::lane_stop(lane);
+    var took: Took[>..] = [];
+    for b in lane.boxes { took.push(Took { .. }); }
+    for k in lane.boxes.len {
+        let t = qget<Took>();
+        for b, i in lane.boxes { if b.handle.slot == t.slot { took[i] = t; } }
     }
+    for t, i in took { print("box ", i, ": ", t.jobs, " job(s), ", t.tags, " with the tag"); }
     print("key ", KEY, " picks box ", KEY % (lane.boxes.len as u64));
-    for b in lane.boxes { http::mail_close(b); }
 }

@@ -95,23 +95,18 @@ fn main() {
     let place = http::place_load();
     // The code bounds each lane, and a placement file chooses within the
     // bounds. One writer, which needs nothing written: max is threads unless
-    // written. Reports may grow to 4 threads, and the hasher to 2.
+    // written. Reports may grow to 4 threads, and the hasher to 2. Each
+    // lane_open spawns its lane's threads.
     let app = App {
-        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }),
-        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }),
-        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }),
+        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }, writer),
+        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }, reports),
+        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }, hasher),
     };
-    var lanes: i64[>..] = [];
-    for b, i in app.writer.boxes { lanes.push(thread_spawn(writer, b, rest::lane_seat(place, app.writer, i))); }
-    for b, i in app.reports.boxes { lanes.push(thread_spawn(reports, b, rest::lane_seat(place, app.reports, i))); }
-    for b, i in app.hasher.boxes { lanes.push(thread_spawn(hasher, b, rest::lane_seat(place, app.hasher, i))); }
     let cfg = http::Config { port: port as i32, workers: 1, place: http::place_ref(place), mail_slots: 64, max_waiting: 1024, .. };
-    var ids: i64[>..] = [];
-    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg, app)); }
-    for id in ids { thread_wait(id); }
-    // A flag in each box, not a message: a full box can't refuse it.
+    http::run(cfg, app, worker);
+    // A flag in each box, not a message: a full box can't refuse it. Each
+    // lane_stop waits for its lane's threads.
     rest::lane_stop(app.writer);
     rest::lane_stop(app.reports);
     rest::lane_stop(app.hasher);
-    for id in lanes { thread_wait(id); }
 }

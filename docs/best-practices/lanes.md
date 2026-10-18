@@ -89,34 +89,30 @@ lane more threads, each with its own box, rather than make one box larger
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
 
-`main` opens each lane with `rest::lane_open`, a box per thread, with slots of 256 bytes
-to fit the largest job a route sends. It gives the workers the lanes in `App`, which a
-route reads as `cx.app.writer`, and starts each lane's threads. At shutdown, it stops
-each lane with `rest::lane_stop` and waits for its threads:
+`main` opens each lane with `rest::lane_open`, which starts the lane's threads, each
+with a box of its own, with slots of 256 bytes to fit the largest job a route sends. It
+gives the workers the lanes in `App`, which a route reads as `cx.app.writer`. At
+shutdown, it stops each lane with `rest::lane_stop`, which waits for the lane's
+threads:
 
 ```rust
     let place = http::place_load();
     // The code bounds each lane, and a placement file chooses within the
     // bounds. One writer, which needs nothing written: max is threads unless
-    // written. Reports may grow to 4 threads, and the hasher to 2.
+    // written. Reports may grow to 4 threads, and the hasher to 2. Each
+    // lane_open spawns its lane's threads.
     let app = App {
-        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }),
-        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }),
-        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }),
+        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }, writer),
+        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }, reports),
+        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }, hasher),
     };
-    var lanes: i64[>..] = [];
-    for b, i in app.writer.boxes { lanes.push(thread_spawn(writer, b, rest::lane_seat(place, app.writer, i))); }
-    for b, i in app.reports.boxes { lanes.push(thread_spawn(reports, b, rest::lane_seat(place, app.reports, i))); }
-    for b, i in app.hasher.boxes { lanes.push(thread_spawn(hasher, b, rest::lane_seat(place, app.hasher, i))); }
     let cfg = http::Config { port: port as i32, workers: 1, place: http::place_ref(place), mail_slots: 64, max_waiting: 1024, .. };
-    var ids: i64[>..] = [];
-    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg, app)); }
-    for id in ids { thread_wait(id); }
-    // A flag in each box, not a message: a full box can't refuse it.
+    http::run(cfg, app, worker);
+    // A flag in each box, not a message: a full box can't refuse it. Each
+    // lane_stop waits for its lane's threads.
     rest::lane_stop(app.writer);
     rest::lane_stop(app.reports);
     rest::lane_stop(app.hasher);
-    for id in lanes { thread_wait(id); }
 ```
 
 </details>
@@ -441,8 +437,12 @@ only read, or password checks that each take a core. Each thread has its own box
 reports lane grow to 4 threads and the hasher to 2. Each has one thread unless a
 placement file gives it more ([Placing lanes per machine](#67-placing-lanes-per-machine)).
 
-`rest::lane_open(place, cfg)` opens a box per thread from a `rest::LaneConfig`. A field
-left out takes its default:
+`rest::lane_open(place, cfg, reader)` starts the lane's threads from a
+`rest::LaneConfig`, each the `thread_fn` `reader` with a box of its own and its
+`http::Seat`. A value of the program's for every thread goes before `reader`:
+`rest::lane_open(place, cfg, db, reader)` starts
+`thread_fn reader(box: http::Box, at: http::Seat, db: Db)`. A field of the
+`LaneConfig` left out takes its default:
 
 | Field | Default | What it sets |
 |---|---|---|
@@ -453,10 +453,7 @@ left out takes its default:
 | `size` | 256 | Each slot's bytes, enough for the largest job a route sends |
 
 A box that fails to open ends the program, as a configuration that can't start does.
-`lane_open` returns a `rest::Lane`, which holds the boxes. The program spawns one thread
-per box, as [`main.goose`](#62-how-many-jobs-a-box-holds) does in its loops over
-`app.reports.boxes` and the others: `thread_spawn` can't take a `thread_fn` passed
-through a generic function in another module, so goose-rest can't start them for it. A
+`lane_open` returns a `rest::Lane`, which holds the boxes and the threads' ids. A
 `Lane` is flat, so the workers get it in `App`, and a route asks it as it would one
 thread, as `rest::ask(cx, cx.app.reports, ...)`.
 
@@ -480,10 +477,10 @@ needs nothing written for that, and no placement file can grow it.
 
 At shutdown, `rest::lane_stop(lane)` stops each of the lane's boxes with goose-http's
 `http::mail_stop`: a flag in the box, not a message, so a full box can't refuse it.
-Each thread takes what its box still holds and returns from `rest::lane`, and `main`
-then waits for the threads
+Each thread takes what its box still holds and returns from `rest::lane`, and
+`lane_stop` returns once every thread has
 ([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
-Any thread may call `lane_stop`.
+The thread that opened the lane calls `lane_stop`, once the workers have returned.
 
 ## 6.7 Placing lanes per machine
 
@@ -495,8 +492,8 @@ each lane has its code's `threads`.
 
 `http::place_load()` reads the file that the command line names with `--place FILE`, or
 else `GOOSE_PLACE`. `main` passes the placement to `rest::lane_open` for each lane's
-count, to `rest::lane_seat(place, lane, i)` for where thread `i` runs, and to the
-workers as `Config.place: http::place_ref(place)`
+count and each thread's seat, and to the workers as
+`Config.place: http::place_ref(place)`
 ([`main.goose`](#62-how-many-jobs-a-box-holds)). Each lane thread calls
 `http::take_seat` first, before it touches memory of its own, since Linux puts a page on
 the NUMA node of the thread that first writes it.
