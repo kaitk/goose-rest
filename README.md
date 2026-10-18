@@ -151,6 +151,8 @@ flowchart LR
   [message](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
   and resumes when the reply arrives, the half-sync/half-async pattern
   ([tutorial](docs/tutorial/11-waiting.md), [why](docs/architecture.md#waiting-on-a-lane)).
+  Where the workers and lanes run, and how many there are, is goose-http's
+  [tuning guide](https://github.com/kaitk/goose-http/blob/main/docs/tuning.md).
 
 For differences from Actix and the reasons behind them, see the
 [architecture](docs/architecture.md#actix-and-where-goose-rest-differs).
