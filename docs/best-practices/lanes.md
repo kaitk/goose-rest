@@ -84,7 +84,7 @@ A job queued beyond what its lane can finish in time starts after its client has
 already received a 504, so the work is wasted. Refusing it at once instead gives the
 client a 503, and a chance to try again later. To run more jobs at once, give the
 lane more threads, each with its own box, rather than make one box larger
-([503 for a full box](../tutorial/13-limits.md#503-for-a-full-box)).
+([Lanes of several threads](#66-lanes-of-several-threads)).
 
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
@@ -432,6 +432,91 @@ fn ::resume(w: Waiting.AuthSession, cx) { auth::resume(w, cx); }
 Keep the code in the domain's own `resume`. A function declared as `::resume` is global,
 so Goose looks up the names in its body in the global namespace (goose_spec §11.1), and
 code there would have to qualify each of the domain's names, as in `auth::Verified`.
+
+## 6.6 Lanes of several threads
+
+Give a lane several threads when its jobs can run side by side, such as reports that
+only read, or password checks that each take a core. Each thread has its own box, and
+`rest::ask` to the lane sends a job to the least busy thread. The program lets the
+reports lane grow to 4 threads and the hasher to 2. Each has one thread unless a
+placement file gives it more ([Placing lanes per machine](#67-placing-lanes-per-machine)).
+
+`rest::lane_open(place, cfg)` opens a box per thread from a `rest::LaneConfig`. A field
+left out takes its default:
+
+| Field | Default | What it sets |
+|---|---|---|
+| `role` | `""` | The lane's name in a placement file |
+| `threads` | 1 | The threads where the file gives no count, at least 1 |
+| `max` | `threads` (written as 0) | The most threads a file may give, at most `rest::LANE_MOST`, 64 |
+| `slots` | 64 | Each box's slots, a power of two of at least 2 |
+| `size` | 256 | Each slot's bytes, enough for the largest job a route sends |
+
+A box that fails to open ends the program, as a configuration that can't start does.
+`lane_open` returns a `rest::Lane`, which holds the boxes. The program spawns one thread
+per box, as [`main.goose`](#62-how-many-jobs-a-box-holds) does in its loops over
+`app.reports.boxes` and the others: `thread_spawn` can't take a `thread_fn` passed
+through a generic function in another module, so goose-rest can't start them for it. A
+`Lane` is flat, so the workers get it in `App`, and a route asks it as it would one
+thread, as `rest::ask(cx, cx.app.reports, ...)`.
+
+Which thread takes a job depends on the call:
+
+- **`rest::ask`** sends the job to the box holding the fewest jobs, and to the others in
+  turn while each is full. A route gets 503 only when every box is full. Each send
+  starts its scan one box further on, so that ties spread over the threads.
+- **`rest::ask_by(cx, lane, key, tag, job, w)`** sends every job of one key to the same
+  thread, so that they run in the order they were asked. Use it for lane data split by
+  key, such as a cache per project in each thread's memory. The thread is the key modulo
+  the lane's thread count, which a placement file can change between runs, so the pick
+  holds within one run only, and nothing stored may depend on it. A route gets 503 when
+  that thread's box is full, even while the others have room.
+
+The writer stays one thread. Its entries and sessions are in its own memory, which a
+second thread wouldn't see, and it stands for the database's one write connection
+([A lane for each kind of slow work](#61-a-lane-for-each-kind-of-slow-work)), as SQLite
+allows one writer. Since `max` is `threads` unless written, the writer's `LaneConfig`
+needs nothing written for that, and no placement file can grow it.
+
+At shutdown, `rest::lane_stop(lane)` stops each of the lane's boxes with goose-http's
+`http::mail_stop`: a flag in the box, not a message, so a full box can't refuse it.
+Each thread takes what its box still holds and returns from `rest::lane`, and `main`
+then waits for the threads
+([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
+Any thread may call `lane_stop`.
+
+## 6.7 Placing lanes per machine
+
+The code bounds each lane, and a placement file, one per kind of machine, chooses within
+the bounds: how many threads each lane has, up to its `max`, which cores they run on,
+and whether they run at low priority. A new kind of machine gets a new file, not a new
+build. Without a file every thread floats, wherever the operating system puts it, and
+each lane has its code's `threads`.
+
+`http::place_load()` reads the file that the command line names with `--place FILE`, or
+else `GOOSE_PLACE`. `main` passes the placement to `rest::lane_open` for each lane's
+count, to `rest::lane_seat(place, lane, i)` for where thread `i` runs, and to the
+workers as `Config.place: http::place_ref(place)`
+([`main.goose`](#62-how-many-jobs-a-box-holds)). Each lane thread calls
+`http::take_seat` first, before it touches memory of its own, since Linux puts a page on
+the NUMA node of the thread that first writes it.
+
+A file for this program on an 8-core server, saved as `place/api-8core.place` and given
+as `build/lanes 8080 --place place/api-8core.place`:
+
+```text
+# The workers on cores 0-5, which no lane may take.
+set front = 0-5 exclusive
+workers = 6 each front
+reports = 4 within 6-7
+hasher = 2 within 6-7 low
+```
+
+The writer, which the file doesn't name, keeps its one thread and floats on cores 6 and
+7, the cores no exclusive set holds. A count above a lane's `max` is cut to it, with a
+warning. Nothing about the hardware stops the start, but a file that doesn't parse does.
+goose-http's [tuning guide](https://github.com/kaitk/goose-http/blob/main/docs/tuning.md)
+has the file's grammar, its warnings, and what each platform applies.
 
 ---
 
