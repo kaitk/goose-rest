@@ -16,7 +16,7 @@
 //   }
 //
 // A route asks the lane with rest::ask, which takes its least busy thread,
-// or with rest::ask_by, which takes the thread a key always picks, so that
+// or with rest::ask_by, which takes the thread a key picks in a run, so that
 // one key's jobs run in order. rest::lane_stop stops every thread once the
 // workers are done. The program spawns the threads itself: thread_spawn can't
 // take a thread_fn passed through a generic function in another module.
@@ -26,8 +26,10 @@ import std;
 import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
 
 // A lane's bounds, in code: its role in a placement file, its threads where
-// the file gives no count, the most a file may give (0: threads), and each
-// box's slots, a power of two of at least 2, and slot size.
+// the file gives no count (at least 1), the most a file may give (0, or
+// below threads: threads; never above LANE_MOST), and each box's slots, a
+// power of two of at least 2, and slot size. A count above the most is cut
+// to it with a warning.
 struct LaneConfig {
     role: u8[..32] = "",
     threads: i64 = 1,
@@ -51,8 +53,14 @@ var lane_turn: i64 = 0;
 // cfg's bounds, or cfg.threads. A box that fails to open ends the program, as
 // a configuration that can't start does.
 fn lane_open(place: const http::Place&, cfg: LaneConfig) -> Lane {
-    let most = if cfg.max > 0 { max(cfg.max, cfg.threads) } else { cfg.threads };
-    let n = clamp(http::place_threads(place, cfg.role, cfg.threads, most), 1, LANE_MOST);
+    let t = max(cfg.threads, 1);
+    let most = min(if cfg.max > 0 { max(cfg.max, t) } else { t }, LANE_MOST);
+    var n = http::place_threads(place, cfg.role, t, most);
+    // place_threads doesn't check the count of a role the file doesn't name.
+    if n > most {
+        write_stderr(str("lane ", cfg.role, ": ", n, " threads cut to the most, ", most, "\n"));
+        n = most;
+    }
     var lane = Lane { role: cfg.role, .. };
     for i in n {
         let b, e = http::mail_open(cfg.slots, cfg.size);
@@ -115,7 +123,9 @@ fn lane_send(lane: const Lane&, tag: i32, image: const u8[:]) -> i32 {
     return r;
 }
 
-// Sends image with tag to the box of lane that key always picks.
+// Sends image with tag to the box of lane that key always picks within one
+// run: the pick follows the lane's thread count, which a placement file can
+// change between runs.
 fn lane_send_by(lane: const Lane&, key: u64, tag: i32, image: const u8[:]) -> i32 {
     let n = lane.boxes.len;
     guard n > 0 else { return http::STALE; }
