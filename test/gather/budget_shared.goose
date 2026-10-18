@@ -2,7 +2,7 @@
 // beside another, a route on rest::body_in_pieces beside a full budget, and
 // a body that fits once another has finished, in the place it had.
 import std;
-import http from "github.com/kaitk/goose-http@1ebca1fd5561ec8b070b42323fa2bf0ea6622be5";
+import http from "github.com/kaitk/goose-http@d0e3fd4afebcdb9ce032a8c7ebc13e00fe5bf841";
 import rest from "../../";
 import expect from "../";
 import common;

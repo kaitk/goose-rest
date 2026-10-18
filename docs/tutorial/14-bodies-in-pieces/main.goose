@@ -10,7 +10,7 @@
 //   curl -s -F note=Plans -F file=@plans.pdf localhost:8080/v1/projects/1/attachments/form
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@1ebca1fd5561ec8b070b42323fa2bf0ea6622be5";
+import http from "github.com/kaitk/goose-http@d0e3fd4afebcdb9ce032a8c7ebc13e00fe5bf841";
 import rest from "../../../";
 
 // The most bytes of an attachment: project 1's plan takes up to 1 GB, which
