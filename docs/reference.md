@@ -396,6 +396,41 @@ A WebSocket's framing isn't provided: a package on top of
 and `file` ([page 15](tutorial/15-long-responses.md));
 [`examples/upgrade`](../examples/upgrade/main.goose) echoes an upgraded connection.
 
+### 4.1 Lanes
+
+A lane is the threads of one role that do a route's slow work, each with a box of its
+own. The code bounds each lane, and a placement file that goose-http's `http::place_load`
+reads may give it any count within the bounds and say where its threads run
+([goose-http's tuning guide](https://github.com/kaitk/goose-http/blob/main/docs/tuning.md)).
+The program spawns the threads, one per box: `thread_spawn` can't take a `thread_fn`
+passed through a generic function in another module.
+
+```rust
+let place = http::place_load();
+let reports = rest::lane_open(place, rest::LaneConfig { role: "reports", threads: 2, max: 8, .. });
+for b, i in reports.boxes { ids.push(thread_spawn(reader, b, rest::lane_seat(place, reports, i))); }
+
+thread_fn reader(box: http::Box, at: http::Seat) {
+    http::take_seat(at);   // first, before the thread's own memory
+    rest::lane(box) { tag, bytes => ... };
+}
+```
+
+| Call | Does | Fails with |
+|---|---|---|
+| `rest::LaneConfig { role, threads, max, slots, size }` | A lane's bounds: its `role` in a placement file (`""`); its `threads` where the file gives no count (1, and at least 1); the most a file may give, `max` (0, or below `threads`: `threads`; never above `rest::LANE_MOST`, 64); and each box's `slots`, a power of two of at least 2 (64), and slot `size` in bytes (256). | |
+| `rest::Lane { role, boxes }` | A lane's role and its boxes, an `http::Box` per thread. Flat, so that it crosses `thread_spawn` in worker state. | |
+| `rest::lane_open(place, cfg)` | Opens a `Lane` of as many boxes as `place` gives `cfg.role`, within `cfg`'s bounds, or `cfg.threads` where it gives none. A count above the most is cut to it, with a warning. | A box that fails to open ends the program. |
+| `rest::lane_seat(place, lane, i)` | The `http::Seat` of `lane`'s thread `i`, as `place` says, which the thread takes with `http::take_seat` before it touches memory of its own. | |
+| `rest::lane(box) { tag, bytes => ... }` | A lane thread's loop: the block gets each job's tag and bytes, in the order they came, until the box is stopped and empty; then closes the box. | |
+| `rest::lane_stop(lane)` | Stops every box of `lane` with `http::mail_stop`, from any thread: each thread takes what its box holds and returns from `rest::lane`. A full box can't refuse it ([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)). | |
+| `rest::ask(cx, lane, tag, job, w, ms)` | `rest::ask` to a `Lane`: the least busy thread takes the job, the one whose box holds the fewest, or the others in turn while each is full. Each send starts its scan one box further on. To an `http::MailAddress`, the one box there. | 503 `unavailable` when every box is full or closed |
+| `rest::ask_by(cx, lane, key, tag, job, w, ms)` | `rest::ask` to the thread `key` picks, `key` modulo the lane's thread count, so that one key's jobs run in the order they were asked. A placement file can change the count between runs, so the pick holds within one run. | 503 `unavailable` when that thread's box is full or closed |
+
+`ms` defaults to 5000, as for every `rest::ask`. The best practices give each kind of
+slow work a lane, and grow one by threads
+([Lanes of several threads](best-practices/lanes.md#66-lanes-of-several-threads)).
+
 ## 5. Errors
 
 By default, every error goose-rest answers is a JSON object whose member `error` is a
@@ -427,7 +462,7 @@ another shape, as the end of this section shows:
 | 500 | `not_sending` | `rest::pause` without a response begun with `rest::begin` and still open |
 | 500 | `not_served` | `rest::body_in_pieces` or `rest::pause` with a context that `rest::serve` or `serve_one` didn't make |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
-| 503 | `unavailable` | `rest::ask`: the thread's box is full or closed |
+| 503 | `unavailable` | `rest::ask`: the thread's box is full or closed, or to a lane, every thread's; `rest::ask_by`: the box of the thread the key picks ([Lanes](#41-lanes)) |
 | 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)) |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
