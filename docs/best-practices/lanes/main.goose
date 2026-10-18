@@ -12,7 +12,7 @@
 //   curl -s -d 'email=ada@example.com&password=goose' localhost:8080/auth/session
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
+import http from "github.com/kaitk/goose-http@1ebca1fd5561ec8b070b42323fa2bf0ea6622be5";
 import rest from "../../../";
 import .app;
 
@@ -105,7 +105,7 @@ fn main() {
     for b, i in app.writer.boxes { lanes.push(thread_spawn(writer, b, rest::lane_seat(place, app.writer, i))); }
     for b, i in app.reports.boxes { lanes.push(thread_spawn(reports, b, rest::lane_seat(place, app.reports, i))); }
     for b, i in app.hasher.boxes { lanes.push(thread_spawn(hasher, b, rest::lane_seat(place, app.hasher, i))); }
-    let cfg = http::Config { port: port as i32, workers: 1, place: place, mail_slots: 64, max_waiting: 1024, .. };
+    let cfg = http::Config { port: port as i32, workers: 1, place: http::place_ref(place), mail_slots: 64, max_waiting: 1024, .. };
     var ids: i64[>..] = [];
     for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg, app)); }
     for id in ids { thread_wait(id); }

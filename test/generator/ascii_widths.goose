@@ -1,7 +1,7 @@
 // A string with maxLength 20 is 80 bytes, since a code point takes up to 4; a
 // format whose values are ASCII takes 20 (36 for a uuid's exact length).
 import std;
-import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
+import http from "github.com/kaitk/goose-http@1ebca1fd5561ec8b070b42323fa2bf0ea6622be5";
 import rest from "../../";
 import rest.gen.gen;
 import common;

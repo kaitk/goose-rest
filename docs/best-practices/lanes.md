@@ -108,7 +108,7 @@ each lane with `rest::lane_stop` and waits for its threads:
     for b, i in app.writer.boxes { lanes.push(thread_spawn(writer, b, rest::lane_seat(place, app.writer, i))); }
     for b, i in app.reports.boxes { lanes.push(thread_spawn(reports, b, rest::lane_seat(place, app.reports, i))); }
     for b, i in app.hasher.boxes { lanes.push(thread_spawn(hasher, b, rest::lane_seat(place, app.hasher, i))); }
-    let cfg = http::Config { port: port as i32, workers: 1, place: place, mail_slots: 64, max_waiting: 1024, .. };
+    let cfg = http::Config { port: port as i32, workers: 1, place: http::place_ref(place), mail_slots: 64, max_waiting: 1024, .. };
     var ids: i64[>..] = [];
     for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg, app)); }
     for id in ids { thread_wait(id); }

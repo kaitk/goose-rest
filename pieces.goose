@@ -14,7 +14,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@782ec236b44bdc5da5a4ea289115095268d6696e";
+import http from "github.com/kaitk/goose-http@1ebca1fd5561ec8b070b42323fa2bf0ea6622be5";
 
 // Reads the request's body in pieces as they arrive, up to limit bytes, with
 // w in cx.state.waiting. The route returns without an answer, and the
