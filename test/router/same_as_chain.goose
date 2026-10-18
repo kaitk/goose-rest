@@ -2,7 +2,7 @@
 // method, and for paths no route takes, both answer with the same bytes.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@d0e3fd4afebcdb9ce032a8c7ebc13e00fe5bf841";
+import http from "github.com/kaitk/goose-http@746f9567b5a51ca725b7e7e55f86cce8da703a56";
 import rest from "../../";
 import expect from "../";
 import expect.gen.routes_gen;
