@@ -57,8 +57,9 @@ fn ask<J>(cx, to: const Lane&, tag: i32, job: J, w, ms: i64 = 5000) {
     ask_with(cx, job, w, ms) { image => lane_send(to, tag, image) };
 }
 
-// ask to the thread of lane that key always picks, so that one key's jobs
-// run in the order they were asked; 503 when that thread's box is full.
+// ask to the thread of lane that key picks within one run (lane_send_by),
+// so that one key's jobs run in the order they were asked; 503 when that
+// thread's box is full.
 fn ask_by<J>(cx, to: const Lane&, key: u64, tag: i32, job: J, w, ms: i64 = 5000) {
     ask_with(cx, job, w, ms) { image => lane_send_by(to, key, tag, image) };
 }
