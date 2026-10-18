@@ -2,7 +2,7 @@
 // type, and the reader's errors.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@746f9567b5a51ca725b7e7e55f86cce8da703a56";
+import http from "github.com/kaitk/goose-http@v0.3.7";
 import rest from "../../";
 import expect from "../";
 import expect.gen.routes_gen;

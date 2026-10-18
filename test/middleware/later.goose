@@ -2,7 +2,7 @@
 // rest::cors, rest::timed, or both, that asks another thread and answers
 // its reply at WAKE, or 504 at TIMEOUT, and one that gathers its body first.
 import std;
-import http from "github.com/kaitk/goose-http@746f9567b5a51ca725b7e7e55f86cce8da703a56";
+import http from "github.com/kaitk/goose-http@v0.3.7";
 import rest from "../../";
 import expect from "../";
 import common;

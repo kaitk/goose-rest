@@ -1,7 +1,7 @@
 // rest::timed outside fills its field in the head compressed copies, and
 // rest::cors inside adds its fields to the answer compressed.
 import std;
-import http from "github.com/kaitk/goose-http@746f9567b5a51ca725b7e7e55f86cce8da703a56";
+import http from "github.com/kaitk/goose-http@v0.3.7";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import rest from "../../";
 import rest.compression;

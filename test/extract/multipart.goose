@@ -3,7 +3,7 @@
 // content type, a quoted boundary, a field after a file, a missing field, and
 // each failure's answer.
 import std;
-import http from "github.com/kaitk/goose-http@746f9567b5a51ca725b7e7e55f86cce8da703a56";
+import http from "github.com/kaitk/goose-http@v0.3.7";
 import rest from "../../";
 import expect from "../";
 import common;

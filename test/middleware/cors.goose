@@ -2,7 +2,7 @@
 // a refused origin, a preflight, an OPTIONS that isn't one, and any origin
 // with credentials.
 import std;
-import http from "github.com/kaitk/goose-http@746f9567b5a51ca725b7e7e55f86cce8da703a56";
+import http from "github.com/kaitk/goose-http@v0.3.7";
 import rest from "../../";
 import expect from "../";
 import common;
