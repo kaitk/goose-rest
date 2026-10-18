@@ -43,6 +43,10 @@ let LANE_MOST: i64 = 64;
 // thread_spawn in an application's state.
 struct Lane { role: u8[..32], boxes: http::Box[..64] }
 
+// Where this thread's next lane_send starts its scan. Each thread has its
+// own copy of a global, so it needs no synchronization.
+var lane_turn: i64 = 0;
+
 // Opens the boxes of a lane of cfg's role, as many as place gives it within
 // cfg's bounds, or cfg.threads. A box that fails to open ends the program, as
 // a configuration that can't start does.
@@ -83,14 +87,19 @@ fn lane<F>(box: http::Box) {
 
 // Sends image with tag to the least busy of lane's boxes, the one holding
 // the fewest jobs, and to the others in turn while each is full. Returns
-// SENT, FULL when every box is, or STALE.
+// SENT, FULL when every box is, TOO_LONG, or STALE.
 fn lane_send(lane: const Lane&, tag: i32, image: const u8[:]) -> i32 {
     let n = lane.boxes.len;
     guard n > 0 else { return http::STALE; }
-    var best = 0;
+    // Each send starts the scan one box further on, so that ties don't all
+    // go to one box and senders don't all read the same box's counts first.
+    let start = lane_turn % n;
+    lane_turn++;
+    var best = start;
     var least: i64 = -1;
-    for b, i in lane.boxes {
-        let q = http::mail_queued(http::address(b, 0));
+    for k in n {
+        let i = (start + k) % n;
+        let q = http::mail_queued(http::address(lane.boxes[i], 0));
         if q >= 0 && (least < 0 || q < least) {
             least = q;
             best = i;
@@ -100,7 +109,7 @@ fn lane_send(lane: const Lane&, tag: i32, image: const u8[:]) -> i32 {
     var r = http::STALE;
     for k in n {
         let sent = http::mail_send(http::address(lane.boxes[(best + k) % n], 0), tag, image);
-        if sent == http::SENT { return sent; }
+        if sent == http::SENT || sent == http::TOO_LONG { return sent; }
         if sent == http::FULL { r = sent; }
     }
     return r;
