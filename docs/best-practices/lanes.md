@@ -516,7 +516,9 @@ The writer, which the file doesn't name, keeps its one thread and floats on core
 7, the cores no exclusive set holds. A count above a lane's `max` is cut to it, with a
 warning. Nothing about the hardware stops the start, but a file that doesn't parse does.
 goose-http's [tuning guide](https://github.com/kaitk/goose-http/blob/main/docs/tuning.md)
-has the file's grammar, its warnings, and what each platform applies.
+has the file's grammar, its warnings, and what each platform applies. Placement is
+experimental until it is measured to help on real cores, so that grammar and its calls
+may be trimmed or removed.
 
 ---
 
