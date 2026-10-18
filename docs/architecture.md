@@ -178,6 +178,27 @@ skip the work of a client that has gone. A route that never waits keeps nothing 
 connection. The tutorial builds this from [work that waits](tutorial/11-waiting.md) to
 [limits](tutorial/13-limits.md).
 
+A lane of N threads, a `rest::Lane`, is N boxes, one per thread, which
+`rest::lane_open` opens from the lane's `rest::LaneConfig` and its placement
+([lanes per machine](best-practices/lanes.md#67-placing-lanes-per-machine)). The
+program spawns the threads, since `thread_spawn` can't take a `thread_fn` passed through
+a generic function in another module. `rest::ask` to a lane reads each box's count of
+queued jobs with goose-http's `http::mail_queued`, a snapshot any thread may read, and
+sends the job to the box holding the fewest, stopping at an empty one. Each sending
+thread starts its scan one box further on than its last, from a counter in a global,
+which each thread has a copy of, so that ties spread over the boxes and the senders
+don't all read the same box first. A box that is full when the job arrives passes it to
+the next in turn, so the route gets 503 only when every box is full. `rest::ask_by`
+skips the counts: the key modulo N picks the box, so one key's jobs reach one thread,
+in order, within a run.
+
+A lane stops by goose-http's `http::mail_stop`, a flag in each box that `rest::lane_stop`
+sets, not a message, so a full box can't refuse it. Sends to a stopped box fail, and
+`rest::lane`, the thread's loop, returns once its box is stopped and holds nothing more,
+so the jobs queued before the stop are still done
+([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
+`main` stops each lane once the workers have returned, and then waits for its threads.
+
 ## Bodies and responses in pieces
 
 Every call after a request's first goes through the same case functions, not only a
