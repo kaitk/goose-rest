@@ -60,5 +60,8 @@ unless the table says otherwise.
 | 027: a helper over the shared store | Deferred until a program needs it. |
 | 022: OpenAPI output | Planned for later. |
 | 012: a benchmark app shared with goose-http | Done in Docker on a Mac; the Linux desktop's idle VmRSS recheck remains, before task 010's run. |
+| 043: workers started with `http::run` | Waits on Goose #37 and goose-http's task 048. |
+| 044: workers and lanes that survive an abort | Waits on Goose #38 and goose-http's task 049. |
+| 045: limited queues for a pool of lanes | Waits on Goose #39 and goose-http's task 050. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |
