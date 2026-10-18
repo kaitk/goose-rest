@@ -15,7 +15,7 @@ Tier M, tier A behind a middleware stack: every answer, errors included,
 carries Server-Timing: app;dur=<ms>; one with Origin: https://app.example
 carries Access-Control-Allow-Origin for it; a request without a bearer token
 is 401; a preflight is 2xx without one, as the Fetch standard accepts any ok status
-(goose-rest and dusty answer 204, tower-http and actix-cors 200). DATADIR is goose-http's datasets,
+(goose-rest and dusty answer 204, tower-http, actix-cors, and ntex-cors 200). DATADIR is goose-http's datasets,
 for an item to compare.
 
 Exits non-zero with a message on the first failure.

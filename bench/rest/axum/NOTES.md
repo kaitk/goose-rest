@@ -36,9 +36,15 @@ under `start_tokio`. Taken from it:
 - axum with `default-features = false` and the features `json`, `query`, `http1`, and
   `tokio`; hyper with `server` and `http1`; hyper-util with `tokio`, `server-auto`, and
   `http1`; edition 2024.
-- Release profile: `lto = "fat"`, `codegen-units = 1`, `opt-level = 3`, and no
-  `panic = "abort"`, which the entry doesn't set.
+- Release profile: `lto = "fat"`, `codegen-units = 1`, and `opt-level = 3`. This
+  server adds `panic = "abort"`, which the entry doesn't set, to share one profile with
+  the other Rust servers ([bench/README.md](../../README.md#servers)).
 - `RUSTFLAGS="-C target-cpu=native"`, from its Dockerfile.
+
+HttpArena's axum entry (MDA2AV/HttpArena `36582d1`, read on 2026-10-17; the entry's last
+change is `1165835`) runs axum on the multi-threaded Tokio runtime in its default
+configuration, with thin LTO and without `target-cpu=native` or a global allocator, so
+it isn't the faster configuration to follow.
 
 Versions are current where the entry's are older: axum 0.8.9 (entry 0.8.7), tower-http
 0.7.1 (0.6.7), mimalloc 0.1.52 (0.1.48). tokio 1.53.2, hyper 1.12.0, and hyper-util

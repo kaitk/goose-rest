@@ -22,8 +22,10 @@ serde_json = { version = "1", features = ["preserve_order"] }
 snmalloc-rs = "0.7.6"
 tokio = "=1.53.2"
 
-# TechEmpower's actix profile.
+# The release profile every Rust server here shares (bench/README.md): the
+# strongest of their TechEmpower entries' settings.
 [profile.release]
-lto = true
 opt-level = 3
 codegen-units = 1
+lto = "fat"
+panic = "abort"

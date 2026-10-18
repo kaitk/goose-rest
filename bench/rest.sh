@@ -1,15 +1,16 @@
 #!/bin/sh
 # The REST benchmark (docs/benchmarks.md): goose-http's REST tiers A to D
-# through its own bench/rest.sh, with goose-rest, Axum, actix-web, and dusty
-# with a route per path beside goose-http alone, and goose-rest's tiers F, R,
-# and M (bench/rest/tiers) run here the same way. Results go to
+# through its own bench/rest.sh, with goose-rest, Axum, actix-web, ntex, and
+# dusty with a route per path beside goose-http alone, and goose-rest's tiers
+# F, R, and M (bench/rest/tiers) run here the same way. Results go to
 # bench/results/<date>-rest-<machine>/ unless OUT names another directory.
 #
 #   bench/rest.sh build   goose-http's bench/rest.sh build, then this
 #                         repository's servers into goose-http's build/rest:
-#                         rest-goose-rest, rest-axum, rest-actix-web, and
-#                         rest-dusty-routes; with ONLY=goose, goose-http's
-#                         ONLY=goose build and rest-goose-rest alone
+#                         rest-goose-rest, rest-axum, rest-actix-web,
+#                         rest-ntex, and rest-dusty-routes; with ONLY=goose,
+#                         goose-http's ONLY=goose build and rest-goose-rest
+#                         alone
 #   bench/rest.sh check   each server on each tier it serves, against
 #                         goose-http's bench/rest/check.py and
 #                         bench/rest/tiers/check.py, unpinned: runs on macOS
@@ -24,8 +25,8 @@
 # (goose-http's build/rest/rest; on tier F, goose-*-bare, this repository's
 # server with BARE=1 on http::serve); goose-epoll-rest and goose-uring-rest,
 # goose-rest; goose-*-rest-gen, goose-rest through the generated router, tier
-# R only; axum, actix-web, dusty-routes; and goose-http's dusty, its catch-all
-# entry, and hyper, as anchors to its tables.
+# R only; axum, actix-web, ntex, dusty-routes; and goose-http's dusty, its
+# catch-all entry, and hyper, as anchors to its tables.
 #
 # What run measures beyond goose-http's bench/rest.sh, each server with
 # WORKERS workers on SERVER_CPUS and wrk on CLIENT_CPUS, a fresh server per
@@ -45,9 +46,9 @@
 #   GOOSE_HTTP   a goose-http checkout at the pin rest.goose names (default:
 #                a clone at the pin in build/, scripts/goose-http.sh)
 #   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-rest
-#                goose-epoll-rest axum actix-web dusty-routes dusty hyper
+#                goose-epoll-rest axum actix-web ntex dusty-routes dusty hyper
 #   EXTRA        tiers F, R, and M: goose-uring-rest goose-epoll-rest axum
-#                actix-web dusty-routes, with goose-*-bare on F and
+#                actix-web ntex dusty-routes, with goose-*-bare on F and
 #                goose-*-rest-gen on R added
 #   TIERS        f r m, or a subset; STEPS goose-http's, or "none" to skip it
 set -eu
@@ -87,7 +88,7 @@ build)
         ls -l "$bin"
         exit 0
     fi
-    for name in axum actix-web; do
+    for name in axum actix-web ntex; do
         (cd "$cache" && RUSTFLAGS="-C target-cpu=native" cargo build --release --locked \
             --manifest-path "$root/bench/rest/$name/Cargo.toml" --target-dir "$cache/target-rest-$name")
         cp "$cache/target-rest-$name/release/rest-$name" "$bin/rest-$name"
@@ -120,8 +121,8 @@ check | run | count) ;;
     ;;
 esac
 
-servers=${SERVERS:-goose-uring goose-epoll goose-uring-rest goose-epoll-rest axum actix-web dusty-routes dusty hyper}
-extra=${EXTRA:-goose-uring-rest goose-epoll-rest axum actix-web dusty-routes}
+servers=${SERVERS:-goose-uring goose-epoll goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes dusty hyper}
+extra=${EXTRA:-goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes}
 which=${TIERS:-f r m}
 port=${PORT:-29380}
 url=http://127.0.0.1:$port
@@ -286,7 +287,8 @@ fi
 {
     echo "goose-rest: $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet || echo ' (modified)')"
     echo "axum: $(sed -n '/^name = "axum"$/{n;s/version = //p;}' "$root/bench/rest/axum/Cargo.lock")," \
-        "actix-web: $(sed -n '/^name = "actix-web"$/{n;s/version = //p;}' "$root/bench/rest/actix-web/Cargo.lock")"
+        "actix-web: $(sed -n '/^name = "actix-web"$/{n;s/version = //p;}' "$root/bench/rest/actix-web/Cargo.lock")," \
+        "ntex: $(sed -n '/^name = "ntex"$/{n;s/version = //p;}' "$root/bench/rest/ntex/Cargo.lock")"
     echo "extra servers: $extra; tiers: $which"
 } >>"$out/env.txt"
 

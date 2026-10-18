@@ -51,6 +51,7 @@ unless the table says otherwise.
 | 021: reads beside uploads | Fixed; the Linux rerun confirms it. |
 | 023: bodies and responses in pieces | Built; instruction counts on tiers A and M on Linux. |
 | 025: middleware fields on later answers, and 029: the gathering budget | Done; tier M's instructions per request on Linux record what each added. |
+| 042: ntex on the desktop | Built and checked on macOS; build, check, and measure on the Linux desktop. |
 | 040: rate gaps in the v0.1.0 session | The router's stack frame fixed; open for discussion: goose-rest's per-request overhead on tiers A and M, and a hand-written chain's frame. |
 | 036: parameters in a scope's prefix | Research; the best practices' member audience waits on it. |
 | 037: data compiled into the binary | Spike. |

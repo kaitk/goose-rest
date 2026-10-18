@@ -1,0 +1,32 @@
+[package]
+name = "rest-ntex"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Crates and features as TechEmpower's ntex entry has them (NOTES.md), at
+# ntex 4: its native runtime, which neon-uring holds to io_uring on Linux and
+# which uses polling elsewhere. ntex's cookie feature, ntex-cors,
+# ntex-multipart, futures-util, and serde_json's ordered Value for tier F are
+# what the routes add.
+[dependencies]
+rest-app = { path = "../rust-app" }
+futures-util = { version = "0.3", default-features = false }
+mimalloc = { version = "0.1.52", default-features = false }
+ntex = { version = "4.3.0", features = ["cookie"] }
+ntex-bytes = { version = "1.12", features = ["simd"] }
+ntex-cors = "4.1.1"
+ntex-multipart = "4.1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ntex = { version = "4.3.0", features = ["cookie", "neon-uring"] }
+
+# The release profile every Rust server here shares (bench/README.md): the
+# strongest of their TechEmpower entries' settings.
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "fat"
+panic = "abort"
