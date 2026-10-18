@@ -53,13 +53,13 @@ fn ask<J>(cx, to: http::MailAddress, tag: i32, job: J, w, ms: i64 = 5000) {
 
 // ask to a lane (lane.goose): its least busy thread takes the job, and 503
 // comes only when every thread's box is full.
-fn ask<J>(cx, to: Lane, tag: i32, job: J, w, ms: i64 = 5000) {
+fn ask<J>(cx, to: const Lane&, tag: i32, job: J, w, ms: i64 = 5000) {
     ask_with(cx, job, w, ms) { image => lane_send(to, tag, image) };
 }
 
 // ask to the thread of lane that key always picks, so that one key's jobs
 // run in the order they were asked; 503 when that thread's box is full.
-fn ask_by<J>(cx, to: Lane, key: u64, tag: i32, job: J, w, ms: i64 = 5000) {
+fn ask_by<J>(cx, to: const Lane&, key: u64, tag: i32, job: J, w, ms: i64 = 5000) {
     ask_with(cx, job, w, ms) { image => lane_send_by(to, key, tag, image) };
 }
 
