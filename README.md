@@ -35,7 +35,7 @@ pass their tests on arm64 Linux.
 | 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
 | 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
 | 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#5-errors)). |
-| 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/11-waiting.md)). |
+| 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/11-waiting.md)). A lane of several threads takes each job on its least busy thread, or by key, and a placement file per machine sets its count within the code's bounds and its cores ([best practices](docs/best-practices/lanes.md#66-lanes-of-several-threads)). |
 | 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#6-testing)). |
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
@@ -146,7 +146,8 @@ flowchart LR
   error in a customizable format ([errors](docs/reference.md#5-errors)).
 - **Workers share nothing and never block**, as in
   [goose-http](https://github.com/kaitk/goose-http#concepts). I/O-bound work, such as a
-  query to a database server, runs on a lane, a thread of its own: the route sends it a
+  query to a database server, runs on a lane, one or more threads of its own: the route
+  sends it a
   [message](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
   and resumes when the reply arrives, the half-sync/half-async pattern
   ([tutorial](docs/tutorial/11-waiting.md), [why](docs/architecture.md#waiting-on-a-lane)).
