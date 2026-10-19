@@ -21,8 +21,9 @@
 //
 // The job crosses in a rest::Ask, with the address the reply goes to and
 // the size of a reply message, read with http::mail_slot_size. The lane's
-// thread replies with rest::reply_value, or rest::reply in pieces of at most
-// that size, which rest::relay sends on as they come; before work worth
+// thread replies with rest::reply_value, whose pieces the worker collects
+// whole before the resume runs, or rest::reply, in pieces of at most that
+// size, which rest::relay sends on as they come; before work worth
 // skipping, rest::still_wanted says whether the route still waits. A
 // rest::fail on the lane refuses the job, which fails the route with its
 // status and code. A route that never asks keeps nothing on the connection
@@ -33,8 +34,10 @@ import std;
 import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 
 // A reply message's tag: REPLY_REFUSED for a job its lane refused, which
-// holds a Refusal; REPLY_MORE when more of the reply follows; REPLY_CONT on
-// every piece after the first.
+// holds a Refusal; REPLY_VALUE on every piece of a reply_value, which the
+// worker collects whole before it calls the handler; REPLY_MORE when more of
+// the reply follows; REPLY_CONT on every piece after the first.
+let REPLY_VALUE: i32 = 0x08000000;
 let REPLY_REFUSED: i32 = 0x10000000;
 let REPLY_CONT: i32 = 0x20000000;
 let REPLY_MORE: i32 = 0x40000000;
@@ -156,9 +159,9 @@ fn still_wanted<U>(a: const Asked<U>&) -> bool {
 
 // Replies v, a flat value, to the route that asked a, after the job: what
 // rest::answer reads. Returns false when the route has gone, as reply does.
-// The job and v must fit one reply message, Config.mail_size bytes, for
-// answer to read them.
-fn reply_value<U>(a: Asked<U>&, v) -> bool { reply(a, value_bytes(v)) }
+// Its pieces are marked REPLY_VALUE, and the worker collects them whole in
+// its spill, within its gather budget, before the resume runs.
+fn reply_value<U>(a: Asked<U>&, v) -> bool { reply_tagged(a, value_bytes(v), REPLY_VALUE) }
 
 // Replies data to the route that asked a, after the job, in pieces of at
 // most the size a carries, which rest::relay sends on as they come. A piece
@@ -169,7 +172,10 @@ fn reply_value<U>(a: Asked<U>&, v) -> bool { reply(a, value_bytes(v)) }
 // wait times out; a send checks the key before a slot, so the retry on a
 // full box ends then too. A send already in flight may still be accepted
 // and dropped by the worker.
-fn reply<U>(a: Asked<U>&, data: const u8[:]) -> bool {
+fn reply<U>(a: Asked<U>&, data: const u8[:]) -> bool { reply_tagged(a, data, 0) }
+
+// reply's work, with tag on each piece.
+fn reply_tagged<U>(a: Asked<U>&, data: const u8[:], tag: i32) -> bool {
     let job = value_bytes(a.job);
     var image: u8[>..] = [];
     image.push((job.len & 0xFF) as u8);
@@ -177,7 +183,7 @@ fn reply<U>(a: Asked<U>&, data: const u8[:]) -> bool {
     image.append(job);
     image.append(data);
     a.replied = true;
-    return send_reply(a, image, 0);
+    return send_reply(a, image, tag);
 }
 
 // Replies a refusal of a's job with status and code: the status's 4 bytes,
@@ -200,7 +206,8 @@ fn refusal_of(bytes: const u8[:]) -> i32, const u8[:], bool {
     return status, bytes[4..], true;
 }
 
-// Sends data with tag to the route that asked a, in pieces: reply's work.
+// Sends data with tag to the route that asked a, in pieces, each after the
+// first with REPLY_CONT and tag's REPLY_VALUE: reply's work.
 fn send_reply<U>(a: Asked<U>&, data: const u8[:], tag: i32) -> bool {
     var p .= a.played;
     if p {
@@ -222,7 +229,7 @@ fn send_reply<U>(a: Asked<U>&, data: const u8[:], tag: i32) -> bool {
         }
         guard more else { return true; }
         at = end;
-        t = REPLY_CONT;
+        t = REPLY_CONT | (tag & REPLY_VALUE);
     }
 }
 
@@ -282,8 +289,7 @@ fn echoed<U>(bytes: const u8[:]) -> U, bool {
 }
 
 // The flat value reply_value replied after the job, or 502 bad_reply for a
-// reply that isn't one, or that came in pieces: raise Config.mail_size to
-// the job's and the value's size.
+// reply that isn't one, as one that rest::reply sent in pieces.
 fn answer<T>(cx) -> T {
     var v = default<T>();
     let n = echo_len(cx.reply);

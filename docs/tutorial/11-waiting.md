@@ -121,7 +121,7 @@ fn run(u: DbJob.Assign, c: db::Conn&, a) {
 ```
 
 `a` is where the reply goes. `rest::reply_value(a, v)` replies `v`, a flat value, which
-goes between threads as bytes, in one message. `rest::fail(a, status, code)` fails the
+goes between threads as bytes. `rest::fail(a, status, code)` fails the
 route that asked, with that status and code, as it does in a route: the error crosses
 the lane, as a `throw` crosses an `await`. A `run` that does neither gets the route
 500 `no_reply`.
@@ -221,9 +221,11 @@ fn resume(u: DbJob.Assign, cx) { rest::json(cx, 200, rest::answer<Assigned>(cx))
 ```
 
 `u` holds the job as the route sent it, so what the route needs when it resumes travels
-with the job, and the request state keeps only the mark. A job and its answer must fit
-one message of the worker's box, 256 bytes by default
-([a reply in pieces](12-two-lanes.md#a-reply-in-pieces) is for a longer one).
+with the job, and the request state keeps only the mark. A job and its answer longer
+than one message of the worker's box, 256 bytes by default, come in pieces, which the
+worker collects before the `resume` runs, within the gather budget of
+[page 10](10-large-bodies.md#body-limits-and-the-gather-budget). A reply that is
+sent on as it comes is [a reply in pieces](12-two-lanes.md#a-reply-in-pieces).
 
 ```text
 PUT /v1/projects/1/tasks/3/assignee?user=2 200 {"task":3,"assignee":2}

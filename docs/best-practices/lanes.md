@@ -324,9 +324,11 @@ fn resume(u: Use.Hash, cx) { resume(rest::job<Hashes>(cx), cx); }
 
 A job's `resume` gets the job as the route sent it, so what it needs from the request
 travels in the job, and the request state keeps only the mark. A job and its answer
-must fit one message of the worker's box, 256 bytes by default; for a longer answer,
-raise `http::Config.mail_size`, or reply in pieces with `rest::reply` and answer with
-`rest::relay` ([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)).
+longer than one message of the worker's box, 256 bytes by default, come in pieces,
+which the worker collects within its gather budget before the `resume` runs
+([Lanes](../reference.md#41-lanes)). To send a long answer on as it comes, reply with
+`rest::reply` and answer with `rest::relay`
+([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)).
 
 Write a `run` and a `resume` for each variant, never one that takes the whole enum. An
 overload of `run(u, w: Writer&, a)` with `u` untyped, or of `resume(u: Writes, cx)`,

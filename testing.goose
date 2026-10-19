@@ -41,7 +41,8 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
 struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, early: bool = false, sent: const u8[:] = "" }
 
 // What a lane replied to one job under rest::play: data, the reply's bytes,
-// with tag, REPLY_REFUSED for a refusal.
+// with tag, REPLY_REFUSED for a refusal and REPLY_VALUE for a
+// rest::reply_value.
 struct Played { tag: i32 = 0, data: u8[>..] = [] }
 
 // Runs job, a variant of lane's U as rest::ask takes it, through F(u, a), a
@@ -70,7 +71,8 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
-// pieces of cfg.mail_size bytes, or with the timeout. A piece that comes
+// pieces of cfg.mail_size bytes, a reply_value's collected whole within
+// limits.gather_budget, or with the timeout. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
 // no wake left ends the exchange with what the route wrote so far, or 500
 // if nothing; one with a response open is a client that goes, and H gets
@@ -170,7 +172,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             continue;
         }
         var at = 0;
-        var tag = w.tag & REPLY_REFUSED;
+        var tag = w.tag & (REPLY_REFUSED | REPLY_VALUE);
         while stream.waiting {
             let end = min(at + piece, w.data.len);
             let more = end < w.data.len;
@@ -181,7 +183,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
                     st, app, reply, spill, budget) { cx => H(cx) };
             guard more else { break; }
             at = end;
-            tag = REPLY_CONT;
+            tag = REPLY_CONT | (w.tag & REPLY_VALUE);
         }
     }
     // A response still open with no wake left is a client that goes.

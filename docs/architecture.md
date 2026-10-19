@@ -184,8 +184,11 @@ answers with the same status and code before any `resume` runs, as a `throw` cro
 an `await`. The job crosses as a `to_bytes` image, with no JSON between threads, and
 the lane's box carries bytes in fixed-size slots, as goose-http's
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
-explains. A job and its answer must fit one slot for `rest::answer` to read them; a
-longer reply comes in pieces, which `rest::relay` sends on as chunks.
+explains. A reply longer than a slot comes in pieces. The lane marks the pieces of a
+`rest::reply_value`, and the worker collects them in its spill, under the same gather
+budget as the bodies it gathers, and calls the `resume` once with the whole reply, so
+`rest::answer` reads any size the budget allows. `rest::reply`'s pieces go unmarked,
+and `rest::relay` sends each on as a chunk as it comes.
 `rest::still_wanted` tells the lane whether the route still waits, so it can skip the
 work of a client that has gone. The mark is the only byte a waiting route keeps in its
 state, and a route that never waits keeps nothing on the connection. The tutorial
@@ -230,6 +233,14 @@ client's bytes in the `resume` of the lane's mark, which also gets the `TIMEOUT`
 a 504 can't follow the 101, and which sets the upgrade's variant back when the wait
 ends. Only the `WAKE` carries a job to dispatch on, so that `resume` tells the events
 apart by `cx.kind`. An exchange has one wait, so a second `rest::ask` during it fails.
+
+A body gathered for `rest::body` and a `rest::reply_value` collected from its pieces
+are each a run of the worker's spill, which `rest::Config`'s `gather_budget` bounds. A
+reply's run starts with its length and capacity, and the exchange keeps only where it
+starts, in the field a pause's deadline uses, since an exchange waits on a pause or a
+reply, never both: the slot that goose-http copies for each request stays its size. The
+run is freed once the `resume` has had the reply, or when the client goes, the time
+limit passes, or the route stops waiting at a later call.
 
 A route's middleware keeps what it decided with the exchange, so an answer written at a
 later call still gets the CORS fields and `Server-Timing`. A file being sent lives in

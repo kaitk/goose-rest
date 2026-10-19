@@ -12,7 +12,8 @@ by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each reques
 With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
 `fresh`. `rest::serve(cfg, app, fresh, limits)` also takes goose-rest's own settings,
 a `rest::Config`: its `gather_budget` bounds the bodies a worker gathers at once
-([Extractors](#3-extractors)). `rest::serve_epoll` has the same forms.
+([Extractors](#3-extractors)), and the lanes' replies in pieces it collects
+([Lanes](#41-lanes)). `rest::serve_epoll` has the same forms.
 
 The context is `rest::Cx<S, A, R>`: the request state, the worker state, and the
 router type. Its `req`, `body`, `out`, and `scratch` carry the request and response.
@@ -336,7 +337,7 @@ and the request state holds the route's progress.
 
 | The route called | The case function gets `cx.kind` | goose-rest handles |
 |---|---|---|
-| `rest::ask` | `http::WAKE`, at the lane's mark, with the job and its answer in `cx.reply`; on an upgraded connection, also `http::BODY` per arrival during the wait, and `http::TIMEOUT` | a refusal; `TIMEOUT`: 504 `timeout`, except on an upgraded connection |
+| `rest::ask` | `http::WAKE`, at the lane's mark, with the job and its answer in `cx.reply`; on an upgraded connection, also `http::BODY` per arrival during the wait, and `http::TIMEOUT` | a refusal; a value's pieces, collected for one `WAKE`; `TIMEOUT`: 504 `timeout`, except on an upgraded connection |
 | `rest::body_in_pieces` | `http::BODY` per piece, in `cx.body`; then `http::END`; or `http::CLOSED` | the limit: 413 |
 | `rest::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
 | `rest::pause`, after `rest::begin` | `http::TIMEOUT`, the response still open; `http::CLOSED` if the client goes first | goose-http's `TIMEOUT` at once, with no timer free: the response ends, then `CLOSED` |
@@ -453,20 +454,29 @@ rest::lane_stop(reports);
 | `rest::lane_job<U>(bytes) { u, a => ... }` | One job of `rest::lane`, from a message's bytes: for a thread that writes its own loop, as one doing timed work between jobs does, and for a test that reads the job a route sent. | |
 | `rest::lane_stop(lane)` | `http::lane_stop`: stops every box of `lane` and waits for its threads, each of which takes what its box holds first. A full box can't refuse the stop. | |
 | `rest::ask(cx, lane, job, ms)` | Sends `job`, a variant of the lane's enum, to the least busy thread of `lane`, the one whose box holds the fewest, or to the others in turn while each is full, and waits for the reply with the lane's mark in `cx.state.use` ([Later calls](#4-later-calls)). A variant of another lane's enum doesn't compile. | 503 `unavailable` when every box is full, the lane is stopped, or the job is longer than a slot; 500 `already_waiting` |
-| `rest::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job. Returns false once the route has gone. | |
+| `rest::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job, in pieces of the worker's message size, each marked as a value's, which the worker collects whole before the `resume` runs. Returns false once the route has gone. | The route: 502 `reply_too_large` past the worker's gather budget |
 | `rest::reply(a, data)` | On the lane: replies `data` after the job, in pieces of the worker's message size, for `rest::relay`. Returns false once the route has gone. | |
 | `rest::fail(a, status, code)` | On the lane: refuses the job, which fails the route with `status` and `code` before its `resume` runs. A domain's `check(e, x)` that calls `rest::fail(x, ...)` serves a route's `cx` and a lane's `a` alike. | |
 | `rest::still_wanted(a)` | On the lane: whether the route still waits, for work worth skipping. A snapshot: the route can still go before the reply. | |
 | `rest::job<U>(cx)` | In the mark's `resume`: the job the reply carries back. | 500 `not_a_reply` at another event than `WAKE`; 502 `bad_reply` |
-| `rest::answer<T>(cx)` | In a job's `resume`: the value `rest::reply_value` replied. | 502 `bad_reply` for a reply that isn't a `T`, or that came in pieces |
+| `rest::answer<T>(cx)` | In a job's `resume`: the value `rest::reply_value` replied, whole however many pieces it came in. | 502 `bad_reply` for a reply that isn't a `T`, as one `rest::reply` sent in pieces |
 | `rest::relay(cx, status, content_type)` | In a job's `resume`: answers with the bytes `rest::reply` replied after the job, whole, or chunked as the pieces come. | 502 `bad_reply` |
 
-`ms` defaults to 5000, as for every `rest::ask`. A job and its answer must fit one
-message of the worker's box, `http::Config.mail_size` bytes, 256 by default, for
-`rest::answer` to read them. For a longer answer, raise `mail_size`, or reply with
-`rest::reply` in pieces and answer with `rest::relay`. The request state keeps only the
-mark: what a `resume` needs from the request goes in the job, which comes back with the
-reply.
+`ms` defaults to 5000, as for every `rest::ask`. A reply longer than one message of
+the worker's box, `http::Config.mail_size` bytes, 256 by default, comes in pieces. The
+pieces of a `rest::reply_value` carry a tag bit of their own, `rest::REPLY_VALUE`, and
+the worker collects them in its spill, the memory it gathers bodies in, counted against
+`rest::Config`'s `gather_budget` ([Extractors](#3-extractors)). The `resume` runs once,
+at the last piece, with the whole reply, so `rest::job` and `rest::answer` read it as
+they read one message. The wait's time limit restarts at each piece. A reply the spill
+can't hold within the budget fails the route with 502 `reply_too_large`, or cuts short
+a response already begun, and leaves the mark in `cx.state.use`, as a timeout does. A
+client that goes, or a time limit that passes, before the last piece frees what was
+collected. `rest::reply`'s pieces aren't collected: `rest::relay` sends each on as it
+comes, so the worker holds one piece at a time. Raising `mail_size` to the largest job
+and answer avoids pieces altogether, at the cost of every slot of every worker's box.
+The request state keeps only the mark: what a `resume` needs from the request goes in
+the job, which comes back with the reply.
 
 Each `run` and `resume` takes one variant. An overload that takes a whole enum, untyped
 (`fn run(u, r: Reader&, a)`) or typed (`fn resume(u: Reports, cx)`), is an exact match,
@@ -512,6 +522,7 @@ another shape, as the end of this section shows:
 | 500 | `not_served` | `rest::body_in_pieces` or `rest::pause` with a context that `rest::serve` or `serve_one` didn't make |
 | 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
 | 502 | `bad_reply` | `rest::job`, `rest::answer`, and `rest::relay`: a reply that doesn't hold its job, or a value of the type read |
+| 502 | `reply_too_large` | `rest::ask`: a reply of `rest::reply_value`, in pieces, past the worker's gather budget ([Lanes](#41-lanes)) |
 | 503 | `unavailable` | `rest::ask`: every box of the lane is full, or the lane is stopped ([Lanes](#41-lanes)) |
 | 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)) |
 
@@ -576,7 +587,8 @@ is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 A route that calls `rest::ask` sends its job, or gets 503 for a full box. `serve_one`
 then calls the handler again with the wait's `Wake`, as `rest::serve` calls it when the
 reply comes: as `http::WAKE`, in pieces of `cfg.mail_size` bytes with the tags
-`rest::reply` gives them, a refusal as the route's failure, or as the timeout's 504, which an upgraded connection gets
+`rest::reply` and `rest::reply_value` give them, a value's collected whole within
+`limits`' gather budget, a refusal as the route's failure, or as the timeout's 504, which an upgraded connection gets
 as `http::TIMEOUT`. On an upgraded connection, the `Wake`'s `sent` comes first, as one
 `http::BODY` during the wait. A piece that comes once the route
 no longer waits is dropped. A wait with no `Wake` left ends the exchange: the answer is

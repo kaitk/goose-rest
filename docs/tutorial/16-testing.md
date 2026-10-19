@@ -136,9 +136,10 @@ as the lane's own reply does. The refusal fails the route before its `resume` ru
 Each route still sends its job, so the test empties the box before its two slots fill.
 
 A reply larger than a slot in the worker's box, `Config.mail_size` bytes, comes in
-pieces, as `rest::reply` sends it. Pass the program's `http::Config` as `serve_one`'s
-last argument to split a reply as the server does: `rest::relay` sends the pieces on as
-chunks, and `rest::answer` can't read a value from them.
+pieces. Pass the program's `http::Config` as `serve_one`'s `cfg` to split a reply as
+the server does: `rest::relay` sends the pieces of a `rest::reply` on as chunks, and
+the pieces of a `rest::reply_value` are collected for `rest::answer`, within the
+gather budget of the `rest::Config` after it. A small `mail_size` tests both.
 
 `scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; to run one on its own, use
 `goose docs/tutorial/11-waiting/test.goose`.

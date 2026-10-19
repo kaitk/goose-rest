@@ -1,7 +1,8 @@
 // rest::serve_one with a route that asks a lane, given what the lane's run
-// replies under rest::play: a value, a relay in one piece and in several with
-// the job in front, a refusal from a rest::fail on the lane, a run that
-// replies nothing, two waits in turn, a timeout, and a wait with no wake
+// replies under rest::play: a value, whole and in pieces, a value past the
+// gather budget, a relay in one piece and in several with the job in front,
+// a refusal from a rest::fail on the lane, a run that replies nothing, two
+// waits in turn, whole and in pieces, a timeout, and a wait with no wake
 // left; and the request state once the route has answered.
 import std;
 import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
@@ -15,7 +16,11 @@ enum Echoes {
     Refused { status: i32 },
     Silent,
     Twice { n: i64 },
+    Wide { n: i64 },
 }
+
+// A value wider than the job.
+struct Row { n: i64, square: i64, name: u8[..24] }
 
 enum Use { None, Echo }
 
@@ -40,6 +45,8 @@ fn handle(cx) {
                 rest::ask(cx, cx.app.to, Echoes.Refused { status: 409 });
             } else if path == "/silent" {
                 rest::ask(cx, cx.app.to, Echoes.Silent);
+            } else if path == "/wide" {
+                rest::ask(cx, cx.app.to, Echoes.Wide { n: 7 });
             } else {
                 rest::ask(cx, cx.app.to, Echoes.Twice { n: 1 });
             }
@@ -56,12 +63,18 @@ fn run(u: Echoes.Text, d: Adder&, a) { rest::reply(a, u.s); }
 fn run(u: Echoes.Refused, d: Adder&, a) { rest::fail(a, u.status, "refused_here"); }
 fn run(u: Echoes.Silent, d: Adder&, a) {}
 fn run(u: Echoes.Twice, d: Adder&, a) { rest::reply_value(a, u.n * 10); }
+fn run(u: Echoes.Wide, d: Adder&, a) { rest::reply_value(a, Row { n: u.n, square: u.n * u.n, name: "seven" }); }
 
 // On the worker, each job's resume, given the job back.
 fn resume(u: Echoes.Value, cx) { rest::text(cx, 200, str(u.n, " ", rest::answer<i64>(cx))); }
 fn resume(u: Echoes.Text, cx) { rest::relay(cx, 200, "text/plain"); }
 fn resume(u: Echoes.Refused, cx) { rest::fail(cx, 500, "not_reached"); }
 fn resume(u: Echoes.Silent, cx) { rest::fail(cx, 500, "not_reached"); }
+
+fn resume(u: Echoes.Wide, cx) {
+    let r = rest::answer<Row>(cx);
+    rest::text(cx, 200, str("wide ", u.n, ": ", r.square, " ", r.name));
+}
 
 // Two waits in turn: the second asks again with the first's answer, until
 // it's past 100.
@@ -71,7 +84,7 @@ fn resume(u: Echoes.Twice, cx) {
 }
 
 fn main() {
-    let box, e = http::mail_open(16, 256);
+    let box, e = http::mail_open(32, 256);
     http::exit_on_error(e);
     // A lane of the test's own box, and no thread: the test plays it.
     var app = App { to: rest::lane_of<Echoes>(box, Use.Echo) };
@@ -100,9 +113,24 @@ fn main() {
                  "several pieces");
     print("relayed in pieces, then: ", st.use);
 
-    // A value can't be read from pieces.
+    // A value in pieces is collected whole before the resume runs, which
+    // dispatches on the job at its front: in two pieces, and in three.
     let tiny = http::Config { mail_size: (value.data.len - 1) as i32, .. };
-    expect::same(expect::body_of(answer("/value", [rest::wake(value)], tiny)), "{\"error\":\"bad_reply\"}", "a value in pieces");
+    expect::same(expect::body_of(answer("/value", [rest::wake(value)], tiny)), "40 42", "a value in two pieces");
+    print("a value in two pieces, then: ", st.use);
+    let wide = rest::play(app.to, Echoes.Wide { n: 7 }) { u, a => run(u, d, a); };
+    let thirds = http::Config { mail_size: ((wide.data.len + 2) / 3) as i32, .. };
+    expect::same(expect::body_of(answer("/wide", [rest::wake(wide)], thirds)), "wide 7: 49 seven", "a value in three pieces");
+    print("a value of ", wide.data.len, " bytes in pieces of ", thirds.mail_size, ", then: ", st.use);
+
+    // A value the worker can't collect within its gather budget fails the
+    // route with 502 reply_too_large, and leaves the mark, as a timeout does.
+    let none_left = rest::Config { gather_budget: wide.data.len };
+    let over = rest::serve_one(expect::request("GET", "/wide"), app, St { .. }, [rest::wake(wide)], thirds, none_left) { cx =>
+        handle(cx);
+        st = cx.state;
+    };
+    print("over the budget: ", expect::status_of(over), " ", expect::body_of(over), ", then: ", st.use);
 
     // A rest::fail on the lane fails the route with its status and code,
     // before the resume runs.
@@ -123,6 +151,9 @@ fn main() {
     let third = rest::play(app.to, Echoes.Twice { n: 100 }) { u, a => run(u, d, a); };
     expect::same(expect::body_of(answer("/twice", [rest::wake(first), rest::wake(second), rest::wake(third)])), "1000", "three waits");
     print("then: ", st.use);
+    let eight = http::Config { mail_size: 8, .. };
+    expect::same(expect::body_of(answer("/twice", [rest::wake(first), rest::wake(second), rest::wake(third)], eight)),
+                 "1000", "three waits in pieces");
     expect::same(expect::status_of(answer("/twice", [rest::wake(first)])), "HTTP/1.1 500 Internal Server Error",
                  "no wake left");
     print("no wake left, then: ", st.use);

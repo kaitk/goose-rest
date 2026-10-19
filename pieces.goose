@@ -119,7 +119,7 @@ fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
         return;
     }
     if (x.mode & CODED) != 0 { end_coded(x, cx.out, trailers); } else { http::end(cx.out, trailers); }
-    x.mode &= KEPT;
+    x.mode &= KEPT | COLLECTING;
 }
 
 // What a response rest::begin begins inside rest::compressed does: these

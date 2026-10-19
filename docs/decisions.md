@@ -563,9 +563,9 @@ Rejected: a second field for these waits beside the mark, which every program's 
 would carry for routes that wait on no lane.
 
 The mark costs a connection's state one byte, as tier M's `rest::NoState` does (spike
-11). The bytes move to the mail: each reply carries its job again, and a job and its
-answer must fit one reply message, `Config.mail_size` bytes, for `answer` to read
-them; a longer reply goes with `rest::reply` and `rest::relay`. A `run` or `resume`
+11). The bytes move to the mail: each reply carries its job again, so more replies
+come in pieces, which the worker collects for `answer`
+([Value replies in pieces](#value-replies-in-pieces)). A `run` or `resume`
 overload that takes the whole enum is an exact match and wins every call without a
 word ([findings](goose-findings.md#an-overload-that-takes-the-whole-enum-hides-its-case-functions-without-a-word));
 `no_reply` catches a catch-all `run` that doesn't reply, at run time only. This
@@ -581,6 +581,39 @@ rejected:
   lane's largest job together, 165 bytes.
 - Keeping the tagged `ask` and `read_reply` beside the new calls: two ways to do one
   thing, which the 2026-10-19 entry above rules out.
+
+### Value replies in pieces
+
+Decided (2026-10-19): the lane decides whether a reply's pieces are collected. This
+replaces the rule above that a job and its answer fit one reply message for
+`rest::answer` to read them. `rest::reply_value` marks each of its pieces with a tag
+bit, `REPLY_VALUE`, beside `REPLY_REFUSED`, `REPLY_MORE`, and `REPLY_CONT`, and the
+worker appends each marked piece to a run of its spill, as it gathers a body for
+`rest::body`, counted against the same `gather_budget`. It calls the handler once, at
+the last piece, with the whole reply in `cx.reply`, so `rest::job` and `rest::answer`
+are unchanged. `rest::reply`'s pieces stay unmarked, and the handler gets each, which
+`rest::relay` sends on as a chunk.
+
+- A reply past the budget fails the route with 502 `reply_too_large`, a code of its
+  own, since `bad_reply` says the lane's bytes were wrong and these weren't. The mark
+  stays in `cx.state.use`, as after a timeout.
+- The run is freed after the `resume`, which may wait again, at `CLOSED`, at
+  `TIMEOUT`, and at a later call that leaves the route not waiting, such as
+  `rest::end` on an upgraded connection.
+- The exchange keeps the run's start in `due`, a pause's deadline, and the run starts
+  with its length and capacity. An exchange waits on a pause or a reply, never both,
+  and a pause sets `due` afresh, so the slot goose-http copies for each request keeps
+  its size; three fields of their own would add 24 bytes to it for routes that never
+  wait.
+
+This rejected:
+
+- The handler opting in at the first piece, as with a call in the `resume`: the first
+  piece is too late to know, since the `resume` runs at it, and `job` and `answer`
+  would need a second path for a reply that isn't whole yet.
+- Only raising `Config.mail_size`, which stays the way to avoid pieces altogether: it
+  grows every slot of every worker's box for the largest reply, where the spill holds
+  a long reply only while it's collected.
 
 ## Tests
 
