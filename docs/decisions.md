@@ -625,9 +625,11 @@ are unchanged. `rest::reply`'s pieces stay unmarked, and the handler gets each, 
 - A reply past the budget fails the route with 502 `reply_too_large`, a code of its
   own, since `bad_reply` says the lane's bytes were wrong and these weren't. The mark
   stays in `cx.state.use`, as after a timeout.
-- The run is freed after the `resume`, which may wait again, at `CLOSED`, at
-  `TIMEOUT`, and at a later call that leaves the route not waiting, such as
-  `rest::end` on an upgraded connection.
+- The run is freed after the `resume`, which may wait again, at `CLOSED`, including
+  the one a route gets when it fails at an upgraded connection's bytes, at `TIMEOUT`,
+  and at a later call that ends the route or leaves it not waiting, such as
+  `rest::end` on an upgraded connection. A reply past the budget frees it too, and
+  cuts a response begun, whose route then gets `CLOSED`.
 - The exchange keeps the run's start in `due`, a pause's deadline, and the run starts
   with its length and capacity. An exchange waits on a pause or a reply, never both,
   and a pause sets `due` afresh, so the slot goose-http copies for each request keeps

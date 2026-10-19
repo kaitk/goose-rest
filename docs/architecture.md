@@ -248,7 +248,8 @@ starts, in the field a pause's deadline uses, since an exchange waits on a pause
 reply, never both: the slot that goose-http copies for each request stays its size. The
 run is freed once the `resume` has had the reply, from where it started before that
 call, since the `resume` may pause again, or when the client goes, the time limit
-passes, or the route stops waiting at a later call.
+passes, the reply passes the budget, or the route stops waiting, ends, or fails at a
+later call. A reply past the budget cuts a response begun, and its route gets `CLOSED`.
 
 A route's middleware keeps what it decided with the exchange, so an answer written at a
 later call still gets the CORS fields and `Server-Timing`. A file being sent lives in

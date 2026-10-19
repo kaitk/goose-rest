@@ -1,0 +1,7 @@
+upgraded, failed mid-reply: open false, CLOSED to echo 0, ticks 0, feed 1, in the spill 0
+then the client goes: CLOSED to echo 0, ticks 0, feed 0, in the spill 0
+upgraded, ended mid-reply: open false, CLOSED to echo 0, ticks 0, feed 0, in the spill 0
+begun, over the budget: open false, keep-alive false, waiting false, CLOSED to echo 0, ticks 0, feed 1, in the spill 0
+refused mid-reply: HTTP/1.1 409 Conflict {"error":"conflict"}, in the spill 0
+receiving, two pieces of three: collecting true, in the spill true
+receiving, the third: HTTP/1.1 200 OK 1 0123456789, in the spill 0

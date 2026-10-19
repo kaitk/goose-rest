@@ -205,7 +205,8 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 // cut short by its time limit leaves the response open, and goose-http
 // closes the connection.
 // An answer after REQUEST gets the fields its middleware kept (stash_kept).
-// Returns out.buf.len from before its call to H, or -1 for none, for
+// Returns out.buf.len from before its call to H, or after a reply past the
+// budget, or -1 for none, for
 // on_later, which the caller then calls for a route that reads, sends, or
 // upgrades (Exchange.mode).
 inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&,
@@ -215,8 +216,10 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
             relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
             return -1;
         }
+        // A reply past the budget, with COLLECTING cleared, goes on to after,
+        // which gives CLOSED to a route whose response it cut.
         if (ev.tag & (REPLY_CONT | REPLY_MORE)) != 0 && !collect_reply(st, ev.data, ev.tag, out, spill, budget) {
-            return -1;
+            return if (st.ex.mode & COLLECTING) != 0 { -1 } else { out.buf.len };
         }
     }
     if ev.kind == http::TIMEOUT {
@@ -313,9 +316,11 @@ fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, s
         k = after(ev, st, o, spill, budget, k, before);
         keep_run(st.ex, at, n, len);
     }
-    // A route that stopped the wait at a later call, as with rest::end on an
-    // upgraded connection, gets no more of the reply it collected.
-    if !out.stream.waiting { drop_reply(st.ex, spill, budget); }
+    // A route that stopped the wait at a later call, or ended, as with
+    // rest::end on an upgraded connection, whose wait goose-http clears only
+    // once the handler returns, gets no more of the reply it collected. A
+    // route that receives its body has no stream open, and still waits.
+    if !out.stream.waiting || (!out.stream.open && (st.ex.mode & LATER) == 0) { drop_reply(st.ex, spill, budget); }
     settle_kept(st.ex, o, from, spill, budget);
 }
 
@@ -495,6 +500,7 @@ fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, bu
     let x .= st.ex;
     if k == http::CLOSED {
         if (x.mode & CODED) != 0 { release_coded(x, out.fd); }
+        drop_reply(x, spill, budget);
         x.mode &= KEPT;
         return http::NO_EVENT;
     }
