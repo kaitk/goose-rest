@@ -40,11 +40,13 @@ CHANGELOG.md      what each tag adds
 
 ## Get Goose
 
-Until the next release, the scripts build Goose master `dcc2747` (2026-10-19), which
+Until the next release, the scripts build Goose master `f114b5a` (2026-10-19), which
 `goose_commit` in `scripts/goose.sh` pins, as goose-http does: the pinned goose-http's
 `http::run` and `http::lane_open` need
 [aardappel/goose#37](https://github.com/aardappel/goose/pull/37), which no release has
-yet. Building it needs CMake and a C++ compiler. Otherwise the scripts use the official
+yet, and the commit has [#41](https://github.com/aardappel/goose/pull/41), which keeps
+gcc from dropping the stores to a `ByteSet` that the byte search reads, a miscompile in
+gcc builds on Linux and WSL. Building it needs CMake and a C++ compiler. Otherwise the scripts use the official
 Goose release that `scripts/goose.sh` pins: `v2026.2` (`3ee3871`), since 2026-10-16.
 The first script that needs the compiler fetches it into
 `build/`, as goose-http's does

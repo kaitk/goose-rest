@@ -20,7 +20,7 @@
 #   GOOSE=$(scripts/goose.sh)
 
 goose_release=v2026.2
-goose_commit=dcc274794b68c154481780ddba96e9f1121bbaa9
+goose_commit=f114b5ac52cfad4bc73038aede53ac7e470b0ad3
 
 goose_fetch() {
     case ${GOOSE_ASSET:-$(uname -s)-$(uname -m)} in
