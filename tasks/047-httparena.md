@@ -74,8 +74,8 @@ until it has working code.
 
 ## Order
 
-1. Task 046's rename, then the entry with the six HTTP/1.1 profiles goose-rest already
-   serves.
+1. Task 046's rename and task 050's use-case enum, then the entry with the six HTTP/1.1
+   profiles goose-rest already serves.
 2. TLS: goose-tls task 001, then HTTP/1.1 over TLS in goose-http (task 014, phase 2),
    then json-tls and 8gbit in the entry. kTLS (task 014, phase 3) matters for 8gbit's
    CPU score.

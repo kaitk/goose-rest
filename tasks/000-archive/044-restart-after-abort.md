@@ -3,8 +3,8 @@
 Status: cancelled by the maintainer on 2026-10-19, after an independent review. An
 abort ends the process, which a service manager restarts, for workers and lanes alike
 ([goose-http's decision](https://github.com/kaitk/goose-http/blob/main/docs/decisions.md#a-crash-ends-the-process-and-a-service-manager-restarts-it)).
-goose-http's worker restart is parked on its branch `restart-workers`. The text below
-describes the plan as it stood.
+goose-http's worker restart is parked on its branch `restart-workers`. Reopened as task
+051 (2026-10-19). The text below describes the plan as it stood.
 
 With `thread_spawn_contained`, an abort ends only its thread, and `thread_wait` returns
 false for it. goose-http's `http::run` restarts an aborted worker (its task 050,
