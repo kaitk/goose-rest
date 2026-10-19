@@ -18,7 +18,8 @@ let WAIT_MS: i64 = 200;
 ```rust
     // Two slots, the fewest a box has: two jobs waiting behind the one the
     // database works on fill it.
-    let dbox, e = http::mail_open(2, 256);
+    let app = App {
+        db: http::lane_open(http::LaneConfig { slots: 2, .. }, database),
 ```
 
 ## 504 for a late reply
@@ -53,11 +54,10 @@ GET /v1/projects/1/summary 503 {"error":"unavailable"}
 
 Size a box for the jobs a lane can finish within the routes' time limit: more slots
 only queue work whose clients get 504 before it starts. For more work at once, give the
-lane several threads, each with its own box.
-
-A lane of several threads opens with `rest::lane_open`, and `rest::ask` to it sends
-each job to its least busy thread, with 503 only when every thread's box is full. The
-best practices build one ([Lanes of several threads](../best-practices/lanes.md#66-lanes-of-several-threads)).
+lane several threads, `http::LaneConfig { threads: 2, .. }`, each with its own box.
+`rest::ask` then sends each job to the least busy thread, with 503 only when every
+thread's box is full
+([Lanes of several threads](../best-practices/lanes.md#66-lanes-of-several-threads)).
 
 *Note: the best practices size each box by how long its lane's jobs take, and give work
 the product can do without under load, such as reports, a small box of its own, so that
@@ -174,15 +174,15 @@ From [`main.goose`](13-limits/main.goose):
 ```
 
 The thread waits for mail at most a step's time while a report runs, answers what came,
-and then takes a step. `rest::lane` waits with no time limit, so this thread writes its
-own loop, which ends as `rest::lane`'s does: once `http::mail_stopped` finds the box
-stopped by `main` and empty:
+and then takes a step. `http::lane` waits with no time limit, so this thread writes its
+own loop, which ends as `http::lane`'s does: once `http::mail_stopped` finds the lane
+stopped by `main` and its box empty. `main` opens and stops it as any lane:
 
 ```rust
 // The reports' thread: it takes a step of the report running between its
 // messages, so that it replies to a client's question while a report runs.
 // Its wait has a time limit while a report runs, so it writes the loop that
-// rest::lane is, until the box is stopped and empty.
+// http::lane is, until the lane is stopped and its box empty.
 thread_fn reports(box: http::Box) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];

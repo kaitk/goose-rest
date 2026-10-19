@@ -11,7 +11,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../";
 import db from "../db/";
 
@@ -63,7 +63,7 @@ enum Waiting { None, Summary, Gone, Started, Report }
 
 struct St { waiting: Waiting = Waiting.None }
 
-struct App { db: http::MailAddress, reports: http::MailAddress }
+struct App { db: http::Lane, reports: http::Lane }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
@@ -128,7 +128,7 @@ fn resume(w: Waiting.Report, cx) {
 thread_fn database(box: http::Box) {
     var c = db::open(DELAY_MS);
     var gone = Gone { .. };
-    rest::lane(box) { tag, bytes =>
+    http::lane(box) { tag, bytes =>
         if tag == SUMMARY {
             let a, ok = rest::asked<SummaryJob>(bytes);
             if ok && !rest::still_wanted(a) {
@@ -149,7 +149,7 @@ thread_fn database(box: http::Box) {
 // The reports' thread: it takes a step of the report running between its
 // messages, so that it replies to a client's question while a report runs.
 // Its wait has a time limit while a report runs, so it writes the loop that
-// rest::lane is, until the box is stopped and empty.
+// http::lane is, until the lane is stopped and its box empty.
 thread_fn reports(box: http::Box) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];
@@ -209,17 +209,12 @@ fn main() {
     http::exit_on_error(http::stop_on_signals());
     // Two slots, the fewest a box has: two jobs waiting behind the one the
     // database works on fill it.
-    let dbox, e = http::mail_open(2, 256);
-    http::exit_on_error(e);
-    let rbox, e2 = http::mail_open(16, 256);
-    http::exit_on_error(e2);
-    let app = App { db: http::address(dbox, 0), reports: http::address(rbox, 0) };
-    let dt = thread_spawn(database, dbox);
-    let rt = thread_spawn(reports, rbox);
+    let app = App {
+        db: http::lane_open(http::LaneConfig { slots: 2, .. }, database),
+        reports: http::lane_open(http::LaneConfig { slots: 16, .. }, reports),
+    };
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, app, worker);
-    http::mail_stop(dbox);
-    http::mail_stop(rbox);
-    thread_wait(dt);
-    thread_wait(rt);
+    http::lane_stop(app.db);
+    http::lane_stop(app.reports);
 }

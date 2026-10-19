@@ -48,10 +48,10 @@ fn assign(c: db::Conn&, j: AssignJob) -> AssignReply {
 }
 
 // The lane's thread: it owns the connection, and takes jobs from its box one
-// at a time, until main stops the box and every job queued before is done.
+// at a time, until main stops the lane and every job queued before is done.
 thread_fn run(box: http::Box, delay_ms: i64) {
     var c = db::open(delay_ms);
-    rest::lane(box) { tag, bytes =>
+    http::lane(box) { tag, bytes =>
         if tag == PROJECT {
             let a, ok = rest::asked<ProjectJob>(bytes);
             if ok { rest::reply_value(a, project(c, a.job)); }

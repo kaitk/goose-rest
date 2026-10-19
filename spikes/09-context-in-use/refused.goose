@@ -2,7 +2,7 @@
 // router where there is none. goose check refuses the first; README.md has
 // each refusal, found by removing the ones before it.
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../";
 import .api_gen;
 import .app;
@@ -18,7 +18,7 @@ fn outside(cx) {
 fn main() {
     var projects: api::Project[>..] = [];
     var live: bool[>..] = [];
-    var a = app::App { projects: projects, live: live, db: http::MailAddress { .. } };
+    var a = app::App { projects: projects, live: live, db: http::Lane { .. } };
     rest::serve(http::Config { .. }, a, app::St { .. }) { cx =>
         if rest::resumed(cx) { rest::route(cx) { resume(cx); }; }
         else if cx.req.method == "TRACE" { outside(cx); }

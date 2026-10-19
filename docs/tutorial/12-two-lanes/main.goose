@@ -8,7 +8,7 @@
 //   curl -s -X POST 'localhost:8080/v1/projects/1/members?user=3'
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../";
 import db from "../db/";
 
@@ -38,7 +38,7 @@ enum Waiting {
 
 struct St { waiting: Waiting = Waiting.None }
 
-struct App { db: http::MailAddress, mailer: http::MailAddress }
+struct App { db: http::Lane, mailer: http::Lane }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
@@ -111,7 +111,7 @@ fn add_member(c: db::Conn&, j: MemberJob) -> MemberReply {
 
 thread_fn database(box: http::Box) {
     var c = db::open(DELAY_MS);
-    rest::lane(box) { tag, bytes =>
+    http::lane(box) { tag, bytes =>
         if tag == TASKS {
             let a, ok = rest::asked<TasksJob>(bytes);
             // In pieces of the worker's message size, 64 bytes here.
@@ -126,7 +126,7 @@ thread_fn database(box: http::Box) {
 // The mailer: it numbers each invitation it sends.
 thread_fn mailer(box: http::Box) {
     var sent = 0;
-    rest::lane(box) { tag, bytes =>
+    http::lane(box) { tag, bytes =>
         if tag == SEND {
             let a, ok = rest::asked<MailJob>(bytes);
             if ok {
@@ -138,8 +138,8 @@ thread_fn mailer(box: http::Box) {
     };
 }
 
-thread_fn worker(cfg: http::Config, to_db: http::MailAddress, to_mailer: http::MailAddress) {
-    var app = App { db: to_db, mailer: to_mailer };
+thread_fn worker(cfg: http::Config, lanes: App) {
+    var app = lanes;
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
@@ -158,18 +158,12 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let dbox, e = http::mail_open(64, 256);
-    http::exit_on_error(e);
-    let mbox, e2 = http::mail_open(64, 256);
-    http::exit_on_error(e2);
-    let to_db = http::address(dbox, 0);
-    let to_mailer = http::address(mbox, 0);
-    let dt = thread_spawn(database, dbox);
-    let mt = thread_spawn(mailer, mbox);
+    let app = App {
+        db: http::lane_open(http::LaneConfig { .. }, database),
+        mailer: http::lane_open(http::LaneConfig { .. }, mailer),
+    };
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, mail_size: 64, max_waiting: 1024, .. };
-    http::run(cfg, to_db, to_mailer, worker);
-    http::mail_stop(dbox);
-    http::mail_stop(mbox);
-    thread_wait(dt);
-    thread_wait(mt);
+    http::run(cfg, app, worker);
+    http::lane_stop(app.db);
+    http::lane_stop(app.mailer);
 }

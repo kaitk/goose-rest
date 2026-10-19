@@ -24,13 +24,13 @@ place of a database.
 
 Split slow work by the resource it occupies: the database's one write connection,
 a read connection, or a CPU core. Give each kind a lane of its own, named for what it
-does. The program has three lanes, with one thread each:
+does. The program has three lanes:
 
-| Lane | What it does | Its jobs | Box |
-|---|---|---|---|
-| `writer` | Runs every write to the database, one at a time | `create_entry`, `open_session` | 64 slots |
-| `reports` | Reads the database for reports, and sums what it reads | `total_entries` | 2 slots |
-| `hasher` | Checks passwords: CPU work, with no database | `verify_password` | 16 slots |
+| Lane | What it does | Its jobs | Threads | Box |
+|---|---|---|---|---|
+| `writer` | Runs every write to the database, one at a time | `create_entry`, `open_session` | 1 | 64 slots |
+| `reports` | Reads the database for reports, and sums what it reads | `total_entries` | 1 | 2 slots |
+| `hasher` | Checks passwords: CPU work, with no database | `verify_password` | 2 | 16 slots each |
 
 ```mermaid
 flowchart LR
@@ -89,30 +89,28 @@ lane more threads, each with its own box, rather than make one box larger
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
 
-`main` opens each lane with `rest::lane_open`, which starts the lane's threads, each
-with a box of its own, with slots of 256 bytes to fit the largest job a route sends. It
-gives the workers the lanes in `App`, which a route reads as `cx.app.writer`. At
-shutdown, it stops each lane with `rest::lane_stop`, which waits for the lane's
-threads:
+`main` opens each lane with goose-http's `http::lane_open`, which starts the lane's
+threads, each with a box of its own, with slots of 256 bytes to fit the largest job a
+route sends. It gives the workers the lanes in `App`, which a route reads as
+`cx.app.writer`. At shutdown, it stops each lane with `http::lane_stop`, which waits
+for the lane's threads:
 
 ```rust
-    let place = http::place_load();
-    // The code bounds each lane, and a placement file chooses within the
-    // bounds. One writer, which needs nothing written: max is threads unless
-    // written. Reports may grow to 4 threads, and the hasher to 2. Each
-    // lane_open spawns its lane's threads.
+    // Each lane_open spawns its lane's threads: one writer, the database's
+    // only one; one reader for reports; and two hashers, so that one sign-in
+    // doesn't wait behind another's hash.
     let app = App {
-        writer: rest::lane_open(place, rest::LaneConfig { role: "writer", slots: WRITER_SLOTS, .. }, writer),
-        reports: rest::lane_open(place, rest::LaneConfig { role: "reports", max: 4, slots: REPORTS_SLOTS, .. }, reports),
-        hasher: rest::lane_open(place, rest::LaneConfig { role: "hasher", max: 2, slots: HASHER_SLOTS, .. }, hasher),
+        writer: http::lane_open(http::LaneConfig { slots: WRITER_SLOTS, .. }, writer),
+        reports: http::lane_open(http::LaneConfig { slots: REPORTS_SLOTS, .. }, reports),
+        hasher: http::lane_open(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, hasher),
     };
-    let cfg = http::Config { port: port as i32, workers: 1, place: http::place_ref(place), mail_slots: 64, max_waiting: 1024, .. };
+    let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, app, worker);
     // A flag in each box, not a message: a full box can't refuse it. Each
     // lane_stop waits for its lane's threads.
-    rest::lane_stop(app.writer);
-    rest::lane_stop(app.reports);
-    rest::lane_stop(app.hasher);
+    http::lane_stop(app.writer);
+    http::lane_stop(app.reports);
+    http::lane_stop(app.hasher);
 ```
 
 </details>
@@ -120,20 +118,18 @@ threads:
 <details>
 <summary>What a lane's thread runs</summary>
 
-A lane's thread takes its seat, then takes each job from its box by its tag in
-`rest::lane`, runs the job's function, and replies. The writer:
+A lane's thread takes each job from its box by its tag in `http::lane`, runs the job's
+function, and replies. The writer:
 
 ```rust
 // The writer lane, one thread: the database's one writer. It owns the entries
 // and the sessions, and runs every job that writes, one at a time.
-thread_fn writer(box: http::Box, at: http::Seat) {
-    // First, before the thread touches memory of its own.
-    http::take_seat(at);
+thread_fn writer(box: http::Box) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
     // Each job in the box, in order, told apart by its tag, until main stops
-    // the box.
-    rest::lane(box) { tag, bytes =>
+    // the lane.
+    http::lane(box) { tag, bytes =>
         if tag == CREATE_ENTRY {
             // The job, and where reply_value sends the reply.
             let a, ok = rest::asked<entries::CreateJob>(bytes);
@@ -254,9 +250,8 @@ From [`lanes/main.goose`](lanes/main.goose):
 ```rust
 // A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
-thread_fn hasher(box: http::Box, at: http::Seat) {
-    http::take_seat(at);
-    rest::lane(box) { tag, bytes =>
+thread_fn hasher(box: http::Box) {
+    http::lane(box) { tag, bytes =>
         if tag == VERIFY_PASSWORD {
             // The job, and where reply_value sends the reply.
             let a, ok = rest::asked<auth::SignInJob>(bytes);
@@ -268,9 +263,9 @@ thread_fn hasher(box: http::Box, at: http::Seat) {
 
 </details>
 
-One hasher thread limits sign-ins to one core. During a burst, sign-in jobs wait in
-the hasher's box. Once it's full, more sign-ins get 503 while the workers keep
-answering every other route.
+The hasher's two threads limit sign-ins to two cores. During a burst, sign-in jobs
+wait in the hashers' boxes. Once both are full, more sign-ins get 503 while the workers
+keep answering every other route.
 
 Work that reads and then computes, such as a report, needs no separate lane for the
 computation. One job on the reports lane reads the entries and calls the rule to sum them
@@ -431,91 +426,20 @@ code there would have to qualify each of the domain's names, as in `auth::Verifi
 
 ## 6.6 Lanes of several threads
 
-Give a lane several threads when its jobs can run side by side, such as reports that
-only read, or password checks that each take a core. Each thread has its own box, and
-`rest::ask` to the lane sends a job to the least busy thread. The program lets the
-reports lane grow to 4 threads and the hasher to 2. Each has one thread unless a
-placement file gives it more ([Placing lanes per machine](#67-placing-lanes-per-machine)).
-
-`rest::lane_open(place, cfg, reader)` starts the lane's threads from a
-`rest::LaneConfig`, each the `thread_fn` `reader` with a box of its own and its
-`http::Seat`. A value of the program's for every thread goes before `reader`:
-`rest::lane_open(place, cfg, db, reader)` starts
-`thread_fn reader(box: http::Box, at: http::Seat, db: Db)`. A field of the
-`LaneConfig` left out takes its default:
-
-| Field | Default | What it sets |
-|---|---|---|
-| `role` | `""` | The lane's name in a placement file |
-| `threads` | 1 | The threads where the file gives no count, at least 1 |
-| `max` | `threads` (written as 0) | The most threads a file may give, at most `rest::LANE_MOST`, 64 |
-| `slots` | 64 | Each box's slots, a power of two of at least 2 |
-| `size` | 256 | Each slot's bytes, enough for the largest job a route sends |
-
-A box that fails to open ends the program, as a configuration that can't start does.
-`lane_open` returns a `rest::Lane`, which holds the boxes and the threads' ids. A
-`Lane` is flat, so the workers get it in `App`, and a route asks it as it would one
-thread, as `rest::ask(cx, cx.app.reports, ...)`.
-
-Which thread takes a job depends on the call:
-
-- **`rest::ask`** sends the job to the box holding the fewest jobs, and to the others in
-  turn while each is full. A route gets 503 only when every box is full. Each send
-  starts its scan one box further on, so that ties spread over the threads.
-- **`rest::ask_by(cx, lane, key, tag, job, w)`** sends every job of one key to the same
-  thread, so that they run in the order they were asked. Use it for lane data split by
-  key, such as a cache per project in each thread's memory. The thread is the key modulo
-  the lane's thread count, which a placement file can change between runs, so the pick
-  holds within one run only, and nothing stored may depend on it. A route gets 503 when
-  that thread's box is full, even while the others have room.
+Give a lane several threads when its jobs can run side by side, such as password checks
+that each take a core: `http::LaneConfig { threads: 2, .. }`, as the hasher has. Each
+thread has its own box, and `rest::ask` sends a job to the least busy one, so a route
+gets 503 only when every box is full. The lane's code doesn't change: each thread runs
+the same `thread_fn`.
 
 The writer stays one thread. Its entries and sessions are in its own memory, which a
 second thread wouldn't see, and it stands for the database's one write connection
 ([A lane for each kind of slow work](#61-a-lane-for-each-kind-of-slow-work)), as SQLite
-allows one writer. Since `max` is `threads` unless written, the writer's `LaneConfig`
-needs nothing written for that, and no placement file can grow it.
+allows one writer.
 
-At shutdown, `rest::lane_stop(lane)` stops each of the lane's boxes with goose-http's
-`http::mail_stop`: a flag in the box, not a message, so a full box can't refuse it.
-Each thread takes what its box still holds and returns from `rest::lane`, and
-`lane_stop` returns once every thread has
-([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
-The thread that opened the lane calls `lane_stop`, once the workers have returned.
-
-## 6.7 Placing lanes per machine
-
-The code bounds each lane, and a placement file, one per kind of machine, chooses within
-the bounds: how many threads each lane has, up to its `max`, which cores they run on,
-and whether they run at low priority. A new kind of machine gets a new file, not a new
-build. Without a file every thread floats, wherever the operating system puts it, and
-each lane has its code's `threads`.
-
-`http::place_load()` reads the file that the command line names with `--place FILE`, or
-else `GOOSE_PLACE`. `main` passes the placement to `rest::lane_open` for each lane's
-count and each thread's seat, and to the workers as
-`Config.place: http::place_ref(place)`
-([`main.goose`](#62-how-many-jobs-a-box-holds)). Each lane thread calls
-`http::take_seat` first, before it touches memory of its own, since Linux puts a page on
-the NUMA node of the thread that first writes it.
-
-A file for this program on an 8-core server, saved as `place/api-8core.place` and given
-as `build/lanes 8080 --place place/api-8core.place`:
-
-```text
-# The workers on cores 0-5, which no lane may take.
-set front = 0-5 exclusive
-workers = 6 each front
-reports = 4 within 6-7
-hasher = 2 within 6-7 low
-```
-
-The writer, which the file doesn't name, keeps its one thread and floats on cores 6 and
-7, the cores no exclusive set holds. A count above a lane's `max` is cut to it, with a
-warning. Nothing about the hardware stops the start, but a file that doesn't parse does.
-goose-http's [tuning guide](https://github.com/kaitk/goose-http/blob/main/docs/tuning.md)
-has the file's grammar, its warnings, and what each platform applies. Placement is
-experimental until it is measured to help on real cores, so that grammar and its calls
-may be trimmed or removed.
+`LaneConfig`'s fields, `threads`, `slots`, and `size`, and how `http::lane_stop`
+stops a lane at shutdown are in goose-http's
+[lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes).
 
 ---
 

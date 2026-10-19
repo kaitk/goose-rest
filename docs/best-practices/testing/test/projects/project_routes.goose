@@ -1,18 +1,16 @@
 // The projects' routes, through rest::serve_one: the request's bytes in, the
 // response's bytes out, with no socket or thread.
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../../../";
 import app from "../../";
 import expect from "../";
 
 fn main() {
-    // The worker state main.goose's worker builds, with a box nothing takes
-    // from: these routes don't ask the writer.
-    let box, e = http::mail_open(2, 256);
-    http::exit_on_error(e);
+    // The worker state main.goose's worker builds, with an empty lane: these
+    // routes don't ask the writer.
     var projects: projects::Project[>..] = [];
-    var a = App { projects: projects, writer: http::address(box, 0) };
+    var a = App { projects: projects, writer: http::Lane { .. } };
     fn answer(text: const u8[:]) -> u8[>..] {
         let out = rest::serve_one(text, a, St { .. }) { cx => handle(cx); };
         return expect::shown(out);

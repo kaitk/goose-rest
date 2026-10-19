@@ -2,7 +2,7 @@
 // a route behind CORS and Server-Timing that answers at a later call: at
 // WAKE, at TIMEOUT, or at a body's END.
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../";
 import expect from "../";
 
@@ -48,7 +48,7 @@ fn resume(w: Waiting.Upload, cx) {
 // The route of what, behind the middleware of which: "cors", "timed", or
 // both, timed outside. "ask" asks to, "upload" reads its body in pieces, and
 // "gathered" asks once rest::body has the body whole.
-fn later_route(cx, what: const u8[:], which: const u8[:], to: http::MailAddress) {
+fn later_route(cx, what: const u8[:], which: const u8[:], to: const http::Lane&) {
     fn inner() {
         rest::route(cx) {
             if what == "upload" {

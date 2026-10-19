@@ -5,7 +5,7 @@
 //
 //   goose docs/tutorial/11-waiting/test.goose
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../";
 import db from "../db/";
 import .database;
@@ -43,11 +43,13 @@ fn main() {
     expect(database::assign(c, database::AssignJob { project: 1, task: 4, user: 1, assignee: 3 }), 409, "assignee_not_a_member");
     assert(assignee(c, 4) == 0);
 
-    // The routes, with a box of the test's own where the lane's would be:
+    // The routes, with a lane of one box of the test's own and no thread:
     // nothing takes from it but the test.
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
-    var app = App { conn: c, db: http::address(box, 0) };
+    var lane = http::Lane { .. };
+    lane.boxes.push(box);
+    var app = App { conn: c, db: lane };
     fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
         return rest::serve_one(text, app, St { .. }, wakes) { cx =>
             if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }

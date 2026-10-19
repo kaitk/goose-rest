@@ -20,7 +20,7 @@ struct St { waiting: Waiting = Waiting.None }
 
 // The projects stand in for a database in the worker's memory; the entries
 // are the writer lane's, which the routes ask by mail.
-struct App { projects: projects::Project[>..]&, writer: http::MailAddress }
+struct App { projects: projects::Project[>..]&, writer: http::Lane }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

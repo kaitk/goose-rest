@@ -1,4 +1,0 @@
-threads: 2 with no file, 8 as the file says, 2 cut to max, 1 by default
-threads: 4 with max below threads, 1 and 1 with threads below 1, 64 and 64 for 100 asked
-least busy: 12 of 12 sent, 12 to the idle thread, 1 to the held one
-by key: 4 of 4 keys each on one thread, 30 jobs, 0 out of order

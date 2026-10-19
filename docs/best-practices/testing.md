@@ -32,7 +32,7 @@ it imports ([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose))
 
 ```rust
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../../../";
 import app from "../../";
 import expect from "../";
@@ -91,7 +91,7 @@ same code `rest::serve` runs, with no socket or thread
 as `main.goose`'s worker does, and gives each request to the program's `handle`:
 
 ```rust
-    var a = App { projects: projects, writer: http::address(box, 0) };
+    var a = App { projects: projects, writer: http::Lane { .. } };
     fn answer(text: const u8[:]) -> u8[>..] {
         let out = rest::serve_one(text, a, St { .. }) { cx => handle(cx); };
         return expect::shown(out);
@@ -116,9 +116,9 @@ the same way: give `serve_one` a request without a token, and the answer is the 
 
 ## 8.5 A route that asks a lane is given its replies
 
-The test plays the lane. It gives the worker state a box of its own where the lane's
-would be, and nothing takes from that box but the test, so no thread runs and nothing
-waits. From [`testing/test/entries/entry_routes.goose`](testing/test/entries/entry_routes.goose):
+The test plays the lane. It gives the worker state an `http::Lane` of one box of its
+own, with no thread, and nothing takes from that box but the test, so nothing waits.
+From [`testing/test/entries/entry_routes.goose`](testing/test/entries/entry_routes.goose):
 
 ```rust
     // The job the route sends, read as the lane reads it.

@@ -2,7 +2,7 @@
 // rest::cors, rest::timed, or both, that asks another thread and answers
 // its reply at WAKE, or 504 at TIMEOUT, and one that gathers its body first.
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../";
 import expect from "../";
 import common;
@@ -15,7 +15,9 @@ fn answered_later(text: const u8[:], which: const u8[:], reply: const u8[:], tim
                   what: const u8[:] = "ask") -> u8[>..] {
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
-    let to = http::address(box, 0);
+    // A lane of the test's own box, and no thread: the test takes the job.
+    var to = http::Lane { .. };
+    to.boxes.push(box);
     let req, status = http::parse(text);
     if status != 200 { print("parse: ", status, "\n", text); assert(false); }
     let body = text[req.len..];

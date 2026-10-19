@@ -8,12 +8,12 @@ import http;
 import rest;
 import api_gen;
 
-// The worker's state, cx.app: the projects, where the database thread takes
-// jobs, and counts the output shows.
+// The worker's state, cx.app: the projects, the database lane, and counts
+// the output shows.
 struct App {
     projects: api::Project[>..]&,
     live: bool[>..]&,
-    db: http::MailAddress,
+    db: http::Lane,
     audits: i64 = 0,
     lookups: i64 = 0,
 }

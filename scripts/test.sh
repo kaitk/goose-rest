@@ -173,7 +173,7 @@ esac
 for f in "$root"/spikes/*/main.goose "$root"/spikes/*/*/main.goose; do
     step "spike ${f#"$root"/}"
     # TinyCC can't run threads: a spike that spawns one is built and run.
-    if grep -q thread_spawn "$f"; then
+    if grep -qE 'thread_spawn|lane_open' "$f"; then
         "$goose" build -o "$root/build/spike" "$f"
         "$root/build/spike$exe" >"$root/build/spike.out"
     else

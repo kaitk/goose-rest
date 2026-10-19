@@ -26,8 +26,8 @@ enum Waiting {
 struct St { waiting: Waiting = Waiting.None }
 
 // The worker state: a connection of its own, for the route that queries
-// in place, and where the database lane takes jobs.
-struct App { conn: db::Conn&, db: http::MailAddress }
+// in place, and the database lane.
+struct App { conn: db::Conn&, db: http::Lane }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

@@ -52,7 +52,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../";
 import http.bench.rest.goose.app;
 // app.goose's templates use the store, which app.goose can't import itself
@@ -1042,7 +1042,7 @@ fn main() {
     }
     var loop_name: u8[>..] = [];
     let epoll = env("LOOP", loop_name) && loop_name == "epoll";
-    var cfg = http::Config { port: port, workers: n, max_body: if writes { IMPORT_LIMIT } else { http::MAX_BODY }, .. };
+    let cfg = http::Config { port: port, workers: n, max_body: if writes { IMPORT_LIMIT } else { http::MAX_BODY }, .. };
     stopped(http::stop_on_signals());
     let count = http::worker_count(cfg);
     mallopt(M_MMAP_THRESHOLD, 131072);
@@ -1052,7 +1052,6 @@ fn main() {
     var ids: i64[>..] = [];
     for i in count {
         qget<Ready>();
-        cfg.worker = i;
         ids.push(if tier == "f" { thread_spawn(worker_f, cfg, epoll, bare) }
                  else if tier == "r" { thread_spawn(worker_r, cfg, epoll, generated) }
                  else if tier == "b" { thread_spawn(worker_b, cfg, epoll) }

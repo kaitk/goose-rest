@@ -51,6 +51,15 @@ enum Waiting {
 }
 ```
 
+`main` opens each lane as the previous page's, and hands both to the worker in `App`:
+
+```rust
+    let app = App {
+        db: http::lane_open(http::LaneConfig { .. }, database),
+        mailer: http::lane_open(http::LaneConfig { .. }, mailer),
+    };
+```
+
 <details>
 <summary>The routes, which ask the database first</summary>
 

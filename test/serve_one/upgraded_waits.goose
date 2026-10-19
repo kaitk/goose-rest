@@ -3,7 +3,7 @@
 // asks at the request and one that asks at a BODY, and a second ask during
 // a wait.
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../";
 import expect from "../";
 
@@ -15,7 +15,7 @@ enum Waiting { None, Echo, Asked }
 struct St { waiting: Waiting = Waiting.None }
 
 // closed counts the CLOSED calls, whose writes go nowhere.
-struct App { to: http::MailAddress, closed: i64 = 0 }
+struct App { to: http::Lane, closed: i64 = 0 }
 
 let JOB: i32 = 1;
 
@@ -66,7 +66,8 @@ fn upgraded(app: App&, target: const u8[:], after: const u8[:], wakes: const res
 fn main() {
     let box, e = http::mail_open(16, 256);
     http::exit_on_error(e);
-    var app = App { to: http::address(box, 0) };
+    var app = App { .. };
+    app.to.boxes.push(box);
 
     // Asked at the request: bytes during the wait, the reply, bytes after it.
     print(upgraded(app, "/ask", "after", [rest::Wake { sent: "during", data: "reply" }]));

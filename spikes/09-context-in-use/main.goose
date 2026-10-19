@@ -9,7 +9,7 @@
 // fixed: each request goes through rest::on_event, the code rest::serve
 // runs, and each reply message addressed to it comes back as a WAKE.
 import std;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../";
 import .api_gen;
 import .app;
@@ -19,7 +19,6 @@ import .app;
 type Cx = rest::Cx<app::St, app::App, http::Router>;
 
 let REPORT: i32 = 1;
-let STOP: i32 = 2;
 let SLOT_SIZE: i64 = 256;
 
 struct ReportJob { id: i64 }
@@ -86,22 +85,15 @@ fn resume(w: app::Waiting.Report, cx) {
 
 
 thread_fn database(box: http::Box) {
-    var running = true;
-    while running {
-        http::mail_wait(box, 1000);
-        http::mail_take(box) { key, tag, bytes =>
-            if tag == REPORT {
-                let a, ok = rest::asked<ReportJob>(bytes);
-                if ok {
-                    assert(a.piece == SLOT_SIZE);
-                    rest::reply_value(a, ReportReply { tasks: a.job.id * 3 });
-                }
-            } else if tag == STOP {
-                running = false;
+    http::lane(box) { tag, bytes =>
+        if tag == REPORT {
+            let a, ok = rest::asked<ReportJob>(bytes);
+            if ok {
+                assert(a.piece == SLOT_SIZE);
+                rest::reply_value(a, ReportReply { tasks: a.job.id * 3 });
             }
-        };
-    }
-    http::mail_close(box);
+        }
+    };
 }
 
 // One request through to its whole response, printed without CRs: REQUEST,
@@ -144,17 +136,14 @@ fn get(target: const u8[:], token: const u8[:] = "ada", method: const u8[:] = "G
 
 fn main() {
     let worker, e1 = http::mail_open(16, SLOT_SIZE as i32);
-    let box, e2 = http::mail_open(16, 256);
     http::exit_on_error(e1);
-    http::exit_on_error(e2);
     var projects: api::Project[>..] = [];
     var live: bool[>..] = [];
     projects.push(api::Project { id: 1, name: "goose", owner: "ada" });
     projects.push(api::Project { id: 2, name: "gander", owner: "ada" });
     live.push(true);
     live.push(true);
-    var a = app::App { projects: projects, live: live, db: http::address(box, 0) };
-    let id = thread_spawn(database, box);
+    var a = app::App { projects: projects, live: live, db: http::lane_open(http::LaneConfig { slots: 16, .. }, database) };
     var key: u64 = 0;
     fn served(label: const u8[:], text: const u8[:]) {
         key++;
@@ -171,7 +160,6 @@ fn main() {
     served("rest::once across check and handler", get("/v1/projects"));
     served("generated DELETE", get("/v1/projects/2", "ada", "DELETE"));
     print("audits ", a.audits, ", lookups ", a.lookups);
-    http::mail_send(a.db, STOP, "");
-    thread_wait(id);
+    http::lane_stop(a.db);
     http::mail_close(worker);
 }

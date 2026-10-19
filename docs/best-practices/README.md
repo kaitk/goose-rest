@@ -42,9 +42,7 @@ when it applies and when your application is the exception.
    audience, and each scope behind one stack.
 6. [Lanes and jobs](lanes.md): a lane for each kind of slow work, long CPU work kept
    off the workers, how many jobs a lane's box holds, which work is refused under
-   load, lanes of several threads, and a placement file per kind of machine, whose
-   grammar and platforms are goose-http's
-   [tuning guide](https://github.com/kaitk/goose-http/blob/main/docs/tuning.md).
+   load, and lanes of several threads.
 7. [State](state.md): where data lives, by what it is.
 8. [Testing](testing.md): small tests per domain, and scenarios over HTTP.
 

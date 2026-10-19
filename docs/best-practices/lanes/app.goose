@@ -27,7 +27,7 @@ struct St { waiting: Waiting = Waiting.None }
 
 // The lanes the routes send their jobs to: rest::ask takes a lane's least
 // busy thread.
-struct App { writer: rest::Lane, reports: rest::Lane, hasher: rest::Lane }
+struct App { writer: http::Lane, reports: http::Lane, hasher: http::Lane }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

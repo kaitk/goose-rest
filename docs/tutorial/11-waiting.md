@@ -128,14 +128,14 @@ where the reply goes, and replies with `rest::reply_value`:
 <details>
 <summary>The lane's thread, and how <code>main</code> starts it</summary>
 
-The thread takes each job in its box by its tag in `rest::lane`, which sleeps until
-mail comes, and returns once `main` stops the box and every job queued before is done.
-From [`database.goose`](11-waiting/database.goose):
+The thread takes each job in its box by its tag in goose-http's `http::lane`, which
+sleeps until mail comes, and returns once `main` stops the lane and every job queued
+before is done. From [`database.goose`](11-waiting/database.goose):
 
 ```rust
 thread_fn run(box: http::Box, delay_ms: i64) {
     var c = db::open(delay_ms);
-    rest::lane(box) { tag, bytes =>
+    http::lane(box) { tag, bytes =>
         if tag == PROJECT {
             let a, ok = rest::asked<ProjectJob>(bytes);
             if ok { rest::reply_value(a, project(c, a.job)); }
@@ -147,22 +147,18 @@ thread_fn run(box: http::Box, delay_ms: i64) {
 }
 ```
 
-`main` opens the lane's box, starts its thread, gives the worker the box's address, and
-stops the box with `http::mail_stop` once the worker returns.
-Waiting is off until `Config.mail_slots` and `max_waiting` are set
-([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
+`main` opens the lane with `http::lane_open`, which starts its thread with a box of 64
+slots of 256 bytes and passes it `DELAY_MS`. It gives the worker the lane, and stops it
+with `http::lane_stop` once the worker returns, which waits for the thread. Waiting is
+off until `Config.mail_slots` and `max_waiting` are set
+([goose-http's lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes)).
 From [`main.goose`](11-waiting/main.goose):
 
 ```rust
-    let box, e = http::mail_open(64, 256);
-    http::exit_on_error(e);
-    let to = http::address(box, 0);
-    let st = thread_spawn(database::run, box, DELAY_MS);
+    let lane = http::lane_open(http::LaneConfig { .. }, DELAY_MS, database::run);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    http::run(cfg, to, worker);
-    // A flag in the box, not a message: a full box can't refuse it.
-    http::mail_stop(box);
-    thread_wait(st);
+    http::run(cfg, lane, worker);
+    http::lane_stop(lane);
 ```
 
 </details>
@@ -170,7 +166,7 @@ From [`main.goose`](11-waiting/main.goose):
 ## Asking a lane, and resuming
 
 The route reads and checks the request, then calls `rest::ask` once, passing the
-lane's address, the job tag, the job, and the state it needs when the reply comes. From
+lane, the job tag, the job, and the state it needs when the reply comes. From
 [`app.goose`](11-waiting/app.goose), which holds the routes apart from `main` so that
 a test can import them:
 

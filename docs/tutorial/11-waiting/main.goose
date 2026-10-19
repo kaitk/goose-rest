@@ -9,7 +9,7 @@
 //   curl -s -X PUT -H 'X-User: 1' 'localhost:8080/v1/projects/1/tasks/3/assignee?user=2'
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
 import rest from "../../../";
 import db from "../db/";
 import .database;
@@ -18,9 +18,9 @@ import .app;
 // How long each statement takes, as a query over a network would.
 let DELAY_MS: i64 = 20;
 
-thread_fn worker(cfg: http::Config, to: http::MailAddress) {
+thread_fn worker(cfg: http::Config, lane: http::Lane) {
     var conn = db::open(DELAY_MS);
-    var app = App { conn: conn, db: to };
+    var app = App { conn: conn, db: lane };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
             rest::route(cx) { resume(cx.state.waiting, cx); };
@@ -39,13 +39,8 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let box, e = http::mail_open(64, 256);
-    http::exit_on_error(e);
-    let to = http::address(box, 0);
-    let st = thread_spawn(database::run, box, DELAY_MS);
+    let lane = http::lane_open(http::LaneConfig { .. }, DELAY_MS, database::run);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
-    http::run(cfg, to, worker);
-    // A flag in the box, not a message: a full box can't refuse it.
-    http::mail_stop(box);
-    thread_wait(st);
+    http::run(cfg, lane, worker);
+    http::lane_stop(lane);
 }
