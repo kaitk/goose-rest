@@ -25,7 +25,7 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 |---|---|---|
 | baseline, limited-conn, json-comp, async, latency-1m, latency-10k | Nothing new: goose-http passes them (goose-http's task 018) | This task's entry |
 | json-tls, 8gbit; static-tls (reference) | TLS 1.3 on port 8081 with the mounted RSA-2048 certificate, ALPN `http/1.1`. 8gbit echoes 10 KB at a pinned 50K requests per second and is scored on CPU per request | goose-tls task 001; goose-http task 014 |
-| api-4, api-16 | `/async-db`: a Postgres range query, through an async driver with a pool of `DATABASE_MAX_CONN` (256) connections | goose-postgres task 001 |
+| api-4, api-16; async-db (reference) | `/async-db`: a Postgres range query, through an async driver with a pool of `DATABASE_MAX_CONN` (256) connections. The async-db profile itself is published but not scored | goose-postgres tasks 001 (the protocol, done) and 005 (the pool) |
 | gateway-64, gateway-h3, production-stack | `/async-db` again, behind a standard proxy that terminates TLS, h2, and h3. The rules forbid a custom proxy, so the server speaks plaintext HTTP/1.1. In production-stack the shared `authsvc` verifies the JWT at the edge, and the cache can be in-process | goose-postgres task 001; a compose file and an nginx config here |
 | echo-ws, echo-ws-pipeline, echo-ws-limited | WebSocket: the handshake, framing, and masking over `rest::upgrade` | goose-http task 054 |
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
