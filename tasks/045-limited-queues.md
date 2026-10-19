@@ -1,7 +1,7 @@
 # 045: Limited queues for a pool of lanes
 
 Status: todo. Waits on [aardappel/goose#39](https://github.com/aardappel/goose/pull/39)
-in the Goose pin, and on goose-http's task 050.
+in the Goose pin, and on goose-http's task 051.
 
 With #39, a typed queue takes a limit (`qlimit<T>(n)`), `qput` returns false at once when
 it's full, and `qget<T>(ms)` waits with a time limit. goose-rest sends work to a lane by
@@ -15,7 +15,7 @@ or leaves it to the program and documents it.
 
 ## Acceptance criteria
 
-- [ ] The pin has #39, and goose-http's task 050 is done
+- [ ] The pin has #39, and goose-http's task 051 is done
 - [ ] A decision in `docs/decisions.md`: a pool of lanes on a limited queue through
       `rest::ask`, or in the program, with the reason
 - [ ] If it's goose-rest's: the API, a test of a full queue answering 503, and the best

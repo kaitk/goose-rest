@@ -1,11 +1,11 @@
 # 044: Workers and lanes that survive an abort
 
-Status: todo. Waits on goose-http's task 049, which waits on
+Status: todo. Waits on goose-http's task 050, which waits on
 [aardappel/goose#38](https://github.com/aardappel/goose/pull/38) in the Goose pin.
 
 With `thread_spawn_contained`, an abort ends only its thread, and `thread_wait` returns
 false for it. goose-http's `http::run` restarts an aborted worker on its listener (its
-task 049), so programs that start their workers with it (task 043) get that without a
+task 050), so programs that start their workers with it (task 043) get that without a
 change. Two parts are goose-rest's:
 
 - **Lanes.** A lane is a thread a program spawns itself, with a box `main` opens
