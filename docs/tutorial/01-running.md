@@ -53,8 +53,8 @@ functions:
 ## Workers and `main`
 
 A program's root file declares both packages, goose-http at the reference that its
-goose-rest imports. The latest releases, which build with Goose `v2026.2`, are this
-pair:
+goose-rest imports. The latest goose-rest release, `v0.1.2`, and the goose-http tag it
+imports, `v0.3.6`, build with Goose `v2026.2`:
 
 ```text
 import http from "github.com/kaitk/goose-http@v0.3.6";
