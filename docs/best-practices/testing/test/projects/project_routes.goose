@@ -1,7 +1,7 @@
 // The projects' routes, through rest::serve_one: the request's bytes in, the
 // response's bytes out, with no socket or thread.
 import std;
-import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
+import http from "github.com/kaitk/goose-http@v0.4.0";
 import rest from "../../../../../";
 import app from "../../";
 import expect from "../";

@@ -21,7 +21,7 @@ replies of different types dispatch, how much the request state grows, and wheth
 - `differing_replies.goose`, `lane_types.goose`, `split_set.goose`,
   `unqualified.goose`: what fails to compile.
 
-Goose: commit `f114b5a`, the pin, with the same output as on `dcc2747`. goose-http: `ff18ecc`.
+Goose: commit `f114b5a`, the pin, with the same output as on `dcc2747`. goose-http: `v0.4.0`, with the same output as at `ff18ecc`.
 
 ```sh
 GOOSE=<build>/goose

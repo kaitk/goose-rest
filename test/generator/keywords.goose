@@ -1,7 +1,7 @@
 // goose-rest gen's errors for keywords outside its subset, each naming the
 // keyword and its JSON pointer.
 import std;
-import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
+import http from "github.com/kaitk/goose-http@v0.4.0";
 import rest from "../../";
 import rest.gen.gen;
 import common;

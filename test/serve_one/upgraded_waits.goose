@@ -3,7 +3,7 @@
 // asks at the request and one that asks at a BODY, and a second ask during
 // a wait.
 import std;
-import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
+import http from "github.com/kaitk/goose-http@v0.4.0";
 import rest from "../../";
 import expect from "../";
 
