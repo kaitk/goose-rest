@@ -15,7 +15,7 @@ its expected work puts it.
 
 ### A case-function call missing a variant doesn't name it
 
-Found on `a6249a4`, spike 06. Status: open; unchanged on `46356c2`
+Found on `a6249a4`, spike 06. Status: open; unchanged on `dcc2747`
 
 A call dispatched to case functions (§8.2) that lack an overload for one variant fails
 to compile, as it should, but the error is the generic one for no matching overload: it
@@ -36,6 +36,12 @@ variant Waiting.None`. Expected: the same message for both.
     error: no matching overload for call to resume
       candidate resume at missing_case.goose:5: argument 1: cannot pass Waiting as Waiting.Report
       candidate resume at missing_case.goose:6: argument 1: cannot pass Waiting as Waiting.Export
+
+The same holds where a variant's case exists but another of its parameters doesn't fit
+(spike 10's `lane_types.goose`, found on `dcc2747`): with `run(u: Use.Report, r:
+Reader&)` and a call `run(u, w)` for a `Writer`, every candidate says `argument 1:
+cannot pass Use as Use.Report`, and none says that argument 2 is the mismatch.
+Expected: the variant that has no case for these arguments, as above.
 
 Workaround: none needed; compare the candidates with the enum's variants.
 

@@ -1,6 +1,7 @@
 # 050: One enum for a route's use cases
 
-Status: todo. Comes before task 047's entry code, because it changes how a program
+Status: in-progress; spike 10 answered the three questions (2026-10-19), the package's
+change is next. Comes before task 047's entry code, because it changes how a program
 calls `rest::ask` and what a `resume` gets (2026-10-19).
 
 A route that waits now costs about nine pieces in four files
@@ -37,7 +38,10 @@ To settle in a spike first:
 
 ## Acceptance criteria
 
-- [ ] A spike under `spikes/` answers the three questions, with its README's verdict
+- [x] A spike under `spikes/` answers the three questions, with its README's verdict
+      ([spike 10](../spikes/10-use-cases/README.md): works; each `run` sends its own
+      reply, every lane takes one state type, the state grows by the largest job, and
+      `fn ::run` and `fn ::resume` in the domain's file replace the forwarders)
 - [ ] `rest::ask`, `rest::lane`'s dispatch, and the `resume` path take a use-case enum;
       no tag constants or lane if chain remain in the tutorial, best practices, or
       examples

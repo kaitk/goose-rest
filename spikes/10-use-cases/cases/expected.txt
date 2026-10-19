@@ -1,0 +1,6 @@
+run: Totals { 3, 10800 }
+run: Opened { 1, 9 }
+  take(u, w): not this lane's Report { 3 }
+  take(u, w): not this lane's Session { 9 }
+  take(u, w): not this lane's Use.None
+rows taken by the Report case: 0
