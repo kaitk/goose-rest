@@ -52,16 +52,21 @@ functions:
 
 ## Workers and `main`
 
-A program's root file declares both packages at release tags. Use the goose-http tag
-that the goose-rest release imports:
+A program's root file declares both packages, goose-http at the reference that its
+goose-rest imports. The latest releases, which build with Goose `v2026.2`, are this
+pair:
 
 ```text
-import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
+import http from "github.com/kaitk/goose-http@v0.3.6";
 import rest from "github.com/kaitk/goose-rest@v0.1.2";
 ```
 
-The tutorial's programs live in this repository, so they import goose-rest by its path
-instead (`import rest from "../../../";`).
+This tutorial tracks the libraries' `main` branches until their next releases. Its
+programs import goose-rest by its path (`import rest from "../../../";`) and the
+goose-http commit that goose-rest imports, and build with the Goose commit that
+[development](../development.md#get-goose) names. With the releases above, `http::run`,
+`http::lane_open`, and `http::lane_stop` don't exist yet: spawn the workers as the
+[README's quick start](../../README.md#quick-start) does.
 
 A server is a few worker threads, each running goose-http's event loop with your handler
 inlined into it ([goose-http's concepts](https://github.com/kaitk/goose-http#concepts)).

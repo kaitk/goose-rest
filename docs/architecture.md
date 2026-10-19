@@ -178,28 +178,19 @@ skip the work of a client that has gone. A route that never waits keeps nothing 
 connection. The tutorial builds this from [work that waits](tutorial/11-waiting.md) to
 [limits](tutorial/13-limits.md).
 
-A lane of N threads, a `rest::Lane`, is N boxes, one per thread, and the threads' ids,
-which `rest::lane_open` opens and spawns from the lane's `rest::LaneConfig`, its
-placement, and the program's `thread_fn`, a generic parameter that goose-http's
-`http::run` takes for the workers too
-([lanes per machine](best-practices/lanes.md#67-placing-lanes-per-machine)). Each thread
-gets its box and its seat. `rest::ask` to a lane reads each box's count of
-queued jobs with goose-http's `http::mail_queued`, a snapshot any thread may read, and
-sends the job to the box holding the fewest, stopping at an empty one. Each sending
-thread starts its scan one box further on than its last, from a counter in a global,
-which each thread has a copy of, so that ties spread over the boxes and the senders
-don't all read the same box first. A box that is full when the job arrives passes it to
-the next in turn, so the route gets 503 only when every box is full. `rest::ask_by`
-skips the counts: the key modulo N picks the box, so one key's jobs reach one thread,
-in order, within a run.
+The lane is goose-http's `http::Lane`: N boxes, one per thread, and the threads' ids,
+which `http::lane_open` opens and spawns from an `http::LaneConfig` and the program's
+`thread_fn`, as `http::run` spawns the workers. `rest::ask` sends through
+`http::lane_send`, which puts the job in the box holding the fewest jobs, and in the
+next in turn while each is full, so the route gets 503 only when every box is full.
+`main` stops each lane with `http::lane_stop` once the workers have returned: a flag in
+each box, which a full box can't refuse, and each thread's `http::lane` loop returns
+once its box is stopped and empty, so the jobs queued before the stop are still done
+([goose-http's lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes)).
 
-A lane stops by goose-http's `http::mail_stop`, a flag in each box that `rest::lane_stop`
-sets, not a message, so a full box can't refuse it. Sends to a stopped box fail, and
-`rest::lane`, the thread's loop, returns once its box is stopped and holds nothing more,
-so the jobs queued before the stop are still done
-([goose-http's answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
-`main` stops each lane once the workers have returned, and `rest::lane_stop` waits for
-the lane's threads.
+An abort in any thread, worker or lane, ends the process, as an abort in Goose does; a
+service manager, such as systemd, Docker, or Kubernetes, restarts it
+([goose-http's crashes](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#a-crash-ends-the-process)).
 
 ## Bodies and responses in pieces
 
