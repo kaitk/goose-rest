@@ -2,7 +2,7 @@
 // timeout: a value and its tag, a relay in one piece and in several, two
 // waits in turn, and a wait with no wake left.
 import std;
-import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
+import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../";
 import expect from "../";
 
@@ -60,8 +60,7 @@ fn main() {
     let box, e = http::mail_open(16, 256);
     http::exit_on_error(e);
     // A lane of the test's own box, and no thread: the test takes the jobs.
-    var app = App { .. };
-    app.to.boxes.push(box);
+    var app = App { to: http::lane_of(box) };
     let relay = "GET /relay HTTP/1.1\r\n\r\n";
     let value = "GET /value HTTP/1.1\r\n\r\n";
 

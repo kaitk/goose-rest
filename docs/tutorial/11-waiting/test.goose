@@ -5,7 +5,7 @@
 //
 //   goose docs/tutorial/11-waiting/test.goose
 import std;
-import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
+import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../../";
 import db from "../db/";
 import .database;
@@ -47,9 +47,7 @@ fn main() {
     // nothing takes from it but the test.
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
-    var lane = http::Lane { .. };
-    lane.boxes.push(box);
-    var app = App { conn: c, db: lane };
+    var app = App { conn: c, db: http::lane_of(box) };
     fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
         return rest::serve_one(text, app, St { .. }, wakes) { cx =>
             if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }

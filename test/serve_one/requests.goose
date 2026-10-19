@@ -2,7 +2,7 @@
 // Host and with its own, HEAD, goose-http's refusal, a failure, no answer,
 // and a failure that cuts a response short.
 import std;
-import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
+import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../";
 import expect from "../";
 

@@ -2,7 +2,7 @@
 // answer to each reply the lane could give, through rest::serve_one. The test
 // plays the lane: no thread runs, and nothing waits.
 import std;
-import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
+import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../../../../";
 import app from "../../";
 import expect from "../";
@@ -14,8 +14,7 @@ fn main() {
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
     var projects: projects::Project[>..] = [];
-    var a = App { projects: projects, .. };
-    a.writer.boxes.push(box);
+    var a = App { projects: projects, writer: http::lane_of(box) };
     fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
         let out = rest::serve_one(text, a, St { .. }, wakes) { cx =>
             if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }

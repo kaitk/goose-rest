@@ -21,7 +21,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
+import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 
 // A reply message's tag: the sender's tag in REPLY_TAG's bits; REPLY_MORE
 // when more of the reply follows; REPLY_CONT on every piece after the first.
@@ -51,8 +51,7 @@ fn ask<J>(cx, lane: const http::Lane&, tag: i32, job: J, w, ms: i64 = 5000) {
     cx.state.waiting = w;
     let back = http::later(cx.out, ms);
     let piece = http::mail_slot_size(back);
-    let image = value_bytes(Ask<J> { reply: back, piece: piece, job: job });
-    guard http::lane_send(lane, tag, image) == http::SENT else {
+    guard http::lane_send_value(lane, tag, Ask<J> { reply: back, piece: piece, job: job }) == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
         fail(cx, 503, "unavailable");

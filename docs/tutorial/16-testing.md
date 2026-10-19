@@ -45,8 +45,8 @@ This is where a use case's rules are tested, each in microseconds, without a req
 
 The routes and their case functions are in [`app.goose`](11-waiting/app.goose), separate
 from `main`, so the test can import them as `main.goose` does. The worker state
-holds the lane, and the test gives it a lane of one box of its own, with no thread. A
-box needs no thread to open, send to, or take from
+holds the lane, and the test gives it `http::lane_of(box)`, a lane of one box of its
+own, with no thread. A box needs no thread to open, send to, or take from
 ([mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)):
 
 ```rust
@@ -54,9 +54,7 @@ box needs no thread to open, send to, or take from
     // nothing takes from it but the test.
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
-    var lane = http::Lane { .. };
-    lane.boxes.push(box);
-    var app = App { conn: c, db: lane };
+    var app = App { conn: c, db: http::lane_of(box) };
     fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
         return rest::serve_one(text, app, St { .. }, wakes) { cx =>
             if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }

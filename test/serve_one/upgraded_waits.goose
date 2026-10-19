@@ -3,7 +3,7 @@
 // asks at the request and one that asks at a BODY, and a second ask during
 // a wait.
 import std;
-import http from "github.com/kaitk/goose-http@2c5280c76ade5f70f69a80cd68f73b03d5b34252";
+import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../";
 import expect from "../";
 
@@ -66,8 +66,7 @@ fn upgraded(app: App&, target: const u8[:], after: const u8[:], wakes: const res
 fn main() {
     let box, e = http::mail_open(16, 256);
     http::exit_on_error(e);
-    var app = App { .. };
-    app.to.boxes.push(box);
+    var app = App { to: http::lane_of(box) };
 
     // Asked at the request: bytes during the wait, the reply, bytes after it.
     print(upgraded(app, "/ask", "after", [rest::Wake { sent: "during", data: "reply" }]));
