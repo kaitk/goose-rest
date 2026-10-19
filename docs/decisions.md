@@ -497,6 +497,25 @@ The cost is that a lane always has its threads, so a test of the lane's bounds s
 them, and every `App` copy holds the ids, 8 bytes a thread. Rejected: keeping the
 program's loops beside `lane_open`, two ways to start a lane.
 
+Decided (2026-10-19), after an independent review: lanes are goose-http's, and there
+is one way to use them. Replaces the 2026-10-18 entries above on the placement bounds,
+`ask_by`, and `rest::lane_open`. `http::Lane`, `http::lane_open`, `http::lane`,
+`http::lane_stop`, and the least-busy send moved to goose-http, so a goose-http program
+and a goose-rest one open, run, and stop a lane alike, and `lane.goose` went. Every
+program opens each lane with `http::lane_open`, even of one thread, and a route asks
+one only with `rest::ask(cx, lane, ...)`: the ask to an `http::MailAddress` and
+`rest::ask_by` went, since no program needed them, and each was a second way to do the
+same. `LaneConfig` keeps `threads`, `slots`, and `size`; placement, its `role` and
+`max`, and the `http::Seat` a lane thread took are off `main` until bare-metal Linux
+measures a gain
+([goose-http's decision](https://github.com/kaitk/goose-http/blob/main/docs/decisions.md#placement-is-removed-until-it-is-measured-to-help)).
+The measure is what someone porting from Hono, Elysia, or Axum must learn: workers that
+never block, flat values between threads, a lane of N threads, `rest::ask` and its
+`resume` with a time limit, 503 from a full box, and an abort that ends the process
+under a service manager. A thread that does timed work of its own between jobs, as
+the tutorial's reports thread does, writes the loop that `http::lane` is, rather than
+`lane` taking a time limit and a second block for two programs.
+
 ## Tests
 
 Decided (2026-10-15), for goose-rest, goose-http, and goose-compress alike: tests

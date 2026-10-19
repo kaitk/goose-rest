@@ -24,9 +24,10 @@ stays: it's where a program calls `rest::serve` with its handler and state.
 - [x] The goose-http pin has `http::run` (`81bbf9b`)
 - [x] The tutorial, best practices, examples, and benchmark servers call it; no program
       keeps the spawn and wait loops for its workers; lanes spawn theirs in
-      `rest::lane_open` (goose-http's task 048)
-- [x] `docs/tutorial/01-running.md` explains the one call where it explains the loops now
+      `http::lane_open` (goose-http's task 048; moved from `rest::lane_open` 2026-10-19)
+- [x] `docs/tutorial/01-running.md` explains the one call where it explains the loops now,
+      and says that the tutorial tracks `main` until the next releases (2026-10-19)
 - [x] `scripts/test.sh` passes on macOS (2026-10-19)
 - [ ] `README.md`'s quick start calls `http::run` once goose-http and goose-rest tags
-      have it: until then it imports `v0.3.7` and `v0.1.2`, which build with Goose
-      `v2026.2`
+      have it: until then it imports goose-http `v0.3.6`, the tag goose-rest `v0.1.2`
+      imports, and `v0.1.2`, which build with Goose `v2026.2`

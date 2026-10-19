@@ -1,7 +1,8 @@
 # 045: Limited queues for a pool of lanes
 
-Status: todo. Waits on [aardappel/goose#39](https://github.com/aardappel/goose/pull/39)
-in the Goose pin, and on goose-http's task 051.
+Status: cancelled by the maintainer on 2026-10-19, after an independent review: a pool
+of threads is a lane, `http::Lane`, the one mechanism, so a queue pool isn't offered
+(goose-http's task 051, cancelled too). The text below is the proposal as it stood.
 
 With #39, a typed queue takes a limit (`qlimit<T>(n)`), `qput` returns false at once when
 it's full, and `qget<T>(ms)` waits with a time limit. goose-rest sends work to a lane by
