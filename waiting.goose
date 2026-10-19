@@ -80,7 +80,9 @@ fn is_waiting(cx) -> bool { cx.out.stream.waiting }
 // in cx.state.use. A variant of another lane's enum doesn't compile. The
 // handler is called again when the reply comes, or answers 504 timeout if
 // it doesn't. Fails with 503 unavailable when every thread's box is full, or
-// the lane is stopped, and with 500 already_waiting when the route waits
+// the lane is stopped, with 500 job_too_large, before the job is sent, when
+// the job and its length don't fit one message of a reply, which carries
+// them at its front, and with 500 already_waiting when the route waits
 // already, as at an upgraded connection's BODY during a wait: goose-http's
 // exchange has one wait, which a second job's reply would share. Needs
 // Config.mail_slots and max_waiting; without them the route gets 504 at
@@ -90,6 +92,11 @@ fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000) {
     if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
     let back = http::later(cx.out, ms);
     let piece = http::mail_slot_size(back);
+    if piece >= 0 && echo_head_len(job) > piece {
+        cx.out.stream.waiting = false;
+        cx.out.stream.rearm = false;
+        fail(cx, 500, "job_too_large");
+    }
     guard http::lane_send_value(lane.lane, 0, Ask<U> { reply: back, piece: piece, job: job }) == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
@@ -176,14 +183,31 @@ fn reply<U>(a: Asked<U>&, data: const u8[:]) -> bool { reply_tagged(a, data, 0) 
 
 // reply's work, with tag on each piece.
 fn reply_tagged<U>(a: Asked<U>&, data: const u8[:], tag: i32) -> bool {
-    let job = value_bytes(a.job);
-    var image: u8[>..] = [];
-    image.push((job.len & 0xFF) as u8);
-    image.push((job.len >> 8) as u8);
-    image.append(job);
-    image.append(data);
     a.replied = true;
-    return send_reply(a, image, tag);
+    return send_reply(a, echo_head(a.job), data, tag);
+}
+
+// A reply starts with its job: the length of the job's image in ECHO_HEAD
+// bytes, least significant first, then the image.
+let ECHO_HEAD = 4;
+
+fn echo_head<U>(job: U) -> u8[>..] {
+    var head: u8[>..] = [0, 0, 0, 0];
+    var one = [job];
+    one.to_bytes(head);
+    let n = head.len - ECHO_HEAD;
+    for i in ECHO_HEAD { head[i] = ((n >> (i * 8)) & 0xFF) as u8; }
+    return head;
+}
+
+// The length echo_head gives job, without writing its image: a view of the
+// job's bytes, after the image's ULEB128 length.
+fn echo_head_len<U>(job: U) -> i64 {
+    let one = [job];
+    let n = bytes_of(one).len;
+    var uleb: i64 = 1;
+    while (n >> (uleb * 7)) > 0 { uleb++; }
+    return ECHO_HEAD + uleb + n;
 }
 
 // Replies a refusal of a's job with status and code: the status's 4 bytes,
@@ -195,7 +219,7 @@ fn refuse<U>(a: Asked<U>&, status: i32, code: const u8[:]) -> bool {
     for i in 4 { image.push(((status >> (i * 8)) & 0xFF) as u8); }
     let room = if a.played { code.len } else { max(a.piece - 4, 0) };
     image.append(code[..min(code.len, room)]);
-    return send_reply(a, image, REPLY_REFUSED);
+    return send_reply(a, image, "", REPLY_REFUSED);
 }
 
 // The status and code of a refusal's bytes, and whether they're one.
@@ -206,23 +230,34 @@ fn refusal_of(bytes: const u8[:]) -> i32, const u8[:], bool {
     return status, bytes[4..], true;
 }
 
-// Sends data with tag to the route that asked a, in pieces, each after the
-// first with REPLY_CONT and tag's REPLY_VALUE: reply's work.
-fn send_reply<U>(a: Asked<U>&, data: const u8[:], tag: i32) -> bool {
+// Sends head and then data, with tag, to the route that asked a, in pieces,
+// each after the first with REPLY_CONT and tag's REPLY_VALUE: reply's work.
+// A piece is a slice of head or of data, or the one piece that holds the end
+// of head and the start of data, copied together.
+fn send_reply<U>(a: Asked<U>&, head: const u8[:], data: const u8[:], tag: i32) -> bool {
     var p .= a.played;
     if p {
         p.tag = tag;
+        p.data.append(head);
         p.data.append(data);
         return true;
     }
     let piece = max(a.piece, 1);
+    let h = head.len;
+    let total = h + data.len;
     var at = 0;
     var t = tag;
     loop {
-        let end = min(at + piece, data.len);
-        let more = end < data.len;
+        let end = min(at + piece, total);
+        let more = end < total;
+        var joined: u8[>..] = [];
+        if at < h && end > h {
+            joined.append(head[at..]);
+            joined.append(data[..end - h]);
+        }
+        let part = if end <= h { head[at..end] } else if at >= h { data[at - h..end - h] } else { joined[..] };
         loop {
-            let sent = http::mail_send(a.reply, if more { t | REPLY_MORE } else { t }, data[at..end]);
+            let sent = http::mail_send(a.reply, if more { t | REPLY_MORE } else { t }, part);
             if sent == http::SENT { break; }
             if sent == http::STALE || sent == http::TOO_LONG { return false; }
             sleep_ms(1);
@@ -275,7 +310,7 @@ fn job<U>(cx) -> U {
 fn echoed<U>(bytes: const u8[:]) -> U, bool {
     var u = default<U>();
     let n = echo_len(bytes);
-    let ok = n >= 0 && http::mail_value(bytes[2..2 + n], u);
+    let ok = n >= 0 && http::mail_value(bytes[ECHO_HEAD..ECHO_HEAD + n], u);
     return u, ok;
 }
 
@@ -284,15 +319,16 @@ fn echoed<U>(bytes: const u8[:]) -> U, bool {
 fn answer<T>(cx) -> T {
     var v = default<T>();
     let n = echo_len(cx.reply);
-    guard !cx.more && n >= 0 && http::mail_value(cx.reply[2 + n..], v) else { fail(cx, 502, "bad_reply"); }
+    guard !cx.more && n >= 0 && http::mail_value(cx.reply[ECHO_HEAD + n..], v) else { fail(cx, 502, "bad_reply"); }
     return v;
 }
 
 // The length of the job's image at the front of a reply, or -1.
 fn echo_len(bytes: const u8[:]) -> i64 {
-    guard bytes.len >= 2 else { return -1; }
-    let n: i64 = bytes[0] | ((bytes[1] as i64) << 8);
-    return if 2 + n <= bytes.len { n } else { -1 };
+    guard bytes.len >= ECHO_HEAD else { return -1; }
+    var n: i64 = 0;
+    for i in ECHO_HEAD { n |= (bytes[i] as i64) << (i * 8); }
+    return if ECHO_HEAD + n <= bytes.len { n } else { -1 };
 }
 
 // Answers status with the reply's bytes after the job as the body, of
@@ -302,7 +338,7 @@ fn echo_len(bytes: const u8[:]) -> i64 {
 fn relay(cx, status: i32, content_type: const u8[:]) {
     let n = echo_len(cx.reply);
     guard n >= 0 else { fail(cx, 502, "bad_reply"); }
-    let data = cx.reply[2 + n..];
+    let data = cx.reply[ECHO_HEAD + n..];
     if !cx.more {
         http::respond(cx.out, status, content_type, data);
         return;

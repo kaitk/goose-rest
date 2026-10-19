@@ -97,8 +97,9 @@ fn main() {
     let value = rest::play(app.to, Echoes.Value { n: 40 }) { u, a => run(u, d, a); };
     expect::same(expect::body_of(answer("/value", [rest::wake(value)])), "40 42", "a value");
 
-    // A reply relayed whole, and in pieces of 8 bytes, the job's 2 bytes of
-    // length and its image first: relay skips them.
+    // A reply relayed whole, and in pieces, the job's 4 bytes of length and
+    // its image first, which the first piece holds with the reply's start:
+    // relay skips them.
     let text = rest::play(app.to, Echoes.Text { s: "abcdefghij" }) { u, a => run(u, d, a); };
     expect::same(answer("/text", [rest::wake(text)]),
                  "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 10\r\n\r\nabcdefghij", "one piece");
@@ -108,12 +109,14 @@ fn main() {
                  "several pieces");
 
     // A value in pieces is collected whole before the resume runs, which
-    // dispatches on the job at its front: in two pieces, and in three.
+    // dispatches on the job at its front: in two pieces, and in pieces of
+    // the job's size, the job alone in the first.
     let tiny = http::Config { mail_size: (value.data.len - 1) as i32, .. };
     expect::same(expect::body_of(answer("/value", [rest::wake(value)], tiny)), "40 42", "a value in two pieces");
     let wide = rest::play(app.to, Echoes.Wide { n: 7 }) { u, a => run(u, d, a); };
-    let thirds = http::Config { mail_size: ((wide.data.len + 2) / 3) as i32, .. };
-    expect::same(expect::body_of(answer("/wide", [rest::wake(wide)], thirds)), "wide 7: 49 seven", "a value in three pieces");
+    let row = rest::value_bytes(Row { n: 7, square: 49, name: "seven" });
+    let thirds = http::Config { mail_size: (wide.data.len - row.len) as i32, .. };
+    expect::same(expect::body_of(answer("/wide", [rest::wake(wide)], thirds)), "wide 7: 49 seven", "a value after the job");
     print("a value of ", wide.data.len, " bytes in pieces of ", thirds.mail_size);
 
     // A value the worker can't collect within its gather budget fails the
@@ -141,9 +144,16 @@ fn main() {
     let second = rest::play(app.to, Echoes.Twice { n: 10 }) { u, a => run(u, d, a); };
     let third = rest::play(app.to, Echoes.Twice { n: 100 }) { u, a => run(u, d, a); };
     expect::same(expect::body_of(answer("/twice", [rest::wake(first), rest::wake(second), rest::wake(third)])), "1000", "three waits");
-    let eight = http::Config { mail_size: 8, .. };
-    expect::same(expect::body_of(answer("/twice", [rest::wake(first), rest::wake(second), rest::wake(third)], eight)),
+    let job_size = http::Config { mail_size: (first.data.len - rest::value_bytes(10).len) as i32, .. };
+    expect::same(expect::body_of(answer("/twice", [rest::wake(first), rest::wake(second), rest::wake(third)], job_size)),
                  "1000", "three waits in pieces");
+
+    // A job that doesn't fit one message of the reply with its length fails
+    // the route with 500 job_too_large before the job is sent: the reply
+    // would carry it at its front.
+    let short = http::Config { mail_size: job_size.mail_size - 1, .. };
+    let too_large = answer("/twice", [rest::wake(first)], short);
+    print("in pieces of ", short.mail_size, ": ", expect::status_of(too_large), " ", expect::body_of(too_large));
     expect::same(expect::status_of(answer("/twice", [rest::wake(first)])), "HTTP/1.1 500 Internal Server Error",
                  "no wake left");
 

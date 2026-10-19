@@ -523,11 +523,23 @@ call.
   dispatches each job to the program's `run` case functions (§8.2), each lane with a
   state type of its own. `rest::lane_job<U>(bytes)` is one job of it, for a thread
   that writes its own loop.
-- A reply carries its job back in front of the answer: two bytes of length, the job's
-  image, then the answer's. The mark's `resume` calls `resume(rest::job<Writes>(cx),
-  cx)`, which dispatches to the domain's `resume` for that job, with the job's fields,
-  and that reads `rest::answer<T>(cx)`, which fails the route with 502 `bad_reply`
-  itself. `rest::relay` skips the job at a reply's first piece.
+- A reply carries its job back in front of the answer: four bytes of length, least
+  significant first, the job's image, then the answer's. The mark's `resume` calls
+  `resume(rest::job<Writes>(cx), cx)`, which dispatches to the domain's `resume` for
+  that job, with the job's fields, and that reads `rest::answer<T>(cx)`, which fails
+  the route with 502 `bad_reply` itself. `rest::relay` skips the job at a reply's
+  first piece. Amended (2026-10-19): the length took two bytes, which a job image over
+  65,535 bytes overflowed, and whose high byte's `as u8` aborted a debug build.
+- The job and its length must fit the reply's first message, which `relay` and the
+  `resume` read it from. Decided (2026-10-19): `rest::ask` checks this before it sends
+  the job, against `http::mail_slot_size` of the wait, and fails the route with 500
+  `job_too_large` otherwise, rather than let `rest::reply` split the job after the
+  lane has done its work. The check measures the job with `bytes_of`, a view of a
+  one-element array, with no second image written. A lane's enum is fixed-mode, so
+  every job of the lane takes its largest variant's size: a larger variant enlarges
+  every job image of the lane. `rest::reply` sends the job's head and the answer as
+  two slices; only the message that holds the end of one and the start of the other
+  is copied together.
 - The lane side replies with `rest::reply_value(a, v)`, or `rest::reply(a, data)` in
   pieces. Spike 11 named it `done` because the old `reply_value(a, v, tag)` took any
   `a`; with `asked<J>` gone, `reply_value` takes only a lane's `rest::Asked<U>`, and
@@ -539,7 +551,10 @@ call.
   gets the route 500 `no_reply` at once, rather than a 504 when its time runs out. The
   refusal is its status's four bytes and then its code, cut to fit one message, not a
   struct: a fixed `u8[..64]` code takes its whole capacity, which a 64-byte message, as
-  tutorial page 12's, can't hold.
+  tutorial page 12's, can't hold. Amended (2026-10-19): `rest::play` keeps the whole
+  code, and `rest::serve_one` cuts a played refusal to its own message size, so a
+  test gets the status and the cut code that the real path gives, not 502
+  `bad_reply` for a refusal in pieces.
 - `rest::on_reply(cx) { resume(cx.state.use, cx); }` replaces `rest::route` at every
   later call, and leaves `cx.state.use` as the route set it. Amended (2026-10-19): it
   no longer sets `cx.state.use` back to its type's first variant once the route gets
@@ -608,7 +623,10 @@ are unchanged. `rest::reply`'s pieces stay unmarked, and the handler gets each, 
   with its length and capacity. An exchange waits on a pause or a reply, never both,
   and a pause sets `due` afresh, so the slot goose-http copies for each request keeps
   its size; three fields of their own would add 24 bytes to it for routes that never
-  wait.
+  wait. Amended (2026-10-19): the two meet at one call, the `resume` of a collected
+  reply, which can pause the response it began before the run is freed. serve reads
+  the run's start before that call and frees the run from it, leaving a deadline the
+  `resume` set in `due`.
 
 This rejected:
 

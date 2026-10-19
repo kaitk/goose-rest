@@ -453,7 +453,7 @@ rest::lane_stop(reports);
 | `rest::lane<U>(box) { u, a => ... }` | A lane thread's loop: the block gets each job, a `U`, and `a`, where its reply goes, in the order they came, until the lane is stopped and its box empty; then closes the box. A job the block neither replies to nor fails refuses with 500 `no_reply`. | |
 | `rest::lane_job<U>(bytes) { u, a => ... }` | One job of `rest::lane`, from a message's bytes: for a thread that writes its own loop, as one doing timed work between jobs does, and for a test that reads the job a route sent. | |
 | `rest::lane_stop(lane)` | `http::lane_stop`: stops every box of `lane` and waits for its threads, each of which takes what its box holds first. A full box can't refuse the stop. | |
-| `rest::ask(cx, lane, job, ms)` | Sends `job`, a variant of the lane's enum, to the least busy thread of `lane`, the one whose box holds the fewest, or to the others in turn while each is full, and waits for the reply with the lane's mark in `cx.state.use` ([Later calls](#4-later-calls)). A variant of another lane's enum doesn't compile. | 503 `unavailable` when every box is full, the lane is stopped, or the job is longer than a slot; 500 `already_waiting` |
+| `rest::ask(cx, lane, job, ms)` | Sends `job`, a variant of the lane's enum, to the least busy thread of `lane`, the one whose box holds the fewest, or to the others in turn while each is full, and waits for the reply with the lane's mark in `cx.state.use` ([Later calls](#4-later-calls)). A variant of another lane's enum doesn't compile. | 503 `unavailable` when every box is full, the lane is stopped, or the job is longer than a slot; 500 `job_too_large`, before the job is sent, when the job and its 4-byte length don't fit one message of the reply; 500 `already_waiting` |
 | `rest::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job, in pieces of the worker's message size, each marked as a value's, which the worker collects whole before the `resume` runs. Returns false once the route has gone. | The route: 502 `reply_too_large` past the worker's gather budget |
 | `rest::reply(a, data)` | On the lane: replies `data` after the job, in pieces of the worker's message size, for `rest::relay`. Returns false once the route has gone. | |
 | `rest::fail(a, status, code)` | On the lane: refuses the job, which fails the route with `status` and `code` before its `resume` runs. A domain's `check(e, x)` that calls `rest::fail(x, ...)` serves a route's `cx` and a lane's `a` alike. | |
@@ -477,6 +477,15 @@ comes, so the worker holds one piece at a time. Raising `mail_size` to the large
 and answer avoids pieces altogether, at the cost of every slot of every worker's box.
 The request state keeps only the mark: what a `resume` needs from the request goes in
 the job, which comes back with the reply.
+
+The reply's first message holds the job, behind its length in 4 bytes, so a job must
+fit one message with them: `rest::ask` fails the route with 500 `job_too_large` before
+it sends a job that doesn't. A lane's enum is fixed-mode, so every job of the lane is
+the size of its largest variant, and adding a larger variant enlarges every job of the
+lane. The job echoed in a reply passes through the reply mail slots, which live in the
+process's memory and aren't erased after they're read, so don't put a secret in a job
+unless the program needs it back: hash a password on the lane, for example, and keep
+only what the `resume` needs.
 
 Each `run` and `resume` takes one variant. An overload that takes a whole enum, untyped
 (`fn run(u, r: Reader&, a)`) or typed (`fn resume(u: Reports, cx)`), is an exact match,
@@ -516,6 +525,7 @@ another shape, as the end of this section shows:
 | 500 | `already_waiting` | `rest::ask` while the route waits already, as at an upgraded connection's `BODY` during a wait |
 | 500 | `body_already_read` | `rest::body_in_pieces` after `rest::body`, or `rest::body` after `rest::body_in_pieces` |
 | 500 | `file_unreadable` | `rest::file`: a file that couldn't be opened for another reason |
+| 500 | `job_too_large` | `rest::ask`: a job that, with its length, doesn't fit one message of the reply ([Lanes](#41-lanes)) |
 | 500 | `no_reply` | `rest::lane`: a job whose `run` neither replied nor failed |
 | 500 | `not_a_reply` | `rest::job` at another event than `WAKE`, as an upgraded connection's `BODY` during a wait |
 | 500 | `not_sending` | `rest::pause` without a response begun with `rest::begin` and still open |
@@ -567,7 +577,7 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 | `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
 | `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
 | `rest::Wake { data, tag, timeout, early, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, as `rest::wake` gives them, or with `timeout: true`, the end of the wait, which is a `rest::pause`'s time come; with `early: true` as well, goose-http's `TIMEOUT` at once, for want of a timer; on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
-| `rest::play(lane, job) { u, a => ... }` | Runs `job`, a variant of `lane`'s enum, through the block, as `rest::lane` runs it, with no thread or mail, and returns its reply, a `rest::Played`: an answer, a refusal for a `rest::fail`, or 500 `no_reply` for neither. `rest::still_wanted` is true. The block is the lane's own, `run(u, state, a)`, to test a use case, or a stand-in that replies what a test needs. |
+| `rest::play(lane, job) { u, a => ... }` | Runs `job`, a variant of `lane`'s enum, through the block, as `rest::lane` runs it, with no thread or mail, and returns its reply, a `rest::Played`: an answer, a refusal for a `rest::fail`, its code whole, or 500 `no_reply` for neither. `rest::still_wanted` is true. The block is the lane's own, `run(u, state, a)`, to test a use case, or a stand-in that replies what a test needs. |
 | `rest::wake(p)` | The `Wake` that gives a route what `p`, a `rest::Played`, replied |
 | `rest::refusal(p)` | The status and code of the refusal `p` replied, or 0 and `""` for an answer |
 
@@ -584,11 +594,13 @@ is given `Host: localhost`. A chunked body isn't decoded: give a test request a
 `Content-Length`. The response has no `Date` or `Server` field
 ([tutorial](tutorial/09-testing.md)).
 
-A route that calls `rest::ask` sends its job, or gets 503 for a full box. `serve_one`
+A route that calls `rest::ask` sends its job, or gets 503 for a full box, or 500
+`job_too_large` for a job that doesn't fit a message of `cfg.mail_size` bytes. `serve_one`
 then calls the handler again with the wait's `Wake`, as `rest::serve` calls it when the
 reply comes: as `http::WAKE`, in pieces of `cfg.mail_size` bytes with the tags
 `rest::reply` and `rest::reply_value` give them, a value's collected whole within
-`limits`' gather budget, a refusal as the route's failure, or as the timeout's 504, which an upgraded connection gets
+`limits`' gather budget, a refusal, its code cut to one message as a lane cuts it, as
+the route's failure, or as the timeout's 504, which an upgraded connection gets
 as `http::TIMEOUT`. On an upgraded connection, the `Wake`'s `sent` comes first, as one
 `http::BODY` during the wait. A piece that comes once the route
 no longer waits is dropped. A wait with no `Wake` left ends the exchange: the answer is

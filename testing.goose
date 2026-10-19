@@ -72,7 +72,8 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
 // pieces of cfg.mail_size bytes, a reply_value's collected whole within
-// limits.gather_budget, or with the timeout. A piece that comes
+// limits.gather_budget, a refusal in one, its code cut to fit as a lane cuts
+// it, or with the timeout. rest::ask checks its job against cfg.mail_size. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
 // no wake left ends the exchange with what the route wrote so far, or 500
 // if nothing; one with a response open is a client that goes, and H gets
@@ -97,7 +98,11 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
     let short = body.len < req.body;
     let whole = !short && body.len <= cfg.max_head - req.len;
     var keep = req.keep_alive;
-    var stream = http::Stream { .. };
+    // A box of cfg.mail_size bytes a message gives the exchange an address,
+    // as the loop's box does, so that rest::ask reads the size of a reply's
+    // message from it. Nothing is sent to it.
+    let box, err = http::mail_open(2, cfg.mail_size);
+    var stream = http::Stream { later: if err.code == 0 { http::address(box, 1) } else { http::MailAddress { .. } } };
     var st = Slot<S> { state: fresh };
     reusable[] var spill: u8[>..] = [];
     var runs: Run[>..] = [];
@@ -173,12 +178,14 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         }
         var at = 0;
         var tag = w.tag & (REPLY_REFUSED | REPLY_VALUE);
+        // A refusal is one message, its code cut to fit, as a lane cuts it.
+        let data = if (tag & REPLY_REFUSED) != 0 { w.data[..min(w.data.len, piece)] } else { w.data };
         while stream.waiting {
-            let end = min(at + piece, w.data.len);
-            let more = end < w.data.len;
+            let end = min(at + piece, data.len);
+            let more = end < data.len;
             stream.waiting = false;
             stream.rearm = false;
-            deliver(http::Event { kind: http::WAKE, req: gone, data: w.data[at..end], whole: false, trailers: "",
+            deliver(http::Event { kind: http::WAKE, req: gone, data: data[at..end], whole: false, trailers: "",
                                   tag: if more { tag | REPLY_MORE } else { tag } },
                     st, app, reply, spill, budget) { cx => H(cx) };
             guard more else { break; }
@@ -193,6 +200,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         deliver(http::Event { kind: http::CLOSED, req: gone, data: "", whole: false, trailers: "" },
                 st, app, reply, spill, budget) { cx => H(cx) };
     }
+    if err.code == 0 { http::mail_close(box); }
     if out.len == 0 { http::refuse(out, 500, ""); }
     return out;
 }

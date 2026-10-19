@@ -1,0 +1,6 @@
+a job's head of 70020 bytes
+in one message: HTTP/1.1 200 OK 3 70000 h 70003
+the value after it: HTTP/1.1 200 OK 3 70000 h 70003
+in messages of 70019: HTTP/1.1 500 Internal Server Error {"error":"job_too_large"}
+played: 409, a code of 300 bytes
+the lane sent 1 message of 64 bytes; both answer: HTTP/1.1 409 Conflict {"error":"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefgh"}

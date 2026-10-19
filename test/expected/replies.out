@@ -1,8 +1,9 @@
-a value of 79 bytes in pieces of 27
+a value of 81 bytes in pieces of 39
 over the budget: HTTP/1.1 502 Bad Gateway {"error":"reply_too_large"}
 refusal: 409 refused_here
 refused: HTTP/1.1 409 Conflict {"error":"refused_here"}
 silent: {"error":"no_reply"}
+in pieces of 38: HTTP/1.1 500 Internal Server Error {"error":"job_too_large"}
 Value { 40 }
 Text { "abcdefghij" }
 Text { "abcdefghij" }

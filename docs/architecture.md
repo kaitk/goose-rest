@@ -188,7 +188,11 @@ explains. A reply longer than a slot comes in pieces. The lane marks the pieces 
 `rest::reply_value`, and the worker collects them in its spill, under the same gather
 budget as the bodies it gathers, and calls the `resume` once with the whole reply, so
 `rest::answer` reads any size the budget allows. `rest::reply`'s pieces go unmarked,
-and `rest::relay` sends each on as a chunk as it comes.
+and `rest::relay` sends each on as a chunk as it comes. Either way the job, behind its
+4-byte length, must fit the first piece, which the `resume` and `relay` read it from:
+`rest::ask` checks it against the reply's slot size before it sends the job, and fails
+the route with 500 `job_too_large` otherwise. The lane's enum is fixed-mode, so every
+job takes the size of the largest variant.
 `rest::still_wanted` tells the lane whether the route still waits, so it can skip the
 work of a client that has gone. The mark is the only byte a waiting route keeps in its
 state, and a route that never waits keeps nothing on the connection. The tutorial
@@ -239,8 +243,9 @@ are each a run of the worker's spill, which `rest::Config`'s `gather_budget` bou
 reply's run starts with its length and capacity, and the exchange keeps only where it
 starts, in the field a pause's deadline uses, since an exchange waits on a pause or a
 reply, never both: the slot that goose-http copies for each request stays its size. The
-run is freed once the `resume` has had the reply, or when the client goes, the time
-limit passes, or the route stops waiting at a later call.
+run is freed once the `resume` has had the reply, from where it started before that
+call, since the `resume` may pause again, or when the client goes, the time limit
+passes, or the route stops waiting at a later call.
 
 A route's middleware keeps what it decided with the exchange, so an answer written at a
 later call still gets the CORS fields and `Server-Timing`. A file being sent lives in

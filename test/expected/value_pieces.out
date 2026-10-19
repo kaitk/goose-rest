@@ -1,4 +1,4 @@
-a reply of 62 bytes, in pieces of 21, marked: true
+a reply of 64 bytes, in pieces of 22, marked: true
 two pieces of three: waiting true, answered false, in the spill true
 the third, then a second wait: waiting true, in the spill 0
 answered: 2 0123456789, in the spill 0

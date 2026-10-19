@@ -244,10 +244,12 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
                                       reply: if wake { collected(st.ex, ev.data, ev.tag, spill) } else { "" },
                                       refused: wake && (ev.tag & REPLY_REFUSED) != 0, more: (ev.tag & REPLY_MORE) != 0,
                                       ex: st.ex, kept: kept, budget: budget, router: none };
+        // A rest::pause in H sets due afresh: the run starts where it did.
+        let run = st.ex.due;
         H(cx);
         if wake {
             settle_kept(st.ex, o, mark, spill, budget);
-            drop_reply(st.ex, spill, budget);
+            drop_run(st.ex, run, spill, budget);
         } else if kept.taken {
             let at, n, len = stash_kept(kept, scratch, out.common, ev.req, spill, budget);
             keep_run(st.ex, at, n, len);
@@ -655,11 +657,15 @@ fn collected(x: const Exchange&, data: const u8[:], tag: i32, spill: const u8[:]
 }
 
 // Frees the run of the reply x collects, if any.
-fn drop_reply(x: Exchange&, spill: u8[>..]&, budget: Budget&) {
+fn drop_reply(x: Exchange&, spill: u8[>..]&, budget: Budget&) { drop_run(x, x.due, spill, budget); }
+
+// drop_reply for a run that starts at at, which due holds unless a pause has
+// set it since: then due keeps the pause's deadline.
+fn drop_run(x: Exchange&, at: i64, spill: u8[>..]&, budget: Budget&) {
     guard (x.mode & COLLECTING) != 0 else { return; }
-    spill.free_slice(spill[x.due..x.due + word(spill, x.due + 8)]);
-    untrack(budget, x.due);
-    x.due = 0;
+    spill.free_slice(spill[at..at + word(spill, at + 8)]);
+    untrack(budget, at);
+    if x.due == at { x.due = 0; }
     x.mode &= ~COLLECTING;
 }
 
