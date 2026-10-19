@@ -316,7 +316,7 @@ request state, so each request starts with a fresh slot.
 
 A route that waits on another thread, reads its body in pieces, sends its response in
 pieces, or takes an upgraded connection says what it waits on in `cx.state.use`, a
-field of the program's `Use` enum, whose first variant is `None`: `rest::ask` puts the
+field of the program's `Use` enum, `None` for a route that waits on nothing: `rest::ask` puts the
 lane's mark there ([Lanes](#41-lanes)), and the other calls the variant they're given.
 `rest::serve` then calls the handler again for each event of that exchange, and the
 handler sends each later call to a `resume` case function per variant, inside
@@ -329,9 +329,9 @@ rest::serve(cfg, app, St { .. }) { cx =>
 ```
 
 `rest::on_reply(cx) { ... }` is `rest::route` for a later call. It fails the route
-with a lane's refusal before its block runs, and sets `cx.state.use` back to `None`
-once the route gets no more calls: after an answer that doesn't wait again, at the first
-piece of a reply that `rest::relay` sends on, and at `CLOSED`. `cx.kind` says which
+with a lane's refusal before its block runs, and leaves `cx.state.use` as the route set
+it, so a `CLOSED` after an early answer reaches the variant that holds what to release.
+goose-http starts the request state afresh for each request. `cx.kind` says which
 event it is, and `cx.req` is empty. A variant carries the request data its route needs,
 and the request state holds the route's progress.
 

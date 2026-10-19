@@ -182,7 +182,7 @@ sent to the wrong lane doesn't compile.
 
 Goose has no `async` and can't store a closure to call later. Instead, `rest::ask`
 keeps the lane's mark in the request state: a variant of the program's `Use` enum,
-which says what the route waits on, with `None` first:
+which says what the route waits on, `None` for nothing:
 
 ```rust
 // What a route waits on: here, the database lane.

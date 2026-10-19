@@ -541,10 +541,14 @@ call.
   struct: a fixed `u8[..64]` code takes its whole capacity, which a 64-byte message, as
   tutorial page 12's, can't hold.
 - `rest::on_reply(cx) { resume(cx.state.use, cx); }` replaces `rest::route` at every
-  later call, and sets `cx.state.use` back to its type's first variant once the route
-  gets no more calls: after an answer that doesn't wait again, at the first piece of a
-  reply that `relay` sends on, and at `CLOSED`. A wait that times out ends without a
-  call, and leaves the mark until goose-http starts the next request's state afresh.
+  later call, and leaves `cx.state.use` as the route set it. Amended (2026-10-19): it
+  no longer sets `cx.state.use` back to its type's first variant once the route gets
+  no more calls. on_reply wraps every later call, so that reset cleared an upload's
+  variant after a `BODY` that failed or answered early, and the `CLOSED` that followed
+  went to `Use.None`, skipping the variant's cleanup. The reset existed only so that a
+  job's inputs wouldn't linger in the request state; with marks, the state never holds
+  a job, and goose-http starts the state afresh for every request. `Use` no longer has
+  to list `None` first.
 - Tests play a lane with `rest::play(lane, job) { u, a => run(u, state, a); }`, which
   runs a job as the lane does, with no thread, and returns its reply, which
   `rest::wake` gives `rest::serve_one`. It replaces building a reply's bytes with

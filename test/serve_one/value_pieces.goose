@@ -108,7 +108,7 @@ fn main() {
     print("the third, then a second wait: waiting ", c.stream.waiting, ", in the spill ", in_use(b));
     wake(c, out, app, two, size, 0, 3, spill, b);
     expect::same(expect::body_of(out), "2 0123456789", "two waits");
-    print("answered: ", expect::body_of(out), ", in the spill ", in_use(b), ", then: ", c.st.state.use);
+    print("answered: ", expect::body_of(out), ", in the spill ", in_use(b));
 
     // A client that goes mid-reply: CLOSED frees the run.
     var gone = Conn { req: req };

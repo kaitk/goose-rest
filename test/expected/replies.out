@@ -1,14 +1,8 @@
-then: Use.None
-relayed in pieces, then: Use.None
-a value in two pieces, then: Use.None
-a value of 79 bytes in pieces of 27, then: Use.None
-over the budget: HTTP/1.1 502 Bad Gateway {"error":"reply_too_large"}, then: Use.Echo
+a value of 79 bytes in pieces of 27
+over the budget: HTTP/1.1 502 Bad Gateway {"error":"reply_too_large"}
 refusal: 409 refused_here
 refused: HTTP/1.1 409 Conflict {"error":"refused_here"}
-then: Use.None
 silent: {"error":"no_reply"}
-then: Use.None
-no wake left, then: Use.Echo
 Value { 40 }
 Text { "abcdefghij" }
 Text { "abcdefghij" }

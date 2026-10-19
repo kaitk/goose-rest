@@ -107,7 +107,7 @@ fn store(cx, bytes: const u8[:]) {
 Values the route keeps between pieces go in the request state, which starts fresh for
 each request: the file's path and the number of bytes received so far. Values that don't
 change, such as the project, go in the variant. The program's `Use` enum lists what a
-route waits on, with `None` first: here no lane, only the routes that read their body,
+route waits on, beside `None`: here no lane, only the routes that read their body,
 each with what it needs at each call. A program with lanes adds a mark for each beside
 them ([page 11](11-waiting.md#asking-a-lane-and-resuming)):
 

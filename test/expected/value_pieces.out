@@ -1,7 +1,7 @@
 a reply of 62 bytes, in pieces of 21, marked: true
 two pieces of three: waiting true, answered false, in the spill true
 the third, then a second wait: waiting true, in the spill 0
-answered: 2 0123456789, in the spill 0, then: Use.None
+answered: 2 0123456789, in the spill 0
 gone mid-reply: answered false, in the spill 0
 timed out mid-reply: HTTP/1.1 504 Gateway Timeout {"error":"timeout"}, in the spill 0
 over the budget: HTTP/1.1 502 Bad Gateway {"error":"reply_too_large"}, waiting false, in the spill 0

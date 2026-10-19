@@ -103,11 +103,11 @@ reply carries back at each wake, then the request state once the route has answe
   wake: Use.Hash AuthPassword { "ada@example.com", "goose" }
   wake: Use.Write AuthSession { 1 }
   201 Created {"session":1,"user":1}
-  then: Use.None
+  then: Use.Write
 -- POST /auth/session?email=ada@example.com&password=gander
   wake: Use.Hash, job failed
   401 Unauthorized {"error":"invalid_credentials"}
-  then: Use.None
+  then: Use.Hash
 ```
 
 `expected.txt` has the whole output, the same responses as spike 10's.
@@ -197,6 +197,11 @@ waits. With the mark, the job's inputs aren't in the state at all, so the reset 
 keeps a stale mark from outliving its route. The package would clear it in
 `on_reply`, as here; a wait that times out ends without a call to the handler, and
 leaves the mark until goose-http resets the state for the next request.
+
+The package dropped the reset (2026-10-19): it cleared an upload's variant before the
+`CLOSED` that follows an early answer
+([decisions](../../docs/decisions.md#one-enum-of-jobs-per-lane)). `main.goose` now
+prints the last mark the route set, as `expected.txt` has it.
 
 ## A catch-all run: caught when it doesn't reply
 

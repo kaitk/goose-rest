@@ -17,7 +17,7 @@ enum Writes {
 enum Reports { ReportTotals { project: i64, ms: i64 } }               // reports::project
 enum Hashes { AuthPassword { email: u8[..64], password: u8[..64] } }  // auth::sign_in
 
-// The lane a route waits on: a mark for each lane, None first.
+// The lane a route waits on: a mark for each lane, or None.
 enum Use { None, Write, Report, Hash }
 
 struct St { use: Use = Use.None }

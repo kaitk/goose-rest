@@ -165,7 +165,7 @@ the job back in front of its answer, which the mark's `resume` dispatches on aga
 
 ```rust
 enum Reports { Totals { project: i64 } }   // the reports lane's jobs
-enum Use { None, Report }                  // a mark for each lane, None first
+enum Use { None, Report }                  // a mark for each lane, and None
 struct St { use: Use = Use.None }
 
 rest::ask(cx, cx.app.reports, Reports.Totals { project: id });         // the route

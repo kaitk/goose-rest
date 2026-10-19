@@ -243,14 +243,11 @@ fn value_bytes(v) -> u8[>..] {
 
 // rest::route for a route's later calls: a reply that says its job was
 // refused fails the route with the refusal's status and code before F, the
-// resume, runs. Once the route gets no more calls, cx.state.use is its
-// type's first variant again, so Use lists None first: after an answer
-// that doesn't wait again, at the first piece of a reply in pieces, whose
-// later pieces rest::relay sends on itself, and at CLOSED.
+// resume, runs. cx.state.use stays as the route left it, so a CLOSED after
+// an early answer reaches the variant that holds what to release.
 //
 //   rest::on_reply(cx) { resume(cx.state.use, cx); };
 inline fn on_reply<F>(cx) {
-    let mark = cx.out.buf.len;
     route(cx) {
         if cx.refused {
             let status, code, ok = refusal_of(cx.reply);
@@ -259,13 +256,7 @@ inline fn on_reply<F>(cx) {
         }
         F();
     };
-    if cx.kind == http::CLOSED || (cx.kind == http::WAKE && cx.more) ||
-       (!is_waiting(cx) && !cx.out.stream.open && cx.out.buf.len > mark) {
-        cleared(cx.state.use);
-    }
 }
-
-fn cleared<T>(x: T&) { x = default<T>(); }
 
 // The job a reply carries back, of the lane's U: what a mark's resume
 // dispatches on. Fails with 500 not_a_reply at another event than WAKE, as
