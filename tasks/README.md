@@ -63,7 +63,6 @@ unless the table says otherwise.
 | 043: workers started with `http::run` | Done on a pinned Goose commit; the README waits for releases. |
 | 046: rename to Plod | Deferred; the name check and the logo come first. |
 | 047: HttpArena | After 046; the master plan, with the work in goose-http, goose-tls, goose-sqlite, and goose-postgres. |
-| 050: one enum for a route's use cases | A spike first; before 047's entry code. |
 | 051: restart after an abort | Un-parks goose-http's `restart-workers` branch; any time, beside 047. |
 | 052: database work on lanes | goose-postgres's and goose-sqlite's decisions and tasks; beside 047. |
 | 053: a contained scope in Goose | A design note only; not proposed until 051 has run in an application. |

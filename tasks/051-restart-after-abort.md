@@ -14,14 +14,14 @@ aborted lane's box with `http::mail_adopt`. Lanes need no Goose change: since
 What a program writes:
 
 ```rust
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
     var db = pg::open(DB_URL, box);   // closes what an aborted thread on this box left open
-    http::lane(box) { ... };
+    rest::lane(box, jobs) { u, a => run(u, db, a); };
 }
 // Restarts writer on the same box after an abort, with http::run's policy.
-thread_fn kept_writer(box: http::Box) { rest::keep(box, writer); }
+thread_fn kept_writer(box: http::Box, jobs: rest::Jobs<Writes>) { rest::keep(box, jobs, writer); }
 
-writer: http::lane_open(http::LaneConfig { slots: WRITER_SLOTS, .. }, kept_writer),
+writer: rest::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, kept_writer),
 ```
 
 Workers, routes, jobs, and `resume`s don't change. A lane without the wrapper still

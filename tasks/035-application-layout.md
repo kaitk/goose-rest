@@ -1,7 +1,9 @@
 # 035: Best practices, a section of the docs on laying out an application
 
 Status: built (2026-10-15); the testing page built (2026-10-16); the data-access page
-and a full example application open (asked for 2026-10-15; a docs section, not a tutorial part)
+and a full example application open (asked for 2026-10-15; a docs section, not a tutorial part).
+The `Waiting` enum below is the program's `Use`, with an enum of jobs per lane, since
+task 050 (2026-10-19).
 
 The tutorial's pages teach goose-rest's mechanisms one at a time, and leave how a whole
 application is laid out to the reader. A "Best practices" section of its own, beside

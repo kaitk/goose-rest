@@ -1,7 +1,8 @@
 # 023: Read a body and send a response in pieces
 
 Status: built (2026-10-15); instruction counts open (found 2026-10-15; proposal agreed
-2026-10-15)
+2026-10-15). The `Waiting` enum below is the program's `Use` since task 050
+(2026-10-19).
 
 `rest::receive`, as the proposal below names it, is `rest::body_in_pieces` (2026-10-15):
 "receive" read as if the call read the body, where it only accepts it and says where its

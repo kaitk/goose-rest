@@ -25,7 +25,7 @@ The split:
 A sketch, with the block's result form still to check against the spec:
 
 ```rust
-fn run(u: Use.PlaceOrder, db: pg::Conn&, a) {
+fn ::run(u: Writes.PlaceOrder, db: pg::Conn&, a) {
     let order, err = pg::transaction(db) { tx =>
         let o = orders::insert(tx, u.items);  // may pg::fail at any depth
         stock::reserve(tx, u.items);
