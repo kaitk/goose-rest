@@ -2,6 +2,41 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.2.0 (2026-10-19)
+
+Lanes of several threads, each typed by an enum of its jobs, replies in pieces, and
+workers started with `http::run`. Goose master `f114b5a`, since no release has
+[aardappel/goose#37](https://github.com/aardappel/goose/pull/37) yet, which `http::run`
+and `http::lane_open` need; goose-http `v0.4.0`, goose-compress `v0.1.1`.
+
+- Lanes are goose-http's, and there is one way to use them
+  ([reference](docs/reference.md#41-lanes)). Each lane takes a fixed-mode enum of its
+  jobs, a variant per use case: `rest::lane_open<U>(cfg, mark, W)` opens a
+  `rest::Lane<U, M>` of `http::LaneConfig`'s `threads`, spawning each `thread_fn W(box,
+  jobs: rest::Jobs<U>)`, and a thread whose `jobs` names another enum doesn't compile.
+  `rest::lane(box, jobs) { u, a => ... }` is a lane thread's loop, `rest::lane_job` one
+  job of it, and `rest::lane_stop` stops the lane once the jobs queued are done.
+- `rest::ask(cx, lane, job, ms)` sends a variant of the lane's enum to the least busy
+  thread and keeps only the lane's mark in `cx.state.use`. The reply carries the job
+  back: the mark's `resume` dispatches on `rest::job<U>(cx)`, and the job's `resume`
+  reads `rest::answer<T>(cx)`. `rest::ask` fails with 500 `job_too_large` before it
+  sends a job that can't fit a message with its length. Breaking: the ask to a box,
+  `rest::ask_by`, the tagged `ask`, `rest::asked`, `rest::read_reply`, and
+  `cx.state.waiting` are gone.
+- `rest::fail` on a lane refuses the job, which fails the route with its status and
+  code before the `resume` runs, so a domain's checks serve a route and a lane alike. A
+  job that gets no reply answers 500 `no_reply`.
+- `rest::reply_value` replies in pieces that the worker collects in its spill, counted
+  against `gather_budget`, and the `resume` runs once with the whole reply; past the
+  budget the route fails with 502 `reply_too_large`. `rest::reply`'s pieces still go on
+  one at a time through `rest::relay`.
+- `cx.state.use` keeps a route's variant after it answers, so the `CLOSED` that follows
+  an early answer reaches the variant that holds what to release.
+- Every program starts its workers with `http::run`, and tests play a lane's job with
+  `rest::play`, with no thread.
+- The REST benchmark adds ntex on io_uring and Aegon (C++) beside Axum, actix-web, and
+  dusty, and the Rust servers share one release profile.
+
 ## v0.1.2 (2026-10-16)
 
 A JSON writer from a struct's fields, multipart extractors, and pauses for events sent

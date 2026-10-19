@@ -59,10 +59,12 @@ pass their tests on arm64 Linux.
 
 ## Quick start
 
-Install Goose [`v2026.2`](https://github.com/aardappel/goose/releases/tag/v2026.2): unpack
-the archive for your platform and put its directory on `PATH`
-([Goose's install notes](https://github.com/aardappel/goose#install-a-release)). Building
-a program also needs a C compiler and, on Linux, liburing:
+Build Goose at commit
+[`f114b5a`](https://github.com/aardappel/goose/commit/f114b5ac52cfad4bc73038aede53ac7e470b0ad3)
+and put its directory on `PATH`
+([Goose's build notes](https://github.com/aardappel/goose#build-and-run)): `http::run`
+needs [aardappel/goose#37](https://github.com/aardappel/goose/pull/37), which no Goose
+release has yet. Building a program also needs a C compiler and, on Linux, liburing:
 
 - **Linux:** gcc or clang, with `libc6-dev` and `liburing-dev` (Debian, Ubuntu).
 - **macOS:** the Xcode command line tools (`xcode-select --install`).
@@ -71,8 +73,8 @@ a program also needs a C compiler and, on Linux, liburing:
 Save this as `hello.goose`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.3.6";
-import rest from "github.com/kaitk/goose-rest@v0.1.2";
+import http from "github.com/kaitk/goose-http@v0.4.0";
+import rest from "github.com/kaitk/goose-rest@v0.2.0";
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
@@ -90,10 +92,7 @@ thread_fn worker(cfg: http::Config) {
 }
 
 fn main() {
-    let cfg = http::Config { port: 8080, .. };
-    var ids: i64[>..] = [];
-    for i in http::worker_count(cfg) { ids.push(thread_spawn(worker, cfg)); }
-    for id in ids { thread_wait(id); }
+    http::run(http::Config { port: 8080, .. }, worker);
 }
 ```
 
