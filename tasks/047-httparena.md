@@ -27,11 +27,32 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | json-tls, 8gbit; static-tls (reference) | TLS 1.3 on port 8081 with the mounted RSA-2048 certificate, ALPN `http/1.1`. 8gbit echoes 10 KB at a pinned 50K requests per second and is scored on CPU per request | goose-tls task 001; goose-http task 014 |
 | api-4, api-16 | `/async-db`: a Postgres range query, through an async driver with a pool of `DATABASE_MAX_CONN` (256) connections | goose-postgres task 001 |
 | gateway-64, gateway-h3, production-stack | `/async-db` again, behind a standard proxy that terminates TLS, h2, and h3. The rules forbid a custom proxy, so the server speaks plaintext HTTP/1.1. In production-stack the shared `authsvc` verifies the JWT at the edge, and the cache can be in-process | goose-postgres task 001; a compose file and an nginx config here |
-| echo-ws, echo-ws-pipeline, echo-ws-limited | WebSocket: the handshake, framing, and masking over `rest::upgrade` | goose-http task 052 |
+| echo-ws, echo-ws-pipeline, echo-ws-limited | WebSocket: the handshake, framing, and masking over `rest::upgrade` | goose-http task 054 |
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
 | unary-grpc and three more | gRPC over h2, and protobuf | After h2 |
 | baseline-h3, static-h3 | QUIC | Last |
+
+## The entry's tier
+
+`meta.json`'s `type` places a framework in one of three tiers, which grade only how
+proven it is in production (`site/content/docs/add-framework/implementation-rules/frameworks/`,
+checked 2026-10-19): flagship (real applications built and run on it at scale, actively
+maintained), emerging (a genuine, working server, not yet production-proven), and
+experimental (very new work, hidden on the leaderboard unless a reader opts in). The
+entry picks its tier, and HttpArena's maintainers may change it on review. Aegon entered
+as experimental.
+
+The entry asks for emerging (2026-10-19). What makes that case, before the entry goes in:
+
+1. Releases to rely on: tagged versions with a changelog, under the new name (task 046),
+   and goose-http's API settled (its task 027).
+2. Correctness beyond HttpArena's validation: h2spec passing, the HTTP/1.1 parser and
+   HPACK fuzzed, the limits and timeouts documented, and no known crash open.
+3. Documentation for writing an application: the tutorial and best-practices guides.
+
+Flagship needs applications in production that others built and run. snowtime-native
+in production is a start on that, not enough on its own.
 
 ## Beyond HttpArena: one binary
 
@@ -47,8 +68,9 @@ SQLite scores nothing on HttpArena. goose-sqlite comes before goose-postgres bec
 needs no network code, and because goose-rest needs a database for its own examples
 (task 035's data access) and for the one-binary target.
 
-goose-tls, goose-sqlite, and goose-postgres are local repositories, created 2026-10-19
-from goose-compress's layout. They go to GitHub once each has working code.
+goose-tls, goose-sqlite, goose-hash, and goose-postgres follow goose-compress's layout.
+The first three are on GitHub at `v0.0.1` (2026-10-19); goose-postgres stays local
+until it has working code.
 
 ## Order
 
@@ -58,9 +80,9 @@ from goose-compress's layout. They go to GitHub once each has working code.
    then json-tls and 8gbit in the entry. kTLS (task 014, phase 3) matters for 8gbit's
    CPU score.
 3. goose-sqlite task 001, beside TLS.
-4. Postgres: outbound TCP connections in goose-http (task 051), then goose-postgres
+4. Postgres: outbound TCP connections in goose-http (task 053), then goose-postgres
    task 001, then api-4, api-16, the two gateway profiles, and production-stack.
-5. WebSocket in goose-http (task 052), then the three echo profiles.
+5. WebSocket in goose-http (task 054), then the three echo profiles.
 6. h2c, then h2 over TLS (goose-http task 014, phases 4 and 5), then the four h2
    profiles.
 7. gRPC, then h3.
@@ -69,14 +91,17 @@ from goose-compress's layout. They go to GitHub once each has working code.
 
 SCRAM-SHA-256 for Postgres, WebSocket's handshake, and a JWT verifier need SHA-1,
 SHA-256, HMAC, and PBKDF2. Goose's stdlib has none of them (checked 2026-10-19), so
-they go in goose-hash, a package of its own in Goose, created locally 2026-10-19
-(its `docs/decisions.md` has the reasons). Its task 001 comes before goose-http's
-WebSocket and goose-postgres.
+they go in goose-hash, a package of its own in Goose (its `docs/decisions.md` has the
+reasons). Its task 001, done in `v0.0.1`, came before goose-http's WebSocket and
+goose-postgres; its task 002 closes the speed gap to OpenSSL and the Rust and Zig
+implementations.
 
 ## Acceptance criteria
 
-- [x] goose-http has tasks for outbound connections (051) and WebSocket (052), and its
+- [x] goose-http has tasks for outbound connections (053) and WebSocket (054), and its
       task 014 records this order (2026-10-19, on goose-http's `main`)
+- [ ] The case for emerging made, as "The entry's tier" lists, and `meta.json` says
+      `emerging`
 - [ ] The entry runs the six HTTP/1.1 profiles; `validate.sh` passes and the results are
       saved
 - [ ] json-tls and 8gbit in the entry, passing HttpArena's TLS checks
