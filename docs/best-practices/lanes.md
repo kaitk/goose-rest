@@ -149,18 +149,20 @@ waits for the lane's threads:
 <summary>What a lane's thread runs</summary>
 
 A lane's thread owns the lane's state, and hands each job in its box to the job's `run`
-with `rest::lane`. The writer:
+with `rest::lane`. Its `rest::Jobs<Writes>` parameter names the lane's enum, which
+`rest::lane_open` checks, so a thread opened for another lane doesn't compile. The
+writer:
 
 ```rust
 // The writer lane, one thread: the database's one writer. It owns the entries
 // and the sessions, and runs every job that writes, one at a time.
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
     var w = Writer { entries: all, sessions: sessions };
     // Each job in the box, in order, to its run case function, until main
     // stops the lane.
-    rest::lane<Writes>(box) { u, a => run(u, w, a); };
+    rest::lane(box, jobs) { u, a => run(u, w, a); };
 }
 ```
 
@@ -255,9 +257,9 @@ From [`lanes/main.goose`](lanes/main.goose):
 ```rust
 // A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
-thread_fn hasher(box: http::Box) {
+thread_fn hasher(box: http::Box, jobs: rest::Jobs<Hashes>) {
     var h = Hasher { users: auth::USERS };
-    rest::lane<Hashes>(box) { u, a => run(u, h, a); };
+    rest::lane(box, jobs) { u, a => run(u, h, a); };
 }
 ```
 

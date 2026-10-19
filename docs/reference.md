@@ -427,9 +427,9 @@ enum Use { None, Report }
 struct St { use: Use = Use.None }
 struct App { reports: rest::Lane<Reports, Use> }
 
-thread_fn reader(box: http::Box) {
+thread_fn reader(box: http::Box, jobs: rest::Jobs<Reports>) {
     var r = Reader { .. };
-    rest::lane<Reports>(box) { u, a => run(u, r, a); };
+    rest::lane(box, jobs) { u, a => run(u, r, a); };
 }
 
 fn run(u: Reports.Totals, r: Reader&, a) {
@@ -449,9 +449,9 @@ rest::lane_stop(reports);
 | Call | Does | Fails with |
 |---|---|---|
 | `http::LaneConfig { threads, slots, size }` | A lane's threads (1; at least 1, at most 64), and each box's `slots`, a power of two of at least 2 (64), of `size` bytes (256). | |
-| `rest::lane_open<U>(cfg, mark, W)` | Opens a `rest::Lane<U, M>` of jobs of the enum `U`, with `mark`, through `http::lane_open`: spawns its threads, each the `thread_fn W(box: http::Box)` with a box of its own. `rest::lane_open<U>(cfg, mark, a, W)` passes each `a` too: `thread_fn W(box: http::Box, a: A)`. The `Lane` is flat, so it crosses `http::run` in worker state. | A box that fails to open ends the program. |
-| `rest::lane<U>(box) { u, a => ... }` | A lane thread's loop: the block gets each job, a `U`, and `a`, where its reply goes, in the order they came, until the lane is stopped and its box empty; then closes the box. A job the block neither replies to nor fails refuses with 500 `no_reply`. | |
-| `rest::lane_job<U>(bytes) { u, a => ... }` | One job of `rest::lane`, from a message's bytes: for a thread that writes its own loop, as one doing timed work between jobs does, and for a test that reads the job a route sent. | |
+| `rest::lane_open<U>(cfg, mark, W)` | Opens a `rest::Lane<U, M>` of jobs of the enum `U`, with `mark`, through `http::lane_open`: spawns its threads, each the `thread_fn W(box: http::Box, jobs: rest::Jobs<U>)` with a box of its own. `rest::lane_open<U>(cfg, mark, a, W)` passes each `a` too: `thread_fn W(box: http::Box, jobs: rest::Jobs<U>, a: A)`. A `W` whose `jobs` names another enum than `U` doesn't compile. The `Lane` is flat, so it crosses `http::run` in worker state. | A box that fails to open ends the program. |
+| `rest::lane(box, jobs) { u, a => ... }` | A lane thread's loop: the block gets each job, a `U` of `jobs`, a `rest::Jobs<U>`, and `a`, where its reply goes, in the order they came, until the lane is stopped and its box empty; then closes the box. A job the block neither replies to nor fails refuses with 500 `no_reply`. | |
+| `rest::lane_job(jobs, bytes) { u, a => ... }` | One job of `rest::lane`, from a message's bytes: for a thread that writes its own loop, as one doing timed work between jobs does, and for a test that reads the job a route sent, with a `rest::Jobs<U> { .. }` of its own. | |
 | `rest::lane_stop(lane)` | `http::lane_stop`: stops every box of `lane` and waits for its threads, each of which takes what its box holds first. A full box can't refuse the stop. | |
 | `rest::ask(cx, lane, job, ms)` | Sends `job`, a variant of the lane's enum, to the least busy thread of `lane`, the one whose box holds the fewest, or to the others in turn while each is full, and waits for the reply with the lane's mark in `cx.state.use` ([Later calls](#4-later-calls)). A variant of another lane's enum doesn't compile. | 503 `unavailable` when every box is full, the lane is stopped, or the job is longer than a slot; 500 `job_too_large`, before the job is sent, when the job and its 4-byte length don't fit one message of the reply; 500 `already_waiting` |
 | `rest::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job, in pieces of the worker's message size, each marked as a value's, which the worker collects whole before the `resume` runs. Returns false once the route has gone. | The route: 502 `reply_too_large` past the worker's gather budget |

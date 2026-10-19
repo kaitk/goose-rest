@@ -73,7 +73,7 @@ fn main() {
     expect(answer(put("/v1/projects/1/tasks/4/assignee?user=2", user1)),
            "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
     let n = http::mail_take(box) { key, tag, bytes =>
-        rest::lane_job<DbJob>(bytes) { u, a => run(u, c, a); };
+        rest::lane_job(rest::Jobs<DbJob> { .. }, bytes) { u, a => run(u, c, a); };
     };
     assert(n == 1 && assignee(c, 4) == 2);
 

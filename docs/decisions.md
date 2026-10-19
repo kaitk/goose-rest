@@ -519,10 +519,19 @@ call.
   `Use`. `rest::lane_open<U>(cfg, mark, W)` opens it, and `rest::ask(cx, lane, job, ms)`
   takes only a variant of `U`, so a job sent to another lane doesn't compile. `ask`
   stores the mark in `cx.state.use` once the job is sent.
-- `rest::lane<U>(box) { u, a => run(u, state, a); }` is a lane thread's loop, and
+- `rest::lane(box, jobs) { u, a => run(u, state, a); }` is a lane thread's loop, and
   dispatches each job to the program's `run` case functions (§8.2), each lane with a
-  state type of its own. `rest::lane_job<U>(bytes)` is one job of it, for a thread
-  that writes its own loop.
+  state type of its own. `rest::lane_job(jobs, bytes)` is one job of it, for a thread
+  that writes its own loop. Amended (2026-10-19): this replaces `rest::lane<U>(box)`
+  and `rest::lane_job<U>(bytes)`, whose `U` nothing tied to the lane: a thread
+  running `lane<Reports>` opened as `lane_open<Writes>` compiled, and with variants
+  of the same shape ran the wrong job. `rest::lane_open<U>` now passes each thread a
+  `rest::Jobs<U>`, a struct with `U` only as a type parameter, as `Lane<U, M>` is; the
+  thread declares `jobs: rest::Jobs<Writes>`, `thread_spawn` checks it against the
+  lane's `U`, and `rest::lane` takes `U` from it. A value the program passes stays a
+  parameter of its own after `jobs`, spawned through `http::lane_spawn`: Goose has no
+  second struct of one name with another type parameter, and a `Jobs<U, A>` holding it
+  would give the lanes without a value a second way to write the parameter.
 - A reply carries its job back in front of the answer: four bytes of length, least
   significant first, the job's image, then the answer's. The mark's `resume` calls
   `resume(rest::job<Writes>(cx), cx)`, which dispatches to the domain's `resume` for

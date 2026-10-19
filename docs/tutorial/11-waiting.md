@@ -134,16 +134,18 @@ which sleeps until mail comes, and returns once `main` stops the lane and every 
 queued before is done. From [`database.goose`](11-waiting/database.goose):
 
 ```rust
-thread_fn database(box: http::Box, delay_ms: i64) {
+thread_fn database(box: http::Box, jobs: rest::Jobs<DbJob>, delay_ms: i64) {
     var c = db::open(delay_ms);
-    rest::lane<DbJob>(box) { u, a => run(u, c, a); };
+    rest::lane(box, jobs) { u, a => run(u, c, a); };
 }
 ```
 
+`jobs` says which enum the thread runs, and `rest::lane` takes the job's type from it.
 `run(u, c, a)` dispatches on the job's variant, as a `match` would, and the compiler
 checks that every variant of `DbJob` has its `run`. `main` opens the lane with
 `rest::lane_open`, naming its jobs' enum and its *mark*, `Use.Db`, below. It starts the
-thread with a box of 64 slots of 256 bytes and passes it `DELAY_MS`. It gives the
+thread with a box of 64 slots of 256 bytes and passes it its `rest::Jobs<DbJob>` and
+`DELAY_MS`; a thread whose `jobs` names another enum doesn't compile. It gives the
 worker the lane, and stops it with `rest::lane_stop` once the worker returns, which
 waits for the thread. Waiting is off until `Config.mail_slots` and `max_waiting` are
 set ([goose-http's lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes)).

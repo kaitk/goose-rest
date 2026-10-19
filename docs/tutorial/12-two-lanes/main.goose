@@ -102,14 +102,14 @@ fn resume(u: MailJob.Invite, cx) {
     rest::json(cx, 201, Invited { project: u.project, user: u.user, mail: rest::answer<i64>(cx) });
 }
 
-thread_fn database(box: http::Box) {
+thread_fn database(box: http::Box, jobs: rest::Jobs<DbJob>) {
     var c = db::open(DELAY_MS);
-    rest::lane<DbJob>(box) { u, a => run(u, c, a); };
+    rest::lane(box, jobs) { u, a => run(u, c, a); };
 }
 
-thread_fn mailer(box: http::Box) {
+thread_fn mailer(box: http::Box, jobs: rest::Jobs<MailJob>) {
     var sent: i64 = 0;
-    rest::lane<MailJob>(box) { u, a => run(u, sent, a); };
+    rest::lane(box, jobs) { u, a => run(u, sent, a); };
 }
 
 thread_fn worker(cfg: http::Config, lanes: App) {

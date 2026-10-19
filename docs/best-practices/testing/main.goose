@@ -18,10 +18,10 @@ let WRITER_SLOTS: i32 = 64;
 
 // The writer lane, one thread: it owns the entries, and runs every job that
 // writes, one at a time.
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var w = Writer { entries: all };
-    rest::lane<Writes>(box) { u, a => run(u, w, a); };
+    rest::lane(box, jobs) { u, a => run(u, w, a); };
 }
 
 thread_fn worker(cfg: http::Config, lane: rest::Lane<Writes, Use>) {

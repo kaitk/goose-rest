@@ -192,7 +192,7 @@ opens and stops it as any lane:
 // messages, so that it replies to a client's question while a report runs.
 // Its wait has a time limit while a report runs, so it writes the loop that
 // rest::lane is, until the lane is stopped and its box empty.
-thread_fn reports(box: http::Box) {
+thread_fn reports(box: http::Box, jobs: rest::Jobs<ReportJob>) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];
     while !http::mail_stopped(box) {
@@ -200,7 +200,7 @@ thread_fn reports(box: http::Box) {
         for r in all { if r.left > 0 { busy = true; } }
         http::mail_wait(box, if busy { STEP_MS } else { 1000 });
         http::mail_take(box) { key, tag, bytes =>
-            rest::lane_job<ReportJob>(bytes) { u, a => run(u, all, a); };
+            rest::lane_job(jobs, bytes) { u, a => run(u, all, a); };
         };
         for &r in all {
             if r.left > 0 {

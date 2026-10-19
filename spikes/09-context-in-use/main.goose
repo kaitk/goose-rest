@@ -85,8 +85,8 @@ fn run(u: app::DbJob.Report, a) {
     rest::reply_value(a, u.id * 3);
 }
 
-thread_fn database(box: http::Box) {
-    rest::lane<app::DbJob>(box) { u, a => run(u, a); };
+thread_fn database(box: http::Box, jobs: rest::Jobs<app::DbJob>) {
+    rest::lane(box, jobs) { u, a => run(u, a); };
 }
 
 // One request through to its whole response, printed without CRs: REQUEST,

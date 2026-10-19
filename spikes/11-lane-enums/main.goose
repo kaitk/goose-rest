@@ -16,21 +16,21 @@ import rest from "../../";
 import .app;
 
 // A thread for each lane, each with its own state and its own enum.
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
     var w = Writer { entries: all, sessions: sessions };
-    rest::lane<Writes>(box) { u, a => run(u, w, a); };
+    rest::lane(box, jobs) { u, a => run(u, w, a); };
 }
 
-thread_fn reader(box: http::Box) {
+thread_fn reader(box: http::Box, jobs: rest::Jobs<Reports>) {
     var r = Reader { entries: reports::ENTRIES };
-    rest::lane<Reports>(box) { u, a => run(u, r, a); };
+    rest::lane(box, jobs) { u, a => run(u, r, a); };
 }
 
-thread_fn hasher(box: http::Box) {
+thread_fn hasher(box: http::Box, jobs: rest::Jobs<Hashes>) {
     var h = Hasher { users: auth::USERS };
-    rest::lane<Hashes>(box) { u, a => run(u, h, a); };
+    rest::lane(box, jobs) { u, a => run(u, h, a); };
 }
 
 fn serve_event(cx) {

@@ -134,6 +134,11 @@ enum, so each lane's `run` cases cover that lane's variants with that lane's sta
 waits on its own body or a pause, not a lane, needs no `run` on any lane. The three
 lanes run three `thread_fn`s, as `docs/best-practices/lanes/` has them today.
 
+Nothing tied that `U` to the lane the thread was opened for. The package typed the
+thread's end too (2026-10-19): each thread takes a `jobs: rest::Jobs<Reports>`, which
+`rest::lane_open<U>` checks, and calls `rest::lane(box, jobs)`, as `main.goose` now does
+([decisions](../../docs/decisions.md#one-enum-of-jobs-per-lane)).
+
 ## The request state holds the lane's mark
 
 Three ways for the state to hold the wait were tried:

@@ -203,7 +203,10 @@ builds this from [work that waits](tutorial/11-waiting.md) to
 The lane is goose-http's `http::Lane`, in a `rest::Lane` with its enum and mark: N
 boxes, one per thread, and the threads' ids, which `rest::lane_open` opens and spawns
 through `http::lane_open` from an `http::LaneConfig` and the program's `thread_fn`, as
-`http::run` spawns the workers. `rest::ask` sends through
+`http::run` spawns the workers. Each thread gets a `rest::Jobs<U>`, which holds no data:
+the thread's parameter names `U`, `thread_spawn` checks it against the lane's, and
+`rest::lane` takes the jobs' type from it, so a thread opened for another lane's jobs
+doesn't compile. `rest::ask` sends through
 `http::lane_send`, which puts the job in the box holding the fewest jobs, and in the
 next in turn while each is full, so the route gets 503 only when every box is full.
 `main` stops each lane with `rest::lane_stop`, which calls `http::lane_stop`, once the workers have returned: a flag in

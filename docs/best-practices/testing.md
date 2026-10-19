@@ -119,14 +119,15 @@ the same way: give `serve_one` a request without a token, and the answer is the 
 The test plays the lane. It gives the worker state a lane of one box of its own,
 `rest::lane_of<Writes>(box, Use.Write)`, with no thread, and nothing takes from that
 box but the test, so nothing waits. It reads the job the route sent with
-`rest::lane_job`, as the lane's thread does. From
+`rest::lane_job`, as the lane's thread does, given a `rest::Jobs<Writes>` of its own,
+which says the lane's enum. From
 [`testing/test/entries/entry_routes.goose`](testing/test/entries/entry_routes.goose):
 
 ```rust
     // The job the route sends, read as the lane reads it.
     answer(expect::request("POST", "/entries", FORM));
     http::mail_take(box) { key, tag, bytes =>
-        rest::lane_job<Writes>(bytes) { u, a => print("the job: ", u); };
+        rest::lane_job(rest::Jobs<Writes> { .. }, bytes) { u, a => print("the job: ", u); };
     };
 ```
 

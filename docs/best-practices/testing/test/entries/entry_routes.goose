@@ -30,7 +30,7 @@ fn main() {
     // The job the route sends, read as the lane reads it.
     answer(expect::request("POST", "/entries", FORM));
     http::mail_take(box) { key, tag, bytes =>
-        rest::lane_job<Writes>(bytes) { u, a => print("the job: ", u); };
+        rest::lane_job(rest::Jobs<Writes> { .. }, bytes) { u, a => print("the job: ", u); };
     };
 
     // The answer to each reply the writer's run gives, played on a writer of

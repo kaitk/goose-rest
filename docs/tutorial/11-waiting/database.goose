@@ -38,7 +38,7 @@ fn run(u: DbJob.Assign, c: db::Conn&, a) {
 
 // The lane's thread: it owns the connection, and takes jobs from its box one
 // at a time, until main stops the lane and every job queued before is done.
-thread_fn database(box: http::Box, delay_ms: i64) {
+thread_fn database(box: http::Box, jobs: rest::Jobs<DbJob>, delay_ms: i64) {
     var c = db::open(delay_ms);
-    rest::lane<DbJob>(box) { u, a => run(u, c, a); };
+    rest::lane(box, jobs) { u, a => run(u, c, a); };
 }

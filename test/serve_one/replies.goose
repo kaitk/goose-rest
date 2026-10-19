@@ -165,7 +165,7 @@ fn main() {
     // Each ask sent its job to the box, read as the lane reads it.
     var jobs: u8[>..] = [];
     let n = http::mail_take(box) { key, tag, bytes =>
-        rest::lane_job<Echoes>(bytes) { u, a => format(jobs, u, "\n"); };
+        rest::lane_job(rest::Jobs<Echoes> { .. }, bytes) { u, a => format(jobs, u, "\n"); };
     };
     print(jobs, "jobs: ", n);
     http::mail_close(box);

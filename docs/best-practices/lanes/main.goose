@@ -25,27 +25,27 @@ let HASHER_SLOTS: i32 = 16;
 
 // The writer lane, one thread: the database's one writer. It owns the entries
 // and the sessions, and runs every job that writes, one at a time.
-thread_fn writer(box: http::Box) {
+thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
     var w = Writer { entries: all, sessions: sessions };
     // Each job in the box, in order, to its run case function, until main
     // stops the lane.
-    rest::lane<Writes>(box) { u, a => run(u, w, a); };
+    rest::lane(box, jobs) { u, a => run(u, w, a); };
 }
 
 // A thread of the reports lane: a reader that runs only reports, so that a
 // slow report holds it, not the writer.
-thread_fn reports(box: http::Box) {
+thread_fn reports(box: http::Box, jobs: rest::Jobs<Reports>) {
     var r = Reader { entries: reports::ENTRIES };
-    rest::lane<Reports>(box) { u, a => run(u, r, a); };
+    rest::lane(box, jobs) { u, a => run(u, r, a); };
 }
 
 // A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
-thread_fn hasher(box: http::Box) {
+thread_fn hasher(box: http::Box, jobs: rest::Jobs<Hashes>) {
     var h = Hasher { users: auth::USERS };
-    rest::lane<Hashes>(box) { u, a => run(u, h, a); };
+    rest::lane(box, jobs) { u, a => run(u, h, a); };
 }
 
 thread_fn worker(cfg: http::Config, app: App) {

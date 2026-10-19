@@ -47,16 +47,23 @@ let REPLY_MORE: i32 = 0x40000000;
 // field: it types the jobs ask takes.
 struct Lane<U, M> { lane: http::Lane, mark: M }
 
+// What a lane's thread takes its jobs of U with: rest::lane_open passes it
+// to each thread, and rest::lane reads U from it. U is in no field: the
+// thread's parameter names it, and thread_spawn checks it against the lane's,
+// so a thread that runs another lane's jobs doesn't compile.
+struct Jobs<U> { unused: bool = false }
+
 // Opens a lane of jobs of U, as http::lane_open opens one, of the thread_fn
-// W, given a where a is passed: thread_fn W(box: http::Box[, a: A]).
+// W, given a where a is passed:
+// thread_fn W(box: http::Box, jobs: rest::Jobs<U>[, a: A]).
 //
 //   writer: rest::lane_open<Writes>(http::LaneConfig { slots: 64, .. }, Use.Write, writer),
 fn lane_open<U, M, W>(cfg: http::LaneConfig, mark: M) -> Lane<U, M> {
-    return Lane<U, M> { lane: http::lane_open(cfg, W), mark: mark };
+    return Lane<U, M> { lane: http::lane_open(cfg, Jobs<U> { .. }, W), mark: mark };
 }
 
 fn lane_open<U, M, W>(cfg: http::LaneConfig, mark: M, a) -> Lane<U, M> {
-    return Lane<U, M> { lane: http::lane_open(cfg, a, W), mark: mark };
+    return Lane<U, M> { lane: http::lane_spawn(cfg) { b => thread_spawn(W, b, Jobs<U> { .. }, a) }, mark: mark };
 }
 
 // A lane of jobs of U of box alone, with no thread, as http::lane_of: for a
@@ -128,19 +135,19 @@ struct Asked<U> {
 // refuses it with 500 no_reply, so that the route doesn't wait until its
 // time runs out.
 //
-//   thread_fn writer(box: http::Box) {
+//   thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
 //       var w = Writer { .. };
-//       rest::lane<Writes>(box) { u, a => run(u, w, a); };
+//       rest::lane(box, jobs) { u, a => run(u, w, a); };
 //   }
-inline fn lane<U, F>(box: http::Box) {
-    http::lane(box) { tag, bytes => lane_job<U>(bytes) { u, a => F(u, a); }; };
+inline fn lane<U, F>(box: http::Box, jobs: Jobs<U>) {
+    http::lane(box) { tag, bytes => lane_job(jobs, bytes) { u, a => F(u, a); }; };
 }
 
 // One job of a lane's loop, from the bytes of its message: for a thread that
 // writes its own loop, as one doing timed work between jobs does, and for a
-// test that reads the job a route sent. A message that isn't an Ask<U> is
-// dropped.
-inline fn lane_job<U, F>(bytes: const u8[:]) {
+// test that reads the job a route sent, with a rest::Jobs<U> of its own. A
+// message that isn't an Ask<U> is dropped.
+inline fn lane_job<U, F>(jobs: Jobs<U>, bytes: const u8[:]) {
     var asked = default<Ask<U>>();
     if http::mail_value(bytes, asked) {
         var a = Asked<U> { reply: asked.reply, piece: asked.piece, job: asked.job };
