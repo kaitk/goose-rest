@@ -62,5 +62,7 @@ unless the table says otherwise.
 | 012: a benchmark app shared with goose-http | Done in Docker on a Mac; the Linux desktop's idle VmRSS recheck remains, before task 010's run. |
 | 043: workers started with `http::run` | Done on a pinned Goose commit; the README waits for releases. |
 | 046: rename to Plod | Deferred; the name check and the logo come first. |
+| 047: HttpArena | After 046; the master plan, with the work in goose-http, goose-tls, goose-sqlite, and goose-postgres. |
+| 048: Aegon in the REST benchmark | Can start at any point; the run waits for the desktop. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |

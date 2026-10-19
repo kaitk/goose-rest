@@ -137,7 +137,8 @@ new goose-http names another, change it in the same commit (2026-10-15).
 - Every number comes with how it was measured: machine, kernel, command, worker and
   connection counts, and run count. A result without them doesn't go in a doc.
 - goose-rest is measured on goose-http's REST tiers and its own (`docs/benchmarks.md`), against goose-http alone and
-  against Axum, actix-web, ntex, and dusty (Zig) in their fastest documented configuration,
+  against Axum, actix-web, ntex, dusty (Zig), and, from task 048, Aegon (C++, 2026-10-19)
+  in their fastest documented configuration,
   built in release mode, with the same worker count. Each framework serves through its
   own router, extractors, and middleware, not one catch-all handler. Losses are recorded as plainly as wins.
 - A setting one rival's documented configuration has, and the others take as idiomatically
