@@ -65,11 +65,13 @@ from goose-compress's layout. They go to GitHub once each has working code.
    profiles.
 7. gRPC, then h3.
 
-## Open
+## Hashes
 
-- SCRAM-SHA-256 for Postgres, WebSocket's handshake, and a JWT verifier need SHA-1,
-  SHA-256, and HMAC, and no package has them. Either each user carries its own, or a
-  small hash package holds them.
+SCRAM-SHA-256 for Postgres, WebSocket's handshake, and a JWT verifier need SHA-1,
+SHA-256, HMAC, and PBKDF2. Goose's stdlib has none of them (checked 2026-10-19), so
+they go in goose-hash, a package of its own in Goose, created locally 2026-10-19
+(its `docs/decisions.md` has the reasons). Its task 001 comes before goose-http's
+WebSocket and goose-postgres.
 
 ## Acceptance criteria
 
