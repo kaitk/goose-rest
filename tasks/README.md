@@ -63,5 +63,6 @@ unless the table says otherwise.
 | 043: workers started with `http::run` | Waits on Goose #37 and goose-http's task 048. |
 | 044: workers and lanes that survive an abort | Waits on Goose #38 and goose-http's task 049. |
 | 045: limited queues for a pool of lanes | Waits on Goose #39 and goose-http's task 050. |
+| 046: rename to Plod | Deferred; the name check and the logo come first. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |
