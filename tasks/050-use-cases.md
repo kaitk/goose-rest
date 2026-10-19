@@ -41,7 +41,10 @@ To settle in a spike first:
 - [x] A spike under `spikes/` answers the three questions, with its README's verdict
       ([spike 10](../spikes/10-use-cases/README.md): works; each `run` sends its own
       reply, every lane takes one state type, the state grows by the largest job, and
-      `fn ::run` and `fn ::resume` in the domain's file replace the forwarders)
+      `fn ::run` and `fn ::resume` in the domain's file replace the forwarders);
+      [spike 11](../spikes/11-lane-enums/README.md): one enum per lane works and
+      replaces it, with a lane typed by its enum, the lane's mark alone in the request
+      state, and the job carried back in the reply
 - [ ] `rest::ask`, `rest::lane`'s dispatch, and the `resume` path take a use-case enum;
       no tag constants or lane if chain remain in the tutorial, best practices, or
       examples

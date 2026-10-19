@@ -1,0 +1,7 @@
+waits with Write { Create { 3 } }
+  resume Writes.Create for project 3
+waits with Report { Totals { 4 } }
+  resume Reports.Totals for project 4
+answered: Use.None
+  not waiting
+state: 10 bytes; Writes 9, Reports 9

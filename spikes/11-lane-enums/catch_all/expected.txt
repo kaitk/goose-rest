@@ -1,0 +1,12 @@
+cases alone:
+  reply 3
+  reply 9
+  rows written: 1
+untyped catch-all:
+  no_reply: the lane answers 500 for Create { 3 }
+  no_reply: the lane answers 500 for Close { 9 }
+  rows written: 0
+typed catch-all:
+  no_reply: the lane answers 500 for Create { 3 }
+  no_reply: the lane answers 500 for Close { 9 }
+  rows written: 0

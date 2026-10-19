@@ -1,0 +1,35 @@
+-- GET /health
+  200 OK ok
+  then: Use.None
+-- POST /entries?project=1&started=1767250800&stopped=1767254400
+  wake: Use.Write EntryCreate { 1, 1767250800, 1767254400 }
+  201 Created {"id":1,"project":1,"started":1767250800,"stopped":1767254400}
+  then: Use.None
+-- POST /entries?project=1&started=1767254400&stopped=1767250800
+  wake: Use.Write, job failed
+  422 Unprocessable Content {"error":"entry_ends_before_start"}
+  then: Use.None
+-- POST /entries?project=1
+  400 Bad Request {"error":"invalid_parameter","detail":"started: required"}
+  then: Use.None
+-- GET /reports/projects/1
+  wake: Use.Report ReportTotals { 1 }
+  200 OK {"project":1,"entries":2,"seconds":10800}
+  then: Use.None
+-- GET /reports/projects/9
+  wake: Use.Report, job failed
+  404 Not Found {"error":"no_such_project"}
+  then: Use.None
+-- POST /auth/session?email=ada@example.com&password=goose
+  wake: Use.Hash AuthPassword { "ada@example.com", "goose" }
+  wake: Use.Write AuthSession { 1 }
+  201 Created {"session":1,"user":1}
+  then: Use.None
+-- POST /auth/session?email=ada@example.com&password=gander
+  wake: Use.Hash, job failed
+  401 Unauthorized {"error":"invalid_credentials"}
+  then: Use.None
+-- POST /entries?project=2&started=1767268800&stopped=1767270600
+  wake: Use.Write EntryCreate { 2, 1767268800, 1767270600 }
+  201 Created {"id":2,"project":2,"started":1767268800,"stopped":1767270600}
+  then: Use.None

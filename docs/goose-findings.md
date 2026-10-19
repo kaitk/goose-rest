@@ -176,6 +176,35 @@ docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works to
 
 ## Feature requests
 
+### A mismatch names the type variable, not the type another argument bound it to
+
+Found on `dcc2747`, spike 11. Status: open
+
+A call whose argument doesn't fit a type variable that an earlier argument bound says
+it can't pass the argument "as U", and not as the type `U` stands for at that call.
+Expected: the bound type, and the argument that bound it, as in "cannot pass
+Reports.Totals as U (Writes, from argument 1)".
+
+    import std;
+    enum Writes { Create { project: i64 } }
+    enum Reports { Totals { project: i64 } }
+    struct Lane<U> { n: i64 }
+    fn ask<U>(lane: const Lane<U>&, job: U) {}
+    fn main() {
+        let writer = Lane<Writes> { n: 1 };
+        ask(writer, Writes.Create { project: 3 });
+        ask(writer, Reports.Totals { project: 4 });
+    }
+
+    error: no matching overload for call to ask
+      candidate ask at bound.goose:5: argument 2: cannot pass Reports.Totals as U
+
+goose-rest meets it when a route sends a job to the wrong lane (spike 11): the error
+names the job but not the lane's enum it should be a variant of.
+
+Workaround: read the lane's type at the call: `cx.app.writer` is a
+`rest::Lane<Writes, Use>`.
+
 ### A call written `x.f()` can't take type arguments
 
 Found on `ac759c3` (`v2026.1`). Status: open
@@ -266,6 +295,34 @@ generic in `cx` too, and get the same chain.
 
 Workaround: read the first lines. The error's line in `api_gen.goose` names the call,
 and the first frames name the operation ([tutorial](tutorial/05-schema.md#when-the-schema-and-the-handlers-disagree)).
+
+### An overload that takes the whole enum hides its case functions without a word
+
+Found on `dcc2747`, spike 10; checked with one enum per lane in spike 11. Status: open
+
+A call with an enum value takes an overload whose parameter is the enum, or untyped,
+before it tries tag dispatch (§7.1: "Only if no ordinary candidate matches is tag
+dispatch tried"), so a catch-all beside a complete set of case functions takes every
+call, and the cases never run. That is the spec's order, but nothing says so, and a
+library that dispatches a program's enum can't check it: Goose has no way to require
+that a call dispatch. Expected: a warning where an overload hides case functions that
+cover every variant, or a form of call that only dispatches.
+
+    import std;
+    enum Writes { Create { project: i64 }, Close { id: i64 } }
+    fn run(u) {}
+    fn run(u: Writes.Create) { print("create ", u.project); }
+    fn run(u: Writes.Close) { print("close ", u.id); }
+    fn main() {
+        let u: Writes = Writes.Create { project: 3 };
+        run(u);   // prints nothing, without a warning
+    }
+
+goose-rest's lanes dispatch each job to the program's `run` cases. A catch-all there
+drops every job, and the route waits for a reply that never comes.
+
+Workaround: the lane's loop answers 500 `no_reply` for a job whose `run` returned
+without replying (spike 11), and the docs warn against a catch-all.
 
 ### A function called once isn't inlined past a size
 
