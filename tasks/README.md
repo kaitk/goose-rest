@@ -64,5 +64,6 @@ unless the table says otherwise.
 | 046: rename to Plod | Deferred; the name check and the logo come first. |
 | 047: HttpArena | After 046; the master plan, with the work in goose-http, goose-tls, goose-sqlite, and goose-postgres. |
 | 048: Aegon in the REST benchmark | Can start at any point; the run waits for the desktop. |
+| 049: ACME | A package of its own; waits on goose-tls's tasks 001 and 003. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |

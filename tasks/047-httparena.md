@@ -40,8 +40,8 @@ snowtime-native's edge is today (`crates/host/src/edge/`, over rustls and
 rustls-acme). It gets certificates from Let's Encrypt through TLS-ALPN-01, chooses h2 or
 HTTP/1.1 by ALPN, redirects plaintext HTTP, and runs on SQLite. A goose-rest program
 should do all of that in one process, and still run behind Caddy or nginx. That adds
-SNI, swapping certificates while running, and ACME (goose-tls tasks 001 and 003) to what
-HttpArena needs.
+SNI, swapping certificates while running (goose-tls tasks 001 and 003), and ACME, a
+package of its own (task 049), to what HttpArena needs.
 
 SQLite scores nothing on HttpArena. goose-sqlite comes before goose-postgres because it
 needs no network code, and because goose-rest needs a database for its own examples
