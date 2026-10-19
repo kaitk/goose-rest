@@ -7,7 +7,7 @@
 node_modules/
 __pycache__/
 CLAUDE.local.md
-# Raw benchmark output goes to the bench-raw branch (bench/raw.sh); main keeps what
+# Raw benchmark output stays on the machine that ran the benchmark; main keeps what
 # docs cite. Add any other cited file with `git add -f`.
 /bench/results/**
 !/bench/results/**/

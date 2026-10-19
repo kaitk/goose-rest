@@ -14,7 +14,6 @@ sudo bench/rest.sh count  # user instructions per request, with perf
 bench/all.sh           # both repositories' Goose servers in one unattended session
 bench/routes.sh        # instructions per request of the routers, on macOS
 bench/stack.sh         # instructions per request of a JSON body and the middleware, on macOS
-bench/raw.sh           # pushes raw output to the bench-raw branch, or pulls it
 ```
 
 `bench/rest.sh` and `bench/stack.sh` use goose-http's benchmark scripts and datasets.
@@ -124,15 +123,9 @@ R, and M's cells beside them.
 `main` tracks only what the docs cite: notes (`*.md`), tables (`*.tsv`), batch scripts,
 `env.txt`, `key.txt`, `binaries.txt`, `revs.txt`, `times.txt`, `instructions.txt`, and
 `count.txt`, as goose-http's `main` does. `.gitignore` keeps the per-cell output out.
-Commit another file a doc cites with `git add -f`. The raw output travels between
-machines on the `bench-raw` branch, which shares no history with `main`. The first push
-creates it:
-
-```sh
-bench/raw.sh push bench/results/<dir>   # on the benchmark machine
-bench/raw.sh pull                       # elsewhere: list the directories
-bench/raw.sh pull <dir>                 # extract one into bench/results/
-```
+Commit another file a doc cites with `git add -f`. The raw output stays on the machine
+that ran the benchmark; the numbers and how they were measured go in
+[docs/benchmarks.md](../docs/benchmarks.md).
 
 Runs before 2026-10-15 wrote into goose-http's `bench/results/`, and the
 [benchmark summary](../docs/benchmarks.md) links to them there.
