@@ -9,7 +9,7 @@
 // fixed: each request goes through rest::on_event, the code rest::serve
 // runs, and each reply message addressed to it comes back as a WAKE.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.7";
+import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
 import rest from "../../";
 import .api_gen;
 import .app;

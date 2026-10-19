@@ -40,8 +40,13 @@ CHANGELOG.md      what each tag adds
 
 ## Get Goose
 
-The scripts use the official Goose release that `scripts/goose.sh` pins: `v2026.2`
-(`3ee3871`), since 2026-10-16. The first script that needs the compiler fetches it into
+Until the next release, the scripts build Goose master `dcc2747` (2026-10-19), which
+`goose_commit` in `scripts/goose.sh` pins, as goose-http does: the pinned goose-http's
+`http::run` and `rest::lane_open` need
+[aardappel/goose#37](https://github.com/aardappel/goose/pull/37), which no release has
+yet. Building it needs CMake and a C++ compiler. Otherwise the scripts use the official
+Goose release that `scripts/goose.sh` pins: `v2026.2` (`3ee3871`), since 2026-10-16.
+The first script that needs the compiler fetches it into
 `build/`, as goose-http's does
 ([its Get Goose](https://github.com/kaitk/goose-http/blob/main/docs/development.md#get-goose)).
 `scripts/goose.sh` is a copy of goose-http's script: keep the two the same. To fetch the compiler

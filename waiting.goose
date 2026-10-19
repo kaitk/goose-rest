@@ -21,7 +21,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.7";
+import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
 import .lane;
 
 // A reply message's tag: the sender's tag in REPLY_TAG's bits; REPLY_MORE

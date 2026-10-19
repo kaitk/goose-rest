@@ -96,9 +96,11 @@ the commit and verdict in each spike's README, and update the release in
 `docs/development.md` ("Get Goose") and `README.md`'s quick start, in its own commit.
 
 Pin a commit only when a Goose fix that this repository needs isn't in a release yet,
-and return to a release once one has it (2026-10-15). Set `GOOSE_COMMIT` in the
-scripts' environment (`docs/development.md`, "Use another compiler"), and record the
-commit and the reason in `docs/development.md`, "Get Goose".
+and return to a release once one has it (2026-10-15). Set `goose_commit` in
+`scripts/goose.sh` to the full hash, which every script then builds, and empty it to
+return to the release; record the commit and the reason in `docs/development.md`, "Get
+Goose". Goose releases often, so work that needs a merged fix lands on `main` on a
+pinned commit rather than wait for the release (2026-10-19).
 
 ## Move the goose-http pin
 

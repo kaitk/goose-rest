@@ -6,7 +6,9 @@
 #   GOOSE          already set: the compiler as given, such as a checkout's build
 #   GOOSE_COMMIT   that commit of aardappel/goose, which the first use clones and
 #                  builds with CMake into build/goose-<commit>/
-#   (neither)      the pinned release below, which the first use downloads into
+#   goose_commit   below, when set: a commit pinned for a fix no release has yet,
+#                  built as GOOSE_COMMIT would be
+#   (none)         the pinned release below, which the first use downloads into
 #                  build/goose-<release>-<asset>/ and checks against its SHA-256;
 #                  on a platform the release has no archive for, such as Linux
 #                  on arm64, its tag built as GOOSE_COMMIT would be
@@ -18,6 +20,7 @@
 #   GOOSE=$(scripts/goose.sh)
 
 goose_release=v2026.2
+goose_commit=dcc274794b68c154481780ddba96e9f1121bbaa9
 
 goose_fetch() {
     case ${GOOSE_ASSET:-$(uname -s)-$(uname -m)} in
@@ -118,7 +121,8 @@ goose_version() {
 
 if [ -z "${GOOSE:-}" ]; then
     root=${root:-$(cd "$(dirname "$0")/.." && pwd)}
-    if [ -n "${GOOSE_COMMIT:-}" ]; then
+    GOOSE_COMMIT=${GOOSE_COMMIT:-$goose_commit}
+    if [ -n "$GOOSE_COMMIT" ]; then
         goose_build || exit 1
     else
         goose_fetch || {

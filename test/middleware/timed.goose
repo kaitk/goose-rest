@@ -1,7 +1,7 @@
 // rest::timed: the Server-Timing field, its value padded to a fixed width,
 // and nothing added when nothing was written.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.7";
+import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
 import rest from "../../";
 import expect from "../";
 import common;

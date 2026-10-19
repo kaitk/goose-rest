@@ -23,7 +23,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.7";
+import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
 
 // A lane's bounds, in code: its role in a placement file, its threads where
 // the file gives no count (at least 1), the most a file may give (0, or

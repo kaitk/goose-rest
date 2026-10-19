@@ -1,7 +1,7 @@
 // rest::ask_by: a route's job reaches the box of the lane's thread that the key
 // picks (key % threads), and no other.
 import std;
-import http from "github.com/kaitk/goose-http@v0.3.7";
+import http from "github.com/kaitk/goose-http@81bbf9baa315ad3607cd2a3a67fa7d14d154726c";
 import rest from "../../";
 
 enum Waiting { None, Asked }

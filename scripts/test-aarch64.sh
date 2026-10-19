@@ -38,11 +38,13 @@ FROM ubuntu:26.04
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq liburing2 curl >/dev/null
 EOF
 
-# The compiler: GOOSE's, the release's, or GOOSE_COMMIT's built in the
-# container. Its own root keeps that build apart from a host one of the same
-# commit in build/.
+# The compiler: GOOSE's, the release's, or GOOSE_COMMIT's or goose.sh's pinned
+# commit built in the container. Its own root keeps that build apart from a
+# host one of the same commit in build/.
 if [ -z "${GOOSE:-}" ]; then
-    if [ -n "${GOOSE_COMMIT:-}" ]; then
+    GOOSE_COMMIT=${GOOSE_COMMIT:-$(sed -n 's/^goose_commit=//p' "$root/scripts/goose.sh")}
+    export GOOSE_COMMIT
+    if [ -n "$GOOSE_COMMIT" ]; then
         mkdir -p "$out/goose"
         GOOSE=$(docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -v "$root:$root" \
             -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
