@@ -159,8 +159,8 @@ For differences from Actix and the reasons behind them, see the
 
 ## Benchmarks
 
-goose-rest `v0.1.2` and Goose `v2026.2` on a Ryzen 7 5800X3D (WSL2), 4 workers per
-server. [All results, the method, and the losses](docs/benchmarks.md).
+goose-rest `e478ca2`, after `v0.1.2`, on goose-http `v0.3.7` and Goose `v2026.2`, on a
+Ryzen 7 5800X3D (WSL2), 4 workers per server. [All results, the method, and the losses](docs/benchmarks.md).
 
 Every framework serves the same REST APIs through its own router, extractors, and
 middleware.
@@ -171,20 +171,21 @@ middleware.
 - **F**, **R**, and **M** measure the framework itself: one route, 203 routes, and A
   behind CORS, a bearer token, and `Server-Timing`.
 
-| Workload | goose-rest | dusty (Zig) | actix-web | Axum |
-|---|:---|---:|---:|---:|
-| [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **579k req/s** (99%) | 349k | 262k | 242k |
-| [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **311k req/s** (100%) | 163k | 143k | 139k |
-| [C](docs/benchmarks.md#the-tiers): records, up to 728 KB | **61.3k req/s** (99%) | 23.8k | 31.9k | 34.6k |
-| C, templates | **140k req/s** (96%) | 133k | 92.6k | 89.1k |
-| [F](docs/benchmarks.md#the-tiers): one route | **505k req/s** (99%) | 372k | 271k | 256k |
-| [R](docs/benchmarks.md#the-tiers): 203 routes | **470k req/s** | 360k | 145k | 253k |
-| [M](docs/benchmarks.md#the-tiers): A with middleware | **492k req/s** | 334k | 221k | 184k |
-| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,120 req/s (97%) | **1,225** | 1,142 | 1,153 |
-| [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **123 MB**, uploads beside forms | 781 MB, uploads beside forms | 395 MB, C templates | 579 MB, C templates |
+| Workload | goose-rest | dusty (Zig) | ntex | actix-web | Axum |
+|---|:---|---:|---:|---:|---:|
+| [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **600k req/s** (99%) | 374k | 332k | 276k | 253k |
+| [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **318k req/s** (101%) | 166k | 173k | 149k | 142k |
+| [C](docs/benchmarks.md#the-tiers): records, up to 728 KB | **62.7k req/s** (98%) | 24.6k | 33.5k | 32.5k | 35.2k |
+| C, templates | **148k req/s** (96%) | 138k | 107k | 97.3k | 92.4k |
+| [F](docs/benchmarks.md#the-tiers): one route | **508k req/s** (98%) | 395k | 331k | 278k | 266k |
+| [R](docs/benchmarks.md#the-tiers): 203 routes | **475k req/s** | 359k | 306k | 148k | 264k |
+| [M](docs/benchmarks.md#the-tiers): A with middleware | **504k req/s** | 343k | 284k | 227k | 198k |
+| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,142 req/s (97%) | **1,230** | 1,198 | 1,201 | 1,168 |
+| [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **121 MB**, uploads beside forms | 781 MB, uploads beside forms | 328 MB, C templates | 384 MB, C templates | 584 MB, C templates |
 
 *Note: percentages, such as (97%), are goose-rest's share of goose-http's rate with no
-framework.* The frameworks ran in an earlier session the same day, on the same machine.
+framework.* The frameworks ran right after the Goose servers, the same night, on the
+same machine.
 
 Goose uses io_uring. Results for every server, both Goose event loops, and memory:
 [docs/benchmarks.md](docs/benchmarks.md#against-other-frameworks).
