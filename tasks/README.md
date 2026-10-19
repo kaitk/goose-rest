@@ -66,7 +66,7 @@ unless the table says otherwise.
 | 051: restart after an abort | Un-parks goose-http's `restart-workers` branch; any time, beside 047. |
 | 052: database work on lanes | goose-postgres's and goose-sqlite's decisions and tasks; beside 047. |
 | 053: a contained scope in Goose | A design note only; not proposed until 051 has run in an application. |
-| 048: Aegon in the REST benchmark | Can start at any point; the run waits for the desktop. |
+| 048: Aegon in the REST benchmark | Built and checked on the desktop, without tier D; the nightly run measures it. |
 | 049: ACME | A package of its own; waits on goose-tls's tasks 001 and 003. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |

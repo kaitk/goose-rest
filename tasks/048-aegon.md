@@ -1,6 +1,7 @@
 # 048: Aegon in the REST benchmark
 
-Status: todo (asked for 2026-10-19)
+Status: in-progress (asked for 2026-10-19; built and checked 2026-10-19, the run waits
+for the nightly session)
 
 [Aegon](https://github.com/UdayKhare09/Aegon) (C++23, MIT, created 2026-09-07) is a
 thread-per-core framework on io_uring, epoll, and IOCP, with coroutine handlers, a
@@ -71,8 +72,12 @@ Each is a claim from Aegon's README or source, to measure before adopting:
 
 ## Acceptance criteria
 
-- [ ] `bench/rest/aegon/` with `NOTES.md`, and `bench/README.md` listing it
-- [ ] `bench/rest.sh check` passes Aegon and `aegon-small` on tiers A to D, F, R, and M
+- [x] `bench/rest/aegon/` with `NOTES.md`, and `bench/README.md` listing it
+- [x] `bench/rest.sh check` passes Aegon and `aegon-small` on tiers A to C, F, R, and M.
+      Tier D is left out (2026-10-19): Aegon reads a body whole before a route runs, so
+      it can't refuse a batch declared over 1 MB until the body arrives, and
+      `check.py` wants a 413 at once. goose-http's `no_d` names both servers, and its
+      run skips them on tier D, as it skips may-minihttp and Tina
 - [ ] Both measured on the desktop with the others, with peak RSS and
       `vm.nr_hugepages` recorded, in `docs/benchmarks.md`
 - [ ] Each idea above measured or set aside, and the result recorded in the task of the

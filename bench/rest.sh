@@ -1,14 +1,15 @@
 #!/bin/sh
 # The REST benchmark (docs/benchmarks.md): goose-http's REST tiers A to D
-# through its own bench/rest.sh, with goose-rest, Axum, actix-web, ntex, and
-# dusty with a route per path beside goose-http alone, and goose-rest's tiers
+# through its own bench/rest.sh, with goose-rest, Axum, actix-web, ntex,
+# dusty with a route per path, and Aegon beside goose-http alone, and goose-rest's tiers
 # F, R, and M (bench/rest/tiers) run here the same way. Results go to
 # bench/results/<date>-rest-<machine>/ unless OUT names another directory.
 #
 #   bench/rest.sh build   goose-http's bench/rest.sh build, then this
 #                         repository's servers into goose-http's build/rest:
 #                         rest-goose-rest, rest-axum, rest-actix-web,
-#                         rest-ntex, and rest-dusty-routes; with ONLY=goose,
+#                         rest-ntex, rest-dusty-routes, and, on Linux,
+#                         rest-aegon and rest-aegon-small; with ONLY=goose,
 #                         goose-http's ONLY=goose build and rest-goose-rest
 #                         alone
 #   bench/rest.sh check   each server on each tier it serves, against
@@ -25,7 +26,8 @@
 # (goose-http's build/rest/rest; on tier F, goose-*-bare, this repository's
 # server with BARE=1 on http::serve); goose-epoll-rest and goose-uring-rest,
 # goose-rest; goose-*-rest-gen, goose-rest through the generated router, tier
-# R only; axum, actix-web, ntex, dusty-routes; and goose-http's dusty, its
+# R only; axum, actix-web, ntex, dusty-routes; aegon, and aegon-small with
+# its buffers for a low memlock limit; and goose-http's dusty, its
 # catch-all entry, and hyper, as anchors to its tables.
 #
 # What run measures beyond goose-http's bench/rest.sh, each server with
@@ -46,10 +48,12 @@
 #   GOOSE_HTTP   a goose-http checkout at the pin rest.goose names (default:
 #                a clone at the pin in build/, scripts/goose-http.sh)
 #   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-rest
-#                goose-epoll-rest axum actix-web ntex dusty-routes dusty hyper
+#                goose-epoll-rest axum actix-web ntex dusty-routes aegon
+#                aegon-small dusty hyper
 #   EXTRA        tiers F, R, and M: goose-uring-rest goose-epoll-rest axum
-#                actix-web ntex dusty-routes, with goose-*-bare on F and
-#                goose-*-rest-gen on R added
+#                actix-web ntex dusty-routes aegon aegon-small, with
+#                goose-*-bare on F and goose-*-rest-gen on R added
+#   AEGON_CXX    the C++ compiler for Aegon (default: g++-16)
 #   TIERS        f r m, or a subset; STEPS goose-http's, or "none" to skip it
 set -eu
 
@@ -111,6 +115,28 @@ build)
         --global-cache-dir "$cache/zig-global" --prefix "$cache/rest-dusty-routes-out" \
         -Dtarget=$target -Dcpu=$cpu -Dgithub="$tiers/github.txt" --release=fast)
     cp "$cache/rest-dusty-routes-out/bin/rest-dusty" "$bin/rest-dusty-routes"
+    # Aegon, which fetches itself and glaze (bench/rest/aegon/NOTES.md), with
+    # ngtcp2 built at the release its HTTP/3 code needs into CACHE.
+    if [ "$(uname -s)" = Linux ]; then
+        ngtcp2=v1.25.0
+        prefix=$cache/aegon-prefix
+        if [ "$(cat "$prefix/ngtcp2.txt" 2>/dev/null)" != $ngtcp2 ]; then
+            rm -rf "$cache/ngtcp2-src" "$cache/ngtcp2-build" "$prefix"
+            git clone -q --depth 1 --branch $ngtcp2 https://github.com/ngtcp2/ngtcp2.git "$cache/ngtcp2-src"
+            cmake -S "$cache/ngtcp2-src" -B "$cache/ngtcp2-build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX="$prefix" -DENABLE_OPENSSL=ON -DENABLE_LIB_ONLY=ON -DBUILD_TESTING=OFF \
+                -DENABLE_SHARED_LIB=OFF -DENABLE_STATIC_LIB=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            cmake --build "$cache/ngtcp2-build"
+            cmake --install "$cache/ngtcp2-build"
+            echo $ngtcp2 >"$prefix/ngtcp2.txt"
+        fi
+        CXX=${AEGON_CXX:-g++-16} cmake -S "$root/bench/rest/aegon" -B "$cache/aegon-build" -G Ninja \
+            -DFETCHCONTENT_BASE_DIR="$cache/aegon-deps" -DCMAKE_PREFIX_PATH="$prefix"
+        cmake --build "$cache/aegon-build"
+        cp "$cache/aegon-build/rest-aegon" "$cache/aegon-build/rest-aegon-small" "$bin/"
+    else
+        echo "bench/rest.sh: Aegon builds on Linux only" >&2
+    fi
     ls -l "$bin"
     exit 0
     ;;
@@ -121,8 +147,12 @@ check | run | count) ;;
     ;;
 esac
 
-servers=${SERVERS:-goose-uring goose-epoll goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes dusty hyper}
-extra=${EXTRA:-goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes}
+# Aegon registers its buffers with io_uring, which locks them, and HttpArena
+# runs it with memlock unlimited; the other servers lock nothing.
+ulimit -l unlimited 2>/dev/null || echo "bench/rest.sh: memlock stays at $(ulimit -l) KB; Aegon may not register its buffers" >&2
+
+servers=${SERVERS:-goose-uring goose-epoll goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes aegon aegon-small dusty hyper}
+extra=${EXTRA:-goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes aegon aegon-small}
 which=${TIERS:-f r m}
 port=${PORT:-29380}
 url=http://127.0.0.1:$port
@@ -203,6 +233,12 @@ if [ "$1" = check ]; then
         case $s in goose-uring | goose-epoll | dusty | hyper) continue ;; esac
         [ -x "$bin/$(binary "$s")" ] || { echo "check: no $bin/$(binary "$s"); skipped"; continue; }
         for t in a b c d; do
+            # Aegon has no tier D; no_d in goose-http's bench/rest.sh says why.
+            case $t:$s in d:aegon | d:aegon-small)
+                echo "$s d: skipped, as goose-http's bench/rest.sh skips it"
+                continue
+                ;;
+            esac
             for j in serialize template; do
                 [ "$t" = d ] && [ "$j" = template ] && continue
                 start "$s" "$t" "$j" free
@@ -289,6 +325,12 @@ fi
     echo "axum: $(sed -n '/^name = "axum"$/{n;s/version = //p;}' "$root/bench/rest/axum/Cargo.lock")," \
         "actix-web: $(sed -n '/^name = "actix-web"$/{n;s/version = //p;}' "$root/bench/rest/actix-web/Cargo.lock")," \
         "ntex: $(sed -n '/^name = "ntex"$/{n;s/version = //p;}' "$root/bench/rest/ntex/Cargo.lock")"
+    echo "aegon: $(sed -n '/Aegon.git/{n;s/.*GIT_TAG \([0-9a-f]\{7\}\).*/\1/p;}' "$root/bench/rest/aegon/CMakeLists.txt")," \
+        "glaze: $(sed -n '/glaze.git/{n;s/.*GIT_TAG //p;}' "$root/bench/rest/aegon/CMakeLists.txt")," \
+        "aegon c++: $(${AEGON_CXX:-g++-16} --version | head -1)"
+    # Aegon's buffers come from the huge-page pool when it has pages, which
+    # VmRSS leaves out.
+    echo "vm.nr_hugepages: $(cat /proc/sys/vm/nr_hugepages), memlock: $(ulimit -l)"
     echo "extra servers: $extra; tiers: $which"
 } >>"$out/env.txt"
 

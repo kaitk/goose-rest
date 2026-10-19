@@ -290,6 +290,18 @@ sets them up: the servers, the scripts and their settings, and where results go.
 and Goose compiler each one measured.
 [Known issues](known-issues.md#benchmarks) lists what can spoil a run.
 
+The Aegon server builds with GCC 16, CMake 3.28 or later, and Ninja. On Ubuntu 26.04, install
+them and Aegon's libraries with:
+
+```sh
+sudo apt install g++-16 cmake ninja-build liburing-dev libssl-dev libnghttp2-dev \
+    libnghttp3-dev libdeflate-dev libjemalloc-dev
+```
+
+ngtcp2 isn't on the list: Ubuntu's 1.16 lacks functions Aegon calls, so
+`bench/rest.sh build` builds 1.25.0 into its cache
+([Aegon's NOTES.md](../bench/rest/aegon/NOTES.md#build)).
+
 ## Use another compiler
 
 Use another compiler only when the release can't do the job, such as for a Goose fix not

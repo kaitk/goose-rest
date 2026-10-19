@@ -41,6 +41,10 @@ The REST servers live under `rest/`:
   share. Axum and actix-web run on epoll through Tokio; ntex runs on its own runtime,
   on io_uring on Linux.
 - `dusty/`: dusty with a route per path.
+- `aegon/`: Aegon (C++), a CMake project that fetches Aegon and glaze at their pins,
+  built twice: `rest-aegon` with HttpArena's entry's buffers, and `rest-aegon-small`
+  with the entry's buffers for a low memlock limit. Linux only; its `NOTES.md` lists
+  what the build needs.
 - `tiers/`: goose-rest's own tiers F, R, and M, with their checker, loads, and summary.
 
 Each framework serves through its own router, extractors or body readers, and JSON,
