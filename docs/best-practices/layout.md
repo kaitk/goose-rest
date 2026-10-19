@@ -11,7 +11,7 @@ audiences, laid out like this:
 ```text
 app/
   main.goose            the lanes, the workers, and rest::serve
-  app.goose             App, St, Waiting, and the job tags: what the tests import
+  app.goose             App, St, Use, and each lane's jobs: what the tests import
   dispatch.goose        each audience's scope and stack, then each domain's routes
   stacks.goose          public_routes, user_routes, member_routes
   middleware.goose      authenticate, resolve_organization
@@ -25,7 +25,7 @@ app/
     errors.goose        Error, and the status and code each answers
     rules.goose         new_project, archived: typed input in, no cx
     routes.goose        routes(cx, member), then each route's flow in the order it
-                        runs: the route, its job, its resume
+                        runs: the route, its job's run, its resume
     queries.goose       find_project, insert_project: one statement each
   entries/              (structs, errors, rules, routes, queries)
   timer/                (structs, errors, rules, routes)
@@ -216,9 +216,10 @@ moving it to another path changes one line.
 
 ## 2.7 The program's types are in `app.goose`
 
-Declare three types in `app.goose`, the application's entry: `App`, the worker state;
-`St`, the request state; and `Waiting`, the steps of the routes that wait. The job tags
-go there too, and `app.goose` imports `dispatch.goose`, which imports the domains.
+Declare the program's types in `app.goose`, the application's entry: `App`, the worker
+state; `St`, the request state; `Use`, what a route waits on, a mark for each lane; and
+each lane's enum of jobs and the state its thread owns. `app.goose` imports
+`dispatch.goose`, which imports the domains.
 `main.goose` keeps only what a test must not run: the lanes' threads, the workers, and
 `main`.
 
@@ -226,8 +227,8 @@ A test has a `main` of its own, so it can't import `main.goose`; it reaches the
 application through `app.goose` instead ([Testing](testing.md)).
 
 Each type is one for the whole program: every domain's routes get the same `cx`, so no
-domain owns them. A domain still owns its `Waiting` variants, named for it, and their
-`resume` functions are in its `routes.goose`
+domain owns them. A domain still owns its jobs, the lanes' variants named for it, and
+their `run` and `resume` functions are in its `routes.goose`
 ([Structuring a route that waits](lanes.md#653-structuring-a-route-that-waits)).
 
 ## 2.8 With an OpenAPI schema

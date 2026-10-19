@@ -30,15 +30,43 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
 }
 
 // What serve_one gives a route that waits, in place of the thread it asked:
-// data with tag, as rest::reply sends them, or with timeout, the end of the
-// wait, which rest::ask answers with 504, and rest::pause's route gets as
-// http::TIMEOUT. early makes that timeout goose-http's own, given at once
-// when it has no timer: a pause then ends its response. A flat value's
-// data is rest::value_bytes of it. sent is what the client of an upgraded
-// connection sends while the route waits, which comes as one http::BODY
-// before the reply or the timeout; on any other connection, goose-http
-// holds it back, and serve_one drops it.
+// data with tag, a reply as a lane sends it, which rest::play gives (wake),
+// or with timeout, the end of the wait, which rest::ask answers with 504,
+// and rest::pause's route gets as http::TIMEOUT. early makes that timeout
+// goose-http's own, given at once when it has no timer: a pause then ends
+// its response. sent is what the client of an upgraded connection sends
+// while the route waits, which comes as one http::BODY before the reply or
+// the timeout; on any other connection, goose-http holds it back, and
+// serve_one drops it.
 struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, early: bool = false, sent: const u8[:] = "" }
+
+// What a lane replied to one job under rest::play: data, the reply's bytes,
+// with tag, REPLY_REFUSED for a refusal.
+struct Played { tag: i32 = 0, data: u8[>..] = [] }
+
+// Runs job, a variant of lane's U as rest::ask takes it, through F(u, a), a
+// lane's block, as rest::lane runs it, with no thread or mail, and returns
+// what it replied: an answer, a refusal for a rest::fail, or 500 no_reply
+// for neither. rest::still_wanted is true.
+//
+//   let p = rest::play(app.writer, Writes.EntryCreate { .. }) { u, a => run(u, w, a); };
+//   rest::serve_one(text, app, St { .. }, [rest::wake(p)]) { cx => ... };
+fn play<U, M, F>(lane: const Lane<U, M>&, job: U) -> Played {
+    var p = Played { .. };
+    var a = Asked<U> { job: job, played: p };
+    run_job(&a) { u, a => F(u, a); };
+    return p;
+}
+
+// The Wake that gives the route what p replied.
+fn wake(p: const Played&) -> Wake { Wake { data: p.data, tag: p.tag } }
+
+// The status and code of the refusal p replied, or 0 and "" for an answer.
+fn refusal(p: const Played&) -> i32, const u8[:] {
+    guard (p.tag & REPLY_REFUSED) != 0 else { return 0, ""; }
+    let status, code, ok = refusal_of(p.data);
+    return status, code;
+}
 
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
@@ -142,7 +170,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             continue;
         }
         var at = 0;
-        var tag = w.tag & REPLY_TAG;
+        var tag = w.tag & REPLY_REFUSED;
         while stream.waiting {
             let end = min(at + piece, w.data.len);
             let more = end < w.data.len;

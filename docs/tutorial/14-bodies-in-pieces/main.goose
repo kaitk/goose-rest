@@ -20,8 +20,9 @@ let SMALL_LIMIT: i64 = 64 * 1024;
 
 let PROJECTS = 2;
 
-// What each route that reads its body in pieces needs at each call.
-enum Waiting {
+// What each route that reads its body in pieces waits on, with what it
+// needs at each call.
+enum Use {
     None,
     Attachment { project: i64, id: i64 },
     Form { project: i64, id: i64 },
@@ -33,7 +34,7 @@ let NOTE: u8 = 1;
 let FILE: u8 = 2;
 
 struct St {
-    waiting: Waiting = Waiting.None,
+    use: Use = Use.None,
     part_path: u8[..256] = [],   // the file being written, with ".part" until it's whole
     size: i64 = 0,
     stored: bool = true,
@@ -82,21 +83,21 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 // written a piece at a time.
 fn attach(cx, project: i64) {
     let id = cx.app.next;
-    // Returns at once, reading nothing; the pieces come to resume(Waiting.Attachment).
-    rest::body_in_pieces(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
+    // Returns at once, reading nothing; the pieces come to resume(Use.Attachment).
+    rest::body_in_pieces(cx, limit_of(project), Use.Attachment { project: project, id: id });
     // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
-fn resume(w: Waiting.Attachment, cx) {
+fn resume(u: Use.Attachment, cx) {
     if cx.kind == http::BODY {
         store(cx, cx.body);
         guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
-        keep(cx, w.project, w.id, "");
+        keep(cx, u.project, u.id, "");
     } else if cx.kind == http::CLOSED {
         // The client went, the body passed its limit, or the route failed.
         delete_file(cx.state.part_path);
@@ -126,14 +127,14 @@ fn keep(cx, project: i64, id: i64, note: const u8[:]) {
 fn attach_form(cx, project: i64) {
     // Reads the Content-Type's boundary into the parser kept in the state.
     guard http::start_multipart(cx.req, cx.state.form) else { rest::fail(cx, 415, "unsupported_media_type"); }
-    // Then as attach does: the pieces come later, to resume(Waiting.Form).
+    // Then as attach does: the pieces come later, to resume(Use.Form).
     let id = cx.app.next;
-    rest::body_in_pieces(cx, limit_of(project), Waiting.Form { project: project, id: id });
+    rest::body_in_pieces(cx, limit_of(project), Use.Form { project: project, id: id });
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
 
-fn resume(w: Waiting.Form, cx) {
+fn resume(u: Use.Form, cx) {
     if cx.kind == http::BODY {
         // A piece can end one part and start the next, or stop mid-head:
         // each_part calls the block for what the piece completes, and keeps
@@ -159,7 +160,7 @@ fn resume(w: Waiting.Form, cx) {
             delete_file(cx.state.part_path);
             rest::fail(cx, 400, "invalid_multipart");
         }
-        keep(cx, w.project, w.id, cx.state.note);
+        keep(cx, u.project, u.id, cx.state.note);
     } else if cx.kind == http::CLOSED {
         delete_file(cx.state.part_path);
     }
@@ -176,7 +177,7 @@ thread_fn worker(cfg: http::Config, dir: u8[..200]) {
     var app = App { dir: dir };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

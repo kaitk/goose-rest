@@ -22,17 +22,17 @@ fn routes(cx) {
 }
 
 fn project(cx) {
-    rest::ask(cx, cx.app.reports, Use.ReportTotals { project: rest::param_int(cx, "id") });
+    spike10::ask(cx, cx.app.reports, Use.ReportTotals { project: rest::param_int(cx, "id") });
 }
 
 // On the reports lane: a project without entries is a 404 from here.
 fn ::run(u: Use.ReportTotals, db: Db&, a) {
     let t = reports::totals(reports::ENTRIES, u.project);
     if t.entries == 0 { rest::fail(a, 404, "no_such_project"); }
-    rest::reply_value(a, t);
+    spike10::reply_value(a, t);
 }
 
-fn ::resume(u: Use.ReportTotals, cx) { rest::json(cx, 200, rest::answer<reports::Totals>(cx)); }
+fn ::resume(u: Use.ReportTotals, cx) { rest::json(cx, 200, spike10::answer<reports::Totals>(cx)); }
 
 fn totals(all: const entries::Entry[:], project: i64) -> Totals {
     var t = Totals { project: project, .. };

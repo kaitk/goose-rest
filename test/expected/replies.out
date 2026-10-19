@@ -1,1 +1,21 @@
-rest::serve_one's waits: ok
+then: Use.None
+relayed in pieces, then: Use.None
+refusal: 409 refused_here
+refused: HTTP/1.1 409 Conflict {"error":"refused_here"}
+then: Use.None
+silent: {"error":"no_reply"}
+then: Use.None
+no wake left, then: Use.Echo
+Value { 40 }
+Text { "abcdefghij" }
+Text { "abcdefghij" }
+Value { 40 }
+Refused { 409 }
+Echoes.Silent
+Twice { 1 }
+Twice { 10 }
+Twice { 100 }
+Twice { 1 }
+Twice { 10 }
+Value { 40 }
+jobs: 12

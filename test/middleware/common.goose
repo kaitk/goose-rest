@@ -28,19 +28,31 @@ fn answer<H>(text: const u8[:]) -> u8[>..] {
 
 let OK = "Content-Type: text/plain; charset=utf-8\r\nContent-Length: 2\r\n\r\nok";
 
-enum Waiting { None, Report, Upload }
+// The jobs of the lane the route asks, and what the route waits on.
+enum Reports { Report }
 
-struct St { waiting: Waiting = Waiting.None, size: i64 = 0 }
+enum Use { None, Report, Upload }
+
+struct St { use: Use = Use.None, size: i64 = 0 }
+
+type Lane = rest::Lane<Reports, Use>;
 
 let CORS = rest::Cors { origins: "https://a.example", expose: "X-Total", .. };
 
 let ALLOWED = "Access-Control-Allow-Origin: https://a.example\r\nAccess-Control-Expose-Headers: X-Total\r\nVary: Origin\r\n";
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
-fn resume(w: Waiting.Report, cx) { rest::text(cx, 200, str("got ", cx.reply)); }
+fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
 
-fn resume(w: Waiting.Upload, cx) {
+fn resume(u: Reports.Report, cx) { rest::text(cx, 200, str("got ", rest::answer<i64>(cx))); }
+
+// The lane's reply to the report, 42.
+fn reported(to: const Lane&) -> rest::Played {
+    return rest::play(to, Reports.Report) { u, a => rest::reply_value(a, 42); };
+}
+
+fn resume(u: Use.Upload, cx) {
     if cx.kind == http::BODY { cx.state.size += cx.body.len; }
     else if cx.kind == http::END { rest::text(cx, 201, str(cx.state.size)); }
 }
@@ -48,14 +60,14 @@ fn resume(w: Waiting.Upload, cx) {
 // The route of what, behind the middleware of which: "cors", "timed", or
 // both, timed outside. "ask" asks to, "upload" reads its body in pieces, and
 // "gathered" asks once rest::body has the body whole.
-fn later_route(cx, what: const u8[:], which: const u8[:], to: const http::Lane&) {
+fn later_route(cx, what: const u8[:], which: const u8[:], to: const Lane&) {
     fn inner() {
         rest::route(cx) {
             if what == "upload" {
-                rest::body_in_pieces(cx, 1 << 20, Waiting.Upload);
+                rest::body_in_pieces(cx, 1 << 20, Use.Upload);
             } else {
                 if what == "gathered" { rest::body(cx); }
-                rest::ask(cx, to, 1, 7, Waiting.Report);
+                rest::ask(cx, to, Reports.Report);
             }
         };
     }

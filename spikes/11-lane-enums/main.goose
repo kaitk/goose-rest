@@ -2,8 +2,9 @@
 // docs/best-practices/lanes/'s program, as spike 10 has them with one enum
 // for the program. Each lane takes its own enum of jobs and its own state;
 // a route waits with its lane's mark, and the lane's reply carries the job
-// back, which the mark's resume dispatches on. proposal.goose holds the
-// calls the package would take. README.md has the verdict.
+// back, which the mark's resume dispatches on. The calls are the package's,
+// waiting.goose, which took them from this spike's proposal.goose.
+// README.md has the verdict.
 //
 // main plays goose-http's loop, as spikes 06, 09, and 10 do, so that the
 // output is fixed: each request goes through rest::on_event, the code
@@ -72,7 +73,7 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
                 // The mark the route waits with, and the job the reply
                 // carries back, or that the job failed.
                 format(wakes, "\n  wake: ", st.state.use,
-                       if tag == rest::JOB_FAILED { str(", job failed") } else { shown(st.state.use, bytes) });
+                       if (tag & rest::REPLY_REFUSED) != 0 { str(", job failed") } else { shown(st.state.use, bytes) });
                 rest::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
                                              tag: tag }, st, a, reply, spill, budget) { cx => H(cx) };
             }

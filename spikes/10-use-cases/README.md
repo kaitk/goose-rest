@@ -11,8 +11,10 @@ replies of different types dispatch, how much the request state grows, and wheth
 - `main.goose`, `app.goose`, `entries.goose`, `reports.goose`, `auth.goose`: the lanes
   program's four use cases on the package, with the calls of `proposal.goose`. `main`
   plays goose-http's loop, as spikes 06 and 09 do, with three real lanes.
-- `proposal.goose`: the calls the package would take, in namespace `rest` beside its
-  own: `ask` with a variant, `lane`, `on_reply`, and `answer`.
+- `proposal.goose`: the calls the package would take, in namespace `spike10` beside
+  the package's `rest`: `ask` with a variant, `lane`, `reply_value`, `on_reply`, and
+  `answer`. They were in namespace `rest` until the package took spike 11's calls of
+  the same names (2026-10-19), with the same output.
 - `sizes/main.goose`: the request state, and a connection's bytes, with each enum.
 - `cases/main.goose`: replies of different types through a block, and an overload
   that hides dispatch.
@@ -48,31 +50,31 @@ struct St { use: Use = Use.None }
 // entries.goose, in namespace entries
 fn create(cx) {
     ...
-    rest::ask(cx, cx.app.writer, Use.EntryCreate { project: project, started: started, stopped: stopped });
+    spike10::ask(cx, cx.app.writer, Use.EntryCreate { project: project, started: started, stopped: stopped });
 }
 
 fn ::run(u: Use.EntryCreate, db: Db&, a) {
     entries::check(entries::ordered(u.started, u.stopped), a);
     let e = entries::Entry { id: db.entries.len + 1, project: u.project, started: u.started, stopped: u.stopped };
     db.entries.push(e);
-    rest::reply_value(a, e);
+    spike10::reply_value(a, e);
 }
 
-fn ::resume(u: Use.EntryCreate, cx) { rest::json(cx, 201, rest::answer<entries::Entry>(cx)); }
+fn ::resume(u: Use.EntryCreate, cx) { rest::json(cx, 201, spike10::answer<entries::Entry>(cx)); }
 ```
 
 Each program writes, once, a `run` and a `resume` for `Use.None`, one lane thread for
-every lane, and `rest::on_reply` in place of `rest::route` at a later call:
+every lane, and `spike10::on_reply` in place of `rest::route` at a later call:
 
 ```rust
 thread_fn lane(box: http::Box) {
     ...
     var db = Db { entries: all, sessions: sessions };
-    rest::lane<Use>(box) { u, a => run(u, db, a); };
+    spike10::lane<Use>(box) { u, a => run(u, db, a); };
 }
 
 rest::serve(cfg, app, St { .. }) { cx =>
-    if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
+    if rest::resumed(cx) { spike10::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 };
 ```
 
@@ -106,22 +108,22 @@ differing_replies.goose:13: error: case functions of run disagree on return type
 
 Two shapes work:
 
-- **Each `run` sends its reply**: `rest::reply_value(a, v)`, where `a` is the job as it
+- **Each `run` sends its reply**: `spike10::reply_value(a, v)`, where `a` is the job as it
   crossed, with its reply address. Every `run` returns nothing, so they agree. This is
   what `main.goose` does, and what the lanes' code does today.
 - **Each `run` hands its reply to a block**: `fn run<F>(u: Use.Report) { F(totals); }`,
-  called as `run(u) { v => rest::reply_value(a, v); }`. Goose instantiates the block for
+  called as `run(u) { v => spike10::reply_value(a, v); }`. Goose instantiates the block for
   each case's type (`cases/main.goose`). This keeps the reply address out of `run`, so a
   test can call `run` and check what it hands over, but every `run` writes `F(...)`
   where the other shape names the reply.
 
 Recommended: each `run` sends its reply. It reads as what it does.
 
-The job crosses as the enum itself. `rest::ask` stores the variant in `cx.state.use`
+The job crosses as the enum itself. `spike10::ask` stores the variant in `cx.state.use`
 and sends an `Ask<Use>` built from that field, since a variant's constructor
 (`Use.EntryCreate { ... }`) has the variant's type, which would make an `Ask` of the
 variant. The image is a fixed 157 bytes for every job, from `http::lane_send_value`;
-the lane reads it with `rest::asked<Use>`, whose `from_bytes` checks the tag, and
+the lane reads it with `http::mail_value` into a `rest::Ask<Use>`, whose `from_bytes` checks the tag, and
 dispatches on it. `LaneConfig.size` must hold the largest variant's image: a longer one
 returns `TOO_LONG`, which `ask` answers as 503.
 
@@ -154,20 +156,19 @@ has a variant too, so each lane's dispatch needs a `run` for it that does nothin
 ## An error a job returns fails the route
 
 A `run` fails as a route does: `rest::fail(a, 422, "entry_ends_before_start")` is a
-`return ... from rest::attempt`, which `rest::lane` wraps around the dispatch. `fail`
+`return ... from rest::attempt`, which `spike10::lane` wraps around the dispatch. `fail`
 ignores its first argument, so a domain's `check(e, x)` serves a route's `cx` and a
-lane's `a` unchanged. `rest::lane` replies the failure as a `Refusal { status, code }`
-with the tag `JOB_FAILED`, and `rest::on_reply` fails the route with it before the
-`resume` runs. A `run` that can fail doesn't compile when called outside `rest::lane` or
+lane's `a` unchanged. `spike10::lane` replies the failure as a `Refusal { status, code }`
+with the tag `JOB_FAILED`, and `spike10::on_reply` fails the route with it before the
+`resume` runs. A `run` that can fail doesn't compile when called outside `spike10::lane` or
 `rest::attempt`.
 
 The reply is a fixed struct, not `rest::Failure`: its owned `u8[]` fields make it
 variable-size, and `http::mail_value` indexes the image's array, which Goose refuses for
-variable-size elements. `JOB_FAILED` takes a value within `REPLY_TAG` here; the package
-would give it a bit of its own, beside `REPLY_MORE` and `REPLY_CONT`, and carry
-`detail`, `challenge`, and `retry` as fixed fields too.
+variable-size elements. `JOB_FAILED` is the bit the package gives `REPLY_REFUSED`,
+beside `REPLY_MORE` and `REPLY_CONT`, so that the package's `cx.refused` says it.
 
-`rest::answer<T>(cx)` replaces `read_reply` and its guard: it fails the route with 502
+`spike10::answer<T>(cx)` replaces `read_reply` and its guard: it fails the route with 502
 `bad_reply` for a reply that isn't a `T`.
 
 ## The request state grows to the largest job

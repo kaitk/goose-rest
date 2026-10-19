@@ -6,9 +6,9 @@ import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f338
 import rest from "../../";
 import expect from "../";
 
-enum Waiting { None, Upload, Export { rows: i64 }, Echo, Download }
+enum Use { None, Upload, Export { rows: i64 }, Echo, Download }
 
-struct St { waiting: Waiting = Waiting.None, size: i64 = 0, file: http::FileBody = http::FileBody { .. } }
+struct St { use: Use = Use.None, size: i64 = 0, file: http::FileBody = http::FileBody { .. } }
 
 // What the case function saw, in order: B and a piece's length, E, C.
 struct App { log: u8[>..]& }
@@ -22,11 +22,11 @@ fn post(start: const u8[:], n: i64, length: i64 = -1) -> u8[>..] {
     return text;
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 // A piece that starts with "fail" fails the route, and one that starts with
 // "stop" answers it.
-fn resume(w: Waiting.Upload, cx) {
+fn resume(w: Use.Upload, cx) {
     if cx.kind == http::BODY {
         format(cx.app.log, "B", cx.body.len, " ");
         cx.state.size += cx.body.len;
@@ -41,7 +41,7 @@ fn resume(w: Waiting.Upload, cx) {
 }
 
 // A row at each MORE, up to w.rows, and then the end; row 2 of 99 fails.
-fn resume(w: Waiting.Export, cx) {
+fn resume(w: Use.Export, cx) {
     if cx.kind == http::MORE {
         cx.state.size++;
         format(cx.app.log, "M", cx.state.size, " ");
@@ -54,7 +54,7 @@ fn resume(w: Waiting.Export, cx) {
 }
 
 // Sends each piece of the body back as it comes.
-fn resume(w: Waiting.Echo, cx) {
+fn resume(w: Use.Echo, cx) {
     if cx.kind == http::BODY {
         format(cx.app.log, "B", cx.body.len, " ");
         rest::send(cx, cx.body[..min(cx.body.len, 4)]);
@@ -66,7 +66,7 @@ fn resume(w: Waiting.Echo, cx) {
     }
 }
 
-fn resume(w: Waiting.Download, cx) {
+fn resume(w: Use.Download, cx) {
     format(cx.app.log, if cx.kind == http::MORE { "M " } else if cx.kind == http::CLOSED { "C " } else { "? " });
     rest::send_file(cx, cx.state.file);
 }
@@ -77,10 +77,10 @@ fn upload(text: const u8[:], limit: i64 = 1 << 20, both: const u8[:] = "") -> u8
     var app = App { log: log };
     let out = rest::serve_one(text, app, St { .. }, http::Config { max_body: 4 << 20, .. }) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else {
             if both == "first" { rest::body(cx); }
-            rest::body_in_pieces(cx, limit, Waiting.Upload);
+            rest::body_in_pieces(cx, limit, Use.Upload);
             if both == "after" { rest::body(cx); }
         }
     };
@@ -93,9 +93,9 @@ fn rows_of(text: const u8[:], rows: i64, length: i64 = -1) -> u8[>..], u8[>..] {
     var app = App { log: log };
     let out = rest::serve_one(text, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else {
-            rest::begin(cx, 200, "text/csv", length, Waiting.Export { rows: rows });
+            rest::begin(cx, 200, "text/csv", length, Use.Export { rows: rows });
         }
     };
     return out, log;

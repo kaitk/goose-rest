@@ -110,7 +110,7 @@ fn new_entry(input: CreateInput, id: i64, now: i64) -> Entry, Error {
 ```
 
 ```rust
-    let e, err = new_entry(j.input, all.len + 1, time() as i64);
+    let e, err = entries::new_entry(u.input, w.entries.len + 1, time() as i64);
 ```
 
 ## 3.3 Which check goes where

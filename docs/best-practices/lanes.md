@@ -9,10 +9,11 @@ database, and not to compute for long. That work goes to a lane, as a job:
   for one kind of slow work: writing to the database, reading for reports, hashing
   passwords. Each thread takes its jobs from its **box**, a queue with a fixed number of
   slots.
-- A **job** is one use case, such as "create this entry". A route sends it to a lane
-  with `rest::ask`, as a small message. The worker serves its other connections until
-  the reply comes back. On the lane, a plain function runs the job from start to end,
-  in one transaction ([Work that waits](../tutorial/11-waiting.md)).
+- A **job** is one use case, such as "create this entry": a variant of its lane's enum
+  of jobs. A route sends it to a lane with `rest::ask`, as a small message. The worker
+  serves its other connections until the reply comes back. On the lane, the job's `run`
+  case function does it from start to end, in one transaction
+  ([Work that waits](../tutorial/11-waiting.md)).
 
 [Concepts and naming](concepts.md#11-the-concepts) gives their equivalents in other frameworks.
 
@@ -28,9 +29,9 @@ does. The program has three lanes:
 
 | Lane | What it does | Its jobs | Threads | Box |
 |---|---|---|---|---|
-| `writer` | Runs every write to the database, one at a time | `create_entry`, `open_session` | 1 | 64 slots |
-| `reports` | Reads the database for reports, and sums what it reads | `total_entries` | 1 | 2 slots |
-| `hasher` | Checks passwords: CPU work, with no database | `verify_password` | 2 | 16 slots each |
+| `writer` | Runs every write to the database, one at a time | `Writes.EntryCreate`, `Writes.AuthSession` | 1 | 64 slots |
+| `reports` | Reads the database for reports, and sums what it reads | `Reports.ReportTotals` | 1 | 2 slots |
+| `hasher` | Checks passwords: CPU work, with no database | `Hashes.AuthPassword` | 2 | 16 slots each |
 
 ```mermaid
 flowchart LR
@@ -50,6 +51,38 @@ writer, so entries can still be written. A password check occupies the hasher wi
 holding up the database. A full box refuses a job at once with 503, while the other
 boxes still take theirs.
 
+Each lane's jobs are an enum of its own in [`lanes/app.goose`](lanes/app.goose), a
+variant per use case, with the route that asks for it in a comment, a route's jobs
+together and in the order they run. `Use` has a *mark* for each lane: what a route
+waiting on that lane keeps in its request state.
+
+```rust
+// Each lane's jobs: a use case each, and the route that asks for it, a
+// route's jobs together and in the order they run.
+enum Writes {
+    EntryCreate { input: entries::CreateInput },   // entries::create
+    AuthSession { user: i64 },                     // auth::sign_in, after the password
+}
+enum Reports { ReportTotals { project: i64, ms: i64 } }               // reports::project
+enum Hashes { AuthPassword { email: u8[..64], password: u8[..64] } }  // auth::sign_in
+
+// The lane a route waits on: a mark for each lane, None first.
+enum Use { None, Write, Report, Hash }
+```
+
+Every route that waits, and each of its jobs, is then listed in one place, so a reader
+sees which lane does what before opening a domain's files. `rest::ask` takes only its
+lane's enum, so a job sent to the wrong lane doesn't compile, and each lane's `run`
+cases take that lane's own state:
+
+```rust
+// What each lane's thread owns: the writer's tables, the rows the reports
+// read, and the users the hasher checks.
+struct Writer { entries: entries::Entry[>..]&, sessions: auth::Session[>..]& }
+struct Reader { entries: const entries::Entry[:] }
+struct Hasher { users: const auth::User[:] }
+```
+
 The program's database stands in for one over the
 network, where each lane's thread holds its own connection. With embedded SQLite, a
 short query runs in the route instead, as short CPU work does
@@ -57,8 +90,8 @@ short query runs in the route instead, as short CPU work does
 what runs long, such as a report.
 
 A lane runs jobs from any domain, and a domain's jobs may run on several lanes: `auth`'s
-`verify_password` runs on the hasher, and its `open_session` on the writer. A job's
-function is in its domain, beside the route that asks for it
+password check runs on the hasher, and its session on the writer. A job's `run` is in
+its domain, beside the route that asks for it
 ([Structuring a route that waits](#653-structuring-a-route-that-waits)).
 
 ## 6.2 How many jobs a box holds
@@ -89,28 +122,25 @@ lane more threads, each with its own box, rather than make one box larger
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
 
-`main` opens each lane with goose-http's `http::lane_open`, which starts the lane's
-threads, each with a box of its own, with slots of 256 bytes to fit the largest job a
-route sends. It gives the workers the lanes in `App`, which a route reads as
-`cx.app.writer`. At shutdown, it stops each lane with `http::lane_stop`, which waits
-for the lane's threads:
+`main` opens each lane with `rest::lane_open`, naming its jobs' enum and its mark. It
+starts the lane's threads, each with a box of its own, with slots of 256 bytes to fit
+the largest job a route sends. It gives the workers the lanes in `App`, which a route
+reads as `cx.app.writer`. At shutdown, it stops each lane with `rest::lane_stop`, which
+waits for the lane's threads:
 
 ```rust
-    // Each lane_open spawns its lane's threads: one writer, the database's
-    // only one; one reader for reports; and two hashers, so that one sign-in
-    // doesn't wait behind another's hash.
     let app = App {
-        writer: http::lane_open(http::LaneConfig { slots: WRITER_SLOTS, .. }, writer),
-        reports: http::lane_open(http::LaneConfig { slots: REPORTS_SLOTS, .. }, reports),
-        hasher: http::lane_open(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, hasher),
+        writer: rest::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer),
+        reports: rest::lane_open<Reports>(http::LaneConfig { slots: REPORTS_SLOTS, .. }, Use.Report, reports),
+        hasher: rest::lane_open<Hashes>(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, Use.Hash, hasher),
     };
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, app, worker);
     // A flag in each box, not a message: a full box can't refuse it. Each
     // lane_stop waits for its lane's threads.
-    http::lane_stop(app.writer);
-    http::lane_stop(app.reports);
-    http::lane_stop(app.hasher);
+    rest::lane_stop(app.writer);
+    rest::lane_stop(app.reports);
+    rest::lane_stop(app.hasher);
 ```
 
 </details>
@@ -118,8 +148,8 @@ for the lane's threads:
 <details>
 <summary>What a lane's thread runs</summary>
 
-A lane's thread takes each job from its box by its tag in `http::lane`, runs the job's
-function, and replies. The writer:
+A lane's thread owns the lane's state, and hands each job in its box to the job's `run`
+with `rest::lane`. The writer:
 
 ```rust
 // The writer lane, one thread: the database's one writer. It owns the entries
@@ -127,18 +157,10 @@ function, and replies. The writer:
 thread_fn writer(box: http::Box) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
-    // Each job in the box, in order, told apart by its tag, until main stops
-    // the lane.
-    http::lane(box) { tag, bytes =>
-        if tag == CREATE_ENTRY {
-            // The job, and where reply_value sends the reply.
-            let a, ok = rest::asked<entries::CreateJob>(bytes);
-            if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
-        } else if tag == OPEN_SESSION {
-            let a, ok = rest::asked<auth::OpenJob>(bytes);
-            if ok { rest::reply_value(a, auth::open_session(sessions, a.job)); }
-        }
-    };
+    var w = Writer { entries: all, sessions: sessions };
+    // Each job in the box, in order, to its run case function, until main
+    // stops the lane.
+    rest::lane<Writes>(box) { u, a => run(u, w, a); };
 }
 ```
 
@@ -168,48 +190,31 @@ fn sign_in(cx) {
     rest::require(cx, "email", has_email);
     let password, has_password = rest::form(cx, "password");
     rest::require(cx, "password", has_password);
-    let job = SignInJob { email: email, password: password };
-    // Returns at once; at the reply, the worker calls resume(Waiting.AuthPassword).
-    rest::ask(cx, cx.app.hasher, VERIFY_PASSWORD, job, Waiting.AuthPassword);
+    // Returns at once; at the reply, the worker calls resume(u: Hashes.AuthPassword, cx).
+    rest::ask(cx, cx.app.hasher, Hashes.AuthPassword { email: email, password: password });
 }
 ```
 
-**2. The hasher's thread takes the job and runs it.** It knows the job by its tag,
-`VERIFY_PASSWORD`, calls the domain's job function, and replies with its result. From
-[`lanes/main.goose`](lanes/main.goose):
+**2. The hasher's thread runs the job.** `rest::lane` hands it to the job's `run`, which
+finds the user, calls the rule, and replies with the user's id. A wrong password fails
+the route from the lane: `auth::check` calls `rest::fail` with the lane's `a`, as it
+does with a route's `cx`, and the route answers 401 before its `resume` runs:
 
 ```rust
-        if tag == VERIFY_PASSWORD {
-            // The job, and where reply_value sends the reply.
-            let a, ok = rest::asked<auth::SignInJob>(bytes);
-            if ok { rest::reply_value(a, auth::verify_password(a.job)); }
-```
-
-**3. The job's function finds the user and calls the rule.** The job and its reply are
-flat structs, like all values passed between threads
-([`lanes/auth/structs.goose`](lanes/auth/structs.goose)):
-
-```rust
-struct SignInJob { email: u8[..64], password: u8[..64] }
-struct Verified { user: i64 = 0, err: Error = Error.None }
-```
-
-The function is in [`lanes/auth/routes.goose`](lanes/auth/routes.goose), after the
-route that asks for it:
-
-```rust
-// On the hasher lane: CPU work, through the rule.
-fn verify_password(j: SignInJob) -> Verified {
-    let user, err = signed_in(USERS, j.email, j.password);
-    return Verified { user: user, err: err };
+// On the hasher lane: CPU work, through the rule. A wrong password fails the
+// route from here, with 401.
+fn ::run(u: Hashes.AuthPassword, h: Hasher&, a) {
+    let user, err = auth::signed_in(h.users, u.email, u.password);
+    auth::check(err, a);
+    rest::reply_value(a, user);
 }
 ```
 
-**4. The rule does the CPU work.** `signed_in` and `hashed` are plain functions of typed
+**3. The rule does the CPU work.** `signed_in` and `hashed` are plain functions of typed
 input with no `cx`, so a test calls them without a server, a thread, or a database.
 
-**5. The reply wakes the route.** The route continues in its `resume` case function,
-which answers 401 for a wrong password, or opens the session
+**4. The reply wakes the route.** The route continues in its `resume` for the job,
+which opens the session
 ([A route with two slow steps](#652-a-route-with-two-slow-steps)).
 
 <details>
@@ -251,13 +256,8 @@ From [`lanes/main.goose`](lanes/main.goose):
 // A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
 thread_fn hasher(box: http::Box) {
-    http::lane(box) { tag, bytes =>
-        if tag == VERIFY_PASSWORD {
-            // The job, and where reply_value sends the reply.
-            let a, ok = rest::asked<auth::SignInJob>(bytes);
-            if ok { rest::reply_value(a, auth::verify_password(a.job)); }
-        }
-    };
+    var h = Hasher { users: auth::USERS };
+    rest::lane<Hashes>(box) { u, a => run(u, h, a); };
 }
 ```
 
@@ -290,12 +290,17 @@ timer. With one box for every job, a burst of reports would fill it, and startin
 timer would get the 503.
 
 The reports lane skips jobs whose clients have gone. Here, two clients gave up while
-their jobs waited in the box:
+their jobs waited in the box. A `run` that returns without replying refuses its job
+with 500 `no_reply`, which no one waits for here:
 
 ```rust
-            let a, ok = rest::asked<reports::TotalsJob>(bytes);
-            // A report whose client has gone isn't run.
-            if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
+// On the reports lane: the query, then the rule that sums. A report whose
+// client has gone isn't run.
+fn ::run(u: Reports.ReportTotals, r: Reader&, a) {
+    guard rest::still_wanted(a) else { return; }
+    if u.ms > 0 { sleep_ms(u.ms); }
+    rest::reply_value(a, reports::totals(r.entries, u.project));
+}
 ```
 
 The lane then spends its time only on reports that clients are still waiting for
@@ -304,60 +309,67 @@ The lane then spends its time only on reports that clients are still waiting for
 ## 6.5 Continuing a route when the reply comes
 
 A route that asks a lane returns at once, and the worker serves other connections. When
-the reply arrives, the worker calls the route again, at a `resume` case function: the
-one for the `Waiting` variant that the route passed to `rest::ask`. The variant names
-the step the route is at.
-
-Group each route's steps in `Waiting`, in the order they run, and name the route in a
-comment. From [`lanes/app.goose`](lanes/app.goose):
+the reply arrives, the worker calls the route again, at the `resume` case function of
+the lane's mark. The reply carries its job back, so that `resume` dispatches again, to
+the `resume` for the job. From [`lanes/app.goose`](lanes/app.goose):
 
 ```rust
-// The steps of every route that waits, a route's steps together and in the
-// order they run.
-enum Waiting {
-    None,
-    EntryCreate,               // entries::create
-    ReportTotals,              // reports::project
-    AuthPassword, AuthSession, // auth::sign_in
-}
+// Each mark's resume: the reply carries its job back, which resume
+// dispatches on again, to the domain's resume for that job.
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }
+fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
+fn resume(u: Use.Hash, cx) { resume(rest::job<Hashes>(cx), cx); }
 ```
 
-Every route that waits, and each of its steps, is then listed in one place, so a
-reader sees the order before opening a domain's files. Each variant is named for its
-domain, and for the operation or what the route waits for
-([Concepts and naming](concepts.md#154-slow-work-lanes-jobs-and-queries)).
+A job's `resume` gets the job as the route sent it, so what it needs from the request
+travels in the job, and the request state keeps only the mark. A job and its answer
+must fit one message of the worker's box, 256 bytes by default; for a longer answer,
+raise `http::Config.mail_size`, or reply in pieces with `rest::reply` and answer with
+`rest::relay` ([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)).
+
+Write a `run` and a `resume` for each variant, never one that takes the whole enum. An
+overload of `run(u, w: Writer&, a)` with `u` untyped, or of `resume(u: Writes, cx)`,
+matches every job exactly, so it takes every call, and the variants' own cases never
+run. The compiler doesn't warn. `rest::lane` answers 500 `no_reply` for a catch-all
+`run` that doesn't reply, but nothing catches a catch-all `resume`
+([reference](../reference.md#41-lanes)).
 
 ### 6.5.1 A route with one slow step
 
 Most routes have one piece of slow work: they ask for it once, and answer from the
-reply. Creating an entry asks the writer and waits as `Waiting.EntryCreate`. Its
-`resume` reads the reply, fails the route with the domain's error if there is one, and
-answers. From [`lanes/entries/routes.goose`](lanes/entries/routes.goose):
+reply. Creating an entry asks the writer with `Writes.EntryCreate`. Its `run` applies
+the rule at the time the job runs, and a refusal, such as 422 `entry_in_future`, fails
+the route from the lane. Its `resume` reads the answer and answers. From
+[`lanes/entries/routes.goose`](lanes/entries/routes.goose):
 
 ```rust
-fn resume(w: Waiting.EntryCreate, cx) {
-    // The writer's reply, read as the struct it sent; not one is a bug: 502.
-    let r, ok = rest::read_reply<CreateReply>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    // A rule's refusal, such as 422 entry_in_future, ends the route here.
-    check(r.err, cx);
-    rest::json(cx, 201, r.entry);
+fn ::run(u: Writes.EntryCreate, w: Writer&, a) {
+    let e, err = entries::new_entry(u.input, w.entries.len + 1, time() as i64);
+    entries::check(err, a);
+    w.entries.push(e);
+    rest::reply_value(a, e);
 }
+
+// On the worker: the answer.
+fn ::resume(u: Writes.EntryCreate, cx) { rest::json(cx, 201, rest::answer<entries::Entry>(cx)); }
 ```
+
+`rest::answer<T>` fails the route with 502 `bad_reply` for a reply that isn't a `T`, so
+a `resume` needs no check of its own.
 
 ### 6.5.2 A route with two slow steps
 
 When a route's second piece of slow work, on another lane, needs the first one's result,
-the route asks for it from the first step's `resume`, and waits again under another
-variant
+the first job's `resume` asks for it, and the route waits again
 ([Two lanes in turn](../tutorial/12-two-lanes.md#two-lanes-in-turn)). Signing in takes
 three steps:
 
 | Step | Does | Then |
 |---|---|---|
-| `sign_in` | Reads the email and password | Asks the hasher, and waits as `AuthPassword` |
-| `resume(w: Waiting.AuthPassword, cx)` | Answers 401 for a wrong password | Asks the writer to open a session, and waits as `AuthSession` |
-| `resume(w: Waiting.AuthSession, cx)` | Answers 201 with the session | |
+| `sign_in` | Reads the email and password | Asks the hasher with `Hashes.AuthPassword` |
+| `resume(u: Hashes.AuthPassword, cx)` | Runs once the hasher accepted the password; a wrong one has failed the route with 401 | Asks the writer with `Writes.AuthSession` |
+| `resume(u: Writes.AuthSession, cx)` | Answers 201 with the session | |
 
 A wrong password fails at the first step, and the writer never sees it. Keep a route to
 one slow step where you can: each wait has its own time limit and its own 503, and a 503
@@ -365,64 +377,51 @@ at the second step comes after the first lane has done its work.
 
 ### 6.5.3 Structuring a route that waits
 
-A domain's `routes.goose` holds each route's whole flow, in the order it runs: the
-route, the job it asks for, the `resume` that answers, and for a second step, the next
-job and `resume`. Every step is named `resume`, so the order in the file is what shows a
-route's steps from top to bottom. Each function opens with a comment saying where it
-runs: on the worker or on a lane. Each `rest::ask` names the `resume` it leads to.
+A route that waits takes four pieces in two files: a variant of its lane's enum in
+`app.goose`, and in its domain's `routes.goose`, the route, the job's `run`, and its
+`resume`, in the order they run. For a second step, the next job's `run` and `resume`
+follow. Each function opens with a comment saying where it runs: on the worker or on a
+lane. Each `rest::ask` names the `resume` it leads to.
+
+`run` and `resume` are declared `fn ::run` and `fn ::resume`: the lanes' enums are the
+program's, declared in `app.goose` in the global namespace
+([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose)), so the
+dispatched calls `run(u, w, a)` and `resume(...)` find only global functions. A function
+declared as `::run` is global, so Goose looks up the names in its body in the global
+namespace (goose_spec §11.1), and its body names the domain's own with their namespace,
+as in `auth::signed_in`.
 
 <details>
 <summary>Sign-in, from its first <code>resume</code> to its answer</summary>
 
-From [`lanes/auth/routes.goose`](lanes/auth/routes.goose), after `sign_in` and
-`verify_password`:
+From [`lanes/auth/routes.goose`](lanes/auth/routes.goose), after `sign_in` and the
+hasher's `run`:
 
 ```rust
-// On the worker: 401 for a wrong password, or ask the writer lane.
-fn resume(w: Waiting.AuthPassword, cx) {
-    let v, ok = rest::read_reply<Verified>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    // A wrong password ends the route here, with 401.
-    check(v.err, cx);
-    // The route's second wait: at the reply, resume(Waiting.AuthSession).
-    rest::ask(cx, cx.app.writer, OPEN_SESSION, OpenJob { user: v.user }, Waiting.AuthSession);
+// On the worker: the route's second wait, on the writer lane: at the reply,
+// resume(u: Writes.AuthSession, cx).
+fn ::resume(u: Hashes.AuthPassword, cx) {
+    rest::ask(cx, cx.app.writer, Writes.AuthSession { user: rest::answer<i64>(cx) });
 }
 
-// On the writer lane: one write. sessions is the writer's stand-in for the
+// On the writer lane: one write. The writer's sessions stand in for the
 // sessions table.
-fn open_session(sessions: Session[>..]&, j: OpenJob) -> Session {
-    let s = Session { id: sessions.len + 1, user: j.user };
-    sessions.push(s);
-    return s;
+fn ::run(u: Writes.AuthSession, w: Writer&, a) {
+    let s = auth::Session { id: w.sessions.len + 1, user: u.user };
+    w.sessions.push(s);
+    rest::reply_value(a, s);
 }
 
 // On the worker: the answer.
-fn resume(w: Waiting.AuthSession, cx) {
-    let s, ok = rest::read_reply<Session>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    rest::json(cx, 201, s);
-}
+fn ::resume(u: Writes.AuthSession, cx) { rest::json(cx, 201, rest::answer<auth::Session>(cx)); }
 ```
 
 </details>
 
-A job takes no `cx`, so a test calls it as a plain function, as it does a rule. When a
-domain's `routes.goose` grows too long, it splits by operation
+A test plays a job through its `run` with `rest::play`, without a thread
+([Testing](testing.md)), and calls a rule as a plain function. When a domain's
+`routes.goose` grows too long, it splits by operation
 ([When a domain grows](layout.md#23-when-a-domain-grows)).
-
-Each `resume` also needs a one-line function in the global namespace that forwards the
-call to it. The program declares `Waiting` in `app.goose`, in the global namespace
-([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose)), so the worker's call
-`resume(cx.state.waiting, cx)` finds only global functions:
-
-```rust
-fn ::resume(w: Waiting.AuthPassword, cx) { auth::resume(w, cx); }
-fn ::resume(w: Waiting.AuthSession, cx) { auth::resume(w, cx); }
-```
-
-Keep the code in the domain's own `resume`. A function declared as `::resume` is global,
-so Goose looks up the names in its body in the global namespace (goose_spec §11.1), and
-code there would have to qualify each of the domain's names, as in `auth::Verified`.
 
 ## 6.6 Lanes of several threads
 
@@ -437,8 +436,8 @@ second thread wouldn't see, and it stands for the database's one write connectio
 ([A lane for each kind of slow work](#61-a-lane-for-each-kind-of-slow-work)), as SQLite
 allows one writer.
 
-`LaneConfig`'s fields, `threads`, `slots`, and `size`, and how `http::lane_stop`
-stops a lane at shutdown are in goose-http's
+`LaneConfig`'s fields, `threads`, `slots`, and `size`, and how a lane stops at shutdown
+are in goose-http's
 [lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes).
 
 ---

@@ -1,8 +1,9 @@
 # 050: One enum for a route's use cases
 
-Status: in-progress; spike 10 answered the three questions (2026-10-19), the package's
-change is next. Comes before task 047's entry code, because it changes how a program
-calls `rest::ask` and what a `resume` gets (2026-10-19).
+Status: done (2026-10-19): the package takes spike 11's shape, an enum of jobs per lane
+(`docs/decisions.md`, "One enum of jobs per lane"). Comes before task 047's entry code,
+because it changes how a program calls `rest::ask` and what a `resume` gets
+(2026-10-19).
 
 A route that waits now costs about nine pieces in four files
 (`docs/best-practices/lanes/`): a tag constant and a `Waiting` variant in `app.goose`,
@@ -45,13 +46,13 @@ To settle in a spike first:
       [spike 11](../spikes/11-lane-enums/README.md): one enum per lane works and
       replaces it, with a lane typed by its enum, the lane's mark alone in the request
       state, and the job carried back in the reply
-- [ ] `rest::ask`, `rest::lane`'s dispatch, and the `resume` path take a use-case enum;
+- [x] `rest::ask`, `rest::lane`'s dispatch, and the `resume` path take a use-case enum;
       no tag constants or lane if chain remain in the tutorial, best practices, or
       examples
-- [ ] An error a job returns fails the route with that error's status and code, with a
-      test
-- [ ] A route that waits costs at most four pieces in two files in
+- [x] An error a job returns fails the route with that error's status and code, with a
+      test (`rest::fail` on the lane; `test/serve_one/replies.goose`)
+- [x] A route that waits costs at most four pieces in two files in
       `docs/best-practices/lanes/`
-- [ ] `docs/decisions.md` records the change and what it replaces; `docs/architecture.md`,
+- [x] `docs/decisions.md` records the change and what it replaces; `docs/architecture.md`,
       `docs/reference.md`, the tutorial, and best practices follow
-- [ ] `scripts/test.sh` passes
+- [x] `scripts/test.sh` passes

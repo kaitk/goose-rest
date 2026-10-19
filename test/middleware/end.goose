@@ -11,9 +11,9 @@ fn upload(which: const u8[:], n: i64) -> u8[>..] {
     var text = str("POST /up HTTP/1.1\r\nHost: x\r\nOrigin: https://a.example\r\nContent-Length: ", n, "\r\n\r\n");
     for i in n { text.push('a'); }
     var app = rest::NoState { .. };
-    let to = http::Lane { .. };
+    let to = Lane { lane: http::Lane { .. }, mark: Use.Report };
     return rest::serve_one(text, app, St { .. }) { cx =>
-        if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { later_route(cx, "upload", which, to); }
+        if rest::resumed(cx) { resume(cx.state.use, cx); } else { later_route(cx, "upload", which, to); }
     };
 }
 

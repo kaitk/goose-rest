@@ -2,30 +2,34 @@
 
 One job per route covers a use case that one lane can do alone. Two cases need
 more: a reply too large for one message, and a route that waits on one lane and then
-another. Both use the same `Waiting` enum and case functions as
+another. Both use the same jobs, `run`, and `resume` case functions as
 [the previous page](11-waiting.md).
 
 ## A reply in pieces
 
 A project's tasks, as JSON, can be longer than a message. The lane replies with
-`rest::reply`, which sends a reply longer than the worker's message size in pieces. From
-[`12-two-lanes`](12-two-lanes/main.goose), whose worker takes messages of 64
-bytes, so that a project's tasks arrive in several pieces:
+`rest::reply`, which sends a reply longer than the worker's message size in pieces,
+the job in front of the first. From [`12-two-lanes`](12-two-lanes/main.goose), whose
+worker takes messages of 64 bytes, so that a project's tasks arrive in several pieces:
 
 ```rust
-        if tag == TASKS {
-            let a, ok = rest::asked<TasksJob>(bytes);
-            // In pieces of the worker's message size, 64 bytes here.
-            if ok { rest::reply(a, tasks_json(c, a.job)); }
+// On the database lane: the project's tasks as a JSON array, in pieces of
+// the worker's message size, 64 bytes here.
+fn run(u: DbJob.Tasks, c: db::Conn&, a) {
 ```
 
-The route's case function runs for each piece. `rest::relay` starts a chunked response
-with the first piece and sends each later piece as a chunk, waiting again until the
-last one arrives:
+```rust
+    rest::reply(a, out);
+}
+```
+
+The route's case function runs at the first piece. `rest::relay` starts a chunked
+response with what follows the job in it, and goose-rest sends each later piece as a
+chunk, waiting again until the last one arrives:
 
 ```rust
-// Called once per piece: the first starts a chunked response, the rest go as chunks.
-fn resume(w: Waiting.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
+// Called at the first piece, which starts a chunked response; the rest go on as chunks.
+fn resume(u: DbJob.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
 ```
 
 ```text
@@ -40,64 +44,69 @@ one piece at a time as the client reads it ([long responses](15-long-responses.m
 
 Inviting a user to a project adds a member to the database, then sends an email through
 the mailer, a lane of its own. Neither lane can do both, so the route waits on one and
-then the other, with a `Waiting` variant for each step:
+then the other. Each lane has its enum of jobs, and `Use` a mark for each:
 
 ```rust
-enum Waiting {
-    None,
-    Tasks,
-    Member { project: i64, user: i64 },
-    Mail { project: i64, user: i64 },
+// Each lane's jobs.
+enum DbJob {
+    Tasks { project: i64 },
+    AddMember { project: i64, user: i64 },
 }
+enum MailJob { Invite { project: i64, user: i64 } }
+
+// What a route waits on: one lane or the other.
+enum Use { None, Db, Mail }
 ```
 
 `main` opens each lane as the previous page's, and hands both to the worker in `App`:
 
 ```rust
     let app = App {
-        db: http::lane_open(http::LaneConfig { .. }, database),
-        mailer: http::lane_open(http::LaneConfig { .. }, mailer),
+        db: rest::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, database),
+        mailer: rest::lane_open<MailJob>(http::LaneConfig { .. }, Use.Mail, mailer),
     };
 ```
 
 <details>
-<summary>The routes, which ask the database first</summary>
+<summary>The routes, which ask the database first, and the marks' resumes</summary>
 
 From [`main.goose`](12-two-lanes/main.goose):
 
 ```rust
         } else if rest::on(cx, "GET", "/v1/projects/:id/tasks") {
-            rest::route(cx) {
-                rest::ask(cx, cx.app.db, TASKS, TasksJob { project: rest::param_int(cx, "id") }, Waiting.Tasks);
-            };
+            rest::route(cx) { rest::ask(cx, cx.app.db, DbJob.Tasks { project: rest::param_int(cx, "id") }); };
         } else if rest::on(cx, "POST", "/v1/projects/:id/members") {
             rest::route(cx) {
                 let user, has_user = rest::query_int(cx, "user");
                 rest::require(cx, "user", has_user);
-                let project = rest::param_int(cx, "id");
-                rest::ask(cx, cx.app.db, ADD_MEMBER, MemberJob { project: project, user: user },
-                          Waiting.Member { project: project, user: user });
+                rest::ask(cx, cx.app.db, DbJob.AddMember { project: rest::param_int(cx, "id"), user: user });
             };
+```
+
+```rust
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Db, cx) { resume(rest::job<DbJob>(cx), cx); }
+fn resume(u: Use.Mail, cx) { resume(rest::job<MailJob>(cx), cx); }
 ```
 
 </details>
 
-The first case function asks the second lane, and waits again:
+The database's `run` refuses a member already added, or a project that doesn't
+exist, with `rest::fail`, and replies the job alone otherwise. Its `resume` asks the
+second lane, and waits again; the job came back with the reply, so it holds the
+project and the user:
 
 ```rust
-// The database added the member: ask the mailer next, and wait again.
-fn resume(w: Waiting.Member, cx) {
-    let r, ok = rest::read_reply<MemberReply>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    guard r.status < 400 else { rest::fail(cx, r.status, r.code); }
-    rest::ask(cx, cx.app.mailer, SEND, MailJob { project: w.project, user: w.user },
-              Waiting.Mail { project: w.project, user: w.user });
+// The database added the member: ask the mailer next, and wait again. The
+// job came back with the reply, so its project and user are at hand.
+fn resume(u: DbJob.AddMember, cx) {
+    rest::ask(cx, cx.app.mailer, MailJob.Invite { project: u.project, user: u.user });
 }
+```
 
-fn resume(w: Waiting.Mail, cx) {
-    let r, ok = rest::read_reply<MailReply>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    rest::json(cx, 201, Invited { project: w.project, user: w.user, mail: r.id });
+```rust
+fn resume(u: MailJob.Invite, cx) {
+    rest::json(cx, 201, Invited { project: u.project, user: u.user, mail: rest::answer<i64>(cx) });
 }
 ```
 
@@ -111,17 +120,17 @@ POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}
 
 | The route needs | Shape |
 |---|---|
-| One lane, a reply that fits a message | One job, one case function ([Work that waits](11-waiting.md)) |
+| One lane, a reply that fits a message | One job, `rest::reply_value`, and `rest::answer` ([Work that waits](11-waiting.md)) |
 | One lane, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
-| Two lanes in turn | A `Waiting` variant per wait; the first case function asks the next lane |
+| Two lanes in turn | A job on each lane; the first job's `resume` asks the next lane |
 
 Each wait has its own time limit, and each ask can meet a full box, so a
 route that waits twice can fail at either step. A 503 at the second step comes after the
 first lane has finished its work. If the second step can happen later, such as
 sending an email, the lane can forward the work itself and the route waits only once.
 
-*Note: the best practices keep a route to one slow step where it can, and list each
-route's steps together in `Waiting`, in the order they run
+*Note: the best practices keep a route to one slow step where it can, and name the
+route beside each of its jobs in the lanes' enums, in the order they run
 ([A route with two slow steps](../best-practices/lanes.md#652-a-route-with-two-slow-steps)).*
 
 ---

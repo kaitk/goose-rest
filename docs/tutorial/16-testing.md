@@ -7,7 +7,7 @@ other can't:
 
 | What | Without sockets | Over HTTP |
 |---|---|---|
-| A use case's rules, its transaction | A plain call on a job | Through its route |
+| A use case's rules, its transaction | `rest::play`, through the lane's `run` | Through its route |
 | A route's checks before it asks, a route that doesn't wait | `rest::serve_one` | Yes |
 | The job a route sends | `serve_one`, with a box of the test's own | Through the reply |
 | 503 for a full box | `serve_one`, with that box full | Yes |
@@ -25,45 +25,53 @@ client that goes while its job waits.
 Best practices' [Testing](../best-practices/testing.md) lays out the tests by domain
 and by scenario.
 
-## The use cases, as plain calls
+## The use cases, played
 
-A lane's job is a function that takes a connection and the job's struct, so a test calls
-it directly, using the [`db`](db/db.goose) package with no delay per statement. From
-[`11-waiting/test.goose`](11-waiting/test.goose), after the call that assigns task 3,
+A lane's job is a `run` case function that takes the job, the lane's state, and `a`,
+where its reply goes. `rest::play(lane, job) { u, a => run(u, c, a); }` runs a job as
+the lane's thread runs it, with no thread or mail, and returns what it replied: an
+answer, or the refusal a `rest::fail` sends. The test plays it on a connection of its
+own, from the [`db`](db/db.goose) package with no delay per statement. From
+[`11-waiting/test.goose`](11-waiting/test.goose), after the job that assigns task 3,
 which [Work that waits](11-waiting.md#one-job-per-route) shows:
 
 ```rust
-    expect(database::assign(c, database::AssignJob { project: 1, task: 4, user: 3, assignee: 2 }), 403, "not_a_member");
-    expect(database::assign(c, database::AssignJob { project: 1, task: 4, user: 1, assignee: 3 }), 409, "assignee_not_a_member");
+    expect(rest::play(app.db, DbJob.Assign { project: 1, task: 4, user: 3, assignee: 2 }) { u, a => run(u, c, a); },
+           "403 not_a_member");
+    expect(rest::play(app.db, DbJob.Assign { project: 1, task: 4, user: 1, assignee: 3 }) { u, a => run(u, c, a); },
+           "409 assignee_not_a_member");
     assert(assignee(c, 4) == 0);
 ```
 
-The last line checks that the refused assignment rolled back: task 4 has no assignee.
-This is where a use case's rules are tested, each in microseconds, without a request.
+`expect` reads the refusal's status and code with `rest::refusal`. The last line checks
+that the refused assignment rolled back: task 4 has no assignee. This is where a use
+case's rules are tested, each in microseconds, without a request.
 
 ## The routes, up to their ask
 
 The routes and their case functions are in [`app.goose`](11-waiting/app.goose), separate
 from `main`, so the test can import them as `main.goose` does. The worker state
-holds the lane, and the test gives it `http::lane_of(box)`, a lane of one box of its
-own, with no thread. A box needs no thread to open, send to, or take from
-([mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)):
+holds the lane, and the test gives it `rest::lane_of<DbJob>(box, Use.Db)`, a lane of
+one box of its own, with no thread. A box needs no thread to open, send to, or take
+from ([mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)):
 
 ```rust
-    // The routes, with a lane of one box of the test's own and no thread:
-    // nothing takes from it but the test.
+    // A lane of one box of the test's own and no thread: nothing takes from
+    // it but the test.
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
-    var app = App { conn: c, db: http::lane_of(box) };
+    var c = db::open(0);
+    var app = App { conn: c, db: rest::lane_of<DbJob>(box, Use.Db) };
+    ...
     fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
         return rest::serve_one(text, app, St { .. }, wakes) { cx =>
-            if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }
+            if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
         };
     }
 ```
 
 The block is the one `main.goose`'s worker gives `rest::serve`. The request state,
-`St { .. }`, is what `rest::ask` keeps its `Waiting` variant in, and `wakes` holds the
+`St { .. }`, is what `rest::ask` keeps the lane's mark in, and `wakes` holds the
 replies the [next section](#the-case-functions-given-a-reply) gives.
 A route that doesn't wait gives a complete answer, as does one that fails before it asks:
 
@@ -75,17 +83,15 @@ A route that doesn't wait gives a complete answer, as does one that fails before
 
 A route that asks sends its job to the box, and the handler returns without an answer.
 Without a reply, `serve_one` answers 500, as it does for any block that writes no answer.
-The test checks the job instead: it takes the job from the box, reads it with
-`rest::asked` as the lane does, and passes it to the job's function:
+The test checks the job instead: it takes the job from the box, and runs it with
+`rest::lane_job` through the lane's `run`, as the lane's thread does:
 
 ```rust
     let user1 = "X-User: 1\r\n";
     expect(answer(put("/v1/projects/1/tasks/4/assignee?user=2", user1)),
            "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
     let n = http::mail_take(box) { key, tag, bytes =>
-        let a, ok = rest::asked<database::AssignJob>(bytes);
-        assert(ok && tag == database::ASSIGN);
-        expect(database::assign(c, a.job), 200, "");
+        rest::lane_job<DbJob>(bytes) { u, a => run(u, c, a); };
     };
     assert(n == 1 && assignee(c, 4) == 2);
 ```
@@ -103,32 +109,36 @@ job. The box has two slots, so two asks fill it, and the next route gets the 503
 ## The case functions, given a reply
 
 A `rest::Wake` is what the lane would send back: `data`, a reply's bytes, with its
-`tag`, or `timeout: true` for a wait that ends without one. `rest::value_bytes` gives a
-flat value's bytes, as `rest::reply_value` sends them. `serve_one` takes the wakes in
-order, one for each `rest::ask` the route makes, so a route that waits on two lanes in
-turn gets two:
+`tag`, or `timeout: true` for a wait that ends without one. `rest::play` makes the
+reply, and `rest::wake` the `Wake` that gives it. Here the test plays the lane with a
+block of its own in place of `run`, which replies what the lane could, with no
+database. `serve_one` takes the wakes in order, one for each `rest::ask` the route
+makes, so a route that waits on two lanes in turn gets two:
 
 ```rust
-    let done = rest::value_bytes(database::AssignReply { .. });
-    expect(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { data: done }]),
+    let done = rest::play(app.db, DbJob.Assign { project: 1, task: 5, user: 1, assignee: 2 }) { u, a =>
+        rest::reply_value(a, Assigned { task: 5, assignee: 2 });
+    };
+    expect(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::wake(done)]),
            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 23\r\n\r\n{\"task\":5,\"assignee\":2}");
-    let missing = rest::value_bytes(database::AssignReply { status: 404, code: "task_not_found" });
-    expect(body_of(answer(put("/v1/projects/1/tasks/9/assignee?user=2", user1), [rest::Wake { data: missing }])),
+    let missing = rest::play(app.db, DbJob.Assign { project: 1, task: 9, user: 1, assignee: 2 }) { u, a =>
+        rest::fail(a, 404, "task_not_found");
+    };
+    expect(body_of(answer(put("/v1/projects/1/tasks/9/assignee?user=2", user1), [rest::wake(missing)])),
            "{\"error\":\"task_not_found\"}");
     assert(http::mail_take(box) { key, tag, bytes => } == 2);
     expect(body_of(answer(put("/v1/projects/1/tasks/5/assignee?user=2", user1), [rest::Wake { timeout: true }])),
            "{\"error\":\"timeout\"}");
 ```
 
-The database isn't touched. The reply says task 5 was assigned, and the test checks
-that the case function's answer holds the task and assignee from the `Waiting`
-variant. Each route still sends its job, so the test empties the box before its two
-slots fill.
+The reply carries the job it was played for, which the route's `resume` dispatches on,
+as the lane's own reply does. The refusal fails the route before its `resume` runs.
+Each route still sends its job, so the test empties the box before its two slots fill.
 
 A reply larger than a slot in the worker's box, `Config.mail_size` bytes, comes in
 pieces, as `rest::reply` sends it. Pass the program's `http::Config` as `serve_one`'s
 last argument to split a reply as the server does: `rest::relay` sends the pieces on as
-chunks, and `rest::read_reply` can't read a value from them.
+chunks, and `rest::answer` can't read a value from them.
 
 `scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; to run one on its own, use
 `goose docs/tutorial/11-waiting/test.goose`.

@@ -1,5 +1,5 @@
 // The reports' routes, under /reports, read only, each route's flow in the
-// order it runs: the route, its job, its resume.
+// order it runs: the route, its job's run on a lane, its resume.
 namespace reports;
 
 import std;
@@ -18,12 +18,12 @@ fn routes(cx) {
     }
 }
 
-// A project's totals. On the worker: ask the reports lane.
+// A project's totals. On the worker: ask the reports lane. ms makes the job
+// take that much longer, as a long period would.
 fn project(cx) {
     let ms, has_ms = rest::query_int(cx, "ms");
-    let job = TotalsJob { project: rest::param_int(cx, "id"), ms: if has_ms { ms } else { 0 } };
-    // Returns at once; at the reply, the worker calls resume(Waiting.ReportTotals).
-    rest::ask(cx, cx.app.reports, TOTAL_ENTRIES, job, Waiting.ReportTotals);
+    // Returns at once; at the reply, the worker calls resume(u: Reports.ReportTotals, cx).
+    rest::ask(cx, cx.app.reports, Reports.ReportTotals { project: rest::param_int(cx, "id"), ms: if has_ms { ms } else { 0 } });
 }
 
 // The rows a reader's query of the entries table returns, in place of a
@@ -34,17 +34,13 @@ let ENTRIES = [
     entries::Entry { id: 3, project: 2, started: 1767268800, stopped: 1767270600 },
 ];
 
-// On the reports lane: the query, then the rule that sums.
-fn total_entries(j: TotalsJob) -> Totals {
-    if j.ms > 0 { sleep_ms(j.ms); }
-    return totals(ENTRIES, j.project);
+// On the reports lane: the query, then the rule that sums. A report whose
+// client has gone isn't run.
+fn ::run(u: Reports.ReportTotals, r: Reader&, a) {
+    guard rest::still_wanted(a) else { return; }
+    if u.ms > 0 { sleep_ms(u.ms); }
+    rest::reply_value(a, reports::totals(r.entries, u.project));
 }
-
-fn ::resume(w: Waiting.ReportTotals, cx) { reports::resume(w, cx); }
 
 // On the worker: the answer.
-fn resume(w: Waiting.ReportTotals, cx) {
-    let t, ok = rest::read_reply<Totals>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    rest::json(cx, 200, t);
-}
+fn ::resume(u: Reports.ReportTotals, cx) { rest::json(cx, 200, rest::answer<reports::Totals>(cx)); }

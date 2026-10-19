@@ -19,8 +19,8 @@ In the order a request meets them, each with the parts that belong to it:
   ([Layout by domain](layout.md)).
 - **Route**: a function that reads the request, calls a rule or asks for a job, and
   answers ([Routes and rules](routes-and-rules.md)).
-  - **`Waiting` step and `resume`**: where a route that waits continues when the reply
-    comes.
+  - **`resume`**: where a route that waits continues when the reply comes, a case
+    function for each job.
 - **Rule**: a plain function that takes typed input and makes a decision, with no I/O.
   - **Domain error and `check`**: the reasons a domain refuses an operation, and the
     status and code for each ([Errors](errors.md)).
@@ -28,7 +28,10 @@ In the order a request meets them, each with the parts that belong to it:
   ([Lanes and jobs](lanes.md)).
   - **Box**: a queue with a fixed number of slots. Jobs arrive in it by mail, and the
     lane's threads take them from it.
-  - **Job**: one use case, run on a lane from start to end, in one transaction.
+  - **Job**: one use case, a variant of its lane's enum of jobs, run on the lane from
+    start to end, in one transaction, by its `run` case function.
+  - **Mark**: the variant of the program's `Use` that a route waiting on a lane keeps in
+    its request state.
   - **Query**: a function per database statement, which jobs call.
 - **Background task**: work that takes minutes. The route answers 202 at once, and
   the client polls. It's made of jobs: one that starts it, and one for each poll
@@ -49,17 +52,17 @@ In the order a request meets them, each with the parts that belong to it:
 | Middleware | Middleware given to `wrap` | A Tower layer, or `middleware::from_fn` | Middleware given to `app.use` | A servlet `Filter`, or a `HandlerInterceptor` |
 | Domain | A module, mounted as a `scope` | A module, mounted as a nested `Router` | A sub-app, mounted with `app.route` | A package by feature |
 | Route | A handler function | A handler function | A handler, `(c) => ...` | A `@GetMapping` method of a `@Controller` |
-| `Waiting` step, `resume` | The code after `.await` | The code after `.await` | The code after `await` | The callback of a `CompletableFuture` |
+| `resume` | The code after `.await` | The code after `.await` | The code after `await` | The callback of a `CompletableFuture` |
 | Rule | A plain function | A plain function | A plain function | Domain logic, often inside a service or an entity |
 | Domain error, `check` | An error type that implements `ResponseError` | An error type that implements `IntoResponse` | An `HTTPException`, and `app.onError` | An `@ExceptionHandler`, or a `ResponseStatusException` |
 | Lane | A `SyncArbiter` | The `spawn_blocking` pool, which every kind of work shares | A `worker_threads` pool, such as Piscina | The `TaskExecutor` behind `@Async("name")` |
 | Box | An actor's mailbox | A bounded Tokio `mpsc` channel | The pool's task queue | The executor's queue |
-| Job | A `Message`, and its `Handler` | The closure given to `spawn_blocking` | A task the pool runs | A `@Service` method with `@Transactional` |
+| Job, `run` | A `Message`, and its `Handler` | The closure given to `spawn_blocking` | A task the pool runs | A `@Service` method with `@Transactional` |
 | Query | A query function, with sqlx or Diesel | A query function, with sqlx or Diesel | A query function, with Drizzle | A `@Repository` method |
 
 NestJS follows Spring's model, with modules, controllers, and providers, so the Spring
 column applies to it too. Go gives each request a goroutine that may block, so it needs
-no `Waiting`. A lane there is a fixed set of goroutines reading from one buffered
+no `resume`. A lane there is a fixed set of goroutines reading from one buffered
 channel, and the channel is the box. In Akka, a lane is a dispatcher. A Sidekiq
 or Celery job is a background task kept in a store until it runs; a goose-rest
 background task lives in its lane's memory, and is lost if the server stops.
@@ -137,10 +140,10 @@ request's path through the application.
 | Part | Named | Examples |
 |---|---|---|
 | Lane | What it does | `writer`, `reports`, `hasher` |
-| Job | A verb and a noun | `create_project`, `archive_project` |
-| Job tag | The job's name, in capitals | `CREATE_PROJECT`, `VERIFY_PASSWORD` |
-| `Waiting` variant | The domain, and the operation or what the wait is for | `Waiting.ProjectCreate`, `Waiting.AuthPassword` |
-| Its case function | `resume` | `resume(w: Waiting.ProjectCreate, cx)` |
+| Its enum of jobs | What it does, as a plural noun | `Writes`, `Reports`, `Hashes` |
+| Its mark | The lane's work, in `Use` | `Use.Write`, `Use.Report`, `Use.Hash` |
+| Job | A variant: the domain, and the operation or what the job is for | `Writes.ProjectCreate`, `Hashes.AuthPassword` |
+| Its case functions | `run` on the lane, `resume` on the worker | `run(u: Writes.ProjectCreate, w: Writer&, a)`, `resume(u: Writes.ProjectCreate, cx)` |
 | Query | A query verb and a noun | `find_project`, `list_projects`, `insert_project` |
 
 ---

@@ -11,9 +11,10 @@ covers how goose-http reads a body this way.
 
 ## A body read in pieces
 
-`rest::body_in_pieces(cx, limit, w)` takes the body in pieces, up to `limit` bytes. Like
-`rest::ask`, it keeps a `Waiting` variant in the request's state, `w`, and the route
-returns without an answer. From
+`rest::body_in_pieces(cx, limit, u)` takes the body in pieces, up to `limit` bytes. Like
+`rest::ask`, it keeps what the route waits on in the request's state: `u`, a variant
+of the program's `Use` enum, in `cx.state.use`. The route returns without an answer.
+From
 [`14-bodies-in-pieces`](14-bodies-in-pieces/main.goose):
 
 ```rust
@@ -21,8 +22,8 @@ returns without an answer. From
 // written a piece at a time.
 fn attach(cx, project: i64) {
     let id = cx.app.next;
-    // Returns at once, reading nothing; the pieces come to resume(Waiting.Attachment).
-    rest::body_in_pieces(cx, limit_of(project), Waiting.Attachment { project: project, id: id });
+    // Returns at once, reading nothing; the pieces come to resume(Use.Attachment).
+    rest::body_in_pieces(cx, limit_of(project), Use.Attachment { project: project, id: id });
     // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
@@ -59,7 +60,7 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 </details>
 
 The handler is then called again for each piece of the body, through the same
-`rest::resumed` block as a lane's reply
+`rest::resumed` block and `rest::on_reply` as a lane's reply
 ([page 11](11-waiting.md#asking-a-lane-and-resuming)), and goes to the variant's case
 function. `cx.kind` says which event it is: `http::BODY` with a piece in `cx.body`,
 `http::END` once the whole body has arrived, or `http::CLOSED`:
@@ -72,19 +73,19 @@ sequenceDiagram
     Note over W: attach: rest::body_in_pieces,<br/>then returns without an answer
     loop each piece as it arrives
         C->>W: a piece of the body
-        Note over W: resume(Waiting.Attachment):<br/>BODY, append it to the .part file
+        Note over W: resume(Use.Attachment):<br/>BODY, append it to the .part file
     end
     Note over W: resume: END,<br/>rename the file, answer
     W->>C: 201 {"project":1,"id":2,"size":2000000}
 ```
 
 ```rust
-fn resume(w: Waiting.Attachment, cx) {
+fn resume(u: Use.Attachment, cx) {
     if cx.kind == http::BODY {
         store(cx, cx.body);
         guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
-        keep(cx, w.project, w.id, "");
+        keep(cx, u.project, u.id, "");
     } else if cx.kind == http::CLOSED {
         // The client went, the body passed its limit, or the route failed.
         delete_file(cx.state.part_path);
@@ -105,11 +106,15 @@ fn store(cx, bytes: const u8[:]) {
 
 Values the route keeps between pieces go in the request state, which starts fresh for
 each request: the file's path and the number of bytes received so far. Values that don't
-change, such as the project, go in the variant:
+change, such as the project, go in the variant. The program's `Use` enum lists what a
+route waits on, with `None` first: here no lane, only the routes that read their body,
+each with what it needs at each call. A program with lanes adds a mark for each beside
+them ([page 11](11-waiting.md#asking-a-lane-and-resuming)):
 
 ```rust
-// What each route that reads its body in pieces needs at each call.
-enum Waiting {
+// What each route that reads its body in pieces waits on, with what it
+// needs at each call.
+enum Use {
     None,
     Attachment { project: i64, id: i64 },
     Form { project: i64, id: i64 },
@@ -186,7 +191,7 @@ the pieces of its content, and its end. The note's content goes in the state, an
 uploaded file's content goes in its `.part` file:
 
 ```rust
-fn resume(w: Waiting.Form, cx) {
+fn resume(u: Use.Form, cx) {
     if cx.kind == http::BODY {
         // A piece can end one part and start the next, or stop mid-head:
         // each_part calls the block for what the piece completes, and keeps
@@ -212,7 +217,7 @@ fn resume(w: Waiting.Form, cx) {
             delete_file(cx.state.part_path);
             rest::fail(cx, 400, "invalid_multipart");
         }
-        keep(cx, w.project, w.id, cx.state.note);
+        keep(cx, u.project, u.id, cx.state.note);
     } else if cx.kind == http::CLOSED {
         delete_file(cx.state.part_path);
     }

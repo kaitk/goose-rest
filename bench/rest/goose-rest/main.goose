@@ -427,19 +427,19 @@ fn snow(cx, buf: u8[>..]&) {
 // bearer token shaped as a JWT, which isn't verified. Ids are 1, 2, ... in
 // each file, and the schedule's days are UTC's.
 
-// Tier D's routes that read their body in pieces (Heavy.waiting).
-enum Waiting {
+// Tier D's routes that read their body in pieces (Heavy.use).
+enum Use {
     None,
     Import,
     Attachment,
 }
 
-// Tiers C and D's per-request state: a tier D route's Waiting variant, and
-// the spool it reads into (app.goose's spools), or -1. Its error_body writes
+// Tiers C and D's per-request state: what a tier D route waits on, and the
+// spool it reads into (app.goose's spools), or -1. Its error_body writes
 // {"error", "status"}, with the code each status has in the clinic's API,
 // whatever code goose-rest or a route gave.
 struct Heavy {
-    waiting: Waiting = Waiting.None,
+    use: Use = Use.None,
     spool: i64 = -1,
 }
 
@@ -666,16 +666,16 @@ fn release(cx) {
 }
 
 // POST /imports: the CSV's rows, and each column's count and sum. Its
-// pieces go to resume(Waiting.Import).
+// pieces go to resume(Use.Import).
 fn import_csv(cx) {
     typed(cx, "text/csv");
-    rest::body_in_pieces(cx, IMPORT_LIMIT, Waiting.Import);
+    rest::body_in_pieces(cx, IMPORT_LIMIT, Use.Import);
     cx.state.spool = spools.alloc_index(Spool { .. });
 }
 
 // The spool is released before the route answers, as rest::fail leaves at
 // once.
-fn resume(w: Waiting.Import, cx) {
+fn resume(u: Use.Import, cx) {
     if cx.kind == http::BODY {
         csv_piece(spools[cx.state.spool].csv, cx.body);
     } else if cx.kind == http::END {
@@ -689,18 +689,18 @@ fn resume(w: Waiting.Import, cx) {
 }
 
 // POST /attachments: the text fields, and the file's size and Adler-32. Its
-// pieces go to resume(Waiting.Attachment). A route that fails after
+// pieces go to resume(Use.Attachment). A route that fails after
 // rest::body_in_pieces gets CLOSED, which releases the spool.
 fn attach(cx) {
     typed(cx, "multipart/form-data");
-    rest::body_in_pieces(cx, IMPORT_LIMIT, Waiting.Attachment);
+    rest::body_in_pieces(cx, IMPORT_LIMIT, Use.Attachment);
     cx.state.spool = spools.alloc_index(Spool { .. });
     guard http::start_multipart(cx.req, spools[cx.state.spool].parts) else { bad_request(cx); }
 }
 
 // A malformed body is answered at its END, as goose-http's server answers
 // it.
-fn resume(w: Waiting.Attachment, cx) {
+fn resume(u: Use.Attachment, cx) {
     if cx.kind == http::BODY {
         attach_piece(spools[cx.state.spool], cx.body);
     } else if cx.kind == http::END {
@@ -713,7 +713,7 @@ fn resume(w: Waiting.Attachment, cx) {
     }
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 // POST /bookings/batch: each booking's new id, or 422 with the field errors.
 fn batch(cx, buf: u8[>..]&) {
@@ -876,7 +876,7 @@ fn tier_b(cx) {
 
 fn tier_c(cx, writes: bool) {
     if rest::resumed(cx) {
-        rest::route(cx) { resume(cx.state.waiting, cx); };
+        rest::on_reply(cx) { resume(cx.state.use, cx); };
         return;
     }
     var buf: u8[>..] = [];

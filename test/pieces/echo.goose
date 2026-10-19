@@ -10,10 +10,10 @@ fn main() {
     var app = App { log: log };
     let out = rest::serve_one(post("", 20000), app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else {
-            rest::body_in_pieces(cx, 1 << 20, Waiting.Echo);
-            rest::begin(cx, 200, "text/plain", -1, Waiting.Echo);
+            rest::body_in_pieces(cx, 1 << 20, Use.Echo);
+            rest::begin(cx, 200, "text/plain", -1, Use.Echo);
         }
     };
     expect::same(expect::body_of(out), "4\r\nabcd\r\n4\r\ncdef\r\n4\r\nefgh\r\n0\r\n\r\n", "echo");

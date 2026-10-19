@@ -1,5 +1,5 @@
 // The entries' routes, under /entries, each route's flow in the order it
-// runs: the route, its job, its resume.
+// runs: the route, its job's run on a lane, its resume.
 namespace entries;
 
 import std;
@@ -27,28 +27,19 @@ fn create(cx) {
     let stopped, has_stopped = rest::form_int(cx, "stopped");
     rest::require(cx, "stopped", has_stopped);
     let input = CreateInput { project: project, started: started, stopped: stopped };
-    // Returns at once; at the reply, the worker calls resume(Waiting.EntryCreate).
-    rest::ask(cx, cx.app.writer, CREATE_ENTRY, CreateJob { input: input }, Waiting.EntryCreate);
+    // Returns at once; at the reply, the worker calls resume(u: Writes.EntryCreate, cx).
+    rest::ask(cx, cx.app.writer, Writes.EntryCreate { input: input });
 }
 
-// On the writer lane: the rule decides, at the time the job runs. all is the
-// writer's stand-in for the entries table.
-fn create_entry(all: Entry[>..]&, j: CreateJob) -> CreateReply {
-    let e, err = new_entry(j.input, all.len + 1, time() as i64);
-    if err == Error.None { all.push(e); }
-    return CreateReply { entry: e, err: err };
+// On the writer lane: the rule decides, at the time the job runs, and a
+// refusal, such as 422 entry_in_future, fails the route from here. The
+// writer's entries stand in for the entries table.
+fn ::run(u: Writes.EntryCreate, w: Writer&, a) {
+    let e, err = entries::new_entry(u.input, w.entries.len + 1, time() as i64);
+    entries::check(err, a);
+    w.entries.push(e);
+    rest::reply_value(a, e);
 }
-
-// Waiting is the program's, so its case functions are global; each passes
-// the wait on to its domain's.
-fn ::resume(w: Waiting.EntryCreate, cx) { entries::resume(w, cx); }
 
 // On the worker: the answer.
-fn resume(w: Waiting.EntryCreate, cx) {
-    // The writer's reply, read as the struct it sent; not one is a bug: 502.
-    let r, ok = rest::read_reply<CreateReply>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    // A rule's refusal, such as 422 entry_in_future, ends the route here.
-    check(r.err, cx);
-    rest::json(cx, 201, r.entry);
-}
+fn ::resume(u: Writes.EntryCreate, cx) { rest::json(cx, 201, rest::answer<entries::Entry>(cx)); }

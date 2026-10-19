@@ -12,9 +12,9 @@ fn download(path: const u8[:], fields: const u8[:] = "", method: const u8[:] = "
     var app = App { log: log };
     let out = rest::serve_one(str(method, " /f HTTP/1.1\r\n", fields, "\r\n"), app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else {
-            rest::file(cx, path, cx.state.file, Waiting.Download);
+            rest::file(cx, path, cx.state.file, Use.Download);
         }
     };
     return out, log;

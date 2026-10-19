@@ -36,7 +36,7 @@ fn sign_in(cx) {
 fn ::run(u: Hashes.AuthPassword, h: Hasher&, a) {
     let user, err = auth::signed_in(h.users, u.email, u.password);
     auth::check(err, a);
-    rest::done(a, user);
+    rest::reply_value(a, user);
 }
 
 // On the worker: the second wait, on the writer.
@@ -47,7 +47,7 @@ fn ::resume(u: Hashes.AuthPassword, cx) {
 fn ::run(u: Writes.AuthSession, w: Writer&, a) {
     let s = auth::Session { id: w.sessions.len + 1, user: u.user };
     w.sessions.push(s);
-    rest::done(a, s);
+    rest::reply_value(a, s);
 }
 
 fn ::resume(u: Writes.AuthSession, cx) { rest::json(cx, 201, rest::answer<auth::Session>(cx)); }

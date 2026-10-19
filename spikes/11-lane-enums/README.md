@@ -8,12 +8,14 @@ nothing checked which lane a job went to, a catch-all `run` hid dispatch, and th
 inputs stayed in the request state, which grew to the largest job.
 
 - `main.goose`, `app.goose`, `entries.goose`, `reports.goose`, `auth.goose`: the four
-  use cases on the package, with the calls of `proposal.goose`. `main` plays
+  use cases on the package, with the package's calls. `main` plays
   goose-http's loop, as spike 10's does, with three real lanes, each its own
   `thread_fn`.
-- `proposal.goose`: the calls the package would take, in namespace `rest` beside its
-  own: `Lane<U, M>`, `lane_open`, `ask`, `lane`, `done`, `on_reply`, `job`, and
-  `answer`.
+- The calls, `Lane<U, M>`, `lane_open`, `ask`, `lane`, `done`, `on_reply`, `job`, and
+  `answer`, were a `proposal.goose` in namespace `rest` beside the package's own. The
+  package took them for task 050 (2026-10-19), `done` as `rest::reply_value` and the
+  refusal's tag as `rest::REPLY_REFUSED`, and the programs here use the package's,
+  with the same output.
 - `wrong_lane.goose`: a report's job sent to the writer lane, which fails to compile.
 - `outer/main.goose`: the other way to hold the wait, an outer enum holding each lane's
   job.
@@ -119,8 +121,7 @@ alone, so a report's job sent to the writer fails to compile (`wrong_lane.goose`
 
 ```text
 wrong_lane.goose:11: error: no matching overload for call to rest::ask
-  candidate rest::ask at proposal.goose:38: argument 3: cannot pass Reports.ReportTotals as U
-  candidate rest::ask at /…/goose-rest/waiting.goose:49: too few arguments: 3 given, at least 5 needed
+  candidate rest::ask at /…/goose-rest/waiting.goose:86: argument 3: cannot pass Reports.ReportTotals as U
     rest::ask(cx, cx.app.writer, Reports.ReportTotals { project: 1 });
 ```
 

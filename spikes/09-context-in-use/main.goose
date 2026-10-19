@@ -18,15 +18,11 @@ import .app;
 // takes a route's context, inside rest::routes.
 type Cx = rest::Cx<app::St, app::App, http::Router>;
 
-let REPORT: i32 = 1;
 let SLOT_SIZE: i64 = 256;
-
-struct ReportJob { id: i64 }
-struct ReportReply { tasks: i64 }
 
 fn handle(cx) {
     if rest::resumed(cx) {
-        rest::route(cx) { resume(cx.state.waiting, cx); };
+        rest::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
             rest::routes(cx) { cx =>
@@ -72,28 +68,25 @@ fn rename(cx: Cx&) {
 
 fn report(cx) {
     let p = app::visible(cx);
-    rest::ask(cx, cx.app.db, REPORT, ReportJob { id: p.id }, app::Waiting.Report { id: p.id });
+    rest::ask(cx, cx.app.db, app::DbJob.Report { id: p.id });
 }
 
-fn resume(w: app::Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: app::Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
-fn resume(w: app::Waiting.Report, cx) {
-    let rep, ok = rest::read_reply<ReportReply>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    rest::text(cx, 200, str(cx.app.projects[w.id - 1].name, " has ", rep.tasks, " tasks"));
+fn resume(u: app::Use.Db, cx) { resume(rest::job<app::DbJob>(cx), cx); }
+
+// The reply carries the job back, and the job its project.
+fn resume(u: app::DbJob.Report, cx) {
+    rest::text(cx, 200, str(cx.app.projects[u.id - 1].name, " has ", rest::answer<i64>(cx), " tasks"));
 }
 
+fn run(u: app::DbJob.Report, a) {
+    assert(a.piece == SLOT_SIZE);
+    rest::reply_value(a, u.id * 3);
+}
 
 thread_fn database(box: http::Box) {
-    http::lane(box) { tag, bytes =>
-        if tag == REPORT {
-            let a, ok = rest::asked<ReportJob>(bytes);
-            if ok {
-                assert(a.piece == SLOT_SIZE);
-                rest::reply_value(a, ReportReply { tasks: a.job.id * 3 });
-            }
-        }
-    };
+    rest::lane<app::DbJob>(box) { u, a => run(u, a); };
 }
 
 // One request through to its whole response, printed without CRs: REQUEST,
@@ -143,7 +136,8 @@ fn main() {
     projects.push(api::Project { id: 2, name: "gander", owner: "ada" });
     live.push(true);
     live.push(true);
-    var a = app::App { projects: projects, live: live, db: http::lane_open(http::LaneConfig { slots: 16, .. }, database) };
+    var a = app::App { projects: projects, live: live,
+                       db: rest::lane_open<app::DbJob>(http::LaneConfig { slots: 16, .. }, app::Use.Db, database) };
     var key: u64 = 0;
     fn served(label: const u8[:], text: const u8[:]) {
         key++;
@@ -160,6 +154,6 @@ fn main() {
     served("rest::once across check and handler", get("/v1/projects"));
     served("generated DELETE", get("/v1/projects/2", "ada", "DELETE"));
     print("audits ", a.audits, ", lookups ", a.lookups);
-    http::lane_stop(a.db);
+    rest::lane_stop(a.db);
     http::mail_close(worker);
 }

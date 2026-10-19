@@ -12,7 +12,7 @@ with two domains, `projects` and `entries`, and their tests:
 ```text
 testing/
   main.goose              the writer lane, the worker, and main
-  app.goose               App, St, Waiting, the job tags, and the routes
+  app.goose               App, St, Use, the writer's jobs, and the routes
   projects/  entries/     the domains
   test/
     run_tests.py          the runner
@@ -91,7 +91,7 @@ same code `rest::serve` runs, with no socket or thread
 as `main.goose`'s worker does, and gives each request to the program's `handle`:
 
 ```rust
-    var a = App { projects: projects, writer: http::Lane { .. } };
+    var a = App { projects: projects, writer: rest::Lane<Writes, Use> { lane: http::Lane { .. }, mark: Use.Write } };
     fn answer(text: const u8[:]) -> u8[>..] {
         let out = rest::serve_one(text, a, St { .. }) { cx => handle(cx); };
         return expect::shown(out);
@@ -116,43 +116,46 @@ the same way: give `serve_one` a request without a token, and the answer is the 
 
 ## 8.5 A route that asks a lane is given its replies
 
-The test plays the lane. It gives the worker state an `http::Lane` of one box of its
-own, with no thread, and nothing takes from that box but the test, so nothing waits.
-From [`testing/test/entries/entry_routes.goose`](testing/test/entries/entry_routes.goose):
+The test plays the lane. It gives the worker state a lane of one box of its own,
+`rest::lane_of<Writes>(box, Use.Write)`, with no thread, and nothing takes from that
+box but the test, so nothing waits. It reads the job the route sent with
+`rest::lane_job`, as the lane's thread does. From
+[`testing/test/entries/entry_routes.goose`](testing/test/entries/entry_routes.goose):
 
 ```rust
     // The job the route sends, read as the lane reads it.
     answer(expect::request("POST", "/entries", FORM));
     http::mail_take(box) { key, tag, bytes =>
-        let j, ok = rest::asked<entries::CreateJob>(bytes);
-        print("the job: ", tag == CREATE_ENTRY, " ", j.job.input.project, " ",
-              j.job.input.started, " ", j.job.input.stopped);
+        rest::lane_job<Writes>(bytes) { u, a => print("the job: ", u); };
     };
 ```
 
-Each reply the lane could send then goes to `serve_one` as a `rest::Wake`, and the
-case function answers it. A `Wake` with `timeout: true` stands for a lane that didn't
-reply in time, and two jobs left in the box's two slots leave the next route a full box:
+`rest::play` runs a job through the writer's own `run`, on a `Writer` of the test's,
+and returns its reply, which goes to `serve_one` as a `rest::Wake`, and the `resume`
+answers it. A refusal fails the route as the lane's would. A `Wake` with
+`timeout: true` stands for a lane that didn't reply in time, and two jobs left in the
+box's two slots leave the next route a full box:
 
 ```rust
-    let late = entries::CreateReply { err: entries::Error.InFuture };
-    print("refused: ", answer(expect::request("POST", "/entries", FORM), [rest::Wake { data: rest::value_bytes(late) }]));
+    let future = entries::CreateInput { project: 1, started: 1767250800, stopped: 4102444800 };
+    let late = rest::play(a.writer, Writes.EntryCreate { input: future }) { u, a => run(u, w, a); };
+    print("refused: ", answer(expect::request("POST", "/entries", FORM), [rest::wake(late)]));
     empty_box();
     print("no reply in time: ", answer(expect::request("POST", "/entries", FORM), [rest::Wake { timeout: true }]));
 ```
 
 ```text
 create with no project: 400 {"error":"invalid_parameter","detail":"project: required"}
-the job: true 1 1767250800 1767254400
+the job: EntryCreate { entries::CreateInput { 1, 1767250800, 1767254400 } }
 created: 201 {"id":1,"project":1,"started":1767250800,"stopped":1767254400}
 refused: 422 {"error":"entry_in_future"}
 no reply in time: 504 {"error":"timeout"}
 full box: 503 {"error":"unavailable"}
 ```
 
-The job itself is a plain function, tested like a rule. So a route that waits is
-covered without any timing: the job it sends, and its answer to a reply, to none in
-time, and to a full box.
+The job's `run` is played with `rest::play`, and the rule it calls is a plain function,
+tested on its own. So a route that waits is covered without any timing: the job it
+sends, and its answer to a reply, to a refusal, to none in time, and to a full box.
 
 ## 8.6 What must not compile is a fixture
 
@@ -160,13 +163,13 @@ A test file with a `// error: <message>` line must fail to compile, with that me
 among the compiler's errors. It guards a promise the types make: a change that
 loosens it fails a test. From
 [`testing/test/entries/wrong_state.goose`](testing/test/entries/wrong_state.goose), a
-route served with request state that has no `Waiting`:
+route served with request state that has no `use`:
 
 ```rust
-// error: struct NoState has no field waiting
+// error: struct NoState has no field use
 // The routes served with request state of another type than St: a route that
-// asks a lane keeps its step in the state's Waiting, so the program doesn't
-// compile.
+// asks a lane keeps the lane's mark in the state's use, so the program
+// doesn't compile.
 ```
 
 ## 8.7 A test that needs the running server is a scenario

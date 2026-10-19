@@ -1,5 +1,5 @@
 // The auth domain's routes, under /auth, public, each route's flow in the
-// order it runs: the route, its jobs, its resume steps.
+// order it runs: the route, then each job's run on a lane and its resume.
 namespace auth;
 
 import std;
@@ -23,9 +23,8 @@ fn sign_in(cx) {
     rest::require(cx, "email", has_email);
     let password, has_password = rest::form(cx, "password");
     rest::require(cx, "password", has_password);
-    let job = SignInJob { email: email, password: password };
-    // Returns at once; at the reply, the worker calls resume(Waiting.AuthPassword).
-    rest::ask(cx, cx.app.hasher, VERIFY_PASSWORD, job, Waiting.AuthPassword);
+    // Returns at once; at the reply, the worker calls resume(u: Hashes.AuthPassword, cx).
+    rest::ask(cx, cx.app.hasher, Hashes.AuthPassword { email: email, password: password });
 }
 
 // The rows a query of the users table returns, in place of a database. Ada's
@@ -34,36 +33,27 @@ let USERS = [
     User { id: 1, email: "ada@example.com", salt: 7, hash: 1357044906900630754 },
 ];
 
-// On the hasher lane: CPU work, through the rule.
-fn verify_password(j: SignInJob) -> Verified {
-    let user, err = signed_in(USERS, j.email, j.password);
-    return Verified { user: user, err: err };
+// On the hasher lane: CPU work, through the rule. A wrong password fails the
+// route from here, with 401.
+fn ::run(u: Hashes.AuthPassword, h: Hasher&, a) {
+    let user, err = auth::signed_in(h.users, u.email, u.password);
+    auth::check(err, a);
+    rest::reply_value(a, user);
 }
 
-fn ::resume(w: Waiting.AuthPassword, cx) { auth::resume(w, cx); }
-fn ::resume(w: Waiting.AuthSession, cx) { auth::resume(w, cx); }
-
-// On the worker: 401 for a wrong password, or ask the writer lane.
-fn resume(w: Waiting.AuthPassword, cx) {
-    let v, ok = rest::read_reply<Verified>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    // A wrong password ends the route here, with 401.
-    check(v.err, cx);
-    // The route's second wait: at the reply, resume(Waiting.AuthSession).
-    rest::ask(cx, cx.app.writer, OPEN_SESSION, OpenJob { user: v.user }, Waiting.AuthSession);
+// On the worker: the route's second wait, on the writer lane: at the reply,
+// resume(u: Writes.AuthSession, cx).
+fn ::resume(u: Hashes.AuthPassword, cx) {
+    rest::ask(cx, cx.app.writer, Writes.AuthSession { user: rest::answer<i64>(cx) });
 }
 
-// On the writer lane: one write. sessions is the writer's stand-in for the
+// On the writer lane: one write. The writer's sessions stand in for the
 // sessions table.
-fn open_session(sessions: Session[>..]&, j: OpenJob) -> Session {
-    let s = Session { id: sessions.len + 1, user: j.user };
-    sessions.push(s);
-    return s;
+fn ::run(u: Writes.AuthSession, w: Writer&, a) {
+    let s = auth::Session { id: w.sessions.len + 1, user: u.user };
+    w.sessions.push(s);
+    rest::reply_value(a, s);
 }
 
 // On the worker: the answer.
-fn resume(w: Waiting.AuthSession, cx) {
-    let s, ok = rest::read_reply<Session>(cx);
-    guard ok else { rest::fail(cx, 502, "bad_reply"); }
-    rest::json(cx, 201, s);
-}
+fn ::resume(u: Writes.AuthSession, cx) { rest::json(cx, 201, rest::answer<auth::Session>(cx)); }

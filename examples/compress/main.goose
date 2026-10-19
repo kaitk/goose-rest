@@ -76,7 +76,7 @@ fn events(cx) {
         var limit, has_limit = rest::query_int(cx, "limit");
         if !has_limit { limit = EVENTS; }
         guard limit >= 0 && limit <= EVENTS else { rest::fail(cx, 400, "invalid_limit"); }
-        rest::begin(cx, 200, "application/x-ndjson", -1, Waiting.Export { limit: limit });
+        rest::begin(cx, 200, "application/x-ndjson", -1, Use.Export { limit: limit });
     } else if rest::on(cx, "GET", "/events/:id") {
         let id = rest::param_int(cx, "id");
         guard id >= 1 && id <= EVENTS else { rest::fail(cx, 404, "event_not_found"); }
@@ -89,39 +89,39 @@ fn events(cx) {
 // The export's events sent at each MORE.
 let EXPORT_PIECE: i64 = 100;
 
-enum Waiting {
+enum Use {
     None,
     Export { limit: i64 },
 }
 
 struct St {
-    waiting: Waiting = Waiting.None,
+    use: Use = Use.None,
     next: i64 = 0,   // the export's next event
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 // The next events of the export, a line each, and the end after the last.
 // It runs outside rest::compressed: the response keeps the coding it began
 // with.
-fn resume(w: Waiting.Export, cx) {
+fn resume(u: Use.Export, cx) {
     guard cx.kind == http::MORE else { return; }   // CLOSED: the state holds nothing to release
     var piece: u8[>..] = [];
-    let end = min(cx.state.next + EXPORT_PIECE, w.limit);
+    let end = min(cx.state.next + EXPORT_PIECE, u.limit);
     while cx.state.next < end {
         cx.state.next++;
         format(piece, Event { id: cx.state.next });
         piece.push('\n');
     }
     rest::send(cx, piece);
-    if cx.state.next == w.limit { rest::end(cx); }
+    if cx.state.next == u.limit { rest::end(cx); }
 }
 
 thread_fn worker(cfg: http::Config) {
     var none = rest::NoState { .. };
     let e = rest::serve(cfg, none, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

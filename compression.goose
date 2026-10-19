@@ -36,7 +36,7 @@ inline fn compressed<S, A, R, F>(cx: Cx<S, A, R>&, c: http::Compression = http::
                               out: http::Reply { buf: buf, common: o.common, keep_alive: o.keep_alive, minor: o.minor,
                                                  head: o.head, stream: o.stream, fd: o.fd },
                               state: cx.state, app: cx.app, scratch: cx.scratch, kind: cx.kind, reply: cx.reply,
-                              tag: cx.tag, more: cx.more, ex: cx.ex, kept: cx.kept, budget: cx.budget,
+                              refused: cx.refused, more: cx.more, ex: cx.ex, kept: cx.kept, budget: cx.budget,
                               router: cx.router };
     let outer = offered;
     offered = c;

@@ -20,20 +20,16 @@ let WRITER_SLOTS: i32 = 64;
 // writes, one at a time.
 thread_fn writer(box: http::Box) {
     var all: entries::Entry[>..] = [];
-    http::lane(box) { tag, bytes =>
-        if tag == CREATE_ENTRY {
-            let a, ok = rest::asked<entries::CreateJob>(bytes);
-            if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
-        }
-    };
+    var w = Writer { entries: all };
+    rest::lane<Writes>(box) { u, a => run(u, w, a); };
 }
 
-thread_fn worker(cfg: http::Config, lane: http::Lane) {
+thread_fn worker(cfg: http::Config, lane: rest::Lane<Writes, Use>) {
     var projects: projects::Project[>..] = [];
     var app = App { projects: projects, writer: lane };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -49,8 +45,8 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let lane = http::lane_open(http::LaneConfig { slots: WRITER_SLOTS, .. }, writer);
+    let lane = rest::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, lane, worker);
-    http::lane_stop(lane);
+    rest::lane_stop(lane);
 }

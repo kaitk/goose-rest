@@ -29,7 +29,7 @@ fn project(cx) {
 fn ::run(u: Reports.ReportTotals, r: Reader&, a) {
     let t = reports::totals(r.entries, u.project);
     if t.entries == 0 { rest::fail(a, 404, "no_such_project"); }
-    rest::done(a, t);
+    rest::reply_value(a, t);
 }
 
 // On the worker: the job came back with the reply, so its project is at

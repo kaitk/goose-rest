@@ -500,6 +500,88 @@ the tutorial's reports thread does, writes the loop that `http::lane` is, rather
 `lane` taking a time limit and a second block for two programs. Tests that play a lane
 use the same `mail_*` calls, taking jobs from the box of an `http::lane_of(box)`.
 
+### One enum of jobs per lane
+
+Decided (2026-10-19), from spikes [10](../spikes/10-use-cases/README.md) and
+[11](../spikes/11-lane-enums/README.md): each lane takes a fixed-mode enum of its jobs, a
+variant per use case, and a route that waits on it keeps only the lane's mark in the
+request state. This replaces, from the entries above, the job as a struct sent with a
+tag constant of the program's, `rest::ask(cx, lane, tag, job, w, ms)`, the lane's if
+chain over tags with `rest::asked<J>`, `rest::read_reply<T>` and the
+`guard ok else { rest::fail(cx, 502, "bad_reply"); }` in every `resume`, the `Waiting`
+enum in `cx.state.waiting`, and the sender's tag in a reply (`REPLY_TAG`, `cx.tag`). A
+route that waits costs four pieces in two files, where it cost nine in four: a variant
+of its lane's enum in `app.goose`, and the route, its `run`, and its `resume` in its
+domain's file. Built in `waiting.goose`; the [reference](reference.md#41-lanes) has each
+call.
+
+- `rest::Lane<U, M>` is an `http::Lane` and the lane's mark, a variant of the program's
+  `Use`. `rest::lane_open<U>(cfg, mark, W)` opens it, and `rest::ask(cx, lane, job, ms)`
+  takes only a variant of `U`, so a job sent to another lane doesn't compile. `ask`
+  stores the mark in `cx.state.use` once the job is sent.
+- `rest::lane<U>(box) { u, a => run(u, state, a); }` is a lane thread's loop, and
+  dispatches each job to the program's `run` case functions (§8.2), each lane with a
+  state type of its own. `rest::lane_job<U>(bytes)` is one job of it, for a thread
+  that writes its own loop.
+- A reply carries its job back in front of the answer: two bytes of length, the job's
+  image, then the answer's. The mark's `resume` calls `resume(rest::job<Writes>(cx),
+  cx)`, which dispatches to the domain's `resume` for that job, with the job's fields,
+  and that reads `rest::answer<T>(cx)`, which fails the route with 502 `bad_reply`
+  itself. `rest::relay` skips the job at a reply's first piece.
+- The lane side replies with `rest::reply_value(a, v)`, or `rest::reply(a, data)` in
+  pieces. Spike 11 named it `done` because the old `reply_value(a, v, tag)` took any
+  `a`; with `asked<J>` gone, `reply_value` takes only a lane's `rest::Asked<U>`, and
+  there is no overload left to tie with.
+- A `rest::fail` on the lane refuses the job: the lane replies with its own tag bit,
+  `REPLY_REFUSED`, beside `REPLY_MORE` and `REPLY_CONT`, and `rest::on_reply` fails the
+  route with the same status and code before the `resume` runs. So a domain's
+  `check(e, x)` serves a route and a lane alike. A `run` that neither replies nor fails
+  gets the route 500 `no_reply` at once, rather than a 504 when its time runs out. The
+  refusal is its status's four bytes and then its code, cut to fit one message, not a
+  struct: a fixed `u8[..64]` code takes its whole capacity, which a 64-byte message, as
+  tutorial page 12's, can't hold.
+- `rest::on_reply(cx) { resume(cx.state.use, cx); }` replaces `rest::route` at every
+  later call, and sets `cx.state.use` back to its type's first variant once the route
+  gets no more calls: after an answer that doesn't wait again, at the first piece of a
+  reply that `relay` sends on, and at `CLOSED`. A wait that times out ends without a
+  call, and leaves the mark until goose-http starts the next request's state afresh.
+- Tests play a lane with `rest::play(lane, job) { u, a => run(u, state, a); }`, which
+  runs a job as the lane does, with no thread, and returns its reply, which
+  `rest::wake` gives `rest::serve_one`. It replaces building a reply's bytes with
+  `rest::value_bytes`.
+
+A route that reads its body in pieces, sends its response in pieces, or upgrades keeps
+its wait in the same field: `body_in_pieces`, `begin`, `file`, and `upgrade` take a
+variant of the program's `Use`, with what the route needs at each call, as they took a
+`Waiting` variant, so `Use` lists a mark for each lane beside a variant for each such
+route. An exchange has one stream of later calls, so one field holds what it waits on.
+On an upgraded connection that asks a lane, the 2026-10-16 entry holds with the mark in
+place of the ask's variant: the mark's `resume` gets the client's bytes and the
+`TIMEOUT` during the wait, and tells them from the `WAKE` by `cx.kind`, since only a
+reply carries a job; `rest::job` at another event fails with 500 `not_a_reply`.
+Rejected: a second field for these waits beside the mark, which every program's state
+would carry for routes that wait on no lane.
+
+The mark costs a connection's state one byte, as tier M's `rest::NoState` does (spike
+11). The bytes move to the mail: each reply carries its job again, and a job and its
+answer must fit one reply message, `Config.mail_size` bytes, for `answer` to read
+them; a longer reply goes with `rest::reply` and `rest::relay`. A `run` or `resume`
+overload that takes the whole enum is an exact match and wins every call without a
+word ([findings](goose-findings.md#an-overload-that-takes-the-whole-enum-hides-its-case-functions-without-a-word));
+`no_reply` catches a catch-all `run` that doesn't reply, at run time only. This
+rejected:
+
+- Spike 10's one `Use` for the program, whose variant is both the job and the wait:
+  every lane took one state type, nothing checked which lane a job went to, and the
+  request state grew to the largest job, 131 bytes for the lanes program.
+- An outer enum whose variant holds a lane's job: the package needs a hook of the
+  program's to wrap each lane's job in its variant, and the state grows to the largest
+  job, 132 bytes.
+- A field per lane: a `None` in each lane's enum, the same hook, and a state of every
+  lane's largest job together, 165 bytes.
+- Keeping the tagged `ask` and `read_reply` beside the new calls: two ways to do one
+  thing, which the 2026-10-19 entry above rules out.
+
 ## Tests
 
 Decided (2026-10-15), for goose-rest, goose-http, and goose-compress alike: tests

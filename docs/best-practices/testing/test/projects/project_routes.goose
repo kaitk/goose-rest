@@ -10,7 +10,7 @@ fn main() {
     // The worker state main.goose's worker builds, with an empty lane: these
     // routes don't ask the writer.
     var projects: projects::Project[>..] = [];
-    var a = App { projects: projects, writer: http::Lane { .. } };
+    var a = App { projects: projects, writer: rest::Lane<Writes, Use> { lane: http::Lane { .. }, mark: Use.Write } };
     fn answer(text: const u8[:]) -> u8[>..] {
         let out = rest::serve_one(text, a, St { .. }) { cx => handle(cx); };
         return expect::shown(out);

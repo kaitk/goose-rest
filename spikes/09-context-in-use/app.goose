@@ -13,21 +13,19 @@ import api_gen;
 struct App {
     projects: api::Project[>..]&,
     live: bool[>..]&,
-    db: http::Lane,
+    db: rest::Lane<DbJob, Use>,
     audits: i64 = 0,
     lookups: i64 = 0,
 }
 
 struct User { name: u8[..16] = "", admin: bool = false }
 
-// What a route that asked the database keeps until the reply comes.
-enum Waiting {
-    None,
-    Report { id: i64 },
-}
+// The database lane's jobs, and the lane a route waits on.
+enum DbJob { Report { id: i64 } }
+enum Use { None, Db }
 
 // The per-request state, cx.state.
-struct St { user: rest::Once<User>, waiting: Waiting = Waiting.None }
+struct St { user: rest::Once<User>, use: Use = Use.None }
 
 // The request's user, from its bearer token, looked up once a request.
 fn user(cx) -> User& {

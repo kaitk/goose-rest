@@ -12,9 +12,9 @@ import os;
 import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../";
 
-enum Waiting { None, Echo }
+enum Use { None, Echo }
 
-struct St { waiting: Waiting = Waiting.None, bytes: i64 = 0 }
+struct St { use: Use = Use.None, bytes: i64 = 0 }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
@@ -32,14 +32,14 @@ fn echo(cx) {
     // Only a request that asks to switch to "echo"; any other gets 426.
     guard http::upgrade_of(cx.req) == "echo" else { rest::fail(cx, 426, "upgrade_required"); }
     // Answers 101. From here the connection is the route's: the client's
-    // bytes come to resume(Waiting.Echo) as BODY, and rest::send writes raw.
-    rest::upgrade(cx, "echo", Waiting.Echo);
+    // bytes come to resume(Use.Echo) as BODY, and rest::send writes raw.
+    rest::upgrade(cx, "echo", Use.Echo);
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 // Each piece of the client's bytes, back as they are.
-fn resume(w: Waiting.Echo, cx) {
+fn resume(u: Use.Echo, cx) {
     if cx.kind == http::BODY {
         cx.state.bytes += cx.body.len;
         rest::send(cx, cx.body);
@@ -55,7 +55,7 @@ thread_fn worker(cfg: http::Config) {
     var app = rest::NoState { .. };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

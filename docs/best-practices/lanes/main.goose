@@ -28,49 +28,31 @@ let HASHER_SLOTS: i32 = 16;
 thread_fn writer(box: http::Box) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
-    // Each job in the box, in order, told apart by its tag, until main stops
-    // the lane.
-    http::lane(box) { tag, bytes =>
-        if tag == CREATE_ENTRY {
-            // The job, and where reply_value sends the reply.
-            let a, ok = rest::asked<entries::CreateJob>(bytes);
-            if ok { rest::reply_value(a, entries::create_entry(all, a.job)); }
-        } else if tag == OPEN_SESSION {
-            let a, ok = rest::asked<auth::OpenJob>(bytes);
-            if ok { rest::reply_value(a, auth::open_session(sessions, a.job)); }
-        }
-    };
+    var w = Writer { entries: all, sessions: sessions };
+    // Each job in the box, in order, to its run case function, until main
+    // stops the lane.
+    rest::lane<Writes>(box) { u, a => run(u, w, a); };
 }
 
 // A thread of the reports lane: a reader that runs only reports, so that a
 // slow report holds it, not the writer.
 thread_fn reports(box: http::Box) {
-    http::lane(box) { tag, bytes =>
-        if tag == TOTAL_ENTRIES {
-            let a, ok = rest::asked<reports::TotalsJob>(bytes);
-            // A report whose client has gone isn't run.
-            if ok && rest::still_wanted(a) { rest::reply_value(a, reports::total_entries(a.job)); }
-        }
-    };
+    var r = Reader { entries: reports::ENTRIES };
+    rest::lane<Reports>(box) { u, a => run(u, r, a); };
 }
 
 // A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
 thread_fn hasher(box: http::Box) {
-    http::lane(box) { tag, bytes =>
-        if tag == VERIFY_PASSWORD {
-            // The job, and where reply_value sends the reply.
-            let a, ok = rest::asked<auth::SignInJob>(bytes);
-            if ok { rest::reply_value(a, auth::verify_password(a.job)); }
-        }
-    };
+    var h = Hasher { users: auth::USERS };
+    rest::lane<Hashes>(box) { u, a => run(u, h, a); };
 }
 
 thread_fn worker(cfg: http::Config, app: App) {
     var a = app;
     let e = rest::serve(cfg, a, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -88,17 +70,18 @@ fn main() {
     http::exit_on_error(http::stop_on_signals());
     // Each lane_open spawns its lane's threads: one writer, the database's
     // only one; one reader for reports; and two hashers, so that one sign-in
-    // doesn't wait behind another's hash.
+    // doesn't wait behind another's hash. Each names its jobs' enum and the
+    // mark a route waiting on it holds.
     let app = App {
-        writer: http::lane_open(http::LaneConfig { slots: WRITER_SLOTS, .. }, writer),
-        reports: http::lane_open(http::LaneConfig { slots: REPORTS_SLOTS, .. }, reports),
-        hasher: http::lane_open(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, hasher),
+        writer: rest::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer),
+        reports: rest::lane_open<Reports>(http::LaneConfig { slots: REPORTS_SLOTS, .. }, Use.Report, reports),
+        hasher: rest::lane_open<Hashes>(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, Use.Hash, hasher),
     };
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, app, worker);
     // A flag in each box, not a message: a full box can't refuse it. Each
     // lane_stop waits for its lane's threads.
-    http::lane_stop(app.writer);
-    http::lane_stop(app.reports);
-    http::lane_stop(app.hasher);
+    rest::lane_stop(app.writer);
+    rest::lane_stop(app.reports);
+    rest::lane_stop(app.hasher);
 }

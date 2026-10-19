@@ -7,18 +7,18 @@ import rest from "../../";
 import expect from "../";
 
 // n events in all; at_more pauses at MORE rather than in the route.
-enum Waiting { None, Events { n: i64, at_more: bool } }
+enum Use { None, Events { n: i64, at_more: bool } }
 
-struct St { waiting: Waiting = Waiting.None, sent: i64 = 0 }
+struct St { use: Use = Use.None, sent: i64 = 0 }
 
 // What the case function saw, in order: T, M, C.
 struct App { log: u8[>..]& }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 // At TIMEOUT, the next event, and a pause, or the end after the nth; n of 0
 // sends one at the TIMEOUT and leaves the rest to MORE, which ends.
-fn resume(w: Waiting.Events, cx) {
+fn resume(w: Use.Events, cx) {
     if cx.kind == http::TIMEOUT {
         cx.app.log.append("T ");
         event(cx);
@@ -47,9 +47,9 @@ fn stream(n: i64, wakes: const rest::Wake[:], at_more: bool = false, begun: bool
     var app = App { log: log };
     let out = rest::serve_one("GET /events HTTP/1.1\r\n\r\n", app, St { .. }, wakes) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else if begun {
-            rest::begin(cx, 200, "text/event-stream", -1, Waiting.Events { n: n, at_more: at_more });
+            rest::begin(cx, 200, "text/event-stream", -1, Use.Events { n: n, at_more: at_more });
             if !at_more {
                 event(cx);
                 rest::pause(cx, 1000);

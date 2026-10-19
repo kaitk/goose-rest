@@ -8,10 +8,10 @@ covers how goose-http sends a response this way.
 
 ## A response sent in pieces
 
-`rest::begin(cx, status, content_type, length, w)` starts the response, with a length of
--1 when it isn't known yet, which sends it chunked. Like `rest::ask` and
-`rest::body_in_pieces` ([page 14](14-bodies-in-pieces.md)), it keeps a `Waiting`
-variant, `w`, in the state, and later calls go to its case function.
+`rest::begin(cx, status, content_type, length, u)` starts the response, with a length of
+-1 when it isn't known yet, which sends it chunked. Like `rest::body_in_pieces`
+([page 14](14-bodies-in-pieces.md)), it keeps a variant of `Use`, `u`, in the state,
+and later calls go to its case function.
 The route can send the first piece at once with `rest::send`. From
 [`15-long-responses`](15-long-responses/main.goose):
 
@@ -19,7 +19,7 @@ The route can send the first piece at once with `rest::send`. From
 // GET /v1/projects/:id/tasks.csv: the header now, and the rows as the
 // client takes them.
 fn export_tasks(cx, project: i64) {
-    rest::begin(cx, 200, "text/csv; charset=utf-8", -1, Waiting.Export { project: project });
+    rest::begin(cx, 200, "text/csv; charset=utf-8", -1, Use.Export { project: project });
     rest::send(cx, "id,title,assignee\n");
 }
 ```
@@ -29,10 +29,10 @@ The handler is then called again, through `rest::resumed` and the case function,
 next 500 rows, about 16 KB, and the last ends the response with `rest::end`:
 
 ```rust
-fn resume(w: Waiting.Export, cx) {
+fn resume(u: Use.Export, cx) {
     guard cx.kind == http::MORE else { return; }   // CLOSED: the state holds nothing to release
     var piece: u8[>..] = [];
-    cx.state.next = tasks_csv(piece, cx.app.tasks, w.project, cx.state.next, ROWS_PER_PIECE);
+    cx.state.next = tasks_csv(piece, cx.app.tasks, u.project, cx.state.next, ROWS_PER_PIECE);
     rest::send(cx, piece);
     if cx.state.next < 0 { rest::end(cx); }
 }
@@ -45,7 +45,7 @@ state, beside what the other routes on this page keep:
 
 ```rust
 struct St {
-    waiting: Waiting = Waiting.None,
+    use: Use = Use.None,
     next: i64 = 0,                                // the export's next task
     file: http::FileBody = http::FileBody { .. }, // what's left of a download
     events: i64 = 0,                              // progress events sent
@@ -73,7 +73,7 @@ alone, and no calls.
 
 ## Files
 
-`rest::file(cx, path, body, w)` answers with a file, with the statuses and fields of
+`rest::file(cx, path, body, u)` answers with a file, with the statuses and fields of
 goose-http's
 [`http::serve_file`](https://github.com/kaitk/goose-http/blob/main/docs/api.md#files):
 200, 206 for a range, 304 when the client's copy is current, or 416. It fails with 404
@@ -89,7 +89,7 @@ fn download(cx, project: i64) {
     guard http::file_path(str(cx.app.files, "/", project), rest::param(cx, "name"), path) else {
         rest::fail(cx, 400, "bad_path");
     }
-    rest::file(cx, path, cx.state.file, Waiting.Download);
+    rest::file(cx, path, cx.state.file, Use.Download);
 }
 ```
 
@@ -99,7 +99,7 @@ to `rest::send_file`, which sends the next piece of up to 64 KB at each `MORE`, 
 the response after the last, and closes the file at `CLOSED`:
 
 ```rust
-fn resume(w: Waiting.Download, cx) { rest::send_file(cx, cx.state.file); }
+fn resume(u: Use.Download, cx) { rest::send_file(cx, cx.state.file); }
 ```
 
 ```text
@@ -126,13 +126,13 @@ fn progress(cx, project: i64) {
     let n, given = rest::query_int(cx, "n");
     guard !given || n > 0 else { rest::fail(cx, 400, "invalid_n"); }
     cx.state.left = if given { n } else { -1 };
-    rest::begin(cx, 200, "text/event-stream", -1, Waiting.Progress { project: project });
+    rest::begin(cx, 200, "text/event-stream", -1, Use.Progress { project: project });
     progress_event(cx, project);
 }
 
-fn resume(w: Waiting.Progress, cx) {
+fn resume(u: Use.Progress, cx) {
     guard cx.kind == http::TIMEOUT else { return; }   // CLOSED: the state holds nothing to release
-    progress_event(cx, w.project);
+    progress_event(cx, u.project);
 }
 
 // Sends the next event, then pauses until the one after, or ends after the

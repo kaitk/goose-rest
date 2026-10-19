@@ -29,28 +29,28 @@ fn sign_in(cx) {
     rest::require(cx, "email", has_email);
     let password, has_password = rest::query(cx, "password");
     rest::require(cx, "password", has_password);
-    rest::ask(cx, cx.app.hasher, Use.AuthPassword { email: email, password: password });
+    spike10::ask(cx, cx.app.hasher, Use.AuthPassword { email: email, password: password });
 }
 
 // On the hasher lane: a wrong password is a 401 from here.
 fn ::run(u: Use.AuthPassword, db: Db&, a) {
     let user, err = auth::signed_in(auth::USERS, u.email, u.password);
     auth::check(err, a);
-    rest::reply_value(a, user);
+    spike10::reply_value(a, user);
 }
 
 // On the worker: the second wait, on the writer.
 fn ::resume(u: Use.AuthPassword, cx) {
-    rest::ask(cx, cx.app.writer, Use.AuthSession { user: rest::answer<i64>(cx) });
+    spike10::ask(cx, cx.app.writer, Use.AuthSession { user: spike10::answer<i64>(cx) });
 }
 
 fn ::run(u: Use.AuthSession, db: Db&, a) {
     let s = auth::Session { id: db.sessions.len + 1, user: u.user };
     db.sessions.push(s);
-    rest::reply_value(a, s);
+    spike10::reply_value(a, s);
 }
 
-fn ::resume(u: Use.AuthSession, cx) { rest::json(cx, 201, rest::answer<auth::Session>(cx)); }
+fn ::resume(u: Use.AuthSession, cx) { rest::json(cx, 201, spike10::answer<auth::Session>(cx)); }
 
 // password hashed with salt, standing in for a password hash.
 fn hashed(password: const u8[:], salt: u64) -> u64 {

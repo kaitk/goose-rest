@@ -14,7 +14,7 @@ import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f338
 // what the extractors decode, which lasts until the handler returns. kind
 // is the event the handler is called for: http::REQUEST for a request, and
 // for each later call (rest::resumed) the event's, such as http::WAKE when
-// a route that asked another thread gets its reply, with reply, tag, and
+// a route that asked another thread gets its reply, with reply, refused, and
 // more holding it (waiting.goose), or http::BODY with a piece in body
 // (pieces.goose). req is empty after REQUEST.
 // router is the http::Router of rest::routes' block, R, and a NoRouter
@@ -29,7 +29,7 @@ struct Cx<S, A, R> {
     scratch: u8[>..]&,
     kind: u8 = 0,
     reply: const u8[:] = "",
-    tag: i32 = 0,
+    refused: bool = false,
     more: bool = false,
     // The request's exchange, under serve; null elsewhere.
     ex: Exchange? = null,
@@ -57,7 +57,7 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     var r = http::router(cx.req);
     var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
-                       kind: cx.kind, reply: cx.reply, tag: cx.tag, more: cx.more, ex: cx.ex,
+                       kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
                        kept: cx.kept, budget: cx.budget, router: r };
     F(&c);   // a block given the local itself gets a copy of it
 }
@@ -228,7 +228,7 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         var none = NoRouter { .. };
         var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: o, state: st.state,
                                       app: app, scratch: scratch, kind: ev.kind, reply: if wake { ev.data } else { "" },
-                                      tag: ev.tag & REPLY_TAG, more: (ev.tag & REPLY_MORE) != 0,
+                                      refused: wake && (ev.tag & REPLY_REFUSED) != 0, more: (ev.tag & REPLY_MORE) != 0,
                                       ex: st.ex, kept: kept, budget: budget, router: none };
         H(cx);
         if wake {

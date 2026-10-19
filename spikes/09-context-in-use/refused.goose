@@ -18,7 +18,8 @@ fn outside(cx) {
 fn main() {
     var projects: api::Project[>..] = [];
     var live: bool[>..] = [];
-    var a = app::App { projects: projects, live: live, db: http::Lane { .. } };
+    var a = app::App { projects: projects, live: live,
+                       db: rest::Lane<app::DbJob, app::Use> { lane: http::Lane { .. }, mark: app::Use.Db } };
     rest::serve(http::Config { .. }, a, app::St { .. }) { cx =>
         if rest::resumed(cx) { rest::route(cx) { resume(cx); }; }
         else if cx.req.method == "TRACE" { outside(cx); }

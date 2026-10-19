@@ -14,7 +14,7 @@ fn main() {
     var app = App { calls: calls };
     let plain = rest::serve_one(str("GET /export HTTP/1.1\r\n", GZIP, "\r\n"), app, St { .. }) { cx =>
         rest::compressed(cx) { cx => cx.state.sent = 1; };
-        rest::begin(cx, 200, "text/csv", 2, Waiting.None);
+        rest::begin(cx, 200, "text/csv", 2, Use.None);
         rest::send(cx, "ok");
         rest::end(cx);
     };
@@ -24,9 +24,9 @@ fn main() {
     assert(write_file(path, data));
     let file = rest::serve_one(str("GET /f HTTP/1.1\r\n", GZIP, "\r\n"), app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else {
-            rest::compressed(cx) { cx => rest::file(cx, path, cx.state.file, Waiting.Download, "application/json"); };
+            rest::compressed(cx) { cx => rest::file(cx, path, cx.state.file, Use.Download, "application/json"); };
         }
     };
     assert(find(file, "Content-Encoding") < 0);

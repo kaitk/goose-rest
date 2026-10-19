@@ -1,6 +1,7 @@
 // The entries' route, which asks the writer lane: the job it sends, and its
 // answer to each reply the lane could give, through rest::serve_one. The test
-// plays the lane: no thread runs, and nothing waits.
+// plays the lane with its own run case function: no thread runs, and
+// nothing waits.
 import std;
 import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 import rest from "../../../../../";
@@ -14,10 +15,10 @@ fn main() {
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
     var projects: projects::Project[>..] = [];
-    var a = App { projects: projects, writer: http::lane_of(box) };
+    var a = App { projects: projects, writer: rest::lane_of<Writes>(box, Use.Write) };
     fn answer(text: const u8[:], wakes: const rest::Wake[:] = []) -> u8[>..] {
         let out = rest::serve_one(text, a, St { .. }, wakes) { cx =>
-            if rest::resumed(cx) { resume(cx.state.waiting, cx); } else { handle(cx); }
+            if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
         };
         return expect::shown(out);
     }
@@ -29,16 +30,19 @@ fn main() {
     // The job the route sends, read as the lane reads it.
     answer(expect::request("POST", "/entries", FORM));
     http::mail_take(box) { key, tag, bytes =>
-        let j, ok = rest::asked<entries::CreateJob>(bytes);
-        print("the job: ", tag == CREATE_ENTRY, " ", j.job.input.project, " ",
-              j.job.input.started, " ", j.job.input.stopped);
+        rest::lane_job<Writes>(bytes) { u, a => print("the job: ", u); };
     };
 
-    // The answer to each reply the lane could send, and to none in time.
-    let made = entries::CreateReply { entry: entries::Entry { id: 1, project: 1, started: 1767250800, stopped: 1767254400 } };
-    print("created: ", answer(expect::request("POST", "/entries", FORM), [rest::Wake { data: rest::value_bytes(made) }]));
-    let late = entries::CreateReply { err: entries::Error.InFuture };
-    print("refused: ", answer(expect::request("POST", "/entries", FORM), [rest::Wake { data: rest::value_bytes(late) }]));
+    // The answer to each reply the writer's run gives, played on a writer of
+    // the test's own, and to none in time.
+    var all: entries::Entry[>..] = [];
+    var w = Writer { entries: all };
+    let input = entries::CreateInput { project: 1, started: 1767250800, stopped: 1767254400 };
+    let made = rest::play(a.writer, Writes.EntryCreate { input: input }) { u, a => run(u, w, a); };
+    print("created: ", answer(expect::request("POST", "/entries", FORM), [rest::wake(made)]));
+    let future = entries::CreateInput { project: 1, started: 1767250800, stopped: 4102444800 };
+    let late = rest::play(a.writer, Writes.EntryCreate { input: future }) { u, a => run(u, w, a); };
+    print("refused: ", answer(expect::request("POST", "/entries", FORM), [rest::wake(late)]));
     empty_box();
     print("no reply in time: ", answer(expect::request("POST", "/entries", FORM), [rest::Wake { timeout: true }]));
     empty_box();

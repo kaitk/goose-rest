@@ -40,7 +40,8 @@ spec.
   A cache, rate limiter, or session store lives in worker state or in lane data owned
   by a separate thread. Workers access lane data by mail.
 - **No async.** A handler that waits on another thread splits in two around the reply,
-  with its state in the connection ([Waiting on a lane](#waiting-on-a-lane)).
+  with what it needs in the job, which the reply carries back
+  ([Waiting on a lane](#waiting-on-a-lane)).
 
 ## Actix, and where goose-rest differs
 
@@ -155,35 +156,50 @@ in one transaction. The route waits once, with one time limit and one place wher
 full box refuses work, and the job can be tested as a plain call. A route waits more
 than once only for what one lane can't do: a second lane in turn.
 
-Goose can't store a function to call later, so the request state holds a
-fixed-mode enum of what each waiting route needs, and the program writes a case
-function per variant. The compiler dispatches on the tag and checks that every variant
-has its case:
+Each lane takes a fixed-mode enum of its jobs, a variant per use case, and the program
+writes a case function per variant on each side: `run` on the lane, and `resume` on
+the worker. The compiler dispatches on the tag and checks that every variant has its
+case (§8.2). Goose can't store a function to call later, so the request state keeps
+the lane's *mark*, a variant of the program's `Use` enum, and the lane's reply carries
+the job back in front of its answer, which the mark's `resume` dispatches on again:
 
 ```rust
-enum Waiting { None, Report { org: i64 } }
-struct St { waiting: Waiting = Waiting.None }
+enum Reports { Totals { project: i64 } }   // the reports lane's jobs
+enum Use { None, Report }                  // a mark for each lane, None first
+struct St { use: Use = Use.None }
+
+rest::ask(cx, cx.app.reports, Reports.Totals { project: id });         // the route
+fn run(u: Reports.Totals, r: Reader&, a) { rest::reply_value(a, t); }  // on the lane
+fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
+fn resume(u: Reports.Totals, cx) { rest::json(cx, 200, rest::answer<Totals>(cx)); }
 
 rest::serve(cfg, app, St { .. }) { cx =>
-    if rest::resumed(cx) { rest::route(cx) { resume(cx.state.waiting, cx); }; } else { handle(cx); }
+    if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 };
 ```
 
-The job crosses as a `to_bytes` image, with no JSON between threads, and the lane's
-box carries bytes in fixed-size slots, as goose-http's
+`rest::ask` takes only the variants of its lane's enum, so a job sent to another lane
+doesn't compile. A `rest::fail` in a `run` replies a refusal, which `rest::on_reply`
+answers with the same status and code before any `resume` runs, as a `throw` crosses
+an `await`. The job crosses as a `to_bytes` image, with no JSON between threads, and
+the lane's box carries bytes in fixed-size slots, as goose-http's
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
-explains. A reply larger than a slot comes in pieces; `rest::relay` sends each as a
-chunk. `rest::still_wanted` tells the lane whether the route still waits, so it can
-skip the work of a client that has gone. A route that never waits keeps nothing on the
-connection. The tutorial builds this from [work that waits](tutorial/11-waiting.md) to
-[limits](tutorial/13-limits.md).
+explains. A job and its answer must fit one slot for `rest::answer` to read them; a
+longer reply comes in pieces, which `rest::relay` sends on as chunks.
+`rest::still_wanted` tells the lane whether the route still waits, so it can skip the
+work of a client that has gone. The mark is the only byte a waiting route keeps in its
+state, and a route that never waits keeps nothing on the connection. The tutorial
+builds this from [work that waits](tutorial/11-waiting.md) to
+[limits](tutorial/13-limits.md), and
+[decisions](decisions.md#one-enum-of-jobs-per-lane) has the shapes it rejected.
 
-The lane is goose-http's `http::Lane`: N boxes, one per thread, and the threads' ids,
-which `http::lane_open` opens and spawns from an `http::LaneConfig` and the program's
-`thread_fn`, as `http::run` spawns the workers. `rest::ask` sends through
+The lane is goose-http's `http::Lane`, in a `rest::Lane` with its enum and mark: N
+boxes, one per thread, and the threads' ids, which `rest::lane_open` opens and spawns
+through `http::lane_open` from an `http::LaneConfig` and the program's `thread_fn`, as
+`http::run` spawns the workers. `rest::ask` sends through
 `http::lane_send`, which puts the job in the box holding the fewest jobs, and in the
 next in turn while each is full, so the route gets 503 only when every box is full.
-`main` stops each lane with `http::lane_stop` once the workers have returned: a flag in
+`main` stops each lane with `rest::lane_stop`, which calls `http::lane_stop`, once the workers have returned: a flag in
 each box, which a full box can't refuse, and each thread's `http::lane` loop returns
 once its box is stopped and empty, so the jobs queued before the stop are still done
 ([goose-http's lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes)).
@@ -197,7 +213,8 @@ service manager, such as systemd, Docker, or Kubernetes, restarts it
 Every call after a request's first goes through the same case functions, not only a
 reply. A route that reads its body in pieces (`rest::body_in_pieces`), sends its
 response in pieces (`rest::begin`, `rest::file`), or takes an upgraded connection
-(`rest::upgrade`) gives a `Waiting` variant, as `rest::ask` does. `rest::serve` then
+(`rest::upgrade`) gives a variant of the program's `Use`, beside the lanes' marks,
+which carries what the route needs at each call. `rest::serve` then
 calls the handler again for each event of the exchange, with `cx.kind` saying which:
 `BODY`, `END`, `MORE`, or `CLOSED`. `CLOSED` comes once to a route that ended early, so
 that its case function releases what the state holds. A route that began a response
@@ -207,11 +224,12 @@ ends the response when goose-http, with no timer free, gives `TIMEOUT` at once. 
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#4-later-calls) has each call and event.
 
-Each call goes to the variant that is in `cx.state.waiting` at the time, and goose-rest
+Each call goes to the variant that is in `cx.state.use` at the time, and goose-rest
 keeps no other. An upgraded connection that waits on `rest::ask` therefore gets the
-client's bytes in the ask's case function, which also gets the `TIMEOUT`, since a 504
-can't follow the 101, and which sets the upgrade's variant back when the wait ends. An
-exchange has one wait, so a second `rest::ask` during it fails.
+client's bytes in the `resume` of the lane's mark, which also gets the `TIMEOUT`, since
+a 504 can't follow the 101, and which sets the upgrade's variant back when the wait
+ends. Only the `WAKE` carries a job to dispatch on, so that `resume` tells the events
+apart by `cx.kind`. An exchange has one wait, so a second `rest::ask` during it fails.
 
 A route's middleware keeps what it decided with the exchange, so an answer written at a
 later call still gets the CORS fields and `Server-Timing`. A file being sent lives in
@@ -265,9 +283,13 @@ start, so a long chain costs more per request than a generated router
   works, at a call per layer.
 - **Worker state.** A cache or session store lives in worker state or in lane data
   accessed by mail. Workers share nothing by reference.
-- **Waiting splits a handler.** A route that waits writes its state into a `Waiting`
-  variant and resumes in a case function, instead of continuing after an `await`.
-  Replies come through fixed-size mail slots, and a larger one in pieces.
+- **Waiting splits a handler.** A route that waits sends its lane a job, a variant of
+  the lane's enum, and resumes in a case function for that job, instead of continuing
+  after an `await`. What it needs then travels in the job, which the reply carries
+  back. Replies come through fixed-size mail slots, and a larger one in pieces.
+- **A catch-all hides the cases.** A `run` or `resume` overload that takes a whole
+  enum wins every call, and the compiler says nothing; `rest::lane` catches a `run`
+  that doesn't reply, at run time.
 - **The first answer wins.** Once a response has begun, a failure can't replace it; an
   open response is cut short instead.
 - **Compression copies.** `rest::compressed` writes each answer inside it to a local

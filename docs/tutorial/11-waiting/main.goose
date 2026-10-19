@@ -18,12 +18,12 @@ import .app;
 // How long each statement takes, as a query over a network would.
 let DELAY_MS: i64 = 20;
 
-thread_fn worker(cfg: http::Config, lane: http::Lane) {
+thread_fn worker(cfg: http::Config, lane: rest::Lane<DbJob, Use>) {
     var conn = db::open(DELAY_MS);
     var app = App { conn: conn, db: lane };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -39,8 +39,8 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let lane = http::lane_open(http::LaneConfig { .. }, DELAY_MS, database::run);
+    let lane = rest::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, DELAY_MS, database);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, lane, worker);
-    http::lane_stop(lane);
+    rest::lane_stop(lane);
 }

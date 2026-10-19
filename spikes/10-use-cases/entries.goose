@@ -30,7 +30,7 @@ fn create(cx) {
     rest::require(cx, "started", has_started);
     let stopped, has_stopped = rest::query_int(cx, "stopped");
     rest::require(cx, "stopped", has_stopped);
-    rest::ask(cx, cx.app.writer, Use.EntryCreate { project: project, started: started, stopped: stopped });
+    spike10::ask(cx, cx.app.writer, Use.EntryCreate { project: project, started: started, stopped: stopped });
 }
 
 // On the writer lane: the rule, which fails the route from here.
@@ -38,11 +38,11 @@ fn ::run(u: Use.EntryCreate, db: Db&, a) {
     entries::check(entries::ordered(u.started, u.stopped), a);
     let e = entries::Entry { id: db.entries.len + 1, project: u.project, started: u.started, stopped: u.stopped };
     db.entries.push(e);
-    rest::reply_value(a, e);
+    spike10::reply_value(a, e);
 }
 
 // On the worker: the answer.
-fn ::resume(u: Use.EntryCreate, cx) { rest::json(cx, 201, rest::answer<entries::Entry>(cx)); }
+fn ::resume(u: Use.EntryCreate, cx) { rest::json(cx, 201, spike10::answer<entries::Entry>(cx)); }
 
 fn ordered(started: i64, stopped: i64) -> Error {
     return if stopped < started { Error.EndsBeforeStart } else { Error.None };

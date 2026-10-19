@@ -151,6 +151,8 @@ flowchart LR
   [message](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
   and resumes when the reply arrives, the half-sync/half-async pattern
   ([tutorial](docs/tutorial/11-waiting.md), [why](docs/architecture.md#waiting-on-a-lane)).
+  Each lane takes an enum of its jobs, so a job sent to the wrong lane doesn't compile,
+  and a job's error fails its route.
 - **An abort ends the process**, in a worker or a lane. Run the server under systemd,
   Docker, or Kubernetes, which restarts it
   ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#a-crash-ends-the-process)).

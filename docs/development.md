@@ -18,7 +18,7 @@ rest.goose        the package's entry, namespace rest
 runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error shape
 extract.goose     the extractors: parameters, headers, cookies, take, once
 middleware.goose  CORS, bearer, timed, and scope
-waiting.goose     ask another thread, and resume with its reply
+waiting.goose     lanes of jobs: ask one, run its jobs, and resume with its reply
 compression.goose rest::compressed, a module rest doesn't import (goose-compress)
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)

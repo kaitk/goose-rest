@@ -38,7 +38,7 @@ fn ::run(u: Writes.EntryCreate, w: Writer&, a) {
     entries::check(entries::ordered(u.started, u.stopped), a);
     let e = entries::Entry { id: w.entries.len + 1, project: u.project, started: u.started, stopped: u.stopped };
     w.entries.push(e);
-    rest::done(a, e);
+    rest::reply_value(a, e);
 }
 
 // On the worker: the answer.

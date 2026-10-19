@@ -1,26 +1,28 @@
-// The application's entry: the program's types, the job tags, and the routes.
-// main.goose imports it to serve, and each test imports it as a package,
-// `import app from "../../";`, as a test can't import main.goose.
+// The application's entry: the program's types, the writer lane's jobs, and
+// the routes. main.goose imports it to serve, and each test imports it as a
+// package, `import app from "../../";`, as a test can't import main.goose.
 import std;
 import http;
 import rest;
 import projects.routes;
 import entries.routes;
 
-// A job's tag.
-let CREATE_ENTRY: i32 = 1;
-
-// The steps of every route that waits.
-enum Waiting {
-    None,
-    EntryCreate, // entries::create
+// The writer lane's jobs, and the route that asks for each.
+enum Writes {
+    EntryCreate { input: entries::CreateInput },   // entries::create
 }
 
-struct St { waiting: Waiting = Waiting.None }
+// The lane a route waits on.
+enum Use { None, Write }
+
+struct St { use: Use = Use.None }
+
+// What the writer lane's thread owns: the entries table's stand-in.
+struct Writer { entries: entries::Entry[>..]& }
 
 // The projects stand in for a database in the worker's memory; the entries
 // are the writer lane's, which the routes ask by mail.
-struct App { projects: projects::Project[>..]&, writer: http::Lane }
+struct App { projects: projects::Project[>..]&, writer: rest::Lane<Writes, Use> }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
@@ -36,4 +38,5 @@ fn handle(cx) {
     };
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }

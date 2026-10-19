@@ -28,8 +28,9 @@ struct Task { id: i64, project: i64, title: u8[..64], assignee: u8[..32] }
 // The worker state: the tasks, and where each project's files are.
 struct App { tasks: Task[>..]&, files: const u8[:] }
 
-// What each route that sends in pieces needs at each call.
-enum Waiting {
+// What each route that sends in pieces waits on, with what it needs at each
+// call.
+enum Use {
     None,
     Export { project: i64 },
     Download,
@@ -37,7 +38,7 @@ enum Waiting {
 }
 
 struct St {
-    waiting: Waiting = Waiting.None,
+    use: Use = Use.None,
     next: i64 = 0,                                // the export's next task
     file: http::FileBody = http::FileBody { .. }, // what's left of a download
     events: i64 = 0,                              // progress events sent
@@ -69,16 +70,16 @@ fn project(cx) -> i64 {
 // GET /v1/projects/:id/tasks.csv: the header now, and the rows as the
 // client takes them.
 fn export_tasks(cx, project: i64) {
-    rest::begin(cx, 200, "text/csv; charset=utf-8", -1, Waiting.Export { project: project });
+    rest::begin(cx, 200, "text/csv; charset=utf-8", -1, Use.Export { project: project });
     rest::send(cx, "id,title,assignee\n");
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
-fn resume(w: Waiting.Export, cx) {
+fn resume(u: Use.Export, cx) {
     guard cx.kind == http::MORE else { return; }   // CLOSED: the state holds nothing to release
     var piece: u8[>..] = [];
-    cx.state.next = tasks_csv(piece, cx.app.tasks, w.project, cx.state.next, ROWS_PER_PIECE);
+    cx.state.next = tasks_csv(piece, cx.app.tasks, u.project, cx.state.next, ROWS_PER_PIECE);
     rest::send(cx, piece);
     if cx.state.next < 0 { rest::end(cx); }
 }
@@ -106,10 +107,10 @@ fn download(cx, project: i64) {
     guard http::file_path(str(cx.app.files, "/", project), rest::param(cx, "name"), path) else {
         rest::fail(cx, 400, "bad_path");
     }
-    rest::file(cx, path, cx.state.file, Waiting.Download);
+    rest::file(cx, path, cx.state.file, Use.Download);
 }
 
-fn resume(w: Waiting.Download, cx) { rest::send_file(cx, cx.state.file); }
+fn resume(u: Use.Download, cx) { rest::send_file(cx, cx.state.file); }
 
 // GET /v1/projects/:id/progress?n=N: the project's task count as Server-Sent
 // Events, PROGRESS_MS apart; N of them, or without N until the client goes.
@@ -117,13 +118,13 @@ fn progress(cx, project: i64) {
     let n, given = rest::query_int(cx, "n");
     guard !given || n > 0 else { rest::fail(cx, 400, "invalid_n"); }
     cx.state.left = if given { n } else { -1 };
-    rest::begin(cx, 200, "text/event-stream", -1, Waiting.Progress { project: project });
+    rest::begin(cx, 200, "text/event-stream", -1, Use.Progress { project: project });
     progress_event(cx, project);
 }
 
-fn resume(w: Waiting.Progress, cx) {
+fn resume(u: Use.Progress, cx) {
     guard cx.kind == http::TIMEOUT else { return; }   // CLOSED: the state holds nothing to release
-    progress_event(cx, w.project);
+    progress_event(cx, u.project);
 }
 
 // Sends the next event, then pauses until the one after, or ends after the
@@ -153,7 +154,7 @@ thread_fn worker(cfg: http::Config, files: u8[..200]) {
     var app = App { tasks: tasks, files: files };
     let e = rest::serve(cfg, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            rest::route(cx) { resume(cx.state.waiting, cx); };
+            rest::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

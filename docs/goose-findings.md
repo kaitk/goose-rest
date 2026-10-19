@@ -318,11 +318,14 @@ cover every variant, or a form of call that only dispatches.
         run(u);   // prints nothing, without a warning
     }
 
-goose-rest's lanes dispatch each job to the program's `run` cases. A catch-all there
-drops every job, and the route waits for a reply that never comes.
+goose-rest's lanes dispatch each job to the program's `run` cases, and each reply to
+the program's `resume` cases. A catch-all `run` drops every job, and the route waits
+for a reply that never comes; a catch-all `resume` answers every reply alike.
 
-Workaround: the lane's loop answers 500 `no_reply` for a job whose `run` returned
-without replying (spike 11), and the docs warn against a catch-all.
+Workaround: `rest::lane` answers 500 `no_reply` for a job whose `run` returned without
+replying (spike 11, in `waiting.goose` since 2026-10-19), and the reference and best
+practices warn against a catch-all. A catch-all that replies, or any catch-all
+`resume`, still goes unnoticed.
 
 ### A function called once isn't inlined past a size
 
@@ -480,7 +483,9 @@ Within the library itself, and for programs in the global namespace, nothing cha
 Every goose-rest call takes the context first: `rest::text(cx, 200, "ok")`,
 `rest::fail(cx, 404, "project_not_found")`, `rest::param_int(cx, "id")`. With the lookup,
 they'd read `cx.text(200, "ok")`, `cx.fail(404, "project_not_found")`, and
-`cx.param_int("id")`, which is what a reader of Actix or Axum expects.
+`cx.param_int("id")`, which is what a reader of Actix or Axum expects. A test that
+plays a lane writes `rest::wake(p)` for the `rest::Played` it got, where `p.wake()`
+fails the same way.
 
 Workaround: name the namespace, `rest::text(cx, ...)`.
 

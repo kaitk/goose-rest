@@ -20,13 +20,13 @@ fn letters(n: i64) -> u8[>..] {
     return text;
 }
 
-enum Waiting { None, Pieces }
+enum Use { None, Pieces }
 
-struct St { waiting: Waiting = Waiting.None, size: i64 = 0 }
+struct St { use: Use = Use.None, size: i64 = 0 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
-fn resume(w: Waiting.Pieces, cx) {
+fn resume(w: Use.Pieces, cx) {
     if cx.kind == http::BODY { cx.state.size += cx.body.len; }
     else if cx.kind == http::END { rest::text(cx, 201, str(cx.state.size)); }
 }
@@ -36,9 +36,9 @@ fn resume(w: Waiting.Pieces, cx) {
 // its length.
 fn route(cx, limit: i64) {
     if rest::resumed(cx) {
-        resume(cx.state.waiting, cx);
+        resume(cx.state.use, cx);
     } else if limit < 0 {
-        rest::body_in_pieces(cx, 1 << 20, Waiting.Pieces);
+        rest::body_in_pieces(cx, 1 << 20, Use.Pieces);
     } else {
         let data = rest::body(cx, limit);
         rest::text(cx, 200, str(data.len, " ", data[data.len - 1..]));

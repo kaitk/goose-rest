@@ -57,9 +57,9 @@ fn coded(format: i64, level: i64) -> u8[>..] {
     return z;
 }
 
-enum Waiting { None, Rows { rows: i64, stop: i64, fail: bool }, Download }
+enum Use { None, Rows { rows: i64, stop: i64, fail: bool }, Download }
 
-struct St { waiting: Waiting = Waiting.None, sent: i64 = 0, file: http::FileBody = http::FileBody { .. } }
+struct St { use: Use = Use.None, sent: i64 = 0, file: http::FileBody = http::FileBody { .. } }
 
 // What the case function saw, in order: M and the piece, C.
 struct App { calls: u8[>..]& }
@@ -71,12 +71,12 @@ fn piece(n: i64) -> u8[>..] {
     return t;
 }
 
-fn resume(w: Waiting.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
 
 // A piece at each MORE, then the end after w.rows. At w.stop the case
 // function neither sends nor ends, so the connection closes, as for a client
 // gone; with w.fail, piece 2 fails the route.
-fn resume(w: Waiting.Rows, cx) {
+fn resume(w: Use.Rows, cx) {
     if cx.kind == http::MORE {
         cx.state.sent++;
         format(cx.app.calls, "M", cx.state.sent, " ");
@@ -89,7 +89,7 @@ fn resume(w: Waiting.Rows, cx) {
     }
 }
 
-fn resume(w: Waiting.Download, cx) { rest::send_file(cx, cx.state.file); }
+fn resume(w: Use.Download, cx) { rest::send_file(cx, cx.state.file); }
 
 // A response begun inside rest::compressed, with piece 0 at once and rows
 // more at the MOREs, and what the case function saw.
@@ -99,10 +99,10 @@ fn streamed(text: const u8[:], rows: i64, content_type: const u8[:] = "text/csv"
     var app = App { calls: calls };
     let out = rest::serve_one(text, app, St { .. }) { cx =>
         if rest::resumed(cx) {
-            resume(cx.state.waiting, cx);
+            resume(cx.state.use, cx);
         } else {
             rest::compressed(cx) { cx =>
-                rest::begin(cx, 200, content_type, length, Waiting.Rows { rows: rows, stop: stop, fail: fail });
+                rest::begin(cx, 200, content_type, length, Use.Rows { rows: rows, stop: stop, fail: fail });
                 rest::send(cx, piece(0));
             };
         }

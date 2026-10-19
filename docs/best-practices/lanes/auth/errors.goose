@@ -6,6 +6,7 @@ import rest;
 
 enum Error { None, BadCredentials }
 
-// Fails the route with e's status and code, or returns for Error.None.
-fn check(e: Error.None, cx) {}
-fn check(e: Error.BadCredentials, cx) { rest::fail(cx, 401, "invalid_credentials"); }
+// Fails with e's status and code, or returns for Error.None: x is a route's
+// cx, or on a lane, the job's a, which fails the route that asked.
+fn check(e: Error.None, x) {}
+fn check(e: Error.BadCredentials, x) { rest::fail(x, 401, "invalid_credentials"); }

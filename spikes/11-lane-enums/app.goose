@@ -4,7 +4,6 @@
 import std;
 import http;
 import rest;
-import .proposal;
 import .entries;
 import .reports;
 import .auth;

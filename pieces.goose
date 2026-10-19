@@ -1,12 +1,15 @@
 // Bodies and responses in pieces, and upgraded connections: a route that
 // reads its body as it arrives (body_in_pieces), sends its response as the client
-// takes it, or takes the connection's bytes says so with a Waiting variant,
-// as rest::ask does, and serve calls the handler again for each event of
-// the exchange, rest::resumed, with cx.kind saying which (goose-http's
-// docs/patterns.md, "Request bodies" and "Long responses"):
+// takes it, or takes the connection's bytes says so with a variant of the
+// program's Use, which holds what the route needs at each call and goes in
+// cx.state.use, as a lane's mark does at rest::ask. serve calls the handler
+// again for each event of the exchange, rest::resumed, with cx.kind saying
+// which (goose-http's docs/patterns.md, "Request bodies" and "Long
+// responses"):
 //
+//   enum Use { None, Upload { project: i64 } }
 //   rest::serve(cfg, app, St { .. }) { cx =>
-//       if rest::resumed(cx) { rest::route(cx) { resume(cx.state.waiting, cx); }; } else { handle(cx); }
+//       if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 //   };
 //
 // A case function gets http::CLOSED once when the exchange ends before the
@@ -17,7 +20,7 @@ import std;
 import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f33873c8b2";
 
 // Reads the request's body in pieces as they arrive, up to limit bytes, with
-// w in cx.state.waiting. The route returns without an answer, and the
+// u in cx.state.use. The route returns without an answer, and the
 // handler is called again with http::BODY and each piece in cx.body, then
 // http::END, where the route answers. A body that came whole with its head
 // comes the same way, as one BODY, and an empty one as END alone. The
@@ -28,7 +31,7 @@ import http from "github.com/kaitk/goose-http@ff18ecc766651a4ff0143361413c81f338
 // the body is sent; a chunked body past it gets 413 and the connection
 // closes. Config.max_body caps limit. 500 body_already_read after
 // rest::body, and 500 not_served outside serve and serve_one.
-fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
+fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, u) {
     var x .= cx.ex;
     guard x else { fail(cx, 500, "not_served"); }
     guard x.limit == 0 else { fail(cx, 500, "body_already_read"); }
@@ -37,12 +40,12 @@ fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
     x.limit = limit;
     x.len = 0;
     x.mode |= RECEIVING;
-    cx.state.waiting = w;
+    cx.state.use = u;
 }
 
 // Begins a response sent in pieces, with status, a Content-Type of
 // content_type unless it's empty, and a body of length bytes, or -1 for one
-// of a length not known yet, chunked. w goes in cx.state.waiting, and the
+// of a length not known yet, chunked. u goes in cx.state.use, and the
 // handler is called again with http::MORE each time the client has taken
 // what was sent, and sends the next piece with rest::send, until rest::end.
 // A piece of about 16 KB each time keeps within Config.max_queued. A
@@ -53,7 +56,7 @@ fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, w) {
 // alone, and no calls. Begun after rest::body_in_pieces, the pieces of the body
 // still come, then MORE once it has ended. Inside rest::compressed, a
 // response of a type worth compressing is compressed (compression.goose).
-fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], length: i64, w) {
+fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], length: i64, u) {
     var x .= cx.ex;
     var begun = false;
     if x { begun = begin_coded(x, cx.out, cx.req, status, content_type, length); }
@@ -65,7 +68,7 @@ fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], leng
         http::end(cx.out);
         return;
     }
-    cx.state.waiting = w;
+    cx.state.use = u;
     guard x else { return; }
     x.mode |= SENDING;
 }
@@ -142,7 +145,7 @@ fn release_coded(x, fd: i32) {}
 // with ETag, Last-Modified, and Accept-Ranges, and a Content-Type of
 // content_type, or by path's extension when it's empty
 // (http::content_type_of). body, a field of the request state, holds
-// what is left to send, and w goes in cx.state.waiting: the case function
+// what is left to send, and u goes in cx.state.use: the case function
 // calls rest::send_file(cx, body) for each call, which sends the rest and
 // closes the file. A response with nothing to send, as for HEAD or 304,
 // gets no calls. Fails with 404 file_not_found for no file, or a
@@ -150,7 +153,7 @@ fn release_coded(x, fd: i32) {}
 // file_unreadable. Inside rest::compressed, the file goes as it is: coded on
 // the fly, it would lose its Content-Length, its ranges, and the loop's
 // sendfile.
-fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, w, content_type: const u8[:] = "") {
+fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, content_type: const u8[:] = "") {
     let f, status = http::open_file(path);
     if status == 404 { fail(cx, 404, "file_not_found"); }
     if status == 403 { fail(cx, 403, "forbidden"); }
@@ -158,24 +161,24 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, w, 
     http::serve_file(cx.req, cx.out, f, if content_type.len > 0 { content_type } else { http::content_type_of(path) },
                      body);
     guard cx.out.stream.open else { return; }
-    cx.state.waiting = w;
+    cx.state.use = u;
     var x .= cx.ex;
     guard x else { return; }
     x.mode |= SENDING;
 }
 
 // Answers 101 and switches the connection to protocol (http::upgrade), with
-// w in cx.state.waiting. The handler is called again with http::BODY and the
+// u in cx.state.use. The handler is called again with http::BODY and the
 // client's bytes in cx.body as they arrive, with no END and no limit, and
 // writes with rest::send, bytes as they are, until rest::end closes the
 // connection. It gets http::CLOSED once if the client closes first, or the
 // route fails. http::upgrade_of(cx.req) says what the request asks to switch
-// to. A route that then waits on another thread (rest::ask) gets the bytes
-// that come meanwhile in the case function of the ask's variant, and sets
-// cx.state.waiting back to w's to get them where they went before.
-fn upgrade<S, A, R>(cx: Cx<S, A, R>&, protocol: const u8[:], w) {
+// to. A route that then waits on a lane (rest::ask) gets the bytes that come
+// meanwhile in the resume of the lane's mark, and sets cx.state.use back to
+// u's to get them where they went before.
+fn upgrade<S, A, R>(cx: Cx<S, A, R>&, protocol: const u8[:], u) {
     http::upgrade(cx.out, protocol);
-    cx.state.waiting = w;
+    cx.state.use = u;
     var x .= cx.ex;
     guard x else { return; }
     x.mode |= UPGRADED;
