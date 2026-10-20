@@ -107,9 +107,10 @@ session() {
     check_repo "$root"
     check_repo "$gh"
     # goose-rest builds against the pinned tag; goose-http's measured build is
-    # its HEAD, so they must be the same code. Scripts and records may differ.
+    # its HEAD, so they must be the same code. Scripts, tests, and records may
+    # differ.
     ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/rest.goose" | head -1)
-    git -C "$gh" diff --quiet "$ref" HEAD -- . ':!bench/results' ':!bench/*.sh' ':!*.md' ||
+    git -C "$gh" diff --quiet "$ref" HEAD -- . ':!bench/results' ':!bench/*.sh' ':!test' ':!*.md' ||
         { echo "bench/all.sh: goose-http's code differs from $ref; tag a release and move the pin"; return 1; }
     wait_idle
     {
