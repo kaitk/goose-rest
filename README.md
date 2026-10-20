@@ -34,7 +34,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool`, and multipart fields and files of a gathered body through `rest::part`, `rest::part_int`, `rest::part_bool`, and `rest::file_part` ([reference](docs/reference.md#3-extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
 | 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
 | 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
-| 🟢 | Errors | JSON with an error code and a customizable format ([reference](docs/reference.md#5-errors)). |
+| 🟢 | Errors | JSON with an error code, a customizable format and media type, and an RFC 9457 preset ([reference](docs/reference.md#5-errors)). |
 | 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/11-waiting.md)). A lane of several threads takes each job on its least busy thread ([best practices](docs/best-practices/lanes.md#66-lanes-of-several-threads)). |
 | 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#6-testing)). |
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |

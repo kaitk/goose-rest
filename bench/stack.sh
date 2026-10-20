@@ -7,6 +7,7 @@
 #   item   GET /api/items/42 on tier A, then on tier M, which is tier A inside
 #          rest::timed, rest::cors, and rest::bearer: the difference is the stack
 #   post   POST /api/items/7 with a JSON body, on tiers A and M the same way
+#   error  GET /api/items/0 on tier A, answered with 404 item_not_found
 #
 # One worker on http::serve_epoll over kqueue, wrk -t 8 -c 256 -d D, each
 # connection pipelined 16 deep, as bench/routes.sh's h2load -m 16 is: unpipelined,
@@ -67,7 +68,8 @@ cells='json f
 item a
 item m
 post a
-post m'
+post m
+error a'
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
     "macOS $(sw_vers -productVersion), Darwin $(uname -r), $(wrk -v 2>&1 | head -1 | cut -d' ' -f1-2)," \
@@ -83,8 +85,13 @@ for run in $(seq "$runs"); do
             >"$tmp/wrk" 2>&1 || { cat "$tmp/wrk" >&2; exit 1; }
         stop
         busy=$retired
-        if grep -q 'Non-2xx\|Socket errors' "$tmp/wrk"; then
-            echo "$name $tier: not every response was 2xx" >&2
+        if ! awk -v c="$name" '
+            /requests in/ { n = $1 }
+            /Non-2xx or 3xx responses/ { errors = $NF }
+            /Socket errors/ { sockets = 1 }
+            END { exit sockets || n == 0 || errors != (c == "error" ? n : 0) }
+        ' "$tmp/wrk"; then
+            echo "$name $tier: unexpected response or socket errors" >&2
             cat "$tmp/wrk" >&2
             exit 1
         fi

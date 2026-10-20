@@ -2,8 +2,9 @@
 -- /json with its 159-byte object; item, tier M's GET /api/items/42 with its
 -- bearer token, Accept-Encoding, and Origin; or post, tier M's POST
 -- /api/items/7 with its 51-byte body, token, and Origin.
+-- error is GET /api/items/0, answered with 404 item_not_found on tier A.
 --
---   wrk -t 8 -c 256 -d 10 -s bench/stack/pipelined.lua http://127.0.0.1:PORT -- json|item|post
+--   wrk -t 8 -c 256 -d 10 -s bench/stack/pipelined.lua http://127.0.0.1:PORT -- json|item|post|error
 
 local token = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
     .. "eyJzdWIiOiI0MiIsImV4cCI6MTc5MDAwMDAwMH0." .. string.rep("x", 70)
@@ -22,8 +23,10 @@ function init(args)
     elseif args[1] == "post" then
         one = wrk.format("POST", "/api/items/7", { ["Content-Type"] = "application/json",
             ["Authorization"] = token, ["Origin"] = origin }, '{"name":"bench-updated","price":250,"quantity":10}')
+    elseif args[1] == "error" then
+        one = wrk.format("GET", "/api/items/0")
     else
-        error("pipelined: the request is json, item, or post")
+        error("pipelined: the request is json, item, post, or error")
     end
     req = string.rep(one, 16)
 end

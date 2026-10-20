@@ -126,10 +126,14 @@ request path quickly, run only its servers, once, at a tenth of the requests, in
 SERVERS="gen60 hand60" RUNS=1 N=200000 bench/routes.sh
 ```
 
-`bench/stack.sh` counts a JSON body and the middleware stack the same way, with wrk
+`bench/stack.sh` counts a JSON body, the middleware stack, and a 404 error the same way, with wrk
 pipelined 16 deep, in about 3 minutes (`RUNS=1 D=3` for a quick check). It needs the
 datasets goose-http's `bench/rest.sh build` writes, in the goose-http checkout's
 `build/rest` unless `REST_DATA` names another folder.
+
+The current server fails to link on macOS because it calls glibc's `mallopt` during
+startup. `bench/stack.sh` therefore stops before taking counts
+([known issue](../docs/known-issues.md#the-rest-benchmark-on-macos)).
 
 ## Results
 

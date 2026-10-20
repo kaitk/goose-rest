@@ -1063,7 +1063,31 @@ fn write_error(out: http::Reply, st, status: i32, code: const u8[:], detail: con
     if allow.len > 0 { http::field(out, "Allow", allow); }
     if challenge.len > 0 { http::field(out, "WWW-Authenticate", challenge); }
     if retry_after.len > 0 { http::field(out, "Retry-After", retry_after); }
-    http::finish(out, http::JSON, body);
+    http::finish(out, error_type(st), body);
+}
+
+// finish's fields for errors, selected by the request state's type as
+// error_body is. The default stays a compile-time constant.
+inline fn error_type(st) -> const u8[:] { http::JSON }
+
+// RFC 9457's about:blank problem, using the response's own reason phrase.
+// The hook has no request path, so instance is left to a program's writer.
+fn problem_body(body: u8[>..]&, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
+    let line = http::status_line(status);
+    let title = if line.len > 0 { line[13..^2] } else { "" };
+    body.append("{\"type\":\"about:blank\",\"title\":");
+    http::json_string(body, title);
+    body.append(",\"status\":");
+    format(body, status);
+    if detail.len > 0 {
+        body.append(",\"detail\":");
+        http::json_string(body, detail);
+    }
+    if at >= 0 {
+        body.append(",\"at\":");
+        format(body, at);
+    }
+    body.push('}');
 }
 
 // The error shape: {"error": code}, with "detail" when detail isn't empty,

@@ -1,0 +1,38 @@
+HTTP/1.1 404 Not Found
+Content-Type: application/problem+json
+Content-Length: 55
+
+{"type":"about:blank","title":"Not Found","status":404}
+HTTP/1.1 405 Method Not Allowed
+Allow: GET, HEAD
+Content-Type: application/problem+json
+Content-Length: 64
+
+{"type":"about:blank","title":"Method Not Allowed","status":405}
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer
+Content-Type: application/problem+json
+Content-Length: 58
+
+{"type":"about:blank","title":"Unauthorized","status":401}
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer error="invalid_token"
+Content-Type: application/problem+json
+Content-Length: 58
+
+{"type":"about:blank","title":"Unauthorized","status":401}
+HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+Content-Length: 80
+
+{"type":"about:blank","title":"Bad Request","status":400,"detail":"id: integer"}
+HTTP/1.1 409 Conflict
+Content-Type: application/problem+json
+Content-Length: 54
+
+{"type":"about:blank","title":"Conflict","status":409}
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+Content-Length: 21
+
+{"error":"not_found"}

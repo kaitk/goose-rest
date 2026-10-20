@@ -327,6 +327,32 @@ replying (spike 11, in `waiting.goose` since 2026-10-19), and the reference and 
 practices warn against a catch-all. A catch-all that replies, or any catch-all
 `resume`, still goes unnoticed.
 
+### Goose code has no target-platform constant
+
+Found and checked on `f114b5ac52cfad4bc73038aede53ac7e470b0ad3`, the pin in
+`scripts/goose.sh` (2026-10-20). Status: open
+
+Neither the builtins nor `stdlib/os.goose` exposes a target OS at compile time.
+The benchmark server calls glibc's `mallopt` during startup, so this reduced program
+links on glibc Linux and fails on macOS:
+
+    extern fn mallopt(param: i32, value: i32) -> i32;
+    fn main() { mallopt(-3, 131072); }
+
+    Undefined symbols for architecture arm64:
+      "_mallopt", referenced from: _main
+
+Expected: a compile-time target value that lets the compiler omit a foreign call on
+a platform without that symbol. A runtime check leaves the symbol to link.
+
+`docs/packages.md` §3 offers platform-specific `.build` entries such as
+`c_sources_linux` and `c_defines_macos`, and `-D` defines C macros. These select C
+build inputs, not Goose source. Checked against `src/builtins.h`,
+`stdlib/os.goose`, `src/packages.h`, and the specification.
+
+Workaround: none within a change limited to the benchmark's `main.goose`, with no C
+and identical Linux output. The macOS instruction-count run remains blocked.
+
 ### A function called once isn't inlined past a size
 
 Found on `a6249a4`. Status: open, reported as

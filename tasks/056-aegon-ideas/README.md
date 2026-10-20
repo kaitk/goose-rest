@@ -31,7 +31,7 @@ trades memory for rate.
 |---|---|---|---|
 | Shorter routes | A 10-line hello world | About 17 lines: an explicit `rest::otherwise`, and `rest::on` with `rest::route` | 01 |
 | Every violation in one answer | 422 with a map of JSON paths such as `items[1].quantity` | The first error, as `invalid_body` with `detail` and `at` | 02 |
-| RFC 9457 problem details | `ctx.problem()`, and problem+json for every built-in error | A customizable format, with no preset | 03 |
+| RFC 9457 problem details | `ctx.problem()`, and problem+json for every built-in error | A preset through request-state overloads; the default error path compiles to identical machine code | 03 |
 | More auth schemes, and role guards | Basic, API key, and cookie beside bearer; optional auth; `require_role` and `require_any_role` | Bearer only | 04 |
 | JWT | Signing and verification; HS, RS, PS, and ES; JWKS served and consumed; a denylist | None; the README lists it ⚪ | 05 |
 | Security headers | `security_headers()` with `defaults()` and `api()` presets | HTML and API presets prepared at setup and selected per request; instruction counts pending | 06 |

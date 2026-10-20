@@ -706,6 +706,46 @@ fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const
 }
 ```
 
+To use [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457.html),
+have that overload call `rest::problem_body`, and select the media type with
+`rest::error_type` for the same state type:
+
+```rust
+fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32, code: const u8[:],
+                    detail: const u8[:], at: i64) {
+    rest::problem_body(body, status, code, detail, at);
+}
+
+fn rest::error_type(st: const app::St&) {
+    "Content-Type: application/problem+json\r\nContent-Length: "
+}
+```
+
+Both overloads resolve at compile time. They apply to every error in the table,
+including `rest::fail` and errors answered at later calls. Programs without the
+overloads keep the default body and `application/json`.
+`error_type` returns the fields `http::finish` takes, ending in `Content-Length: `;
+its default returns `http::JSON`. The status line, `Allow`, `WWW-Authenticate`, and
+`Retry-After` stay the same.
+
+| Input | Problem member |
+|---|---|
+| Constant | `type` is always `"about:blank"` |
+| `status` | `status`, a number, and `title`, the reason phrase goose-http uses for that status; an unlisted status has an empty title |
+| `detail` | `detail`, unchanged, when not empty |
+| `at` | `at`, an extension member, when not negative; still a byte offset in the body |
+| `code` | Accepted by the helper but not written |
+
+For example, a reader's error becomes:
+
+```json
+{"type":"about:blank","title":"Bad Request","status":400,"detail":"name: maxLength","at":31}
+```
+
+The preset omits the optional `instance`: the hook has no request path, including
+for delayed errors. A program that needs it can write its own `error_body` overload
+using an instance it keeps in its request state.
+
 ## 6. Testing
 
 | Call | Answers |

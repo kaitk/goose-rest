@@ -96,6 +96,11 @@ What `bench/rest.sh check` met on macOS (2026-10-14):
   io_uring, Goose built from source by `scripts/goose.sh`, and goose-http's datasets in
   `GOOSE_HTTP`'s `build/rest`. `bench/rest.sh` needs `nc` (`netcat-openbsd`), which the
   base image lacks.
+- `bench/stack.sh` builds that same server and fails to link before counting
+  instructions (checked again 2026-10-20). The pinned Goose has no target-platform
+  constant in its source language; its platform-specific `.build` entries select C
+  build inputs. A fix limited to the benchmark's `main.goose`, with no C and unchanged
+  Linux output, isn't available ([finding](goose-findings.md#goose-code-has-no-target-platform-constant)).
 
 ## ARM under Docker
 

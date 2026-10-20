@@ -1,0 +1,6 @@
+HTTP/1.1 404 Not Found
+status: 404
+HTTP/1.1 422 Unprocessable Content
+status: 422
+HTTP/1.1 499
+status: 499
