@@ -11,7 +11,7 @@
 //   curl -s --compressed -D - 'localhost:8080/v1/events?limit=100'
 //   curl -s --compressed -D - 'localhost:8080/v1/export?limit=1000'
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.1";
+import http from "github.com/kaitk/goose-http@v0.4.2";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import rest from "../../";
 import rest.compression;

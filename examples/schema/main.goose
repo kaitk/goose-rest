@@ -9,7 +9,7 @@
 //   curl -s 'localhost:8080/v1/projects?limit=10'
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.4.1";
+import http from "github.com/kaitk/goose-http@v0.4.2";
 import rest from "../../";
 import .api_gen;
 import .app;

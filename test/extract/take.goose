@@ -3,7 +3,7 @@
 // type, a body the reader refuses, and trailing input.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.4.1";
+import http from "github.com/kaitk/goose-http@v0.4.2";
 import rest from "../../";
 import expect from "../";
 import expect.gen.api_gen;
