@@ -22,11 +22,6 @@ Traps met while writing the generator and its tests (2026-10-13):
 
 ## Tests
 
-- A sandboxed macOS run couldn't resolve external hosts, and SSH stopped with
-  `No user exists for uid 501` (2026-10-20). Cached compiler and package sources
-  allowed local builds, but fetching `origin` and reading uncached web pages still
-  required working network access. A rebase onto the cached `origin/main` alone
-  doesn't establish that it includes the remote's latest commits.
 - `examples/device` reads its fake sysfs from `build/examples/` and takes paths of up to
   1 KB, so a checkout deeper than that fails its run as "no answer on port", with
   "THERMAL is too long" in `build/examples/device.log`.
