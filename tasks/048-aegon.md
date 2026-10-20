@@ -40,7 +40,10 @@ should lose on memory by a wide margin and lead on rate. HttpArena's memory bonu
 
 ## Ideas to study
 
-Each is a claim from Aegon's README or source, to measure before adopting:
+Each is a claim from Aegon's README or source, to measure before adopting. Task 054
+(2026-10-20) sets which ideas goose-rest takes, and goose-http's task 056 which engine
+ideas it measures; multishot accept and receive with provided buffer rings are in
+goose-http already.
 
 - io_uring multishot accept and receive with provided buffer rings
   (`io_uring_setup_buf_ring`). Check what goose-http's `uring.goose` uses; a change
