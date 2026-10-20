@@ -45,9 +45,9 @@ Work can start at any point unless the table says otherwise.
 
 | Open work | Remaining outcome or dependency |
 |---|---|
-| 019: serialized JSON | The loss is gone on Linux (2026-10-20); the cause's instruction count needs a header option in `bench/count.sh`, or the criterion dropped. |
+| 058: uploads beside forms | goose-rest serves 11-12% fewer uploads and forms than goose-http alone when both run, and holds 17 MB more on epoll; find the cause. |
 | 020: memory | Done on Linux (2026-10-20); stays here while task 027 uses its method. |
-| 023: bodies and responses in pieces | Built and counted on Linux (2026-10-20): 1.5-15.5 instructions per request more for a program that uses none of it; waits on agreeing that cost. |
+| 023: bodies and responses in pieces | Done (2026-10-20); three follow-ups under its "Left open": compression in pieces, `TIMEOUT` after a begun response, and precompressed files. |
 | 025: middleware fields on later answers, and 029: the gathering budget | Done; tier M's instructions per request on Linux record what each added. |
 | 040: rate gaps in the v0.1.0 session | The router's stack frame fixed; open for discussion: goose-rest's per-request overhead on tiers A and M, and a hand-written chain's frame. |
 | 036: parameters in a scope's prefix | Research; the best practices' member audience waits on it. |

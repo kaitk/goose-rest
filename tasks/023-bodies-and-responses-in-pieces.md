@@ -1,7 +1,7 @@
 # 023: Read a body and send a response in pieces
 
-Status: built (2026-10-15); instruction counts open (found 2026-10-15; proposal agreed
-2026-10-15). The `Waiting` enum below is the program's `Use` since task 050
+Status: done (found 2026-10-15; proposal agreed 2026-10-15; its cost on Linux agreed
+2026-10-20). Three follow-ups remain under "Left open". The `Waiting` enum below is the program's `Use` since task 050
 (2026-10-19).
 
 `rest::receive`, as the proposal below names it, is `rest::body_in_pieces` (2026-10-15):
@@ -349,8 +349,9 @@ The proposal and its build plan are agreed, with these answers:
       and gets `CLOSED` once when it ends early
 - [x] A route sends a response in pieces as the loop calls for more, and a file
 - [x] A route takes an upgraded connection's bytes under `rest::serve`
-- [ ] Instruction counts of tiers A and M and the inlining checks show no change for a
-      program that uses none of this, or the change is recorded and agreed
+- [x] Instruction counts of tiers A and M and the inlining checks show no change for a
+      program that uses none of this, or the change is recorded and agreed (agreed
+      2026-10-20: 1.5 to 15.5 instructions a request, below)
 - [x] The tutorial's pages 11 and 12, each with a program `scripts/test.sh` builds and
       requests, and the index links them
 - [x] The architecture doc, the reference, and the README's status rows say what works
@@ -375,12 +376,12 @@ Built as proposed, with these differences found on the way:
   passes, and its C differs only in names and in `rest::route`'s failure branch, which
   now cuts an open response short. The calls added in steps 3 to 6 change no program
   that doesn't use them: the C is the same apart from an error code's string.
-- Measured on Linux 2026-10-20, below; the open criterion waits on agreeing to the
-  change.
+- Measured on Linux 2026-10-20, below, and the cost agreed the same day.
 - Left open: `rest.compression` doesn't compress a response sent in pieces (section 6:
   its own `begin`, `send`, and `end`, with the `http::Compressed` in the program's
   state); `TIMEOUT` to a route that began a response (answer 3); `rest::file` from
-  `http::open_precompressed`; tier D's server on `rest::receive` (step 9).
+  `http::open_precompressed`. Tier D's server reads its bodies in pieces since task
+  021 (`9009486`).
 
 ## Measured on Linux (2026-10-20)
 
@@ -410,5 +411,6 @@ places ("Built"). A program that uses none of this pays 1.5 to 3.5 instructions 
 an answered request and 15.5 on a 401 from middleware, at most 0.4%. `bare`, the same
 binary with goose-http's own router (`BARE=1`), pays 12.0 though it doesn't go
 through `rest::route`; code layout is a likely cause, not measured. The inlining check
-passed at `62c340d` (the nightly's `scripts/test.sh`, 2026-10-20). The criterion
-needs this cost agreed, or the 401 path's extra 12 instructions explained.
+passed at `62c340d` (the nightly's `scripts/test.sh`, 2026-10-20). The cost was
+agreed on 2026-10-20, the 401 path's extra 12 instructions unexplained, as too small
+to chase.

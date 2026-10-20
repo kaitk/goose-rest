@@ -1,7 +1,7 @@
 # 019: Close the serialized JSON loss against goose-http
 
-Status: in-progress (asked for 2026-10-15; the package's half is done, the Linux rerun
-shows the loss gone (2026-10-20), and the cause's instruction count is open)
+Status: done (asked for 2026-10-15; the Linux rerun shows the loss gone, and the
+cause's count was dropped, 2026-10-20)
 
 On tiers B and C serialized, goose-rest's tier server loses 8-15% to goose-http's, and
 tier C takes 74.9 µs of CPU per request against 64.2
@@ -55,9 +55,10 @@ output did. The tier server passes goose-http's `check.py` on tiers A to D and
 
 ## Acceptance criteria
 
-- [ ] The cause is measured, with instruction counts on tier B or C's serialized routes
-      (open: goose-http's `bench/count.sh` sends no cookie or bearer token, so B and C
-      answer 401 to it; see "On Linux")
+- [x] ~~The cause is measured, with instruction counts on tier B or C's serialized
+      routes~~ Dropped 2026-10-20, with the loss gone ("On Linux"): goose-http's
+      `bench/count.sh` sends no cookie or bearer token, so counting B and C would need
+      a new option for nothing left to fix
 - [x] The fix is in the generated writers or the package, so programs get it, and
       `scripts/test.sh` passes
 - [x] Tiers B and C serialized rerun on Linux against goose-http alone, recorded in
@@ -78,6 +79,4 @@ against goose-http alone, serialized:
 Tier C's CPU per request is 63.3 against 63.2 µs on io_uring and 65.3 against 65.0 on
 epoll, where it was 74.9 against 64.2. The loss is gone. Task 020's fix 1 changed the
 tier server's records in the same span, so the rerun alone doesn't show which change
-closed it. The open criterion needs a header option in `bench/count.sh`, or perf
-over a `tier-b.lua` run, at a commit before `ed7ebfc` and one after it. With the loss
-gone, the criterion could be dropped instead; that is the user's call.
+closed it, and that criterion was dropped rather than measured.
