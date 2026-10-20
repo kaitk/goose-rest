@@ -38,12 +38,14 @@
 //   POST  /api/v3/bookings/batch                 JSON: each booking's id, or 422 with the errors
 //   POST  /api/v3/forms                          a form: its fields, decoded
 //
-//   REST_DATA=DIR TIER=a|b|c|d WORKERS=n [LOOP=epoll] [JSON=template] rest [port]
+//   REST_DATA=DIR TIER=a|b|c|d WORKERS=n [LOOP=epoll] [JSON=template] [SECURITY=1] rest [port]
 //
 // TIER picks the dataset to load, tier A's by default. JSON=template answers
 // from each record's JSON, written once at startup, with the per-request
 // values added, where the default writes each response's JSON from the
 // records. Tier D's answers are written the one way, as each is new.
+// SECURITY=1 wraps tier A's routes in security_headers with the API preset,
+// prepared once per worker at startup.
 //
 // The records, their JSON, and tier D's work on a body are goose-http's
 // bench/rest/goose/app.goose, which goose-http's own server serves too; this
@@ -915,9 +917,20 @@ thread_fn worker_r(cfg: http::Config, epoll: bool, generated: bool) {
     else { stopped(rest::serve(cfg) { cx => tier_r(cx, generated) }); }
 }
 
-thread_fn worker_a(cfg: http::Config, epoll: bool, stack: bool) {
+thread_fn worker_a(cfg: http::Config, epoll: bool, stack: bool, security: bool) {
     take_set();
-    if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_a(cx, stack) }); }
+    if security && !stack {
+        let prepared = rest::prepare_security_headers(rest::security_api());
+        if epoll {
+            stopped(rest::serve_epoll(cfg) { cx =>
+                rest::security_headers(cx, prepared) { tier_a(cx, false); };
+            });
+        } else {
+            stopped(rest::serve(cfg) { cx =>
+                rest::security_headers(cx, prepared) { tier_a(cx, false); };
+            });
+        }
+    } else if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_a(cx, stack) }); }
     else { stopped(rest::serve(cfg) { cx => tier_a(cx, stack) }); }
 }
 
@@ -1043,6 +1056,8 @@ fn main() {
     let bare = env("BARE", choice) && choice == "1";
     choice.clear();
     let generated = env("ROUTER", choice) && choice == "gen";
+    choice.clear();
+    let security = env("SECURITY", choice) && choice == "1";
     let writes = tier == "d";
     var workers: u8[>..] = [];
     var n: i64 = 0;
@@ -1066,7 +1081,7 @@ fn main() {
                  else if tier == "r" { thread_spawn(worker_r, cfg, epoll, generated) }
                  else if tier == "b" { thread_spawn(worker_b, cfg, epoll) }
                  else if tier == "c" || writes { thread_spawn(worker_c, cfg, epoll, writes) }
-                 else { thread_spawn(worker_a, cfg, epoll, tier == "m") });
+                 else { thread_spawn(worker_a, cfg, epoll, tier == "m", security) });
     }
     thread_wait(giving);
     for id in ids { thread_wait(id); }
