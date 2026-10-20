@@ -52,7 +52,7 @@ Measure A again if Goose inlines a function value called once whatever its size,
 the two changes proposed in [aardappel/goose#33](https://github.com/aardappel/goose/issues/33):
 A's cost is the calls left around the 60-route block, which passes the size limit for a
 function called once, not the design. That limit is deliberate, so A waits on that
-change rather than on a release. B stays rejected for its signatures.
+change rather than on a release; task 057 proposes it. B stays rejected for its signatures.
 
 Found along the way: Goose inlines a function called in a block whose arm ends in a
 `return` only below half the usual size
