@@ -1,4 +1,4 @@
-# 054: What to take from Aegon
+# 056: What to take from Aegon
 
 Status: todo. The verdicts below were set 2026-10-20; each subtask holds one idea.
 
