@@ -68,5 +68,6 @@ unless the table says otherwise.
 | 053: a contained scope in Goose | A design note only; not proposed until 051 has run in an application. |
 | 048: Aegon in the REST benchmark | Built and checked on the desktop, without tier D; the nightly run measures it. |
 | 049: ACME | A package of its own; waits on goose-tls's tasks 001 and 003. |
+| 054: tier C templated's cost at v0.2.0 | Bisected to code layout and goose-http `v0.4.0`'s loops; a deterministic layout and the loops' cost remain. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |
