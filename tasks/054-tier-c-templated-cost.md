@@ -1,6 +1,7 @@
 # 054: tier C templated's cost at v0.2.0
 
-Status: todo (found 2026-10-20)
+Status: in-progress (found 2026-10-20; the bearer check fixed 2026-10-20, goose-http's
+part open)
 
 The nightly sessions measured goose-rest's tier C templated at 148 K req/s on io_uring
 and 138 K on epoll on 2026-10-18 (`e478ca2`, goose-http `v0.3.7`, Goose `v2026.2`), and
@@ -49,20 +50,66 @@ A bisect of `main`'s first parents on `/api/v2/clients/7`'s cycles on epoll (bad
   fell, 7,351 → 7,135 and 6,265 → 5,749. So the instructions are goose-http's loops'
   (goose-http's task 055 covers its `v0.4.0` costs), and the cycles again its layout.
 
-## Ideas
+## What moved: the bearer check's byte loops
 
-- Make the layout deterministic: align hot code in the C Goose generates, or let a
-  build pass C flags, so a change elsewhere doesn't move a request's cost by 15%. Aligned
-  builds cost about 3% more cycles here than the luckiest layout, and take away a 13-15%
-  lottery. A Goose feature request for `docs/goose-findings.md`, with this measurement.
-- Measure the benchmark servers aligned beside the default builds, to see how much of
-  the nightly's tier-to-tier movement is layout.
-- Find which of goose-http's `v0.4.0` loop changes adds the ~330 instructions per
-  request on epoll (TLS in the epoll loop is a candidate), with goose-http's task 055.
+As goose-http's task 033 found for JSON, the layout matters through one kind of code: a
+loop that takes a byte at a time. `perf record -e cycles:u` on `/api/v2/clients/7`, the
+epoll loop, one worker, 200,000 requests, with each server built through a `gcc`
+wrapper that adds `-g` (the `.text` bytes are the default build's, checked), puts the
+top of every build in the bearer check: tier C's tokens are 560 bytes, and each
+request scans them twice a byte at a time, in goose-http's `is_token68`, inside
+`http::bearer`, and in the benchmark server's `is_base64url`, behind `jwt_shaped`
+(`bench/rest/goose-rest/main.goose`), with `http::field_at`'s scan of the header lines
+beside them. Share of the samples, each address resolved with `addr2line` to its
+outermost function (perf resolves none under WSL):
+
+| Build | `is_base64url` | `http::bearer` (`is_token68`) | `http::field_at` |
+|---|---:|---:|---:|
+| `09a07a0`, `e2eeb2b`'s parent | 21.2% | 19.9% | 8.9% |
+| `e2eeb2b` | 27.1% | 20.3% | 12.5% |
+| `96c65eb`, `main` at goose-http `v0.4.1` | 29.4% | 16.0% | 13.9% |
+
+`e2eeb2b` changed no line of them; it moved them.
+
+**Fixed (2026-10-20):** `jwt_shaped` checks the token with std's `find_any`, which the
+runtime runs 16 bytes at a time: one scan for a byte that is neither base64url nor
+`.`, and three for the dots, against a `ByteSet` built once. Counted as above, on the
+default builds, two runs each:
+
+| Route | Loop | `96c65eb`: instructions, cycles per request | With the fix |
+|---|---|---:|---:|
+| `/api/v2/clients/7` | epoll | 23,543; 10,998-11,218 | 17,440 (-25.9%); 8,454-8,476 (-23.8%) |
+| `/api/v2/clients/7` | io_uring | 23,571; 9,645-9,807 | 17,468 (-25.9%); 6,783-6,805 (-30.1%) |
+| `/api/v2/schedule/version?since=0` | epoll | 22,253; 11,013 | 16,150 (-27.4%); 7,975 (-27.6%) |
+| `/api/v2/schedule/version?since=0` | io_uring | 22,197; 9,583 | 16,094 (-27.5%); 6,543 (-31.7%) |
+
+Every request answered 200 with the same bytes, and goose-http's `check.py` passes
+tiers C and D. Tier C templated's load at saturation (4 workers on CPUs 0-3, wrk with 8
+threads and 256 connections and `tier-c.lua` on CPUs 4-15, three 8 s runs after 3 s, two
+rounds interleaved): io_uring 137.0-140.4 K → 141.8-144.9 K req/s (+4.2% at the
+medians), epoll 128.0-129.6 K → 134.1-136.8 K (+4.6%). Beside it in the same way,
+goose-http alone ran 147.7-149.0 K on io_uring and 136.9-139.5 K on epoll: goose-rest
+is 2.1-2.5% behind, against 7.1-8.4% in the nightly of 2026-10-19.
+
+## For goose-http
+
+- `http::bearer`'s `is_token68` takes a token a byte at a time: 16.0-20.3% of a tier C
+  request's cycles on goose-rest. A `find_any` over a token68 `ByteSet`, then the
+  trailing `=`s, would do it 16 bytes at a time. goose-http alone's REST server doesn't
+  call it, which is most of the 2.1-2.5% that remains.
+- goose-http's REST server checks the same JWT shape with its own byte loop
+  (`bench/rest/goose/rest.goose`, `is_base64url`). Both Goose servers are to do the same
+  work outside the framework (`bench/README.md`), so it needs this fix too before the
+  next comparison; until then goose-rest's tier C cells gain from it alone.
+- The ~330 more instructions per request on epoll at `v0.4.0`: still to trace in
+  goose-http's loops.
 
 ## Acceptance criteria
 
-- [ ] goose-rest's tier C templated back within 5% of goose-http alone, or the gap that
-      remains recorded with its cause
-- [ ] A Goose finding for code layout recorded, with the aligned and default counts
+- [x] goose-rest's tier C templated back within 5% of goose-http alone, or the gap that
+      remains recorded with its cause: 2.1-2.5% in short runs, most of it `is_token68`
+- [ ] ~~A Goose finding for code layout recorded, with the aligned and default counts~~
+      Set aside (2026-10-20): the layout moved byte loops, which `find_any` replaces;
+      goose-http's task 033 decided against building with alignment flags
 - [ ] The epoll loop's extra instructions at goose-http `v0.4.0` traced to their change
+- [ ] goose-http's REST server and `is_token68` scan 16 bytes at a time, recorded there
