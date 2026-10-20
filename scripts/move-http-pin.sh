@@ -2,7 +2,9 @@
 # Moves the goose-http pin: replaces the reference rest.goose imports with
 # REF in every tracked file that has it. The spikes' READMEs, which name the
 # commit their output was checked on, are updated by hand once
-# scripts/test.sh passes (AGENTS.md, "Move the goose-http pin").
+# scripts/test.sh passes (AGENTS.md, "Move the goose-http pin"). README.md's
+# quick start and tutorial page 01 name the latest release pair, which moves
+# with a release, so they're left alone.
 #
 #   scripts/move-http-pin.sh REF   (a release tag or a full 40-hex commit)
 set -eu
@@ -18,11 +20,12 @@ old=$(sed -n 's|.*import http from "github.com/kaitk/goose-http@\([^"]*\)";.*|\1
 
 cd "$root"
 # perl rewrites only the hash's bytes, so each file keeps its line endings.
-git grep -l -F "goose-http@$old" | while read -r f; do
+pair=":!README.md :!docs/tutorial/01-running.md"
+git grep -l -F "goose-http@$old" -- . $pair | while read -r f; do
     OLD_HTTP_REF=$old NEW_HTTP_REF=$new perl -pi -e \
         's/(goose-http\@)\Q$ENV{OLD_HTTP_REF}\E/$1$ENV{NEW_HTTP_REF}/g' "$f"
 done
 
-left=$(git grep -l -F "goose-http@$old" || true)
+left=$(git grep -l -F "goose-http@$old" -- . $pair || true)
 [ -z "$left" ] || { echo "move-http-pin.sh: $old is left in: $left" >&2; exit 1; }
 echo "goose-http: $(printf %.7s "$old") -> $(printf %.7s "$new") in $(git diff --name-only | wc -l | tr -d ' ') files"

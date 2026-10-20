@@ -1,7 +1,7 @@
 // rest::once: a value computed at the first call of a request, and kept for
 // the calls after.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 import expect from "../";
 import common;

@@ -123,7 +123,7 @@ the root file at the tag goose-http's `compression.goose` names, and import the
 module:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import rest from "github.com/kaitk/goose-rest@<tag>";
 import rest.compression;

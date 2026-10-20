@@ -7,7 +7,7 @@
 //   curl -s localhost:8080/holidays
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../../";
 import .app;
 

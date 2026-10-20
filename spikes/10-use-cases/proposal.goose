@@ -6,7 +6,7 @@
 namespace spike10;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest;
 
 // The tag of a reply that says the job failed, and holds a Refusal: the

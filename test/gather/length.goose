@@ -1,7 +1,7 @@
 // A body with a Content-Length, gathered in one run of its exact size from
 // the head on, which never moves.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 import expect from "../";
 import common;

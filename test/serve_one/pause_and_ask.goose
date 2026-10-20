@@ -5,7 +5,7 @@
 // reply's pieces are being collected. Each reply's run is freed, and the
 // pause still ends.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 import expect from "../";
 

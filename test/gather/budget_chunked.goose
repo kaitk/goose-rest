@@ -2,7 +2,7 @@
 // alone where doubling would pass the budget, and once the body passes it,
 // 503 and the connection closes.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 import expect from "../";
 import common;

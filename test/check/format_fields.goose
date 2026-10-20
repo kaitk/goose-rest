@@ -2,7 +2,7 @@
 // it writes, a nested struct through its own format overload, and an enum
 // through the program's.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 
 enum Status { Active, Archived }

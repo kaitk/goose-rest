@@ -1,7 +1,7 @@
 // A chunked body, gathered in a run that starts at 16 KB and doubles as it
 // fills.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 import expect from "../";
 import common;

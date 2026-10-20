@@ -2,7 +2,7 @@
 // between them, goose-http's TIMEOUT at once, a TIMEOUT that doesn't pause
 // again, a pause at MORE, and a pause without a response begun.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.0";
+import http from "github.com/kaitk/goose-http@v0.4.1";
 import rest from "../../";
 import expect from "../";
 

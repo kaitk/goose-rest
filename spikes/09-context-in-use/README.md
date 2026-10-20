@@ -20,7 +20,7 @@ changes it:
 comes back as a WAKE, so the output is fixed. `api_gen.goose` is `goose-rest gen`'s from
 `api.json`. `refused.goose` holds the calls the context's type refuses.
 
-Goose: commit `f114b5a`, the pin, with the same output as on release `v2026.2` (`3ee3871`), `v2026.1` (`ac759c3`) and `bc3c1f1`. goose-http: `v0.4.0`, with the same output as at `ff18ecc`, `v0.3.6`, `6e57c42`, `v0.3.5`, `v0.3.4`, `v0.3.3`, `v0.3.2` and `v0.3.1`. goose-rest: task 015's prototype, A
+Goose: commit `f114b5a`, the pin, with the same output as on release `v2026.2` (`3ee3871`), `v2026.1` (`ac759c3`) and `bc3c1f1`. goose-http: `v0.4.1`, with the same output as at `v0.4.0`, `ff18ecc`, `v0.3.6`, `6e57c42`, `v0.3.5`, `v0.3.4`, `v0.3.3`, `v0.3.2` and `v0.3.1`. goose-rest: task 015's prototype, A
 with the router's type in the context, `Cx<S, A, R>`, and B; its report asks the
 database lane with task 050's `rest::ask` of a lane's job (2026-10-19), with the same
 output.
