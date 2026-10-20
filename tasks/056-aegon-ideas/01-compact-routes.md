@@ -48,9 +48,11 @@ the block wrote nothing and waits for nothing. A guard is an `if` around the rou
 guards. That much works, but neither is worth adopting alone: the line it saves is the
 `else`, and the `rest::on` and `rest::route` pair stays.
 
-Measure A again when a Goose release inlines a block past today's size limit: its cost
-is the calls the inliner leaves around the 60-route block, not the design. B stays
-rejected for its signatures.
+Measure A again if Goose inlines a function value called once whatever its size, one of
+the two changes proposed in [aardappel/goose#33](https://github.com/aardappel/goose/issues/33):
+A's cost is the calls left around the 60-route block, which passes the size limit for a
+function called once, not the design. That limit is deliberate, so A waits on that
+change rather than on a release. B stays rejected for its signatures.
 
 Found along the way: Goose inlines a function called in a block whose arm ends in a
 `return` only below half the usual size
