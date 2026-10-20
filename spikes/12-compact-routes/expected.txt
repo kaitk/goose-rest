@@ -1,0 +1,30 @@
+GET /health HTTP/1.1 -> HTTP/1.1 200 OK
+HEAD /health HTTP/1.1 -> HTTP/1.1 200 OK
+GET /projects/7 HTTP/1.1 -> HTTP/1.1 200 OK
+GET /projects/0 HTTP/1.1 -> HTTP/1.1 404 Not Found
+GET /projects/x HTTP/1.1 -> HTTP/1.1 400 Bad Request
+DELETE /projects/7 HTTP/1.1 -> HTTP/1.1 204 No Content
+POST /projects/7 HTTP/1.1 -> HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD, DELETE
+OPTIONS /projects/7 HTTP/1.1 -> HTTP/1.1 204 No Content
+  Allow: GET, HEAD, DELETE
+OPTIONS * HTTP/1.1 -> HTTP/1.1 204 No Content
+GET /nothing HTTP/1.1 -> HTTP/1.1 404 Not Found
+BREW /health HTTP/1.1 -> HTTP/1.1 501 Not Implemented
+GET /a/../health HTTP/1.1 -> HTTP/1.1 400 Bad Request
+GET /admin HTTP/1.1 -> HTTP/1.1 200 OK
+GET /admin HTTP/1.1 -> HTTP/1.1 404 Not Found
+POST /admin HTTP/1.1 -> HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD
+POST /admin HTTP/1.1 -> today HTTP/1.1 405 Method Not Allowed, shorter HTTP/1.1 404 Not Found
+PUT /upload HTTP/1.1 -> HTTP/1.1 200 OK
+PUT /upload HTTP/1.1 -> HTTP/1.1 200 OK
+GET /reports/daily HTTP/1.1 -> HTTP/1.1 200 OK
+GET /reports/daily HTTP/1.1 -> HTTP/1.1 401 Unauthorized
+GET /reports/weekly HTTP/1.1 -> HTTP/1.1 404 Not Found
+POST /reports/daily HTTP/1.1 -> HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD
+GET /old/list HTTP/1.1 -> HTTP/1.1 200 OK
+GET /old/nope HTTP/1.1 -> HTTP/1.1 404 Not Found
+DELETE /old/list HTTP/1.1 -> HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD
