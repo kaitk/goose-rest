@@ -1,7 +1,7 @@
 // Responses in pieces rest::compressed leaves alone: no coding taken, HEAD,
 // and a type not worth compressing.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import rest from "../../";
 import rest.compression;

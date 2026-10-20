@@ -1,6 +1,6 @@
 // rest::text, rest::json, and rest::empty, byte for byte.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../";
 import expect from "../";
 import common;

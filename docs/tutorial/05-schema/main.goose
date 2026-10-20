@@ -6,7 +6,7 @@
 //   goose build -o build/projects docs/tutorial/05-schema/main.goose
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../../";
 import .api_gen;
 import .app;

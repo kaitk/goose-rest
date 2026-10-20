@@ -1,7 +1,7 @@
 // The projects' rules, called as plain functions: no server, thread, or
 // database.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../../../../";
 import app from "../../";
 

@@ -52,7 +52,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../../";
 import http.bench.rest.goose.app;
 // app.goose's templates use the store, which app.goose can't import itself

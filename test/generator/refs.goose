@@ -1,7 +1,7 @@
 // goose-rest gen's errors for a $ref outside its subset: another document,
 // a missing schema, a keyword beside it, and cycles.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../";
 import rest.gen.gen;
 import common;

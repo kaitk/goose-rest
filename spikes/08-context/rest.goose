@@ -3,7 +3,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 
 struct Cx<S, A> {
     req: const http::Request&,

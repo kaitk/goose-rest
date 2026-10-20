@@ -6,8 +6,8 @@ image. It keeps what it needs in a fixed-mode `Waiting` enum in the per-request 
 and resumes at `WAKE` through one case function per variant. Also checks that a missing
 case fails to compile, and what a reply larger than a mailbox slot needs.
 
-Goose: commit `f114b5a`, the pin, with the same output as on release `v2026.2` (`3ee3871`), `v2026.1` (`ac759c3`), `bc3c1f1` and `a6249a4`. goose-http: `v0.4.2`, with the
-same output as at `v0.4.1`, `v0.4.0`, `ff18ecc`, `v0.3.6`, `6e57c42`, `v0.3.5`, `v0.3.4`, `v0.3.3`, `v0.3.2`, `v0.3.1`, and `cb57a0b`, where the whole 192-byte reply returns `TOO_LONG` rather than `FULL` (2026-10-14), and otherwise
+Goose: commit `f114b5a`, the pin, with the same output as on release `v2026.2` (`3ee3871`), `v2026.1` (`ac759c3`), `bc3c1f1` and `a6249a4`. goose-http: `v0.4.3`, with the
+same output as at `v0.4.2`, `v0.4.1`, `v0.4.0`, `ff18ecc`, `v0.3.6`, `6e57c42`, `v0.3.5`, `v0.3.4`, `v0.3.3`, `v0.3.2`, `v0.3.1`, and `cb57a0b`, where the whole 192-byte reply returns `TOO_LONG` rather than `FULL` (2026-10-14), and otherwise
 the same output as at `e27ab21`. There `http::Event` is a struct whose `kind` the handler
 tests; it was an enum at `04791ac`, where the spike first passed with the same output
 (2026-10-13).

@@ -4,7 +4,7 @@
 // route then waits again, when the client goes mid-reply, and when the wait
 // times out mid-reply.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.2";
+import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../";
 import expect from "../";
 
