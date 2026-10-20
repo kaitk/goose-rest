@@ -29,7 +29,6 @@ trades memory for rate.
 
 | Idea | Aegon | goose-rest now | Subtask |
 |---|---|---|---|
-| Shorter routes | A 10-line hello world | About 17 lines: an explicit `rest::otherwise`, and `rest::on` with `rest::route` | 01 |
 | Every violation in one answer | 422 with a map of JSON paths such as `items[1].quantity` | The first error, as `invalid_body` with `detail` and `at` | 02 |
 | RFC 9457 problem details | `ctx.problem()`, and problem+json for every built-in error | A preset through request-state overloads; the default error path compiles to identical machine code | 03 |
 | More auth schemes, and role guards | Basic, API key, and cookie beside bearer; optional auth; `require_role` and `require_any_role` | Bearer only | 04 |
@@ -80,7 +79,8 @@ that make a good checklist. Pages are under `https://udaykhare09.github.io/Aegon
 |---|---|
 | Large prefaulted buffer pools on huge pages | They cost memory and buy no rate on these tiers: 16,384 buffers of 4 KB are 256 MB on 4 workers, and 256 buffers a worker came within 2.4% of them in every column. goose-http's task 057 records the same for the engine. |
 | A query on every worker's ring, from per-core async pools | Without coroutines each query adds a state to the route; database work runs as one job on a lane (task 052). Each lane thread owning its connections, with no lock, is what carries over. |
-| Handlers and middleware registered at run time | `std::function` dispatch and run-time chains. goose-rest inlines routes and middleware into one function ([decisions](../../docs/decisions.md)); subtask 01 shortens the code without changing that. |
+| Handlers and middleware registered at run time | `std::function` dispatch and run-time chains. goose-rest inlines routes and middleware into one function ([decisions](../../docs/decisions.md)). |
+| Shorter routes, `rest::get` and `rest::routes` answering 404 itself (subtask 01, cancelled) | A shorter form that works in every scope, middleware's included, costs 26 to 164 more instructions per request on 60 routes, beyond the runs' spread ([spike 12](../../spikes/12-compact-routes/README.md)). A form that costs nothing needs today's form beside it in scopes behind middleware, where the wrong one goes out of line. |
 | A service registry and a typed per-request bag | goose-rest already has dependency injection, resolved at compile time. `App` is the registry, each `thread_fn worker` that builds it is the composition root, and `cx.app.db` resolves a service as a field read: a missing one is a compile error, not a run-time throw, and a test passes its own `App` to `rest::serve_one`. Request state is `cx.state`, a struct, for the same reason. Aegon needs a registry because every handler is a `std::function` of one signature. Goose couldn't hold one cleanly anyway: it has no general heap, and an ADT is its only dynamic polymorphism (no traits or vtables), so a registry would be an enum of the services, a worse struct. Picking an implementation from configuration remains open (subtask 10). |
 | Errors as exceptions, caught at a boundary | `rest::fail` leaves through `return ... from`, and the compiler checks that it runs inside a route. |
 | A query builder used at run time for every query | Subtask 16 generates fixed SQL from the schema at build time and keeps a builder only for filters that depend on the request. |

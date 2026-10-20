@@ -1,7 +1,7 @@
 # 01: Shorter routes
 
-Status: in-progress. The spike says adopt (2026-10-20). Moving the package and the
-programs waits until the problem details branch (056.03) merges to main.
+Status: cancelled (2026-10-20), by request, under the bar the request set: adopt only
+one form that works everywhere at today's instruction count. Neither design meets it.
 
 Aegon's hello world is 10 lines; goose-rest's is about 17. Two changes could bring ours
 to about 12 without changing what the routes compile to:
@@ -17,35 +17,47 @@ generic function in another module (task 043).
 This touches the decision that guards are `if` conditions: a guard has to stay possible
 beside the shorter form.
 
-## Verdict: adopt (2026-10-20)
+## Verdict: don't adopt (2026-10-20)
 
-[Spike 12](../../spikes/12-compact-routes/README.md) checks both forms on 25 requests,
-in its C, and in full `bench/routes.sh` runs of `hand60` against `short60`, the same
-60 routes in the shorter form. The two forms answer alike and compile to the same `if`
-chain. Each matched route jumps to the end of `routes`, as an `else` does. The means
-differ by −19 to +33 instructions per request, on about 18,000 to 23,700. All but one
-difference is inside either server's own spread between rounds. The query route is
-higher in all three rounds (+33, 0.16%) because Goose's inliner keeps it out of line.
+The bar: one form that works everywhere, scopes behind middleware included. Real
+programs have middleware, so two forms would be mixed, and the wrong one goes out of
+line without a word. [Spike 12](../../spikes/12-compact-routes/README.md) has the
+numbers.
 
-Adopting it needs nothing beyond the two changes. `rest::routes` answers only when the
-response is still empty, nothing waits, and no later call is due, the same test that
-serve's `settle_kept` makes. So today's programs, a scope's own `rest::otherwise`, and
-middleware that answers early, such as `rest::bearer`, keep working unchanged. A guard
-is an `if` around the routes it guards. Unlike `rest::on(...) && guard`, it hides the
-route from the 405's `Allow` when it fails. The routes of a scope behind middleware
-keep `rest::on` inside the scope's one `rest::route`.
+- **The first version** gave each `rest::get` a route of its own. It cost nothing
+  measurable (−19 to +33 instructions per request), but a scope behind middleware
+  shares one `rest::route`, and a `rest::get` there opens a second route. That needed
+  today's form in such scopes: two forms.
+- **Design A**: `rest::routes` opens the request's one route, and `rest::get` only
+  matches. One form works everywhere and answers byte for byte as today's does, bearer's
+  401 inside a scope included. It costs +42 to +164 instructions per request (+0.2 to
+  +0.9%) on `bench/routes.sh`'s 60 routes, above the runs' spread in every case. Goose
+  keeps the one route out of line around a large block, so every request pays its calls,
+  including `/health` and 404s that today's form answers with no route.
+- **Design B**: `rest::route` hands its block a context of a marked type, and
+  `rest::get` is overloaded on it. One form works everywhere and answers alike. It costs
+  +26 to +83 instructions per request in a scope behind its route (+0.1 to +0.4%), above
+  the spread, for the marked context each route builds and the extra reference on every
+  match. It also changes signatures: every `rest::route` block and every stack takes
+  `cx =>`, every call that reads the router gains an overload, and typed helpers need a
+  second alias. Code that names the outer `cx` inside a route still opens a second
+  route out of line.
 
-To do once 056.03 has merged: `rest::get` and its kin, and the answer test in
-`rest::routes`. Then record the decision, and move the quick start, the tutorial, the
-best-practices programs, the examples, and `short60` to the package's names, with their
-golden outputs unchanged.
+Both designs answer a request no route took from `rest::routes`, after checking that
+the block wrote nothing and waits for nothing. A guard is an `if` around the routes it
+guards. That much works, but neither is worth adopting alone: the line it saves is the
+`else`, and the `rest::on` and `rest::route` pair stays.
+
+Found along the way: Goose inlines a function called in a block whose arm ends in a
+`return` only below half the usual size
+([findings](../../docs/goose-findings.md#a-block-that-ends-in-a-return-keeps-its-calls-out-of-line)).
 
 ## Acceptance criteria
 
 - [x] A spike under `spikes/` checks that both forms compile to the same `if` chain,
       with the same instruction count on tier A. The count is `bench/routes.sh`'s
-      60-route chain on macOS.
+      60-route chain on macOS: neither one-form design matches it.
 - [x] The 405 `Allow` field still lists every method whose path matched
 - [x] A guard still works with the shorter form
-- [ ] If adopted: a decision in `docs/decisions.md`, and the quick start, tutorial, and
-      examples moved to it
+- [ ] ~~If adopted: a decision in `docs/decisions.md`, and the quick start, tutorial,
+      and examples moved to it~~ Not adopted.
