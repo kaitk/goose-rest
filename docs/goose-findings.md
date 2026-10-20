@@ -432,6 +432,48 @@ and Goose inlines `on_later` into each, the request path's included. A `while` w
 Workaround: none. The request path holds the handler twice, as it did before `on_later`,
 when the second copy was the one for a gathered body.
 
+### A block that ends in a return keeps its calls out of line
+
+Found on `f114b5a`, spike 12. Status: open
+
+The arm rule of the entry above also applies to a block given to an `inline fn`. A
+function value called in an arm that ends in a `return` is treated as cold, and a
+function called once inside it stays a call at half the usual size: 8 statements
+instead of 16. Expected: the arm's own statements counted as cold, not the body of a
+block it runs, or a way to ask for the block's calls to be inlined. Below, the C keeps
+`twice_g`. With 7 statements, or with `if c { F(); } if c { return; }`, it has `main_g`
+alone:
+
+    import std;
+    import os;
+
+    fn twice(buf: u8[>..]&, n: i64) {
+        if n == 1 { buf.append(str("v", n, "1")); }
+        // ... the same for 2 to 7
+        if n == 8 { buf.append(str("v", n, "8")); }
+    }
+
+    inline fn when<F>(c: bool) {
+        if c {
+            F();
+            return;
+        }
+    }
+
+    fn main() {
+        let n = args().len;
+        when(n > 1) { var b: u8[>..] = []; twice(b, n); print(b); };
+        print("end");
+    }
+
+goose-rest meets it in spike 12's `compact::on`, which runs a route's block and then
+leaves `routes` with `return from routes`. `rest::param_int` in the block stays a call.
+It's a function that fails, so its route and everything around the route stay out of
+line too.
+
+Workaround: the block and the `return` in separate arms, `if hit { F(); }` and then
+`if hit { return from routes; }`.
+
 ### Every temporary of a function takes its own stack slot
 
 Found on `ac759c3` (`v2026.1`). Status: open

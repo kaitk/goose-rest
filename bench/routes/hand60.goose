@@ -5,6 +5,7 @@
 // as routes60's do, and rest::otherwise answers a 404 and a 405 in the JSON
 // error shape, as gen60 does. It checks no session; gen60 calls a check that
 // accepts every request. GET /v1/projects reads its three query parameters.
+// /v1/reports is behind a middleware that can fail, tenant_checked.
 //
 //   hand60 http [port]   (WORKERS 1)
 import std;
@@ -12,6 +13,14 @@ import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../";
 
 fn ok(cx) { http::respond(cx.out, 200, "text/plain", "ok"); }
+
+// Fails 400 for a request that names a tenant other than acme; the
+// benchmark's requests name none.
+inline fn tenant_checked<F>(cx) {
+    let id, has = rest::header(cx, "X-Tenant");
+    guard !has || id == "acme" else { rest::fail(cx, 400, "unknown_tenant"); }
+    F();
+}
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
@@ -108,16 +117,18 @@ fn v1(cx) {
         else if rest::on(cx,"GET", "/:id/deliveries") { rest::param_int(cx, "id"); ok(cx); }
         else { rest::otherwise(cx); }
     } else if rest::scope(cx,"/reports") {
-        if rest::on(cx,"GET", "/time") { ok(cx); }
-        else if rest::on(cx,"GET", "/time/:user") { rest::param_int(cx, "user"); ok(cx); }
-        else if rest::on(cx,"GET", "/budget") { ok(cx); }
-        else if rest::on(cx,"GET", "/exports") { ok(cx); }
-        else if rest::on(cx,"POST", "/exports") { ok(cx); }
-        else if rest::on(cx,"GET", "/exports/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/exports/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); }
-        else { rest::otherwise(cx); }
+        tenant_checked(cx) {
+            if rest::on(cx,"GET", "/time") { ok(cx); }
+            else if rest::on(cx,"GET", "/time/:user") { rest::param_int(cx, "user"); ok(cx); }
+            else if rest::on(cx,"GET", "/budget") { ok(cx); }
+            else if rest::on(cx,"GET", "/exports") { ok(cx); }
+            else if rest::on(cx,"POST", "/exports") { ok(cx); }
+            else if rest::on(cx,"GET", "/exports/:id") { rest::param_int(cx, "id"); ok(cx); }
+            else if rest::on(cx,"DELETE", "/exports/:id") { rest::param_int(cx, "id"); ok(cx); }
+            else if rest::on(cx,"POST", "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); }
+            else if rest::on(cx,"GET", "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); }
+            else { rest::otherwise(cx); }
+        };
     } else {
         rest::otherwise(cx);
     }

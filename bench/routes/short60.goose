@@ -1,7 +1,9 @@
 // hand60.goose's routes in the shorter form of spike 12
-// (spikes/12-compact-routes): compact::routes, which answers 404, 405, and
-// 501 itself, and a call per method that matches a route and opens it, so
-// no rest::otherwise. Each path parameter is read as hand60 reads it.
+// (spikes/12-compact-routes) in every scope, /v1/reports's behind
+// tenant_checked included: compact::routes, which opens the request's one
+// route and answers 404, 405, and 501 itself, and a call per method that
+// matches a route, so no rest::route or rest::otherwise. Each path parameter
+// is read as hand60 reads it.
 //
 //   short60 http [port]   (WORKERS 1)
 import std;
@@ -10,6 +12,14 @@ import rest from "../../";
 import compact from "../../spikes/12-compact-routes";
 
 fn ok(cx) { http::respond(cx.out, 200, "text/plain", "ok"); }
+
+// Fails 400 for a request that names a tenant other than acme; the
+// benchmark's requests name none.
+inline fn tenant_checked<F>(cx) {
+    let id, has = rest::header(cx, "X-Tenant");
+    guard !has || id == "acme" else { rest::fail(cx, 400, "unknown_tenant"); }
+    F();
+}
 
 fn handle(cx) {
     compact::routes(cx) { cx =>
@@ -94,15 +104,17 @@ fn v1(cx) {
         compact::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
         compact::get(cx, "/:id/deliveries") { rest::param_int(cx, "id"); ok(cx); };
     } else if rest::scope(cx,"/reports") {
-        compact::get(cx, "/time") { ok(cx); };
-        compact::get(cx, "/time/:user") { rest::param_int(cx, "user"); ok(cx); };
-        compact::get(cx, "/budget") { ok(cx); };
-        compact::get(cx, "/exports") { ok(cx); };
-        compact::post(cx, "/exports") { ok(cx); };
-        compact::get(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
-        compact::delete(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
-        compact::post(cx, "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); };
-        compact::get(cx, "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); };
+        tenant_checked(cx) {
+            compact::get(cx, "/time") { ok(cx); };
+            compact::get(cx, "/time/:user") { rest::param_int(cx, "user"); ok(cx); };
+            compact::get(cx, "/budget") { ok(cx); };
+            compact::get(cx, "/exports") { ok(cx); };
+            compact::post(cx, "/exports") { ok(cx); };
+            compact::get(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
+            compact::delete(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
+            compact::post(cx, "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); };
+            compact::get(cx, "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); };
+        };
     }
 }
 
