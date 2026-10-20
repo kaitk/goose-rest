@@ -5,7 +5,7 @@ Status: todo. The verdicts below were set 2026-10-20; each subtask holds one ide
 [Aegon's guide](https://udaykhare09.github.io/Aegon/) (41 pages, each read in full
 2026-10-20) documents an API, middleware, a data layer, and an engine. This task records
 which ideas goose-rest takes and which it leaves, and why. Task 048 measures Aegon
-itself. The engine ideas belong to goose-http, in its task 056, including wider vector
+itself. The engine ideas belong to goose-http, in its task 057, including wider vector
 scanning of long headers, which bearer JWTs and session cookies make common here.
 
 Every claim is from Aegon's docs, not measured here.
@@ -78,7 +78,7 @@ that make a good checklist. Pages are under `https://udaykhare09.github.io/Aegon
 
 | Idea | Why not |
 |---|---|
-| Large prefaulted buffer pools on huge pages | They cost memory and buy no rate on these tiers: 16,384 buffers of 4 KB are 256 MB on 4 workers, and 256 buffers a worker came within 2.4% of them in every column. goose-http's task 056 records the same for the engine. |
+| Large prefaulted buffer pools on huge pages | They cost memory and buy no rate on these tiers: 16,384 buffers of 4 KB are 256 MB on 4 workers, and 256 buffers a worker came within 2.4% of them in every column. goose-http's task 057 records the same for the engine. |
 | A query on every worker's ring, from per-core async pools | Without coroutines each query adds a state to the route; database work runs as one job on a lane (task 052). Each lane thread owning its connections, with no lock, is what carries over. |
 | Handlers and middleware registered at run time | `std::function` dispatch and run-time chains. goose-rest inlines routes and middleware into one function ([decisions](../../docs/decisions.md)); subtask 01 shortens the code without changing that. |
 | A service registry and a typed per-request bag | goose-rest already has dependency injection, resolved at compile time. `App` is the registry, each `thread_fn worker` that builds it is the composition root, and `cx.app.db` resolves a service as a field read: a missing one is a compile error, not a run-time throw, and a test passes its own `App` to `rest::serve_one`. Request state is `cx.state`, a struct, for the same reason. Aegon needs a registry because every handler is a `std::function` of one signature. Goose couldn't hold one cleanly anyway: it has no general heap, and an ADT is its only dynamic polymorphism (no traits or vtables), so a registry would be an enum of the services, a worse struct. Picking an implementation from configuration remains open (subtask 10). |
@@ -90,5 +90,5 @@ that make a good checklist. Pages are under `https://udaykhare09.github.io/Aegon
 ## Acceptance criteria
 
 - [ ] Each subtask done or cancelled with its reason
-- [ ] goose-http's task 056 records the engine verdicts
+- [ ] goose-http's task 057 records the engine verdicts
 - [ ] The README's status table updated as each taken idea lands
