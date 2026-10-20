@@ -2,7 +2,7 @@
 # Moves the goose-http pin: replaces the reference rest.goose imports with
 # REF in every tracked file that has it. The spikes' READMEs, which name the
 # commit their output was checked on, are updated by hand once
-# scripts/test.sh passes (AGENTS.md, "Move the goose-http pin"). README.md's
+# scripts/test.sh passes (agents/pins.md, "The goose-http pin"). README.md's
 # quick start and tutorial page 01 name the latest release pair, which moves
 # with a release, so they're left alone.
 #

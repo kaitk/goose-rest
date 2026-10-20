@@ -1,5 +1,8 @@
 # Agent rules
 
+This file holds what every session needs. `agents/` holds the rules for particular work:
+read the file a task touches before starting it.
+
 ## Project context
 
 - What this is: `README.md`; what each tag adds: `CHANGELOG.md`; the framework step
@@ -17,7 +20,6 @@
 - Goose compiler and stdlib gaps found here: `docs/goose-findings.md`
 - Task tracking: `tasks/` (see `tasks/README.md`)
 - Language checks the design relies on: `spikes/`, one folder each, with a README
-- Writing docs: `.claude/skills/google-style/SKILL.md`, and "Writing" below
 - The HTTP layer: goose-http's `README.md`, `docs/api.md`, `docs/patterns.md` (request
   bodies, long responses, mail between threads, slow work), and `examples/README.md`.
   Link to those rather than explain goose-http's mechanisms again. goose-http's task
@@ -29,6 +31,10 @@
 - The language: the pinned Goose release's `docs/tutorial.md`, `docs/goose_spec.md`,
   and `docs/stdlib.md`. Read the tutorial before writing Goose; check the spec before
   assuming a feature exists.
+- Rules for particular work: `agents/goose.md` (writing Goose, and recording what it
+  lacks), `agents/writing.md` (docs, tasks, and prose), `agents/pins.md` (moving the
+  Goose, goose-http, and goose-compress pins), and `agents/benchmarks.md` (measuring,
+  the rivals, and reporting a number)
 
 Follow the recorded decisions in `docs/decisions.md`; if a change contradicts one, record
 the new decision there, saying which it replaces, and update `docs/architecture.md`, in
@@ -43,87 +49,46 @@ docs and scripts must work for a developer on a clean machine without LLM tools:
 `CLAUDE.local.md` holds conveniences, never a step the setup needs, and a script fetches
 what it needs or says how to get it, rather than assume a sibling checkout (2026-10-15).
 
-## Writing
+## Keep changes small
 
-- `README.md` is for people who use the package: what it provides, a status table, a
-  quick start, concepts, benchmark highlights, and links. Layout, pins, process, tasks,
-  and rules for agents go in `docs/` or here (2026-10-15).
-- User-facing docs (`README.md`, `docs/`, `bench/README.md`) reference no tasks, and
-  keep nothing only an agent needs, nor history: say what is, not what used to be.
-  Open work, causes not yet measured, and plans go in a task (2026-10-15).
-- Keep each fact in one place and link to it elsewhere. `CHANGELOG.md` names the Goose
-  compiler each tag was built with.
-- Say what doesn't work yet, plainly, without blame on Goose or its maintainer.
+Agreed 2026-10-20, after several fixes solved problems that a second look showed
+weren't there.
 
-## Goose, not an addition to Goose
+- Meet the requirement's intent with the least machinery. Before building around an
+  obstacle, ask whether the requirement needs it at all. Browsers ignore HSTS sent over
+  plain HTTP, so the security headers need no TLS check.
+- When a fix starts to need a new public API, a change in another repository, or a
+  workaround, stop. Say so in a sentence or two, and propose the simpler reading of the
+  requirement.
+- A feature's cost falls on the programs that use it: no fields in shared structs such
+  as `Cx`, and no code on shared paths, for one feature. Let the program choose where it
+  calls the feature: a route that needs another policy picks it where it calls the
+  middleware.
+- When a design makes other code compensate (a fallback, a rescan, a special case
+  elsewhere), change the design rather than add the compensation.
+- Add a setting, a check, or a script option only for a failure that isn't visible
+  already.
 
-- Build with the official Goose release that `scripts/goose.sh` pins, and move the pin
-  to each new release ("Move the Goose pin" below).
-- Don't edit a Goose checkout. When the compiler rejects something it should accept,
-  miscompiles, or the stdlib lacks something, reduce it to a minimal program, record it
-  in `docs/goose-findings.md`, and work around it here. Report blockers to the maintainer.
-- Every finding names the Goose commit it was found on, the pin at the time (for a
-  release, its commit). When one lacks it, recover it from this repository's history:
-  the pin in the commit that added the entry.
-- `docs/goose-findings.md` lists bugs first and feature requests after, each part from
-  the least work a fix is expected to take to the most. Place a new entry by that
-  order, and delete an entry once the pin has its fix (2026-10-14).
-- Write Goose the way the pinned release's `samples/` and `stdlib/` do: flat data,
-  references into growing arrays, `return ... from` for errors, untyped parameters for
-  generics.
+## Working beside other agents
+
+Several agents work in these repositories at once (2026-10-20).
+
+- Work in a worktree of your own, on a branch from `origin/main`:
+  `git worktree add ../goose-rest-<topic> -b <topic> origin/main`. Remove it once the
+  branch is merged.
+- Leave alone a branch, a commit, or an uncommitted change that isn't yours, in any
+  checkout. Ask if it's in your way.
+- Keep logs, exports, and scratch files in a directory of your own.
+
+## Goose
+
+- Build with the official Goose release that `scripts/goose.sh` pins. Check for a newer
+  one at the start of a session (`agents/pins.md`).
+- Don't edit a Goose checkout. Work around a compiler or stdlib gap here, record it in
+  `docs/goose-findings.md` as `agents/goose.md` says, and report blockers to the
+  maintainer.
 - The package and the generator are Goose with no C. Sockets and syscalls are
   goose-http's; a gap there is fixed in goose-http, not worked around here.
-
-## Move the Goose pin
-
-The pin is an official Goose release, which builds the same on every platform. At the
-start of a session, check for a newer one:
-
-```sh
-gh release list -R aardappel/goose --limit 3
-```
-
-To move to a new release, update `goose_release` and the four archives' SHA-256 sums in
-`scripts/goose.sh`, as goose-http does in the same file. GitHub lists each asset's
-digest:
-
-```sh
-gh api repos/aardappel/goose/releases/tags/<tag> -q '.assets[] | "\(.name) \(.digest)"'
-```
-
-Then run `scripts/test.sh`, which reruns every spike against its recorded output, update
-the commit and verdict in each spike's README, and update the release in
-`docs/development.md` ("Get Goose") and `README.md`'s quick start, in its own commit.
-
-Pin a commit only when a Goose fix that this repository needs isn't in a release yet,
-and return to a release once one has it (2026-10-15). Set `goose_commit` in
-`scripts/goose.sh` to the full hash, which every script then builds, and empty it to
-return to the release; record the commit and the reason in `docs/development.md`, "Get
-Goose". Goose releases often, so work that needs a merged fix lands on `main` on a
-pinned commit rather than wait for the release (2026-10-19).
-
-## Move the goose-http pin
-
-The import in `rest.goose` is the pin: a release tag, or a full commit hash for a fix
-not yet released, since git can't fetch an abbreviated one. The same reference is in
-each of the package's files, in each root file under `test/`, `examples/`,
-`docs/tutorial/`, `docs/best-practices/`, `spikes/`, and `bench/`.
-`scripts/move-http-pin.sh` changes every one. `README.md`'s quick start and
-`docs/tutorial/01-running.md` name the latest release pair instead, goose-http at the
-tag that goose-rest's release imports, and move with a release (2026-10-19):
-
-```sh
-scripts/move-http-pin.sh v0.3.1
-```
-
-Move it in its own commit once `scripts/test.sh` passes, and update the goose-http
-reference each spike's README names. A root that declares goose-http at another commit
-than `rest.goose` gets a warning, and from another source an error, so a test can't
-point at a local goose-http checkout instead.
-
-`compression.goose`, the programs that import it, and `docs/reference.md` declare
-goose-compress at the tag the pinned goose-http's `compression.goose` names. When the
-new goose-http names another, change it in the same commit (2026-10-15).
 
 ## Generated code
 
@@ -131,22 +96,6 @@ new goose-http names another, change it in the same commit (2026-10-15).
   schema, and regenerate.
 - A schema construct outside the supported subset is a generator error that names the
   construct and its JSON pointer, never silently dropped.
-
-## Benchmarks
-
-- Every number comes with how it was measured: machine, kernel, command, worker and
-  connection counts, and run count. A result without them doesn't go in a doc.
-- goose-rest is measured on goose-http's REST tiers and its own (`docs/benchmarks.md`), against goose-http alone and
-  against Axum, actix-web, ntex, dusty (Zig), and, from task 048, Aegon (C++, 2026-10-19)
-  in their fastest documented configuration,
-  built in release mode, with the same worker count. Each framework serves through its
-  own router, extractors, and middleware, not one catch-all handler. Losses are recorded as plainly as wins.
-- A framework that fails a cell's checks isn't measured there: the README's cell says
-  "fails" and links to its row in `docs/benchmarks.md`'s "Failed checks", which says
-  why (2026-10-20).
-- A setting one rival's documented configuration has, and the others take as idiomatically
-  (a release profile flag, a CPU target), goes to all of them, and each `NOTES.md` says
-  where it departs from the entry it follows (2026-10-17).
 
 ## Code conventions
 
