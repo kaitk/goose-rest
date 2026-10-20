@@ -55,7 +55,7 @@ pass their tests on arm64 Linux.
 | ⚪ | Sessions | No session store yet; read cookies with `rest::cookie`. |
 | 🟢 | Compression | gzip, deflate, and zstd according to `Accept-Encoding`, in an optional module, for answers written whole and responses sent in pieces; files go as they are ([reference](docs/reference.md#21-compression)). |
 | ⚪ | Rate limiting | No limiter yet; goose-http's per-connection limits and timeouts apply. |
-| ⚪ | Default headers | No middleware yet; add headers to every response through `cx.out.common` ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/api.md#handler)). |
+| 🟢 | Default headers | Security headers with HTML and API presets, prepared at setup and selected per request ([reference](docs/reference.md#22-security-headers)). |
 
 ## Quick start
 

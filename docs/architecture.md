@@ -129,10 +129,16 @@ inlined into it, with each early answer compiled as a jump. Three rules keep it 
 - **Block-taking functions are `inline fn`.** Given a block of routes, a plain function
   passes the inliner's size limit at once and stays a call, although it's called once.
 
-Middleware that applies to every answer, such as `timed`, `cors`, and `compressed`, goes
-outside `rest::route`, so that the errors the route answers get it too; middleware that
-can fail, such as `bearer`, goes inside it. The [reference](reference.md#2-middleware)
+Middleware that applies to every answer, such as `timed`, `cors`, `security_headers`,
+and `compressed`, goes outside `rest::route`, so the errors the route answers get it
+too. Middleware that can fail, such as `bearer`, goes inside it. The [reference](reference.md#2-middleware)
 says which answers get which fields.
+
+Security policies are prepared once in worker setup. The handler selects one
+prepared policy for each request. With no outer common fields, the middleware
+points the response's common fields at those bytes until its block returns.
+Nesting `security_headers` isn't supported. The
+[reference](reference.md#22-security-headers) lists the presets and options.
 
 A program's own middleware is an `inline fn` that takes a block. A stack is one that
 nests several middleware and passes its own block on, so a scope has one level however
@@ -252,8 +258,9 @@ passes, the reply passes the budget, or the route stops waiting, ends, or fails 
 later call. A reply past the budget cuts a response begun, and its route gets `CLOSED`.
 
 A route's middleware keeps what it decided with the exchange, so an answer written at a
-later call still gets the CORS fields and `Server-Timing`. A file being sent lives in
-the program's state, so a program that serves no files keeps no bytes for one.
+later call still gets the CORS fields, security policy, and `Server-Timing`. A file
+being sent lives in the program's state, so a program that serves no files keeps no
+bytes for one.
 
 ## The generator
 

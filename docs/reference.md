@@ -83,11 +83,12 @@ can have its own, and a public route none.
 |---|---|
 | `rest::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` with a 12-byte duration field padded with trailing spaces, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `rest::timed(cx, false)` skips the log. |
 | `rest::cors(cx, rest::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
+| `rest::security_headers(cx, cfg) { ... }` | Adds a prepared security policy to every answer inside, errors included. HTML and API presets, configurable per scope: [Security headers](#22-security-headers). |
 | `rest::compressed(cx) { cx => ... }` | Compresses the answers inside, errors included, by the request's `Accept-Encoding`, with goose-http's gzip, deflate, and zstd. An optional module: [Compression](#21-compression). |
 | `rest::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `rest::invalid_token(cx)` refuses one. `rest::bearer_token(cx)` returns it, for a generated router's security check. |
 | `rest::scope(cx, "/v1")` | Whether the path starts with the prefix at a segment boundary; `rest::on` calls inside match the rest. `rest::otherwise(cx)` answers 404, 405, and OPTIONS across scopes. |
 
-`timed` and `cors` go outside `rest::route`, so that the errors it answers get their
+`timed`, `cors`, and `security_headers` go outside `rest::route`, so errors get their
 fields; `bearer` and anything else that fails go inside it. A request has one route:
 routes nested in routes don't inline ([architecture](architecture.md#middleware-and-inlining)).
 A program's own `inline fn` can nest several middleware and pass its block on, so a scope
@@ -107,8 +108,9 @@ When a route leaves its request unanswered for a later call, each middleware kee
 decided with the exchange: the fields its answers get, and `timed`'s start and log
 setting. goose-rest adds them to the answer that call writes, after goose-http's current
 `Server` and `Date`, and drops them once the answer's head is written or the exchange
-ends. A route that uses neither middleware keeps nothing. At a later call, `cors` and
-`timed` run their block as it is, so a handler can also wrap its later calls in them.
+ends. A route that uses none of these middleware keeps nothing. At a later call,
+`cors`, `timed`, and `security_headers` run their block as it is, so a handler can
+also wrap its later calls in them.
 
 `timed` reserves its duration field in `cx.out.common` before the block and fills it
 after the response is written, so the body doesn't move. Both `timed` and `cors` take
@@ -216,6 +218,82 @@ routes exceed that threshold as soon as they're passed as the block. A plain `fn
 the handler's locals through pointers, and every middleware around it stays out of line
 too. `inline fn` folds it into the handler ([findings](goose-findings.md#a-function-called-once-isnt-inlined-past-a-size),
 aardappel/goose#33).
+
+### 2.2 Security headers
+
+`rest::security_html()` and `rest::security_api()` return editable
+`rest::SecurityHeaders` options. In worker setup, pass each scope's options to
+`rest::prepare_security_headers(options)`, which validates them and writes the
+field bytes once into a `rest::SecurityFields`. Keep that value for the worker's
+life, and pass it to `rest::security_headers(cx, cfg) { ... }` by reference.
+
+| Option | HTML | API | Values |
+|---|---|---|---|
+| `nosniff` | `true` | `true` | Emits `X-Content-Type-Options: nosniff`; `false` omits it. |
+| `frame_options` | `"DENY"` | `"DENY"` | `"DENY"`, `"SAMEORIGIN"`, or `""` to omit. |
+| `xss_protection` | `true` | `false` | Emits `X-XSS-Protection: 0`; `false` omits it. It never enables the legacy XSS filter. |
+| `referrer_policy` | `"strict-origin-when-cross-origin"` | `""` | The eight policies below, or `""` to omit. |
+| `hsts` | `true` | `true` | Emits `Strict-Transport-Security`; `false` omits it. |
+| `hsts_max_age` | `31536000` | `31536000` | Nonnegative seconds, including `0` to revoke the policy. |
+| `hsts_subdomains` | `true` | `true` | Adds `includeSubDomains` to HSTS. |
+| `hsts_preload` | `false` | `false` | Adds `preload` to HSTS. |
+| `opener_policy` | `"same-origin"` | `""` | COOP: `"same-origin"`, `"same-origin-allow-popups"`, `"unsafe-none"`, or `""`. |
+| `resource_policy` | `"same-origin"` | `""` | CORP: `"same-origin"`, `"same-site"`, `"cross-origin"`, or `""`. |
+| `embedder_policy` | `""` | `""` | COEP: `"require-corp"`, `"credentialless"`, `"unsafe-none"`, or `""`. |
+| `content_security_policy` | `""` | `"frame-ancestors 'none'"` | CSP policy string; empty omits it. |
+| `report_only` | `false` | `false` | Writes CSP as `Content-Security-Policy-Report-Only` instead. |
+| `permissions_policy` | `""` | `""` | `Permissions-Policy` string; empty omits it. |
+| `cross_domain_policy` | `"none"` | `"none"` | `X-Permitted-Cross-Domain-Policies`; empty omits it. |
+| `dns_prefetch_control` | `true` | `false` | Emits `X-DNS-Prefetch-Control: off`; `false` omits it. |
+| `cache_control` | `""` | `"no-store"` | `Cache-Control` string; empty omits it. |
+| `no_cache` | `false` | `false` | Replaces `cache_control` with `no-cache, no-store, max-age=0, must-revalidate`, and adds `Pragma: no-cache` and `Expires: 0`. |
+
+The eight referrer policies are `no-referrer`, `no-referrer-when-downgrade`,
+`origin`, `origin-when-cross-origin`, `same-origin`, `strict-origin`,
+`strict-origin-when-cross-origin`, and `unsafe-url`. Invalid option values or
+HTTP field values, including strings containing CR or LF, abort during preparation.
+
+HSTS is an ordinary configured field: both presets emit it, with no TLS check
+or proxy option. Set `hsts = false` to omit it. The API preset sends the
+[OWASP REST baseline](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#security-headers)
+plus `X-Permitted-Cross-Domain-Policies: none`. Document policies stay available
+as options; the API preset omits them to save bytes on every answer. The HTML
+preset leaves CSP, COEP, permissions, and caching to the application.
+
+For routes that need another policy, prepare both policies at setup:
+
+```rust
+let options = rest::security_html();
+var embedded_options = options;
+embedded_options.frame_options = "";
+embedded_options.content_security_policy = "frame-ancestors https://partner.example";
+let site = rest::prepare_security_headers(options);
+let embed = rest::prepare_security_headers(embedded_options);
+```
+
+Select one where the handler calls the middleware:
+
+```rust
+rest::security_headers(cx, if starts_with(cx.req.target, "/embed") { embed } else { site }) {
+    // Dispatch routes here.
+};
+```
+
+Nesting `security_headers` isn't supported. The middleware restores the outer
+common fields when its block returns.
+
+Put the middleware outside `rest::route` so route errors carry its fields too.
+It preserves the selected policy for deferred replies, timeout errors, and
+bodies read in pieces, as `cors` does. A call after the request runs its block
+without reapplying fields. Body-gathering errors raised before the handler runs
+have no scope policy, as in the CORS table above.
+
+When there are no outer common fields, the middleware points `cx.out.common`
+at the prepared bytes. `http::start` copies them once into the response. With
+outer common fields, it first copies those fields and the policy into scratch.
+It validates and formats no fields during a request. Deferred responses retain
+fields through `keep_fields`, copying to scratch first only if needed. This adds
+no bytes to the connection's request state.
 
 ## 3. Extractors
 

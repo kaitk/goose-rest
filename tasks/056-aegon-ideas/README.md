@@ -34,7 +34,7 @@ trades memory for rate.
 | RFC 9457 problem details | `ctx.problem()`, and problem+json for every built-in error | A customizable format, with no preset | 03 |
 | More auth schemes, and role guards | Basic, API key, and cookie beside bearer; optional auth; `require_role` and `require_any_role` | Bearer only | 04 |
 | JWT | Signing and verification; HS, RS, PS, and ES; JWKS served and consumed; a denylist | None; the README lists it ⚪ | 05 |
-| Security headers | `security_headers()` with `defaults()` and `api()` presets | None; "Default headers" is ⚪ | 06 |
+| Security headers | `security_headers()` with `defaults()` and `api()` presets | HTML and API presets prepared at setup and selected per request; instruction counts pending | 06 |
 | Access log options | Formats, levels per status class, a slow threshold, skip rules, a request logger with a correlation ID | `rest::timed`'s one fixed line | 07 |
 | Small helpers | SSE, a directory of files with SPA fallback, cookies out, CORS patterns and presets | `rest::begin` and `rest::pause`, `rest::file`, exact CORS origins | 08 |
 | An in-process store on its own thread | MemStore: TTL, LRU, and the cache interface Redis meets | Lanes, with no store | 09 |
