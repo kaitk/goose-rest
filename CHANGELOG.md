@@ -2,6 +2,13 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.2.1 (2026-10-20)
+
+The tier C benchmark's JWT check scans 16 bytes at a time, and the goose-http pin
+moves to `v0.4.3`: faster bearer and header scans, and h2 state kept off epoll's
+HTTP/1.1 turns. Goose master `f114b5a`, goose-compress `v0.1.1`.
+The tag names `62c340d`, the commit measured in the 2026-10-20 benchmark session.
+
 ## v0.2.0 (2026-10-19)
 
 Lanes of several threads, each typed by an enum of its jobs, replies in pieces, and

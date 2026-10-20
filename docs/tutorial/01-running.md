@@ -53,12 +53,12 @@ functions:
 ## Workers and `main`
 
 A program's root file declares both packages, goose-http at the reference that its
-goose-rest imports. The latest goose-rest release, `v0.2.0`, and the goose-http tag it
-imports, `v0.4.0`, build with Goose master `f114b5a`:
+goose-rest imports. The latest goose-rest release, `v0.2.1`, and the goose-http tag it
+imports, `v0.4.3`, build with Goose master `f114b5a`:
 
 ```text
-import http from "github.com/kaitk/goose-http@v0.4.0";
-import rest from "github.com/kaitk/goose-rest@v0.2.0";
+import http from "github.com/kaitk/goose-http@v0.4.3";
+import rest from "github.com/kaitk/goose-rest@v0.2.1";
 ```
 
 This tutorial tracks the libraries' `main` branches until their next releases. Its

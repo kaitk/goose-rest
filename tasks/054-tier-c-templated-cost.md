@@ -1,7 +1,6 @@
 # 054: tier C templated's cost at v0.2.0
 
-Status: in-progress (found 2026-10-20; the bearer check fixed 2026-10-20, goose-http's
-part open)
+Status: done (found and fixed 2026-10-20)
 
 The nightly sessions measured goose-rest's tier C templated at 148 K req/s on io_uring
 and 138 K on epoll on 2026-10-18 (`e478ca2`, goose-http `v0.3.7`, Goose `v2026.2`), and
@@ -104,12 +103,27 @@ is 2.1-2.5% behind, against 7.1-8.4% in the nightly of 2026-10-19.
 - The ~330 more instructions per request on epoll at `v0.4.0`: still to trace in
   goose-http's loops.
 
+## Full-session confirmation
+
+Session `2026-10-20T0854-Tiamat`, goose-rest `62c340d`, goose-http `v0.4.3`
+(`0a016bb0`), Goose `f114b5a`, on the same desktop and kernel as above, runs
+`bench/all.sh`: four workers on CPUs 0-3, wrk with 8 threads and 256 connections
+on CPUs 4-15, three interleaved 15 s runs after 5 s warm-up. Tier C templated
+reaches 155.3 K/s on io_uring and 144.3 K/s on epoll, against goose-http alone's
+156.3 K/s and 148.1 K/s: gaps of 0.6% and 2.6%. Both exceed the 2026-10-18 rates.
+The [summary](../bench/results/2026-10-20T0854-rest-Tiamat/summary.md) and
+[notes](../bench/results/2026-10-20T0854-rest-Tiamat/notes.md) retain the method.
+
+goose-http's completed task 056 records both byte-scan fixes and traces epoll's
+extra work to h2 state captured by `advance`. `v0.4.3` specializes that turn for
+HTTP/1.1 and h2c, keeping the captured h2 state off the HTTP/1.1 path.
+
 ## Acceptance criteria
 
 - [x] goose-rest's tier C templated back within 5% of goose-http alone, or the gap that
-      remains recorded with its cause: 2.1-2.5% in short runs, most of it `is_token68`
-- [ ] ~~A Goose finding for code layout recorded, with the aligned and default counts~~
+      remains recorded with its cause: 0.6% and 2.6% in the full session
+- [x] ~~A Goose finding for code layout recorded, with the aligned and default counts~~
       Set aside (2026-10-20): the layout moved byte loops, which `find_any` replaces;
       goose-http's task 033 decided against building with alignment flags
-- [ ] The epoll loop's extra instructions at goose-http `v0.4.0` traced to their change
-- [ ] goose-http's REST server and `is_token68` scan 16 bytes at a time, recorded there
+- [x] The epoll loop's extra instructions at goose-http `v0.4.0` traced to their change
+- [x] goose-http's REST server and `is_token68` scan 16 bytes at a time, recorded there

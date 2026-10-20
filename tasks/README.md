@@ -70,6 +70,5 @@ unless the table says otherwise.
 | 056: what to take from Aegon | Verdicts set; seventeen subtasks. 01 to 08 are small and can run beside goose-http's TLS and h2 work; 16 and 17 wait on 052. 05 (JWT) unblocks 035's full example and parts of 047. |
 | 055: a documentation site | Any time; its address waits on 046. |
 | 049: ACME | A package of its own; waits on goose-tls's tasks 001 and 003. |
-| 054: tier C templated's cost at v0.2.0 | The bearer check scans 16 bytes at a time, 2.1-2.5% behind goose-http alone; goose-http's `is_token68`, its REST server's JWT check, and its `v0.4.0` loops' cost remain. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |
