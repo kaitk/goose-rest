@@ -182,13 +182,13 @@ middleware.
 | [F](docs/benchmarks.md#the-tiers): one route | 511k req/s (98%) | **512k** | 395k | 331k | 278k | 266k |
 | [R](docs/benchmarks.md#the-tiers): 203 routes | 491k req/s | **497k** | 359k | 306k | 148k | 264k |
 | [M](docs/benchmarks.md#the-tiers): A with middleware | **489k req/s** | 402k | 343k | 284k | 227k | 198k |
-| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,143 req/s (98%) | | **1,230** | 1,198 | 1,201 | 1,168 |
+| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,143 req/s (98%) | [fails](docs/benchmarks.md#failed-checks) | **1,230** | 1,198 | 1,201 | 1,168 |
 | [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **123 MB**, uploads beside forms | 644 MB, C templates | 781 MB, uploads beside forms | 328 MB, C templates | 384 MB, C templates | 584 MB, C templates |
 
 *Note: percentages, such as (98%), are goose-rest's share of goose-http's rate with no
 framework.* Aegon ran the same night as goose-rest; dusty, ntex, actix-web, and Axum
-the night before, on the same machine. Aegon serves no uploads
-([why](bench/rest/aegon/NOTES.md#tier-d-isnt-measured)).
+the night before, on the same machine. "Fails" marks a cell whose checks the framework
+fails, which isn't measured.
 
 Goose uses io_uring. Results for every server, both Goose event loops, and memory:
 [docs/benchmarks.md](docs/benchmarks.md#against-other-frameworks).

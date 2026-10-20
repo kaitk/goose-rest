@@ -13,10 +13,8 @@ connections on CPUs 4-15. Each cell has a fresh server, 5 s of warm-up, and 3
 interleaved runs of 15 s; tables show medians. Every server passes the checks before
 its cells run. Axum, actix-web, ntex, dusty, and Aegon run in their fastest documented
 configuration, built in release mode; each serves through its own router, extractors,
-and middleware ([servers](../bench/README.md#servers)). Aegon serves no tier D: it reads
-a body whole before a route runs, so it can't refuse one declared over the route's
-limit until it arrives, which goose-http's checker requires
-([its NOTES.md](../bench/rest/aegon/NOTES.md#tier-d-isnt-measured)).
+and middleware ([servers](../bench/README.md#servers)). A server that fails a tier's
+checks isn't measured on it; [Failed checks](#failed-checks) lists each, and why.
 
 Instruction counts come from goose-http's `count.sh`: one worker on CPU 0, the epoll
 loop, h2load with 256 connections and 16 requests in flight on each, 10 million
@@ -25,6 +23,12 @@ requests, one run per case.
 The method behind each number is goose-http's
 ([its bench/README.md](https://github.com/kaitk/goose-http/blob/main/bench/README.md#method)),
 whose `bench/rest.sh` is wrapped by this repository's script of the same name.
+
+## Failed checks
+
+| Server | Tier | Why |
+|---|---|---|
+| Aegon, both builds | D, uploads | Aegon reads a body whole before a route runs, and its only early refusal is the server's 16 MB limit. A batch that declares more than its route's 1 MB and never sends the body gets no answer, where goose-http's checker wants a 413 at once ([its NOTES.md](../bench/rest/aegon/NOTES.md#tier-d-isnt-measured)). |
 
 ## Pins
 
@@ -150,8 +154,8 @@ Uploads, reads beside them, and peak RSS at saturation:
 
 | Server | Uploads alone | Beside forms: uploads, forms | Reads p99 beside uploads | Peak RSS A / C / C templates / uploads / beside forms |
 |---|---:|---:|---:|---:|
-| Aegon (C++) | | | | 282 / 578 / 644 MB |
-| Aegon, small buffers | | | | 27 / 321 / 388 MB |
+| Aegon (C++) | [fails](#failed-checks) | [fails](#failed-checks) | [fails](#failed-checks) | 282 / 578 / 644 MB |
+| Aegon, small buffers | [fails](#failed-checks) | [fails](#failed-checks) | [fails](#failed-checks) | 27 / 321 / 388 MB |
 | dusty-routes (Zig) | 1,230/s | 25-35/s, 3.0-3.1 K/s | 0.65-3.20 ms | 15 / 216 / 241 / 31 / 781 MB |
 | ntex (Rust) | 1,198/s | 100-102/s, 4.6-4.7 K/s | 1.83-4.83 ms | 42 / 206 / 328 / 86 / 268 MB |
 | actix-web (Rust) | 1,201/s | 94-95/s, 4.7-4.8 K/s | 16.7-19.6 ms | 19 / 332 / 384 / 57 / 196 MB |
@@ -163,8 +167,7 @@ Uploads, reads beside them, and peak RSS at saturation:
 
 "Reads p99" is the range over tier C's six routes and the three runs. Alone, the Goose
 servers' reads have a p99 of 0.15-0.89 ms, and on 2026-10-18 the frameworks' 0.16-1.84
-ms. Every server reached every fixed rate. Aegon has no tier D, so no uploads and no
-reads beside them. Of its peak RSS, 256 MB is its 16,384 buffers of 4 KB in each of
+ms. Every server measured reached every fixed rate. Of Aegon's peak RSS, 256 MB is its 16,384 buffers of 4 KB in each of
 the 4 workers, 1 MB each in `aegon-small`; what else it holds on tier C, about 300 MB
 more than on A in both builds, isn't measured.
 
