@@ -69,28 +69,43 @@ Mac, in an arm64 Linux container
 
 ## An unattended session
 
-`bench/all.sh` measures goose-http's and this repository's Goose servers in one
-unattended session, without the frameworks, whose cells come from earlier runs. It
-checks the machine first, then runs both repositories' `scripts/test.sh`, the Goose
-builds with `ONLY=goose`, `bench/rest.sh check`, goose-http's `bench/run.sh` and
-`bench/files.sh`, `bench/rest.sh run`, and, as root, goose-http's
-`bench/instructions.sh` and `bench/rest.sh count`. It stops at the first failure, and
-took about 2 h 30 min on the Linux desktop (2026-10-14). Its checks need:
+`bench/all.sh` is the nightly session: it measures goose-http's and this repository's
+Goose servers, unattended, without the frameworks, whose cells come from earlier runs.
+With goose-http's checkout beside this one, it needs no setting:
 
-- goose-http's checkout in `GOOSE_HTTP`. Both repositories build
-  with the pinned release, or with the compiler `GOOSE` or `GOOSE_COMMIT` names.
-- Root, or `sudo` without a password.
-- Both checkouts clean and at `origin/main`, so push or pull first, and goose-http's
-  code the same as at the tag `rest.goose` pins.
-- An idle machine: a 1-minute load average of at most `IDLE_LOAD` (0.5) in two checks
-  30 s apart, and on WSL a Windows CPU load of at most `IDLE_CPU` percent (10).
+```sh
+bench/all.sh                       # or GOOSE_HTTP=<checkout> bench/all.sh
+DRY=1 bench/all.sh                 # the preparation and the steps, without running them
+```
+
+It prepares first: the tools, both checkouts fast-forwarded to `origin/main` where they
+are clean and behind it (`PULL=0` leaves them), the pinned Goose compiler, and up to
+`IDLE_WAIT` minutes (15) for an idle machine, a 1-minute load average of at most
+`IDLE_LOAD` (0.5) in two checks 30 s apart, and on WSL a Windows CPU load of at most
+`IDLE_CPU` percent (10). Then it runs both repositories' `scripts/test.sh` (`TESTS=0`
+skips them), the Goose builds with `ONLY=goose`, `bench/rest.sh check`, goose-http's
+`bench/run.sh` and `bench/files.sh`, `bench/rest.sh run`, and, as root, goose-http's
+`bench/instructions.sh` and `bench/rest.sh count`. It took about 2 h 40 min on the
+desktop (2026-10-19).
+
+It stops only when nothing can be measured: a tool missing, or no compiler. Anything
+else is a warning it records and goes on past: a checkout with local changes or off
+`origin/main`, goose-http's code apart from the tag `rest.goose` pins, a machine that
+won't go idle, failing tests, or no root or `perf` for the counts. A step that fails is
+recorded, and the steps after it run unless they need its output. The terminal gets a
+line when each step starts, with the last session's time for it, and when it ends, a
+line every `HEARTBEAT` seconds (600) while it runs, naming the REST run's cell, and each
+warning; the commands' output goes to the session's log.
 
 Tiers A to C run at the fixed rates `RATE_A`, `RATE_B`, and `RATE_C` (100,000, 24,000,
 and 1,700, the full run of 2026-10-13's), so that their cells compare with earlier
-runs. Under one time stamp, goose-http's own runs go to its `bench/results/`, the REST
-run to this repository's ([Results](#results)), and the session's log, step times, and
-environment to `build/bench-all/<stamp>-<machine>/`. Nothing is committed: writing the
-results up is a separate step.
+runs. Under one time stamp, goose-http's own runs go to its `bench/results/`, with the
+session's instruction counts, environment, and step times; the REST run and its counts
+to this repository's ([Results](#results)); and the session's progress, warnings,
+log, and environment to `build/bench-all/<stamp>-<machine>/`. There, `manifest.txt`
+says how each step ended, lists the warnings, and names each result's directory, and
+`build/bench-all/latest` names the newest session. Nothing is committed: writing the
+results up is a separate step, which starts from the manifest.
 
 ## Instruction counts on macOS
 
