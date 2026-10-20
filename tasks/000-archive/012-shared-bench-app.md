@@ -1,8 +1,8 @@
 # 012: Serve the benchmark from goose-http's application module
 
-Status: in-progress (asked for 2026-10-14). The server imports goose-http's module on
-`main`, checked on Linux in Docker on a Mac; the Linux desktop's idle memory recheck
-remains (below).
+Status: done (asked for 2026-10-14; the desktop's idle memory checked 2026-10-20). The
+server imports goose-http's module on `main`, checked on Linux in Docker on a Mac and on
+the desktop.
 
 `bench/rest/goose-rest/main.goose` copies goose-http's `bench/rest/goose/rest.goose` at
 `e27ab21`, apart from its routes: about 2,450 of its 2,883 lines. The copy missed
@@ -27,7 +27,7 @@ depend on it by path or git commit; that waits until the copy drifts.
 - [x] `bench/rest.sh check` passes on every tier for `goose-uring-rest` and
       `goose-epoll-rest`, and `scripts/test.sh` passes
 - [x] Idle VmRSS per worker on tiers A and C within a few MB of goose-http alone, before
-      task 010's run (in Docker on a Mac; the desktop's figures are pending, below)
+      task 010's run (in Docker on a Mac, and on the desktop on 2026-10-20, below)
 
 ## What was done (2026-10-16)
 
@@ -81,8 +81,22 @@ serialized goose-rest's worker holds 1.0 MB less than goose-http's; why isn't me
 Every round was within 0.1 MB of its cell's median. These are the VM's figures, with its
 default huge pages, not the desktop's.
 
-### Pending on Linux
+### On the desktop (2026-10-20)
 
-On the desktop (WSL2), at the commit after this change: `bench/rest.sh build`, then the
-idle VmRSS with 4 workers, epoll, 3 s after listening, of goose-http alone and
-goose-rest, tiers A and C, both JSON ways, before task 010's run.
+Measured at goose-rest's `main`, `72ce5c3`, rather than the commit after this change:
+the shared module has been in use since then, and the check is the same. Ryzen 7
+5800X3D, WSL2 kernel `6.18.54.1-microsoft-standard-WSL2`, Goose `f114b5a`, goose-http at
+the pin `v0.4.3` (`0a016bb0`). `ONLY=goose bench/rest.sh build`, then each server alone
+on CPUs 0-3, epoll, no request sent, VmRSS 3 s after it listened, one run per cell, in KB:
+
+| Tier, JSON | goose-http, 1 / 2 / 4 workers | goose-rest, 1 / 2 / 4 workers | Per worker, goose-http / goose-rest |
+|---|---|---|---:|
+| A, serialize | 4,284 / 4,848 / 6,760 | 5,100 / 5,960 / 6,276 | 0.8 / 0.4 MB |
+| A, template | 5,240 / 5,772 / 5,788 | 5,584 / 5,604 / 6,032 | 0.2 / 0.1 MB |
+| C, serialize | 13,712 / 23,888 / 44,248 | 14,036 / 24,212 / 44,348 | 10.2 / 10.1 MB |
+| C, template | 21,776 / 23,780 / 27,360 | 21,984 / 23,784 / 27,600 | 1.9 / 1.9 MB |
+
+At 4 workers goose-rest is within 0.5 MB of goose-http alone in every cell, so the
+criterion holds on the desktop too. Tier A's per-worker figures differ by less than a
+megabyte across a single run each, about what one run varies. The desktop's figures
+are lower than the Mac VM's above, which had its default huge pages.

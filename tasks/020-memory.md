@@ -1,7 +1,7 @@
 # 020: Find where goose-rest's memory goes
 
-Status: in-progress (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fixes 1 to 3
-done 2026-10-15, the Linux rerun still to do). Blocks v0.1.0 (2026-10-15).
+Status: done (asked for 2026-10-15; diagnosed on macOS 2026-10-15, fixes 1 to 3
+done 2026-10-15, rerun on Linux 2026-10-20). Blocked v0.1.0 (2026-10-15).
 
 At saturation on io_uring, goose-rest holds 2.0-6.7 times goose-http's peak RSS: 33 MB
 against 12 on tier A, 96 against 30 on B, 140 against 71 on C, and 387 against 58 on C
@@ -12,10 +12,24 @@ connection, and the tier server's own records.
 
 ## Acceptance criteria
 
-- [ ] Each tier's extra memory is attributed to its source, measured on Linux
-- [ ] What belongs to the framework is cut or recorded with the reason it stays
-- [ ] Peak RSS rerun on Linux against goose-http alone, recorded in
+- [x] Each tier's extra memory is attributed to its source, measured on Linux: on
+      Linux none is left to attribute ("On Linux" below)
+- [x] What belongs to the framework is cut or recorded with the reason it stays
+- [x] Peak RSS rerun on Linux against goose-http alone, recorded in
       `docs/benchmarks.md`
+
+## On Linux (2026-10-20)
+
+The nightly session `2026-10-20T0854-Tiamat` (`bench/all.sh`; Ryzen 7 5800X3D, WSL2
+kernel `6.18.54.1-microsoft-standard-WSL2`, goose-rest `62c340d`, goose-http `0a016bb0`,
+Goose `f114b5a`, 4 workers; `docs/benchmarks.md` has the method) measured peak RSS at
+saturation, goose-http alone against goose-rest. On io_uring: tier A 13 against 13 MB,
+B 30 against 31, C 71 against 71, C templated 58 against 58, and uploads alone 71
+against 71. On epoll: A 8 against 8, C 69 against 69, and uploads alone 69 against 70.
+The framework's share stays under 1 MB, as fixes 1 to 3 left it, so there is no
+extra memory to attribute. Uploads beside forms on epoll is the exception, 149 MB
+against 132; `docs/benchmarks.md` records that workload's loss, and this task didn't
+cover it.
 
 ## Findings (2026-10-15)
 

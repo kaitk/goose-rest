@@ -1,7 +1,7 @@
 # 019: Close the serialized JSON loss against goose-http
 
-Status: in-progress (asked for 2026-10-15; the package's half is done, and the
-benchmark half waits on the Linux run)
+Status: in-progress (asked for 2026-10-15; the package's half is done, the Linux rerun
+shows the loss gone (2026-10-20), and the cause's instruction count is open)
 
 On tiers B and C serialized, goose-rest's tier server loses 8-15% to goose-http's, and
 tier C takes 74.9 µs of CPU per request against 64.2
@@ -56,8 +56,28 @@ output did. The tier server passes goose-http's `check.py` on tiers A to D and
 ## Acceptance criteria
 
 - [ ] The cause is measured, with instruction counts on tier B or C's serialized routes
-      (waits on the Linux run)
+      (open: goose-http's `bench/count.sh` sends no cookie or bearer token, so B and C
+      answer 401 to it; see "On Linux")
 - [x] The fix is in the generated writers or the package, so programs get it, and
       `scripts/test.sh` passes
-- [ ] Tiers B and C serialized rerun on Linux against goose-http alone, recorded in
-      `docs/benchmarks.md` (waits on the Linux run)
+- [x] Tiers B and C serialized rerun on Linux against goose-http alone, recorded in
+      `docs/benchmarks.md` (2026-10-20)
+
+## On Linux (2026-10-20)
+
+The nightly session `2026-10-20T0854-Tiamat` (`bench/all.sh`; Ryzen 7 5800X3D, WSL2
+kernel `6.18.54.1-microsoft-standard-WSL2`, goose-rest `62c340d`, goose-http `0a016bb0`,
+Goose `f114b5a`, 4 workers, the fixed rates in `docs/benchmarks.md`), goose-rest
+against goose-http alone, serialized:
+
+| Tier | io_uring | epoll |
+|---|---:|---:|
+| B | 317 K against 315 K (+0.3%) | 243 K against 245 K (-0.6%) |
+| C | 63.2 K against 63.3 K (-0.2%) | 61.3 K against 61.7 K (-0.6%) |
+
+Tier C's CPU per request is 63.3 against 63.2 µs on io_uring and 65.3 against 65.0 on
+epoll, where it was 74.9 against 64.2. The loss is gone. Task 020's fix 1 changed the
+tier server's records in the same span, so the rerun alone doesn't show which change
+closed it. The open criterion needs a header option in `bench/count.sh`, or perf
+over a `tier-b.lua` run, at a commit before `ed7ebfc` and one after it. With the loss
+gone, the criterion could be dropped instead; that is the user's call.

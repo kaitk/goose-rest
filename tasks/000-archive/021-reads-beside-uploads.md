@@ -1,8 +1,8 @@
 # 021: Cut the latency of reads beside uploads
 
-Status: in-progress (asked for 2026-10-15; cause found and fixed on macOS 2026-10-15,
-the Linux check still to do). Shares its cause with task 020, so it blocks v0.1.0 with
-it (2026-10-15).
+Status: done (asked for 2026-10-15; cause found and fixed on macOS 2026-10-15, checked
+on Linux 2026-10-20). Shared its cause with task 020, so it blocked v0.1.0 with it
+(2026-10-15).
 
 With uploads running, tier C's reads at a fixed 1,700 a second reach a p99 of 20.4-28.1
 ms on goose-rest's io_uring loop against 4.8-7.5 ms on goose-http alone, and 13.8-16.1 ms
@@ -12,10 +12,25 @@ goose-rest serves 11-12% fewer uploads a second
 
 ## Acceptance criteria
 
-- [ ] The cause is found and measured on Linux
-- [ ] Fixed in the package, or recorded with the reason it stays
-- [ ] Reads beside uploads and uploads alone rerun against goose-http alone, recorded in
+- [x] The cause is found and measured on Linux: the fix removed the gap there ("On
+      Linux" below)
+- [x] Fixed in the package, or recorded with the reason it stays: tier D reads its
+      bodies with `rest::body_in_pieces` (`9009486`)
+- [x] Reads beside uploads and uploads alone rerun against goose-http alone, recorded in
       `docs/benchmarks.md`
+
+## On Linux (2026-10-20)
+
+The nightly session `2026-10-20T0854-Tiamat` (`bench/all.sh`; Ryzen 7 5800X3D, WSL2
+kernel `6.18.54.1-microsoft-standard-WSL2`, goose-rest `62c340d`, goose-http `0a016bb0`,
+Goose `f114b5a`, 4 workers; `docs/benchmarks.md` has the method), goose-http alone
+against goose-rest:
+
+- Reads' p99 beside uploads: 4.66-8.20 against 6.33-8.67 ms on io_uring, and 0.34-1.34
+  against 0.40-1.28 ms on epoll, where it was 20.4-28.1 and 13.8-16.1 ms on goose-rest
+  before the fix (above).
+- Uploads alone: 1,146 against 1,124 a second on io_uring, and 1,162 against 1,141 on
+  epoll, where goose-rest served 11-12% fewer before.
 
 ## Findings (2026-10-15)
 

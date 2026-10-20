@@ -41,17 +41,14 @@ tasks by number ("task 001"), not by path, so a move breaks no reference.
 
 ## Order
 
-The benchmark session on Linux settles the first five; the rest can start at any point
-unless the table says otherwise.
+Work can start at any point unless the table says otherwise.
 
 | Open work | Remaining outcome or dependency |
 |---|---|
-| 019: serialized JSON | The package's half is done; the Linux run says whether B and C closed on goose-http alone. |
-| 020: memory | Fixed; idle and peak RSS rerun on Linux, recorded in `docs/benchmarks.md`. |
-| 021: reads beside uploads | Fixed; the Linux rerun confirms it. |
-| 023: bodies and responses in pieces | Built; instruction counts on tiers A and M on Linux. |
+| 019: serialized JSON | The loss is gone on Linux (2026-10-20); the cause's instruction count needs a header option in `bench/count.sh`, or the criterion dropped. |
+| 020: memory | Done on Linux (2026-10-20); stays here while task 027 uses its method. |
+| 023: bodies and responses in pieces | Built and counted on Linux (2026-10-20): 1.5-15.5 instructions per request more for a program that uses none of it; waits on agreeing that cost. |
 | 025: middleware fields on later answers, and 029: the gathering budget | Done; tier M's instructions per request on Linux record what each added. |
-| 042: ntex on the desktop | Built and checked on macOS; build, check, and measure on the Linux desktop. |
 | 040: rate gaps in the v0.1.0 session | The router's stack frame fixed; open for discussion: goose-rest's per-request overhead on tiers A and M, and a hand-written chain's frame. |
 | 036: parameters in a scope's prefix | Research; the best practices' member audience waits on it. |
 | 037: data compiled into the binary | Spike. |
@@ -59,7 +56,6 @@ unless the table says otherwise.
 | 035: best practices | Built; the testing page, then data access and a full example once there are database helpers and JWT. |
 | 027: a helper over the shared store | Deferred until a program needs it. |
 | 022: OpenAPI output | Planned for later. |
-| 012: a benchmark app shared with goose-http | Done in Docker on a Mac; the Linux desktop's idle VmRSS recheck remains, before task 010's run. |
 | 043: workers started with `http::run` | Done on a pinned Goose commit; the README waits for releases. |
 | 046: rename to Plod | Deferred; the name check and the logo come first. |
 | 047: HttpArena | After 046; the master plan, with the work in goose-http, goose-tls, goose-sqlite, and goose-postgres. |

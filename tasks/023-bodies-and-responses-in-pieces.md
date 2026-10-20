@@ -375,10 +375,40 @@ Built as proposed, with these differences found on the way:
   passes, and its C differs only in names and in `rest::route`'s failure branch, which
   now cuts an open response short. The calls added in steps 3 to 6 change no program
   that doesn't use them: the C is the same apart from an error code's string.
-- Not measured: `bench/rest.sh count` needs Linux's perf counters. To close the open
-  criterion, run it on the machine of `docs/benchmarks.md`, at the commit before this
-  task's first and at its last, for tiers A and M, and compare the text section's size.
+- Measured on Linux 2026-10-20, below; the open criterion waits on agreeing to the
+  change.
 - Left open: `rest.compression` doesn't compress a response sent in pieces (section 6:
   its own `begin`, `send`, and `end`, with the `http::Compressed` in the program's
   state); `TIMEOUT` to a route that began a response (answer 3); `rest::file` from
   `http::open_precompressed`; tier D's server on `rest::receive` (step 9).
+
+## Measured on Linux (2026-10-20)
+
+`bench/rest.sh count` at `4054d01`, the commit before this task's first, and at
+`3468507`, its last, both with goose-http `v0.3.2` (`ac385b12`) and Goose `f114b5a`, each
+a `git archive` built with `ONLY=goose bench/rest.sh build` on the Linux file system.
+The desktop: Ryzen 7 5800X3D, WSL2 kernel `6.18.54.1-microsoft-standard-WSL2`. One
+worker on CPU 0, h2load on CPUs 4-15 (8 threads, 256 connections, 16 in flight), 10 M
+requests a case; 3 rounds, the two commits in turn. Every round gave the same count to
+0.1, so the differences below are the change, not noise. User instructions per request
+of goose-rest's tier server (goose-http alone's tier A, the same in both, is left out):
+
+| Case | Before | After | Change |
+|---|---:|---:|---:|
+| A `GET /api/items/1`, 200 | 4,220.4 | 4,223.9 | +3.5 |
+| A `GET /api/me`, 401 | 4,535.4 | 4,550.9 | +15.5 |
+| A `GET /nothing`, 404 | 3,150.4 | 3,153.9 | +3.5 |
+| M `GET /api/items/1`, 401 | 5,842.5 | 5,858.0 | +15.5 |
+| F `GET /`, bare / goose-rest | 2,388.9 / 2,258.1 | 2,400.9 / 2,259.6 | +12.0 / +1.5 |
+| F `GET /id/1?name=bun`, bare / goose-rest | 2,963.9 / 3,166.1 | 2,975.9 / 3,167.6 | +12.0 / +1.5 |
+| R route 1, if chain / generated | 3,100.5 / 2,789.5 | 3,103.9 / 2,785.9 | +3.4 / -3.6 |
+| R route 201, if chain / generated | 39,000.5 / 3,241.5 | 39,003.9 / 3,239.9 | +3.4 / -1.6 |
+
+The server's text section grew from 1,316,069 to 1,385,149 bytes (+69,080, 5.2%),
+which fits the handler's second copy moving into `on_later` in each of goose-http's
+places ("Built"). A program that uses none of this pays 1.5 to 3.5 instructions on
+an answered request and 15.5 on a 401 from middleware, at most 0.4%. `bare`, the same
+binary with goose-http's own router (`BARE=1`), pays 12.0 though it doesn't go
+through `rest::route`; code layout is a likely cause, not measured. The inlining check
+passed at `62c340d` (the nightly's `scripts/test.sh`, 2026-10-20). The criterion
+needs this cost agreed, or the 401 path's extra 12 instructions explained.
