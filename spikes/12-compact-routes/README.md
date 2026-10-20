@@ -143,6 +143,14 @@ to 4.0 for 5,001. Within a server, the rounds differ by at most 16 at 1,111 rout
 by at most 18 at 5,001. The 5,001-route run is
 `AREAS=10 MODULES=50 ROLES=1 MIDDLE=/specialist/work-hour LAST=/admin/practitioner-2 ./benchroutes.sh`.
 
+The same runs' requests per second agree with the instruction counts within 1% at
+1,111 routes. At 5,001 routes, A takes 6 to 7% more cycles per request than today's form
+in `/admin`, the last area, and answers 6% fewer requests per second there, for 0.4%
+more instructions. That binary's layout is the likely cause rather than the design.
+Quick runs (2 rounds of 1,000,000 requests) repeat the loss with the same build, but
+show none at 4,901 routes with roles, or at 5,001 without them: within 1% in every
+case. Each binary's layout differs, and the build can land either form on a slow one.
+
 | | 1,111: today | 1,111: A | 5,001: today | 5,001: A |
 |---|---|---|---|---|
 | build | 4.5 s | 4.8 s | 14 s | 17 s |
