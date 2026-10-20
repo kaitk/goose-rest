@@ -90,5 +90,6 @@ that make a good checklist. Pages are under `https://udaykhare09.github.io/Aegon
 ## Acceptance criteria
 
 - [ ] Each subtask done or cancelled with its reason
-- [ ] goose-http's task 057 records the engine verdicts
+- [x] goose-http's task 057 records the engine verdicts (2026-10-20: the three ideas
+      measured were set aside, wider header scanning among them)
 - [ ] The README's status table updated as each taken idea lands
