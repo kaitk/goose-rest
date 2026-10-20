@@ -61,6 +61,10 @@ traps apply too.
 - The Ubuntu distribution runs as `root`. Without a global Git identity there, Git
   records the author as `root@<hostname>`, so set `user.name` and `user.email` in WSL
   before committing from it (2026-10-14).
+- WSL's Git can't read a worktree that Windows Git created. The worktree's `.git` file
+  holds a Windows path, so `git` in WSL answers "not a git repository", and
+  `bench/rest.sh run` records goose-rest in `env.txt` as blank and "(modified)". Create
+  a worktree that WSL benchmarks with from WSL's Git (2026-10-20).
 
 ## Benchmarks
 
@@ -79,6 +83,12 @@ Traps met counting the routers' instructions (2026-10-13, h2load 1.70.0):
   (2026-10-16).
 - A Windows update rebooted the desktop 2 h 30 min into `bench/all.sh`, and WSL ended
   with it. Pause updates before an unattended session (2026-10-16).
+- In a fresh checkout, `ONLY=goose bench/rest.sh build` leaves goose-http's
+  `build/bench/` unbuilt, and `bench/rest.sh run` with `STEPS=none` doesn't check for
+  it. wrk then runs without `wrk-monotonic.so`, with only an `LD_PRELOAD` error in the
+  log, and WSL's clock steps count about 250 timeouts in each cell. `bench/rest.sh count`
+  fails at `ln`. Build the helpers first with
+  `ONLY=goose "$GOOSE_HTTP"/bench/build.sh` (2026-10-20).
 
 ### The REST benchmark on macOS
 
