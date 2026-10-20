@@ -17,6 +17,8 @@ import .waiting;
 import .pieces;
 import .testing;
 import .fields;
+import .sse;
+import .cookies;
 
 // The path a route matches: the request target without its query, as goose-http
 // reads it.

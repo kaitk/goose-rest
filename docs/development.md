@@ -17,6 +17,8 @@ platform.
 rest.goose        the package's entry, namespace rest
 runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error shape
 extract.goose     the extractors: parameters, headers, cookies, take, once
+sse.goose         Server-Sent Events over begin, send, and pause
+cookies.goose     outgoing cookies through goose-http's cookie writer
 middleware.goose  CORS, bearer, timed, and scope
 waiting.goose     lanes of jobs: ask one, run its jobs, and resume with its reply
 compression.goose rest::compressed, a module rest doesn't import (goose-compress)

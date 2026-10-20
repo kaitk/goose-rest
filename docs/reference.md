@@ -74,6 +74,31 @@ field, or read JSON: a writer that needs those stays hand-written, and the gener
 writes both from a schema. It builds on Goose's `const for` over `fields<T>` (spec
 §6), whose first version names each field and reaches it but doesn't give its type.
 
+### 1.2 Cookies out
+
+`rest::set_cookie(cx, cookie)` writes one `Set-Cookie` field through
+`http::set_cookie`. Pass an `http::Cookie`, whose fields and validation are in
+[goose-http's cookie API](https://github.com/kaitk/goose-http/blob/v0.4.3/docs/api.md#helpers-for-apis).
+It returns `false` and writes nothing when goose-http refuses the cookie. Each call
+writes a separate field.
+
+Call it while the response's head is open: between `http::start` and `http::finish`,
+or after `rest::begin` and before the first `rest::send` or `rest::end`.
+`rest::json`, `rest::text`, and `rest::empty` write the whole answer at once, so use
+the head and body writers separately for an answer with cookies:
+
+```rust
+http::start(cx.out, 200);
+rest::set_cookie(cx, http::Cookie { name: "sid", value: id, path: "/",
+                                  secure: true, http_only: true, same_site: "Lax" });
+http::finish(cx.out, http::JSON, "{\"ok\":true}");
+```
+
+`rest::clear_cookie(cx, cookie)` uses the same writer, with an empty value,
+`Max-Age=0`, and an expiry at the Unix epoch. It preserves the other attributes and
+returns the same boolean. Pass the original name, path, and domain to remove the
+same cookie. Neither helper stores cookies or adds request state.
+
 ## 2. Middleware
 
 Middleware is a block around the routes it applies to, inlined into the handler: a scope
@@ -574,6 +599,41 @@ catches one that does, or a catch-all `resume`. Don't write either.
 
 The best practices give each kind of slow work a lane, and grow one by threads
 ([Lanes of several threads](best-practices/lanes.md#66-lanes-of-several-threads)).
+
+### 4.2 Server-Sent Events
+
+`rest::sse_begin(cx, u)` begins a 200 response through `rest::begin`, with `u` in
+`cx.state.use`. It sets `Content-Type: text/event-stream`, `Cache-Control: no-cache`,
+and `X-Accel-Buffering: no`. A HEAD request gets these fields and no body or later
+calls. Each helper below sends one complete frame through `rest::send`:
+
+| Call | Sends |
+|---|---|
+| `rest::sse_event(cx, event, data)` | A named event, with one `data:` line per line of `data`, then a blank line. An empty name uses the browser's default event type. Returns `false` without writing for a name containing CR or LF. |
+| `rest::sse_data(cx, data)` | An unnamed data event. |
+| `rest::sse_json(cx, v, event)` | JSON from `v`'s `format` overload, as data in the named event. `event` defaults to `""`. Returns the same boolean as `sse_event`. |
+| `rest::sse_comment(cx, text)` | A comment for a heartbeat, with one `:` line per line of `text`. `text` defaults to `""`. Comments dispatch no event. |
+| `rest::sse_retry(cx, ms)` | The browser's reconnect delay in milliseconds. Returns `false` without writing for a negative delay. Zero is allowed. |
+
+Data and comments split LF, CRLF, and bare CR, including empty and trailing lines.
+Every line gets its prefix, so text containing newlines cannot inject another field.
+JSON uses the same writer as `rest::json`: give the struct a JSON `format` overload,
+hand-written, generated, or using `rest::format_fields` ([JSON writers](#11-json-from-a-structs-fields)).
+
+Pause between frames with `rest::pause(cx, ms)`, handle `http::TIMEOUT` in the
+variant's resume function, and finish with `rest::end`. Check HEAD before pausing:
+
+```rust
+rest::sse_begin(cx, Use.Events);
+if cx.out.head { return; }
+rest::sse_comment(cx, "alive");
+rest::pause(cx, 15000);
+```
+
+At each timeout, send the next event or a heartbeat and pause again. The existing
+[later-call rules](#4-later-calls) apply, including timer capacity and `CLOSED` when
+the client leaves. The helpers keep no stream state of their own and add no work to
+requests that don't call them.
 
 ## 5. Errors
 
