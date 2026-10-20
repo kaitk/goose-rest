@@ -1,6 +1,8 @@
 # 057: Inline a block called once, whatever its size
 
-Status: todo
+Status: cancelled (2026-10-20), by its own step 1: the size limit isn't what keeps
+design A's calls, and removing every cause makes the programs slower. No pull request,
+and #33 keeps its answer.
 
 A Goose pull request for the second change the maintainer proposed in
 [aardappel/goose#33](https://github.com/aardappel/goose/issues/33) (2026-10-13): always
@@ -10,7 +12,7 @@ and the limit stays for named functions. It keeps a program's single-use helpers
 folding into one huge `main`.
 
 At the time, goose-rest answered that `inline fn` on its block-taking functions was
-enough. [Spike 12](../spikes/12-compact-routes/README.md) shows where it isn't: `inline
+enough. [Spike 12](../../spikes/12-compact-routes/README.md) shows where it isn't: `inline
 fn` covers `routes`, `route`, and `attempt`, but not the block a program hands them,
 which can't be marked. In design A, that block is a program's whole route table. Past
 200 nodes, it stays a call on every request, and the chain around it stays out of line:
@@ -22,6 +24,18 @@ The change is the used-once condition in `TryInline`: a callee that is a functio
 value's body skips the `ONCEMAX` cap. The cold-branch rule, the `MAXNEST` depth limit,
 and every limit for named functions stay as they are. If the maintainer prefers a
 higher cap to none, take that.
+
+## Step 1's result (2026-10-20)
+
+A Goose build of `1e31b6d` with `ONCEMAX` at 1,000,000,000 inlines `v1` into `attempt`,
+but `routes`, `route`, and `attempt` stay calls in `short60` and `hand60` alike. Today's
+form never folded them either: it keeps the same chain for every `/v1` request.
+`attempt` stays a function because extractors left as calls return from it
+(`rest::param_int` at 33 calls, `rest::param` at 7, and `rest::query_int` and its kin,
+which have two results, and which Goose never inlines). `route` and `routes` stay calls
+because each hands the next a block that reads its locals. Removing all three causes
+compiles both forms to one function, which costs +104 to +172 instructions per request
+in `/v1` ([spike 12](../../spikes/12-compact-routes/README.md#which-routes-stay-out-of-line)).
 
 ## Steps
 

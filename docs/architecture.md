@@ -115,9 +115,12 @@ nothing the route doesn't read.
 
 ## Middleware and inlining
 
-Middleware is a block around the routes it applies to. A handler behind middleware
-compiles to one C function, with the middleware, the route, and the code that fails
-inlined into it, with each early answer compiled as a jump. Three rules keep it so:
+Middleware is a block around the routes it applies to. In a small program, a handler
+behind middleware compiles to one C function, with the middleware, the route, and the
+code that fails inlined into it, with each early answer compiled as a jump. In a large
+one, the route stays a call around the routes behind it: an extractor used at dozens of
+call sites stays a call, and returns from the route. That runs fewer instructions than
+one function holding every route would. Three rules keep the calls few:
 
 - **One route per request.** A function that fails returns from the innermost route,
   so a route nested in a route keeps both out of line. Middleware doesn't open routes

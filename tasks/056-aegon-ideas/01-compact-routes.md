@@ -1,7 +1,8 @@
 # 01: Shorter routes
 
-Status: cancelled (2026-10-20), by request, under the bar the request set: adopt only
-one form that works everywhere at today's instruction count. Neither design meets it.
+Status: todo. Cancelled on 2026-10-20 under the bar first set, today's instruction
+count, and reopened the same day by request under a new one: a reasonable cost. Design
+A waits on agreeing its cost, a fixed 57 to 165 instructions per request.
 
 Aegon's hello world is 10 lines; goose-rest's is about 17. Two changes could bring ours
 to about 12 without changing what the routes compile to:
@@ -48,11 +49,14 @@ the block wrote nothing and waits for nothing. A guard is an `if` around the rou
 guards. That much works, but neither is worth adopting alone: the line it saves is the
 `else`, and the `rest::on` and `rest::route` pair stays.
 
-Measure A again if Goose inlines a function value called once whatever its size, one of
-the two changes proposed in [aardappel/goose#33](https://github.com/aardappel/goose/issues/33):
-A's cost is the calls left around the 60-route block, which passes the size limit for a
-function called once, not the design. That limit is deliberate, so A waits on that
-change rather than on a release; task 057 proposes it. B stays rejected for its signatures.
+A's cost comes from its design, not from Goose's size limit for a function called once:
+every request opens the route that today's form opens only for routes behind middleware.
+Removing the limit, and inlining everything else that kept the chain of calls, made both
+forms slower behind middleware (task 057). At 1,111 routes, A costs +60 to +135 instructions per request
+(+0.2 to +0.7%), and at 5,001 routes with nested roles +57 to +165 (+0.2 to +0.6%), so
+the cost doesn't grow with the program
+([spike 12](../../spikes/12-compact-routes/README.md#larger-programs)). B stays
+rejected for its signatures.
 
 Found along the way: Goose inlines a function called in a block whose arm ends in a
 `return` only below half the usual size
