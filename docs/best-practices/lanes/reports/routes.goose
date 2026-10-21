@@ -11,11 +11,7 @@ import reports.structs;
 import reports.rules;
 
 fn routes(cx) {
-    if rest::on(cx, "GET", "/projects/:id") {
-        project(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "/projects/:id") { project(cx); };
 }
 
 // A project's totals. On the worker: ask the reports lane. ms makes the job

@@ -13,7 +13,7 @@ write it once, as the `rest::error_body` overload in `common/errors.goose`
 ([Answers and errors](../tutorial/03-errors.md#errors)).
 
 A client then reads every error the same way, whether a route or goose-rest answered
-it: a 404 from `rest::otherwise`, a 413 for a body past its limit, or an operation on a
+it: a 404 from `rest::routes`, a 413 for a body past its limit, or an operation on a
 project that the domain refuses.
 
 ## 4.2 Each domain's codes in one place
@@ -59,13 +59,8 @@ From [`errors/projects/routes.goose`](errors/projects/routes.goose):
 
 ```rust
 fn routes(cx) {
-    if rest::on(cx, "GET", "/:id") {
-        show(cx);
-    } else if rest::on(cx, "DELETE", "/:id") {
-        remove(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "/:id") { show(cx); };
+    rest::delete(cx, "/:id") { remove(cx); };
 }
 
 fn show(cx) {

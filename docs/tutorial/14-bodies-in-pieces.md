@@ -41,10 +41,8 @@ it needs for the pieces, such as `part_path` here.
 <summary>The routes, which check the project first</summary>
 
 ```rust
-        } else if rest::on(cx, "POST", "/v1/projects/:id/attachments") {
-            rest::route(cx) { attach(cx, project(cx)); };
-        } else if rest::on(cx, "POST", "/v1/projects/:id/attachments/form") {
-            rest::route(cx) { attach_form(cx, project(cx)); };
+        rest::post(cx, "/v1/projects/:id/attachments") { attach(cx, project(cx)); };
+        rest::post(cx, "/v1/projects/:id/attachments/form") { attach_form(cx, project(cx)); };
 ```
 
 ```rust

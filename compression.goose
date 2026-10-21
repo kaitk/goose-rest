@@ -26,7 +26,8 @@ import http.compression;
 // while it holds the request (spec §5.1), so the answer is copied once. A
 // response F begins with rest::begin, under serve or serve_one, is
 // compressed as it's sent (begin_coded); rest::file's and other responses in
-// pieces go as F wrote them.
+// pieces go as F wrote them. Inside rest::routes, F runs in rest::scoped,
+// and the request is then taken.
 //
 //   rest::compressed(cx) { cx => rest::routes(cx) { cx => ... }; };
 inline fn compressed<S, A, R, F>(cx: Cx<S, A, R>&, c: http::Compression = http::Compression { .. }) {
@@ -46,10 +47,11 @@ inline fn compressed<S, A, R, F>(cx: Cx<S, A, R>&, c: http::Compression = http::
         was = x.mode & OFFERED;
         x.mode |= OFFERED;
     }
-    F(&inner);   // a block given the local itself gets a copy of it
+    scoped(inner) { F(&inner); };   // a block given the local itself gets a copy of it
     if x { x.mode = (x.mode & ~OFFERED) | was; }
     offered = outer;
     write_compressed(cx.out, cx.req, buf, c);
+    taken(cx);   // inner's router is a copy
 }
 
 // The options of the innermost rest::compressed this worker runs, for a

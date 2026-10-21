@@ -32,26 +32,21 @@ struct App { conn: db::Conn&, db: rest::Lane<DbJob, Use> }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::scope(cx, "/v1") {
-            rest::route(cx) { v1(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::scope(cx, "/v1") { v1(cx); };
     };
 }
 
 fn v1(cx) {
-    if rest::on(cx, "GET", "/in-place/projects/:id") {
+    rest::get(cx, "/in-place/projects/:id") {
         // Blocks the worker, and every connection it holds, for the query.
         let id = rest::param_int(cx, "id");
         let p, found = db::fetch_one<db::Project>(cx.app.conn, "SELECT * FROM projects WHERE id = $1", [id]);
         guard found else { rest::fail(cx, 404, "project_not_found"); }
         rest::json(cx, 200, project_of(p));
-    } else if rest::on(cx, "GET", "/projects/:id") {
-        rest::ask(cx, cx.app.db, DbJob.Project { id: rest::param_int(cx, "id") });
-    } else if rest::on(cx, "PUT", "/projects/:id/tasks/:task/assignee") {
+    };
+    rest::get(cx, "/projects/:id") { rest::ask(cx, cx.app.db, DbJob.Project { id: rest::param_int(cx, "id") }); };
+    rest::put(cx, "/projects/:id/tasks/:task/assignee") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let assignee, has_assignee = rest::query_int(cx, "user");
@@ -61,9 +56,7 @@ fn v1(cx) {
             project: rest::param_int(cx, "id"), task: rest::param_int(cx, "task"),
             user: rest::int_of(cx, user, "X-User"), assignee: assignee,
         });
-    } else {
-        rest::otherwise(cx);
-    }
+    };
 }
 
 // The resume case functions: one per Use variant, and one per job, when

@@ -92,8 +92,10 @@ let MAX_BODY: i64 = 1 * 1024 * 1024;
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,
-// the Allow lists the methods of the program's routes tried before dispatch first.
+// the Allow lists the methods of the program's routes tried before dispatch first,
+// and dispatch answers nothing when one of them took the request.
 fn dispatch(cx) {
+    guard rest::untaken(cx) else { return; }
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }
@@ -103,10 +105,7 @@ fn dispatch(cx) {
             12 => {
                 if path == "/v1/projects" {
                     if m == "GET" || m == "HEAD" {
-                        rest::route(cx) {
-                            let s_ = app::security_token(cx);
-                            app::list_projects(cx, s_);
-                        };
+                        route_list_projects(cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -126,10 +125,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "projects", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                rest::route(cx) {
-                                    let s_ = app::security_token(cx);
-                                    app::list_projects(cx, s_);
-                                };
+                                route_list_projects(cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -140,21 +136,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_token(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::get_project(cx, s_, id);
-                                        };
+                                        route_get_project(cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        rest::route(cx) {
-                                            let s_ = app::security_token(cx);
-                                            let id = rest::path_int(cx, s3, "id");
-                                            if id < 1 { rest::fail_param(cx, "id: minimum"); }
-                                            app::delete_project(cx, s_, id);
-                                        };
+                                        route_delete_project(cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -168,4 +154,32 @@ fn dispatch(cx) {
         }
     }
     rest::not_found(cx, m, path);
+}
+
+// GET /v1/projects
+fn route_list_projects(cx) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        app::list_projects(cx, s_);
+    };
+}
+
+// GET /v1/projects/{id}
+fn route_get_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::get_project(cx, s_, id);
+    };
+}
+
+// DELETE /v1/projects/{id}
+fn route_delete_project(cx, s3: const u8[:]) {
+    rest::route(cx) {
+        let s_ = app::security_token(cx);
+        let id = rest::path_int(cx, s3, "id");
+        if id < 1 { rest::fail_param(cx, "id: minimum"); }
+        app::delete_project(cx, s_, id);
+    };
 }

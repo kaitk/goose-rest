@@ -52,13 +52,8 @@ From [`routes-and-rules/projects/routes.goose`](routes-and-rules/projects/routes
 
 ```rust
 fn routes(cx) {
-    if rest::on(cx, "POST", "") {
-        create(cx);
-    } else if rest::on(cx, "POST", "/:id/archive") {
-        archive(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::post(cx, "") { create(cx); };
+    rest::post(cx, "/:id/archive") { archive(cx); };
 }
 ```
 

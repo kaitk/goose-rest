@@ -3,7 +3,7 @@
 An application's middleware lives in `middleware.goose`, and its stacks, one per
 audience, in `stacks.goose`. Every scope runs behind one stack.
 [Middleware and scopes](../tutorial/07-middleware.md) explains how middleware and stacks
-work and where each kind sits relative to `rest::route`.
+work and where each kind sits relative to `rest::routes`.
 
 The code on this page is from [`middleware/`](middleware/).
 
@@ -77,24 +77,18 @@ with `_routes`: `public_routes`, `user_routes`, `member_routes`. From
 ```rust
 // Routes anyone may call.
 inline fn public_routes<F>(cx) {
-    // The request's route: a fail from any depth inside, a stack's 401 or a
-    // rule's 422, is answered here.
-    rest::route(cx) { F(); };
+    F();
 }
 
 // Routes a signed-in user calls.
 inline fn user_routes<F>(cx) {
-    rest::route(cx) {
-        authenticate(cx) { user => F(user); };
-    };
+    authenticate(cx) { user => F(user); };
 }
 
 // Routes a member of the organization the request names calls.
 inline fn member_routes<F>(cx) {
-    rest::route(cx) {
-        authenticate(cx) { user =>
-            resolve_organization(cx, user) { member => F(member); };
-        };
+    authenticate(cx) { user =>
+        resolve_organization(cx, user) { member => F(member); };
     };
 }
 ```
@@ -112,8 +106,10 @@ id from the `X-Organization` header with `rest::header`.
 
 ## 5.4 Every scope behind one stack
 
-Each scope's routes, public ones included, run behind exactly one stack, which opens the
-request's `rest::route`. `dispatch.goose` names each scope's stack, as
+Each scope's routes, public ones included, run behind exactly one stack, inside the
+request's one route, which `rest::routes` opens: a fail from any depth inside, a stack's
+401 or a rule's 422, is answered there. `public_routes` runs nothing yet, and names the
+audience all the same. `dispatch.goose` names each scope's stack, as
 [All routing in one file](layout.md#26-all-routing-in-one-file) shows:
 `public_routes(cx) { ... }` around `/health`, `user_routes` around `/settings`, and
 `member_routes` around `/organization`.
@@ -122,7 +118,7 @@ Each route's audience is then named where its scope is, and a scope without a st
 stands out in review.
 
 Middleware that every answer gets, such as `timed` and `cors`, goes once around
-`rest::routes`, not in each stack, so that the 404s of `rest::otherwise` get it too.
+`rest::routes`, not in each stack, so that the 404s of `rest::routes` get it too.
 From [`middleware/main.goose`](middleware/main.goose):
 
 ```rust

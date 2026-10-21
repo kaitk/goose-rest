@@ -1,7 +1,7 @@
 # 5. The API from a schema
 
 An API described in OpenAPI has its routes in the schema too: the paths, their
-parameters, and which need a token. Written again by hand as an `if` chain, they can
+parameters, and which need a token. Written again by hand as routes, they can
 drift from the schema unnoticed. When the schema includes `paths`, the generator writes
 the router, `api::dispatch(cx)`, and you write the handlers it calls. [`05-schema`](05-schema/) has
 three files besides the schema: the generated `api_gen.goose`, `app.goose` with the
@@ -100,18 +100,18 @@ The router makes typed calls to the handlers by name, so the schema and handlers
 drift apart unnoticed. Delete `get_project`, and the build fails:
 
 ```text
-api_gen.goose:259: error: unknown function: app::get_project
-                                            app::get_project(cx, id);
-  in fn rest::attempt<F = {block at api_gen.goose:256:57}>() instantiated from .../runtime.goose:252
-  in fn rest::route<F = {block at api_gen.goose:256:57}>(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from api_gen.goose:256
-  in fn api::dispatch(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from main.goose:32
+api_gen.goose:283: error: unknown function: app::get_project
+        app::get_project(cx, id);
+  in fn rest::route<F = {block at api_gen.goose:280:21}>(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from api_gen.goose:280
+  in fn api::route_get_project(rest::Cx<rest::NoState, app::App, http::Router>&, const u8[:]) instantiated from api_gen.goose:237
+  in fn api::dispatch(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from main.goose:25
   ...
 ```
 
 Declare its `id` as a string instead, and the build fails with
 `argument 2: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
 `api_gen.goose` is the call in that operation's generated code. The
-chain continues for 15 more frames through `rest::serve` and goose-http's event loop,
+chain continues for 16 more frames through `rest::routes`, `rest::serve`, and goose-http's event loop,
 because Goose lists every generic function between the error and `main`
 ([Goose findings](../goose-findings.md#an-error-inside-a-generic-function-lists-every-frame-up-to-main)).
 
@@ -123,7 +123,7 @@ the same and build without the generator, or generate `api_gen.goose` during the
 
 The router first uses a `match` on the path's length for static paths, then walks the
 path segment by segment, checking literals before parameters. Its answers match
-those of the `if` chain byte for byte, except that it validates typed parameters and
+those of hand-written routes byte for byte, except that it validates typed parameters and
 gives a literal path priority over a matching template
 ([generator reference](../generator.md#73-how-it-matches)).
 
@@ -137,11 +137,8 @@ before it in the same `rest::routes` block. From
 ```rust
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "PUT", "/uploads/:name") {
-            rest::route(cx) { upload(cx); };
-        } else {
-            api::dispatch(cx);
-        }
+        rest::put(cx, "/uploads/:name") { upload(cx); };
+        api::dispatch(cx);
     };
 }
 
@@ -153,8 +150,8 @@ fn upload(cx) {
 }
 ```
 
-`rest::on` adds the methods of routes with matching paths to the router's `Allow` list,
-and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with
+`rest::put` and its kin add the methods of routes with matching paths to the router's
+`Allow` list, and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with
 `Allow: PUT`, and `OPTIONS` gets 204 with the same header, just as with a single router.
 When hand-written routes and the schema share a path, `Allow` lists the hand-written
 routes' methods first, then the schema's. A hand-written route wins over a schema

@@ -23,7 +23,7 @@ A query that takes microseconds, such as one on an embedded SQLite database, can
 the route. From [`11-waiting`](11-waiting/app.goose):
 
 ```rust
-    if rest::on(cx, "GET", "/in-place/projects/:id") {
+    rest::get(cx, "/in-place/projects/:id") {
         // Blocks the worker, and every connection it holds, for the query.
         let id = rest::param_int(cx, "id");
         let p, found = db::fetch_one<db::Project>(cx.app.conn, "SELECT * FROM projects WHERE id = $1", [id]);
@@ -167,7 +167,7 @@ and the job. From [`app.goose`](11-waiting/app.goose), which holds the routes ap
 from `main` so that a test can import them:
 
 ```rust
-    } else if rest::on(cx, "PUT", "/projects/:id/tasks/:task/assignee") {
+    rest::put(cx, "/projects/:id/tasks/:task/assignee") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let assignee, has_assignee = rest::query_int(cx, "user");

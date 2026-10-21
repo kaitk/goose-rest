@@ -6,30 +6,24 @@ has three, and you can write your own the same way. From
 
 ```rust
 fn handle(cx) {
-    // Outside every route, so that its errors get the timing and CORS fields too.
+    // Around every route, so that every answer gets the timing and CORS fields.
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            // The routes, with the middleware that can fail inside each scope's route.
+            // The routes, with the middleware that can fail inside each scope.
             rest::routes(cx) { cx =>
-                if rest::on(cx, "GET", "/health") {
-                    rest::text(cx, 200, "ok");
-                } else if rest::scope(cx, "/v1") {
+                rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+                rest::scope(cx, "/v1") {
                     // Every route under /v1 needs a tenant.
-                    rest::route(cx) {
-                        resolve_tenant(cx) { tenant => v1(cx, tenant); };
-                    };
-                } else if rest::scope(cx, "/admin") {
+                    resolve_tenant(cx) { tenant => v1(cx, tenant); };
+                };
+                rest::scope(cx, "/admin") {
                     // Every route under /admin needs the token.
-                    rest::route(cx) {
-                        rest::bearer(cx) { token =>
-                            guard token == "secret" else { rest::invalid_token(cx); }
-                            admin(cx);
-                        };
+                    rest::bearer(cx) { token =>
+                        guard token == "secret" else { rest::invalid_token(cx); }
+                        admin(cx);
                     };
-                    ...
-                } else {
-                    rest::otherwise(cx);
-                }
+                };
+                ...
             };
         };
     };
@@ -49,11 +43,28 @@ Where a middleware sits decides which routes it applies to. `/health` is public;
 route under `/v1` requires a tenant, and every route under `/admin` requires a token.
 These checks run before the route inside the scope is matched.
 
-Middleware that adds
-headers to every answer, such as `timed` and `cors`, goes outside `rest::route` so
-the errors the route answers get the headers too. Middleware that can fail, such as
-`bearer` and `resolve_tenant`, goes inside it. A request has one `rest::route`:
-routes nested in routes keep each other out of line.
+Middleware that adds headers to answers, such as `timed` and `cors`, works on either
+side of `rest::routes`. Around it, as here, every answer gets the headers. Inside a
+scope, the scope's answers get them, its errors and its 404s and 405s included. Inside
+`rest::routes`, such middleware answers every request that reaches it, so it goes in a
+scope, not around one route among others.
+[`examples/compress`](../../examples/compress/main.goose) compresses two scopes with
+options of their own:
+
+```rust
+            rest::scope(cx, "/v1") { rest::compressed(cx) { cx => events(cx); }; };
+            rest::scope(cx, "/archive") { rest::compressed(cx, ARCHIVE) { cx => events(cx); }; };
+```
+
+Middleware that can fail, such as `bearer` and `resolve_tenant`, goes inside
+`rest::routes`. A request has one route, the one `rest::routes` opens: routes nested in
+routes keep each other out of line, so a `rest::route` inside `rest::routes` joins its
+route rather than opening another.
+
+A route that matches takes the request and runs its block, which returns as any block
+does, so the code after a route runs. A middleware around it does its work after its
+block, as `timed` writes its log line, and the routes after it see the request taken
+and don't match.
 
 ## A middleware of your own
 
@@ -79,15 +90,13 @@ Each middleware adds a level around every scope's routes, written again at each 
 A stack is an `inline fn` that nests the middleware and passes its own block on, so each
 scope has one level however many middleware the stack holds. The program's
 `member_routes` stack, for the routes a tenant's signed-in members use, holds the
-route, the token check, and `resolve_tenant`:
+token check and `resolve_tenant`:
 
 ```rust
 inline fn member_routes<F>(cx) {
-    rest::route(cx) {
-        rest::bearer(cx) { token =>
-            guard token == "secret" else { rest::invalid_token(cx); }
-            resolve_tenant(cx) { tenant => F(tenant); };
-        };
+    rest::bearer(cx) { token =>
+        guard token == "secret" else { rest::invalid_token(cx); }
+        resolve_tenant(cx) { tenant => F(tenant); };
     };
 }
 ```
@@ -95,9 +104,10 @@ inline fn member_routes<F>(cx) {
 A scope uses it as one level:
 
 ```rust
-                } else if rest::scope(cx, "/v2") {
+                rest::scope(cx, "/v2") {
                     // The token and a tenant, as the member_routes stack.
                     member_routes(cx) { tenant => v1(cx, tenant); };
+                };
 ```
 
 The call compiles to the same code as the nesting written out, one C function with a
@@ -113,10 +123,15 @@ as `member_routes`, and a middleware named by a verb.
 [Concepts and naming](../best-practices/concepts.md) has the rest of an application's
 names.
 
-A stack keeps the rules of the nesting it replaces, given above: each middleware on its
-side of `rest::route`, one `rest::route` per request, and an `inline fn`, never a plain
-`fn`. It also makes clear whether it opens the request's route, as `member_routes`
-does, and code inside that route opens no other.
+A stack keeps the rules of the nesting it replaces, given above: one that can fail
+goes inside `rest::routes`, as `member_routes` does, and it's an `inline fn`, never a
+plain `fn`.
+
+A middleware of your own that works after its block, such as an audit log, or that
+adds fields to answers, runs its block in `rest::scoped`. Inside `rest::routes`, that
+answers a failure and a 404 inside the middleware, before the middleware's own work
+after the block; outside, it only runs the block
+([reference](../reference.md#2-middleware)).
 
 ## Middleware with a schema
 

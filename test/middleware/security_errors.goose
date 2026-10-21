@@ -12,7 +12,7 @@ fn main() {
     expect::same(out, str("HTTP/1.1 403 Forbidden\r\n", API_FIELDS,
                  "Content-Type: application/json\r\nContent-Length: 21\r\n\r\n{\"error\":\"forbidden\"}"));
     let missing = answer(expect::request("GET", "/missing")) { cx =>
-        rest::security_headers(cx, cfg) { rest::routes(cx) { cx => rest::otherwise(cx); }; };
+        rest::security_headers(cx, cfg) { rest::routes(cx) { cx => rest::get(cx, "/") { rest::text(cx, 200, "ok"); }; }; };
     };
     expect::same(missing, str("HTTP/1.1 404 Not Found\r\n", API_FIELDS,
                  "Content-Type: application/json\r\nContent-Length: 21\r\n\r\n{\"error\":\"not_found\"}"));

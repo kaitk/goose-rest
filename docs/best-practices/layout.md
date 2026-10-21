@@ -169,27 +169,20 @@ fn handle(cx) {
     rest::timed(cx) {
         rest::routes(cx) { cx =>
             // A scope per audience, each behind its stack (stacks.goose).
-            if rest::on(cx, "GET", "/health") {
-                public_routes(cx) { rest::text(cx, 200, "ok"); };
-            } else if rest::scope(cx, "/settings") {
+            public_routes(cx) { rest::get(cx, "/health") { rest::text(cx, 200, "ok"); }; };
+            rest::scope(cx, "/settings") {
                 // Authenticates, or answers 401; the block gets the user.
                 user_routes(cx) { user => settings::routes(cx, user); };
-            } else if rest::scope(cx, "/organization") {
+            };
+            rest::scope(cx, "/organization") {
                 // The user, then their membership of the organization the
-                // request names; the block gets the member.
+                // request names; the block gets the member. A stranger gets
+                // 401 for any path here, not 404.
                 member_routes(cx) { member =>
-                    if rest::scope(cx, "/projects") {
-                        projects::routes(cx, member);
-                    } else if rest::scope(cx, "/teams") {
-                        teams::routes(cx, member);
-                    } else {
-                        // Behind the stack: a stranger gets 401, not 404.
-                        rest::otherwise(cx);
-                    }
+                    rest::scope(cx, "/projects") { projects::routes(cx, member); };
+                    rest::scope(cx, "/teams") { teams::routes(cx, member); };
                 };
-            } else {
-                rest::otherwise(cx);
-            }
+            };
         };
     };
 }
@@ -200,13 +193,8 @@ A domain's `routes` matches the rest of the path, after its scope. From
 
 ```rust
 fn routes(cx, member: members::Member) {
-    if rest::on(cx, "GET", "") {
-        list(cx, member);
-    } else if rest::on(cx, "POST", "") {
-        create(cx, member);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "") { list(cx, member); };
+    rest::post(cx, "") { create(cx, member); };
 }
 ```
 

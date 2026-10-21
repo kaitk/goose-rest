@@ -78,11 +78,7 @@ import rest from "github.com/kaitk/goose-rest@v0.2.1";
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/hello/:name") {
-            rest::route(cx) { rest::text(cx, 200, str("Hello, ", rest::param(cx, "name"))); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/hello/:name") { rest::text(cx, 200, str("Hello, ", rest::param(cx, "name"))); };
     };
 }
 
@@ -133,9 +129,11 @@ flowchart LR
     H -. "fails" .-> E["error as JSON"] -.-> A
 ```
 
-- **Routes are code.** Goose has no function values to store in a table, so a route is an
-  `if` that matches a method and a path, and a generated router uses a `match`.
-  Unmatched requests receive 404, 405, or an `OPTIONS` response
+- **Routes are code.** Goose has no function values to store in a table, so a route is a
+  call that matches a method and a path and runs its block, `rest::get(cx, "/p") { ... }`,
+  a scope is a block that owns a prefix, `rest::scope(cx, "/v1") { ... }`, and a
+  generated router uses a `match`. Unmatched requests receive 404, 405, or an
+  `OPTIONS` response
   ([routes](docs/reference.md#1-context-and-routes)).
 - **One context.** Every call takes `cx`: the request, the response being written,
   worker state, and request state.

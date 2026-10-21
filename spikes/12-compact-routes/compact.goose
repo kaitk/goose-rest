@@ -56,3 +56,10 @@ inline fn post<S, A, F>(cx: rest::Cx<S, A, http::Router>&, pattern: const u8[:])
 inline fn put<S, A, F>(cx: rest::Cx<S, A, http::Router>&, pattern: const u8[:]) { on(cx, "PUT", pattern) { F(); }; }
 inline fn patch<S, A, F>(cx: rest::Cx<S, A, http::Router>&, pattern: const u8[:]) { on(cx, "PATCH", pattern) { F(); }; }
 inline fn delete<S, A, F>(cx: rest::Cx<S, A, http::Router>&, pattern: const u8[:]) { on(cx, "DELETE", pattern) { F(); }; }
+
+// The bool rest::scope the package had before block scopes: whether the
+// path left starts with prefix, which it then narrows, for the spike's
+// programs in today's form and its scopes in if chains.
+fn scope<S, A>(cx: rest::Cx<S, A, http::Router>&, prefix: const u8[:]) -> bool {
+    return !cx.router.bad && rest::narrowed(cx.router, prefix);
+}

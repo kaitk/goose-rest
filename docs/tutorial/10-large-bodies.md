@@ -63,8 +63,7 @@ so an import into a project that doesn't exist gets its 404 before any of its 13
 read:
 
 ```rust
-        } else if rest::on(cx, "POST", "/v1/projects/:id/tasks/import") {
-            rest::route(cx) { import_tasks(cx, project(cx)); };
+        rest::post(cx, "/v1/projects/:id/tasks/import") { import_tasks(cx, project(cx)); };
 ```
 
 ```rust

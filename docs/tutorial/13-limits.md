@@ -168,10 +168,12 @@ GET /v1/reports/1 200 {"id":1,"project":1,"state":"done","tasks":5}
 From [`main.goose`](13-limits/main.goose):
 
 ```rust
-    } else if rest::on(cx, "POST", "/projects/:id/reports") {
+    rest::post(cx, "/projects/:id/reports") {
         rest::ask(cx, cx.app.reports, ReportJob.Start { project: rest::param_int(cx, "id") });
-    } else if rest::on(cx, "GET", "/reports/:id") {
+    };
+    rest::get(cx, "/reports/:id") {
         rest::ask(cx, cx.app.reports, ReportJob.Status { id: rest::param_int(cx, "id") });
+    };
 ```
 
 ```rust

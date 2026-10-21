@@ -8,18 +8,15 @@ This page runs a server with one such route.
 
 ## Failing from any depth
 
-A route runs inside `rest::route`. A call to `rest::fail` anywhere in the route's call
-chain answers the request and leaves the route. From
+`rest::routes` runs its block as the request's route, and `rest::get` runs its own
+block when the request is a GET of its path. A call to `rest::fail` anywhere in the
+route's call chain answers the request and leaves the route. From
 [`01-running`](01-running/main.goose):
 
 ```rust
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/hello/:name") {
-            rest::route(cx) { hello(cx, rest::param(cx, "name")); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/hello/:name") { hello(cx, rest::param(cx, "name")); };
     };
 }
 
@@ -28,7 +25,7 @@ fn hello(cx, name: const u8[:]) {
 }
 
 fn greeting(cx, name: const u8[:]) -> u8[>..] {
-    // Answers 400, and leaves every caller up to the rest::route around hello.
+    // Answers 400, and leaves every caller up to the route around hello.
     guard name.len <= 20 else { rest::fail(cx, 400, "name_too_long"); }
     return str("hello, ", name);
 }
@@ -36,14 +33,14 @@ fn greeting(cx, name: const u8[:]) -> u8[>..] {
 
 `greeting` returns a string, not a `Result`, and `hello` doesn't check anything. When
 the name is too long, `rest::fail` leaves through Goose's `return ... from`, straight
-to the `rest::route` around `hello`, which answers `400 {"error":"name_too_long"}`.
-The compiler checks that every call that can fail runs inside a `rest::route`: a call
-outside one doesn't compile.
+to the route around `hello`, which answers `400 {"error":"name_too_long"}`. The
+compiler checks that every call that can fail runs inside a route: a call outside one
+doesn't compile. A request that no route takes gets 404 from `rest::routes`.
 
 The rest of goose-rest's design follows from this, and from the fact that Goose can't store
 functions:
 
-- There is no handler table, so routes are code: an `if` chain of `rest::on` calls
+- There is no handler table, so routes are code: `rest::get` calls and their kin
   inside `rest::routes`, or a router the generator writes as a `match`.
 - Middleware is a block around routes, inlined into the handler, so it costs no call
   and no boxing. A `rest::fail` inside it leaves the whole route.

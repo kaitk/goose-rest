@@ -20,8 +20,8 @@ spec.
 - **No handler table.** Function values are compile-time generic parameters. They
   can't be stored, returned, or put in data, and there are no runtime function
   pointers (§7.6). Actix's `App::new().route("/x", web::get().to(h))` is a data
-  structure of boxed handlers and can't exist. The application is code: routes are an
-  if chain of `rest::on` calls in `rest::routes`, or a generated `match`.
+  structure of boxed handlers and can't exist. The application is code: routes are
+  `rest::get` calls and their kin in `rest::routes`, or a generated `match`.
 - **Middleware is a block.** A trailing block is inlined, and a `return` in it returns
   from the enclosing handler (§7.6, §7.9). `rest::cors(cx, rest::Cors { .. }) { ... }`
   can answer a preflight and not run the block, with no boxing, no dynamic dispatch,
@@ -49,10 +49,10 @@ spec.
 |---|---|---|
 | `HttpServer::new(\|\| App::new())` builds an `App` per worker thread | Each worker's `thread_fn` builds its own state and calls `rest::serve` | The same model. Goose enforces it: workers share nothing. |
 | `web::Data<T>`, `app_data` | `App`, a struct of references to the worker's locals, in `cx.app` | A struct holds at most one resizable, as its last field (§3.4); references avoid that limit. |
-| `App::route`, `web::scope`, `web::resource`, guards | `rest::on` inside `rest::routes`, with `rest::scope(cx, prefix)`; guards are `if` conditions | No handler table. |
+| `App::route`, `web::scope`, `web::resource`, guards | `rest::get` and its kin inside `rest::routes`, with `rest::scope(cx, prefix) { ... }`; guards are `if` conditions | No handler table. |
 | `FromRequest` extractors as handler arguments | `let v = rest::take<T>(cx);`, or `rest::param_int(cx, "id")` | `T` is explicit; Goose can't infer it from the result. |
 | Middleware: `wrap`, `from_fn`, `Transform` | Blocks around the dispatch or a route, inlined into it | No boxing and no call per layer. |
-| `ResponseError`, `Result<impl Responder, E>`, `?` | `rest::fail(cx, status, code)` returns from `rest::route` from any depth | `return ... from` replaces threading a `Result` up. |
+| `ResponseError`, `Result<impl Responder, E>`, `?` | `rest::fail(cx, status, code)` returns from the route, `rest::routes`' or `rest::route`'s, from any depth | `return ... from` replaces threading a `Result` up. |
 | `Responder`, `web::Json<T>` | `rest::json(cx, status, v)`, which calls `format(out, v)` | The `format` hook is Goose's one type-directed lookup (§3.7, §11.1). |
 | serde's `Serialize` and `Deserialize` | `format` and a reader per type, written by hand or generated | No derive. |
 | `async fn` handlers awaiting a database | A handler that asks another thread, and a case function that resumes it | No async. |
@@ -68,39 +68,38 @@ fn handle(cx) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
             rest::routes(cx) { cx =>
-                if rest::on(cx, "GET", "/health") {
-                    rest::text(cx, 200, "ok");
-                } else if rest::scope(cx, "/v1") {
-                    rest::route(cx) {
-                        let s = security_session(cx);
-                        if rest::on(cx, "GET", "/projects/:id") {
-                            get_project(cx, s, rest::param_int(cx, "id"));
-                        } else if rest::on(cx, "POST", "/projects") {
-                            create_project(cx, s, rest::take<ProjectCreate>(cx));
-                        } else {
-                            rest::otherwise(cx);
-                        }
-                    };
-                } else {
-                    rest::otherwise(cx);
-                }
+                rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+                rest::scope(cx, "/v1") {
+                    let s = security_session(cx);
+                    rest::get(cx, "/projects/:id") { get_project(cx, s, rest::param_int(cx, "id")); };
+                    rest::post(cx, "/projects") { create_project(cx, s, rest::take<ProjectCreate>(cx)); };
+                };
             };
         };
     };
 }
 ```
 
-`rest::scope` narrows the router to a prefix, and `rest::otherwise` answers 404, 405,
-and OPTIONS across scopes from the routes it passed. An extractor runs only where the
+`rest::routes` opens the request's one route. A `rest::get` that matches marks the
+request taken and runs its block, which returns as any block does: the routes and
+scopes after it see the mark and don't match, and the code after it runs, a
+middleware's work after its block included. The mark is goose-http's `Router.bad`,
+which otherwise marks a path the router refuses; goose-rest tells the two apart by
+whether the path is routable. `rest::scope` narrows the router to a prefix for its
+block, and takes the request, so the scope owns the paths under it. When no route
+answered, `routes` answers 404, 405, and OPTIONS across scopes from the routes it
+passed, and 501 for an unknown method; a scope answers so itself, inside the
+middleware around it. An extractor runs only where the
 handler calls it, and `goose-http` keeps header lines as bytes until one is asked for,
 so a route parses only what it reads. A body taken as a schema type, with `rest::take`
 or by the generated router, arrives parsed and validated; a malformed one gets 400 and
 its field errors, in one error shape for every route, before the code that uses it
 runs. A route that reads `rest::body` gets the bytes and parses them itself.
 
-`rest::fail` leaves through `return ... from rest::route`, so a helper several calls
+`rest::fail` leaves through `return ... from` the route, so a helper several calls
 down can answer 404 without passing an error back up. A call to `fail` outside a route
-doesn't compile. The first answer wins: a failure after the handler began a response
+doesn't compile. Outside `rest::routes`, `rest::route` opens a route; inside, it joins
+the one there. The first answer wins: a failure after the handler began a response
 leaves that response, and if the response is still open, goose-http closes the
 connection, so the client sees it cut short rather than an error inside it.
 
@@ -123,8 +122,9 @@ call sites stays a call, and returns from the route. That runs fewer instruction
 one function holding every route would. Three rules keep the calls few:
 
 - **One route per request.** A function that fails returns from the innermost route,
-  so a route nested in a route keeps both out of line. Middleware doesn't open routes
-  of its own.
+  so a route nested in a route keeps both out of line. Middleware opens no route of
+  its own outside `rest::routes`. Inside, `rest::scoped`'s route stays inlined with
+  the request's (`test/inline_route.goose`).
 - **Functions that fail stay small.** A function that fails and stays a call keeps its
   route, everything around it, and the handler out of line. goose-rest's extractors
   fail in a few statements and do their work in leaves that return whether it
@@ -132,10 +132,12 @@ one function holding every route would. Three rules keep the calls few:
 - **Block-taking functions are `inline fn`.** Given a block of routes, a plain function
   passes the inliner's size limit at once and stays a call, although it's called once.
 
-Middleware that applies to every answer, such as `timed`, `cors`, `security_headers`,
-and `compressed`, goes outside `rest::route`, so the errors the route answers get it
-too. Middleware that can fail, such as `bearer`, goes inside it. The [reference](reference.md#2-middleware)
-says which answers get which fields.
+Middleware that adds fields to answers, such as `timed`, `cors`, `security_headers`,
+and `compressed`, works on either side of `rest::routes`. Inside, it runs its block in
+`rest::scoped`, a route of its own that answers a failure, a 404, and a 405 there, so
+those answers get its fields too. Middleware that can fail, such as `bearer`, goes
+inside `rest::routes`. The [reference](reference.md#2-middleware) says which answers
+get which fields.
 
 Security policies are prepared once in worker setup. The handler selects one
 prepared policy for each request. With no outer common fields, the middleware
@@ -294,8 +296,8 @@ A construct outside the supported subset is a generator error that names it, nev
 silently dropped. The generated code is plain Goose, can be read and debugged like any other
 file, and is never edited.
 
-Without a schema, the if chain is the API. Each `rest::on` scans the path again from its
-start, so a long chain costs more per request than a generated router
+Without a schema, the routes in `rest::routes` are the API. Each `rest::get` scans the
+path again from its start, so a long chain costs more per request than a generated router
 ([tier R](benchmarks.md#tier-r)).
 
 ## What each choice costs

@@ -11,11 +11,7 @@ import entries.errors;
 import entries.rules;
 
 fn routes(cx) {
-    if rest::on(cx, "POST", "") {
-        create(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::post(cx, "") { create(cx); };
 }
 
 // Creating an entry. On the worker: read the form, and ask the writer lane.

@@ -89,9 +89,10 @@ fn security_fields(c: const SecurityHeaders&) -> u8[>..] {
 }
 
 // Put outside route so that route writes errors while these fields are active.
+// Inside rest::routes, F runs in rest::scoped.
 // Select one prepared policy here; nesting this middleware is unsupported.
 inline fn security_headers<S, A, R, F>(cx: Cx<S, A, R>&, cfg: const SecurityFields&) {
-    guard cx.kind == http::REQUEST else { F(); return; }
+    guard cx.kind == http::REQUEST else { scoped(cx) { F(); }; return; }
     let common = cx.out.common;
     let from = cx.scratch.len;
     if common.len == 0 {
@@ -102,7 +103,7 @@ inline fn security_headers<S, A, R, F>(cx: Cx<S, A, R>&, cfg: const SecurityFiel
         cx.out.common = cx.scratch[from..];
     }
     let mark = cx.out.buf.len;
-    F();
+    scoped(cx) { F(); };
     if cx.out.buf.len == mark {
         if common.len == 0 {
             var k .= cx.kept;

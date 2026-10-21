@@ -47,43 +47,33 @@ let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
 fn handle(cx) {
     rest::timed(cx) {
         rest::routes(cx) { cx =>
-            if rest::on(cx, "GET", "/health") {
-                rest::text(cx, 200, "ok");
-            } else if rest::scope(cx, "/v1") {
-                // goose-http's defaults: level 1, zstd offered, from 1 KB.
-                rest::compressed(cx) { cx =>
-                    rest::route(cx) { events(cx); };
-                };
-            } else if rest::scope(cx, "/archive") {
-                rest::compressed(cx, ARCHIVE) { cx =>
-                    rest::route(cx) { events(cx); };
-                };
-            } else {
-                rest::otherwise(cx);
-            }
+            rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+            // goose-http's defaults: level 1, zstd offered, from 1 KB.
+            rest::scope(cx, "/v1") { rest::compressed(cx) { cx => events(cx); }; };
+            rest::scope(cx, "/archive") { rest::compressed(cx, ARCHIVE) { cx => events(cx); }; };
         };
     };
 }
 
-// The routes under /v1, inside the route.
+// The routes under /v1 and /archive.
 fn events(cx) {
-    if rest::on(cx, "GET", "/events") {
+    rest::get(cx, "/events") {
         var limit, has_limit = rest::query_int(cx, "limit");
         if !has_limit { limit = 50; }
         guard limit >= 0 && limit <= EVENTS else { rest::fail(cx, 400, "invalid_limit"); }
         rest::json(cx, 200, Listing { limit: limit });
-    } else if rest::on(cx, "GET", "/export") {
+    };
+    rest::get(cx, "/export") {
         var limit, has_limit = rest::query_int(cx, "limit");
         if !has_limit { limit = EVENTS; }
         guard limit >= 0 && limit <= EVENTS else { rest::fail(cx, 400, "invalid_limit"); }
         rest::begin(cx, 200, "application/x-ndjson", -1, Use.Export { limit: limit });
-    } else if rest::on(cx, "GET", "/events/:id") {
+    };
+    rest::get(cx, "/events/:id") {
         let id = rest::param_int(cx, "id");
         guard id >= 1 && id <= EVENTS else { rest::fail(cx, 404, "event_not_found"); }
         rest::json(cx, 200, Event { id: id });
-    } else {
-        rest::otherwise(cx);
-    }
+    };
 }
 
 // The export's events sent at each MORE.

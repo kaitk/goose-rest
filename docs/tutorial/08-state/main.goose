@@ -29,14 +29,10 @@ fn lookup(cx) -> User {
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/me") {
-            rest::route(cx) {
-                guard user(cx).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
-                rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
-            };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/me") {
+            guard user(cx).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
+            rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
+        };
     };
 }
 

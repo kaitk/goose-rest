@@ -92,7 +92,7 @@ fn long(cx) {
             rest::route(cx) { rest::text(cx, 200, str(rest::body(cx).len)); };
         } else if rest::on(cx, "GET", "/slow") {
             rest::route(cx) { rest::ask(cx, cx.app.to, Jobs.Slow { n: 6 }); };
-        } else if rest::scope(cx, "/reports") {
+        } else if compact::scope(cx, "/reports") {
             rest::route(cx) {
                 rest::bearer(cx) { token =>
                     guard token == "secret" else { rest::invalid_token(cx); }
@@ -100,12 +100,12 @@ fn long(cx) {
                     else { rest::otherwise(cx); }
                 };
             };
-        } else if rest::scope(cx, "/team") {
+        } else if compact::scope(cx, "/team") {
             signed_in_today(cx) {
                 if rest::on(cx, "GET", "/members") { rest::text(cx, 200, "members"); }
                 else { rest::otherwise(cx); }
             };
-        } else if rest::scope(cx, "/old") {
+        } else if compact::scope(cx, "/old") {
             rest::route(cx) { old(cx); };
         } else {
             rest::otherwise(cx);
@@ -126,15 +126,15 @@ fn short(cx) {
         if admin(cx) { compact::get(cx, "/admin") { rest::text(cx, 200, "admin"); }; }
         compact::put(cx, "/upload") { rest::text(cx, 200, str(rest::body(cx).len)); };
         compact::get(cx, "/slow") { rest::ask(cx, cx.app.to, Jobs.Slow { n: 6 }); };
-        if rest::scope(cx, "/reports") {
+        if compact::scope(cx, "/reports") {
             // Middleware that fails, inside routes' one route.
             rest::bearer(cx) { token =>
                 guard token == "secret" else { rest::invalid_token(cx); }
                 compact::get(cx, "/daily") { rest::text(cx, 200, "daily"); };
             };
-        } else if rest::scope(cx, "/team") {
+        } else if compact::scope(cx, "/team") {
             signed_in(cx) { compact::get(cx, "/members") { rest::text(cx, 200, "members"); }; };
-        } else if rest::scope(cx, "/old") {
+        } else if compact::scope(cx, "/old") {
             compact::route(cx) { old(cx); };
         }
     };
@@ -152,16 +152,16 @@ fn short_b(cx) {
         if admin(cx) { marked::get(cx, "/admin") { rest::text(cx, 200, "admin"); }; }
         marked::put(cx, "/upload") { rest::text(cx, 200, str(rest::body(cx).len)); };
         marked::get(cx, "/slow") { rest::ask(cx, cx.app.to, Jobs.Slow { n: 6 }); };
-        if rest::scope(cx, "/reports") {
+        if compact::scope(cx, "/reports") {
             marked::route(cx) { cx =>
                 rest::bearer(cx) { token =>
                     guard token == "secret" else { rest::invalid_token(cx); }
                     marked::get(cx, "/daily") { rest::text(cx, 200, "daily"); };
                 };
             };
-        } else if rest::scope(cx, "/team") {
+        } else if compact::scope(cx, "/team") {
             signed_in_b(cx) { cx => marked::get(cx, "/members") { rest::text(cx, 200, "members"); }; };
-        } else if rest::scope(cx, "/old") {
+        } else if compact::scope(cx, "/old") {
             // Today's code, which reads routes' router, inside a route.
             marked::route(cx) { c => old(cx); };
         }

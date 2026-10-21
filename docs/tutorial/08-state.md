@@ -75,10 +75,10 @@ fn user(cx: Cx&) -> User& {
 ```
 
 ```rust
-            rest::route(cx) {
-                guard user(cx).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
-                rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
-            };
+        rest::get(cx, "/me") {
+            guard user(cx).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
+            rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
+        };
 ```
 
 The alias names the route's context type: `St` is the request state, `App` is the

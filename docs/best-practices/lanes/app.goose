@@ -34,17 +34,10 @@ struct App { writer: rest::Lane<Writes, Use>, reports: rest::Lane<Reports, Use>,
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::scope(cx, "/auth") {
-            rest::route(cx) { auth::routes(cx); };
-        } else if rest::scope(cx, "/entries") {
-            rest::route(cx) { entries::routes(cx); };
-        } else if rest::scope(cx, "/reports") {
-            rest::route(cx) { reports::routes(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::scope(cx, "/auth") { auth::routes(cx); };
+        rest::scope(cx, "/entries") { entries::routes(cx); };
+        rest::scope(cx, "/reports") { reports::routes(cx); };
     };
 }
 

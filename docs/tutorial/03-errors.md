@@ -10,7 +10,7 @@ of these calls:
 | `rest::json_bytes(cx, status, body)` | JSON the program wrote itself |
 | `rest::text(cx, status, s)` | `s` as `text/plain; charset=utf-8` |
 | `rest::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
-| `rest::fail(cx, status, code)` | `{"error": code}`, from anywhere inside `rest::route` |
+| `rest::fail(cx, status, code)` | `{"error": code}`, from anywhere inside a route |
 | `http::start`, `http::field`, `http::finish` | anything else, such as a page |
 
 ## A value as JSON

@@ -1,32 +1,25 @@
-// rest::scope: prefix scopes over an if chain, nested, with 404, 405, and
-// OPTIONS across them, an escaped prefix, and the paths that aren't in one.
+// rest::scope: prefix scopes, nested, with 404, 405, and OPTIONS across
+// them, an escaped prefix, and the paths that aren't in one.
 import std;
 import http from "github.com/kaitk/goose-http@v0.4.3";
 import rest from "../../";
 import expect from "../";
 import common;
 
-// Scopes over an if chain: /v1 holds /projects, its root, and /admin, which
-// holds /users; /health is outside.
+// /v1 holds /projects, its root, and /admin, which holds /users; /health is
+// outside, after /v1, which owns the paths under it.
 fn scoped(text: const u8[:]) -> u8[>..] {
     return answer(text) { cx =>
         rest::routes(cx) { cx =>
-            if rest::scope(cx, "/v1") {
-                if rest::on(cx, "GET", "") { rest::text(cx, 200, "v1"); }
-                else if rest::on(cx, "GET", "/projects") { rest::text(cx, 200, "list"); }
-                else if rest::on(cx, "POST", "/projects") { rest::text(cx, 200, "create"); }
-                else if rest::scope(cx, "/admin") {
-                    if rest::on(cx, "DELETE", "/users/:id") {
-                        rest::route(cx) { rest::text(cx, 200, str("delete ", rest::param(cx, "id"))); };
-                    }
-                    else { rest::otherwise(cx); }
-                }
-                else { rest::otherwise(cx); }
-            } else if rest::on(cx, "GET", "/health") {
-                rest::text(cx, 200, "health");
-            } else {
-                rest::otherwise(cx);
-            }
+            rest::scope(cx, "/v1") {
+                rest::get(cx, "") { rest::text(cx, 200, "v1"); };
+                rest::get(cx, "/projects") { rest::text(cx, 200, "list"); };
+                rest::post(cx, "/projects") { rest::text(cx, 200, "create"); };
+                rest::scope(cx, "/admin") {
+                    rest::delete(cx, "/users/:id") { rest::text(cx, 200, str("delete ", rest::param(cx, "id"))); };
+                };
+            };
+            rest::get(cx, "/health") { rest::text(cx, 200, "health"); };
         };
     };
 }

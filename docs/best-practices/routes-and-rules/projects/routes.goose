@@ -10,13 +10,8 @@ import projects.errors;
 import projects.rules;
 
 fn routes(cx) {
-    if rest::on(cx, "POST", "") {
-        create(cx);
-    } else if rest::on(cx, "POST", "/:id/archive") {
-        archive(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::post(cx, "") { create(cx); };
+    rest::post(cx, "/:id/archive") { archive(cx); };
 }
 
 fn create(cx) {

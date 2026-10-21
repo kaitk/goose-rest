@@ -54,7 +54,8 @@ fn origin_in(list: const u8[:], origin: const u8[:]) -> bool {
 // Access-Control-Request-Method, gets 204 with c's methods, headers, and max
 // age, without running F; the browser checks the request against them. A
 // route F leaves to answer at a later call keeps the fields with its
-// exchange, and serve adds them to that answer (keep_fields).
+// exchange, and serve adds them to that answer (keep_fields). Inside
+// rest::routes, F runs in rest::scoped.
 //
 //   rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { ... };
 inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the block sees the caller's cx.out
@@ -64,19 +65,21 @@ inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the bl
     if has_origin {
         guard origin_in(c.origins, origin) else {
             write_error(cx.out, cx.state, 403, "origin_not_allowed", "", -1, "");
+            taken(cx);
             return;
         }
         if cx.req.method == "OPTIONS" {
             let method, preflight = http::field_of(cx.req, "access-control-request-method");
             if preflight {
                 answer_preflight(cx.out, c, origin);
+                taken(cx);
                 return;
             }
         }
         cx.out.common = with_cors(cx.scratch, common, c, origin);
     }
     let mark = cx.out.buf.len;
-    F();
+    scoped(cx) { F(); };
     if has_origin && cx.out.buf.len == mark { keep_fields(cx, at, at + cx.out.common.len); }
     cx.out.common = common;
 }
@@ -184,6 +187,7 @@ fn invalid_token(cx) {
 // value, and timed fills them in once F has answered, so that no byte of the
 // answer moves. The spaces the value doesn't take are whitespace a field
 // value may end in (RFC 9110 §5.5). At a later call, F runs as it is.
+// Inside rest::routes, F runs in rest::scoped.
 inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a reference, as cors's
     let begun = clock_ns();
     let mark = cx.out.buf.len;
@@ -196,7 +200,7 @@ inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a referen
         cx.scratch.append("            \r\n");
         cx.out.common = cx.scratch[at..];
     }
-    F();
+    scoped(cx) { F(); };
     guard first else { return; }
     if cx.out.buf.len == mark {
         keep_fields(cx, at, at + common.len + TIMING.len + TIMING_WIDTH + 2);
@@ -221,23 +225,52 @@ inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a referen
 // Whether the request is method on a path pattern matches, as http::on
 // takes them, against the router of the rest::routes block around it, the
 // only context that has one. A pattern that matches with another method adds
-// the method to the router's Allow, which rest::otherwise answers with.
+// the method to the router's Allow, which rest::routes answers with.
 fn on<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], pattern: const u8[:]) -> bool {
     return http::on(cx.router, method, pattern);
 }
 
-// Whether the path left to match starts with prefix, as the scope below
-// takes it, against the router of the rest::routes block around it. If it
-// does, rest::on inside the scope matches the rest.
+// Runs F when the request is method on pattern, and marks the request
+// taken first, so that the routes and scopes after it don't match. F returns
+// as any block does, so middleware around it works after it. The mark is
+// checked here as well as in http::on, so that a route after it costs a
+// branch rather than a call.
+inline fn route_on<S, A, F>(cx: Cx<S, A, http::Router>&, method: const u8[:], pattern: const u8[:]) {
+    if !cx.router.bad && on(cx, method, pattern) {
+        taken(cx);
+        F();
+    }
+}
+
+// The route for a method on pattern, inside rest::routes. get takes HEAD too.
+//
+//   rest::get(cx, "/projects/:id") { project(cx, rest::param_int(cx, "id")); };
+inline fn get<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "GET", pattern) { F(); }; }
+inline fn post<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "POST", pattern) { F(); }; }
+inline fn put<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "PUT", pattern) { F(); }; }
+inline fn patch<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "PATCH", pattern) { F(); }; }
+inline fn delete<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "DELETE", pattern) { F(); }; }
+
+// Runs F when the path left to match starts with prefix, as narrowed below
+// takes it, against the router of the rest::routes block around it, so that
+// rest::get and its kin in F match the rest. Then it answers as rest::routes
+// does when F left the request unanswered, and takes it: the scope owns the
+// paths under prefix, and the routes after it don't match.
 //
 //   rest::routes(cx) { cx =>
-//       if rest::scope(cx, "/v1") {
-//           if rest::on(cx, "GET", "/projects") { ... }
-//           else { rest::otherwise(cx); }
-//       } else { rest::otherwise(cx); }
+//       rest::get(cx, "/health") { ... };
+//       rest::scope(cx, "/v1") {
+//           rest::get(cx, "/projects") { ... };
+//       };
 //   };
-fn scope<S, A>(cx: Cx<S, A, http::Router>&, prefix: const u8[:]) -> bool {
-    return narrowed(cx.router, prefix);
+inline fn scope<S, A, F>(cx: Cx<S, A, http::Router>&, prefix: const u8[:]) {
+    if !cx.router.bad && narrowed(cx.router, prefix) {
+        let mark = cx.out.buf.len;
+        F();
+        // Unmarked, no route in F matched, and the path is routable: narrowed took it.
+        if !cx.router.bad && unanswered(cx, mark) { otherwise(cx); }
+        taken(cx);
+    }
 }
 
 // Whether r's path starts with prefix, one or more literal segments such as
@@ -245,9 +278,10 @@ fn scope<S, A>(cx: Cx<S, A, http::Router>&, prefix: const u8[:]) -> bool {
 // segments. If it does, r's path becomes the rest, which the routes inside
 // the scope match: "/projects" for "/v1/projects", "" for "/v1" itself. A
 // route that doesn't match there still adds its method to r's Allow, so
-// rest::otherwise answers 404, 405, and OPTIONS across scopes.
+// rest::otherwise answers 404, 405, and OPTIONS across scopes. The caller
+// checks r.bad first, inline, so that a scope after a route that took the
+// request costs a branch rather than a call.
 fn narrowed(r: http::Router&, prefix: const u8[:]) -> bool {
-    guard !r.bad else { return false; }
     let path = r.path;
     var p = 0;
     var q = 0;

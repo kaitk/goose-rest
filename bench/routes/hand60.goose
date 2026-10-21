@@ -1,10 +1,11 @@
 // routes60.goose's 60 routes written by hand on goose-rest, as a program
-// without a schema writes them: rest::serve_epoll, rest::routes, rest::scope
-// for each prefix, the routes inside rest::route, and each path parameter read as
-// test/gen/routes.json types it, as gen60 reads them. Each route answers "ok"
-// as routes60's do, and rest::otherwise answers a 404 and a 405 in the JSON
-// error shape, as gen60 does. It checks no session; gen60 calls a check that
-// accepts every request. GET /v1/projects reads its three query parameters.
+// without a schema writes them: rest::serve_epoll, rest::routes, a block
+// rest::scope for each prefix, rest::get and its kin, and each path parameter
+// read as test/gen/routes.json types it, as gen60 reads them. Each route
+// answers "ok" as routes60's do, and rest::routes answers a 404 and a 405 in
+// the JSON error shape, as gen60 does. It checks no session; gen60 calls a
+// check that accepts every request. GET /v1/projects reads its three query
+// parameters.
 //
 //   hand60 http [port]   (WORKERS 1)
 import std;
@@ -15,112 +16,104 @@ fn ok(cx) { http::respond(cx.out, 200, "text/plain", "ok"); }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            ok(cx);
-        } else if rest::scope(cx, "/v1") {
-            rest::route(cx) { v1(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { ok(cx); };
+        rest::scope(cx, "/v1") { v1(cx); };
     };
 }
 
 fn v1(cx) {
-    if rest::scope(cx,"/auth") {
-        if rest::on(cx,"POST", "/login") { ok(cx); }
-        else if rest::on(cx,"POST", "/logout") { ok(cx); }
-        else if rest::on(cx,"POST", "/refresh") { ok(cx); }
-        else if rest::on(cx,"GET", "/session") { ok(cx); }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/users") {
-        if rest::on(cx,"GET", "/me") { ok(cx); }
-        else if rest::on(cx,"PATCH", "/me") { ok(cx); }
-        else if rest::on(cx,"GET", "/me/settings") { ok(cx); }
-        else if rest::on(cx,"PUT", "/me/settings") { ok(cx); }
-        else if rest::on(cx,"GET", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/:id/avatar") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"PUT", "/:id/avatar") { rest::param_int(cx, "id"); ok(cx); }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/orgs") {
-        if rest::on(cx,"GET", "") { ok(cx); }
-        else if rest::on(cx,"POST", "") { ok(cx); }
-        else if rest::on(cx,"GET", "/:org") { rest::param(cx, "org"); ok(cx); }
-        else if rest::on(cx,"PATCH", "/:org") { rest::param(cx, "org"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:org") { rest::param(cx, "org"); ok(cx); }
-        else if rest::on(cx,"GET", "/:org/members") { rest::param(cx, "org"); ok(cx); }
-        else if rest::on(cx,"POST", "/:org/members") { rest::param(cx, "org"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:org/members/:user") {
+    rest::scope(cx, "/auth") {
+        rest::post(cx, "/login") { ok(cx); };
+        rest::post(cx, "/logout") { ok(cx); };
+        rest::post(cx, "/refresh") { ok(cx); };
+        rest::get(cx, "/session") { ok(cx); };
+    };
+    rest::scope(cx, "/users") {
+        rest::get(cx, "/me") { ok(cx); };
+        rest::patch(cx, "/me") { ok(cx); };
+        rest::get(cx, "/me/settings") { ok(cx); };
+        rest::put(cx, "/me/settings") { ok(cx); };
+        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::get(cx, "/:id/avatar") { rest::param_int(cx, "id"); ok(cx); };
+        rest::put(cx, "/:id/avatar") { rest::param_int(cx, "id"); ok(cx); };
+    };
+    rest::scope(cx, "/orgs") {
+        rest::get(cx, "") { ok(cx); };
+        rest::post(cx, "") { ok(cx); };
+        rest::get(cx, "/:org") { rest::param(cx, "org"); ok(cx); };
+        rest::patch(cx, "/:org") { rest::param(cx, "org"); ok(cx); };
+        rest::delete(cx, "/:org") { rest::param(cx, "org"); ok(cx); };
+        rest::get(cx, "/:org/members") { rest::param(cx, "org"); ok(cx); };
+        rest::post(cx, "/:org/members") { rest::param(cx, "org"); ok(cx); };
+        rest::delete(cx, "/:org/members/:user") {
             rest::param(cx, "org");
             rest::param_int(cx, "user");
             ok(cx);
-        }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/projects") {
-        if rest::on(cx,"GET", "") {
+        };
+    };
+    rest::scope(cx, "/projects") {
+        rest::get(cx, "") {
             rest::query_int(cx, "page");
             rest::query_bool(cx, "archived");
             rest::query(cx, "q");
             ok(cx);
-        }
-        else if rest::on(cx,"POST", "") { ok(cx); }
-        else if rest::on(cx,"GET", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"PATCH", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/:id/archive") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/:id/restore") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/:id/members") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/:id/members") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:id/members/:user") {
+        };
+        rest::post(cx, "") { ok(cx); };
+        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::patch(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::post(cx, "/:id/archive") { rest::param_int(cx, "id"); ok(cx); };
+        rest::post(cx, "/:id/restore") { rest::param_int(cx, "id"); ok(cx); };
+        rest::get(cx, "/:id/members") { rest::param_int(cx, "id"); ok(cx); };
+        rest::post(cx, "/:id/members") { rest::param_int(cx, "id"); ok(cx); };
+        rest::delete(cx, "/:id/members/:user") {
             rest::param_int(cx, "id");
             rest::param_int(cx, "user");
             ok(cx);
-        }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/tasks") {
-        if rest::on(cx,"GET", "") { ok(cx); }
-        else if rest::on(cx,"POST", "") { ok(cx); }
-        else if rest::on(cx,"GET", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"PATCH", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/:id/assign") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/:id/comments") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/:id/comments") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"PATCH", "/:id/comments/:comment") {
+        };
+    };
+    rest::scope(cx, "/tasks") {
+        rest::get(cx, "") { ok(cx); };
+        rest::post(cx, "") { ok(cx); };
+        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::patch(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::post(cx, "/:id/assign") { rest::param_int(cx, "id"); ok(cx); };
+        rest::get(cx, "/:id/comments") { rest::param_int(cx, "id"); ok(cx); };
+        rest::post(cx, "/:id/comments") { rest::param_int(cx, "id"); ok(cx); };
+        rest::patch(cx, "/:id/comments/:comment") {
             rest::param_int(cx, "id");
             rest::param(cx, "comment");
             ok(cx);
-        }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/files") {
-        if rest::on(cx,"GET", "") { ok(cx); }
-        else if rest::on(cx,"POST", "") { ok(cx); }
-        else if rest::on(cx,"GET", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/:id/content") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"PUT", "/:id/content") { rest::param_int(cx, "id"); ok(cx); }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/webhooks") {
-        if rest::on(cx,"GET", "") { ok(cx); }
-        else if rest::on(cx,"POST", "") { ok(cx); }
-        else if rest::on(cx,"GET", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"PATCH", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/:id/deliveries") { rest::param_int(cx, "id"); ok(cx); }
-        else { rest::otherwise(cx); }
-    } else if rest::scope(cx,"/reports") {
-        if rest::on(cx,"GET", "/time") { ok(cx); }
-        else if rest::on(cx,"GET", "/time/:user") { rest::param_int(cx, "user"); ok(cx); }
-        else if rest::on(cx,"GET", "/budget") { ok(cx); }
-        else if rest::on(cx,"GET", "/exports") { ok(cx); }
-        else if rest::on(cx,"POST", "/exports") { ok(cx); }
-        else if rest::on(cx,"GET", "/exports/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"DELETE", "/exports/:id") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"POST", "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); }
-        else if rest::on(cx,"GET", "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); }
-        else { rest::otherwise(cx); }
-    } else {
-        rest::otherwise(cx);
-    }
+        };
+    };
+    rest::scope(cx, "/files") {
+        rest::get(cx, "") { ok(cx); };
+        rest::post(cx, "") { ok(cx); };
+        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::get(cx, "/:id/content") { rest::param_int(cx, "id"); ok(cx); };
+        rest::put(cx, "/:id/content") { rest::param_int(cx, "id"); ok(cx); };
+    };
+    rest::scope(cx, "/webhooks") {
+        rest::get(cx, "") { ok(cx); };
+        rest::post(cx, "") { ok(cx); };
+        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::patch(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::get(cx, "/:id/deliveries") { rest::param_int(cx, "id"); ok(cx); };
+    };
+    rest::scope(cx, "/reports") {
+        rest::get(cx, "/time") { ok(cx); };
+        rest::get(cx, "/time/:user") { rest::param_int(cx, "user"); ok(cx); };
+        rest::get(cx, "/budget") { ok(cx); };
+        rest::get(cx, "/exports") { ok(cx); };
+        rest::post(cx, "/exports") { ok(cx); };
+        rest::get(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::delete(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
+        rest::post(cx, "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); };
+        rest::get(cx, "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); };
+    };
 }
 
 thread_fn worker(cfg: http::Config) {

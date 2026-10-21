@@ -2,31 +2,29 @@
 
 A request names its route by method and path, and carries what the route needs in the
 path, the query string, and the headers. goose-rest has no table of handlers: routes are
-an `if` chain, and a route reads each part of the request with a call where it needs
+calls in a row, and a route reads each part of the request with a call where it needs
 the value.
 
 ## Matching a route
 
 Routes go in a `rest::routes` block, whose context holds the router for the request.
-Each route uses `rest::on` with a method and a pattern: literal segments, `:name` for one
-segment, and `*name` at the end for the rest of the path. Patterns match the path without
-the query string, so `/v1/projects` matches `/v1/projects?q=g`. `GET` routes also accept
-`HEAD`. At the end of the chain, `rest::otherwise` answers 405 with `Allow` when another
+Each route is `rest::get`, `rest::post`, `rest::put`, `rest::patch`, or `rest::delete`
+with a pattern: literal segments, `:name` for one segment, and `*name` at the end for
+the rest of the path. Patterns match the path without the query string, so
+`/v1/projects` matches `/v1/projects?q=g`. `rest::get` also accepts `HEAD`. The first
+route that matches takes the request and runs its block, and the routes after it don't
+match. When no route answered, `rest::routes` answers 405 with `Allow` when another
 method's route has the path, 404 when none has, and `OPTIONS` itself.
 
-`rest::scope` removes a prefix from the path, so the routes inside it match the rest. From
-[`02-routes`](02-routes/main.goose):
+`rest::scope` is a block for the paths under a prefix: the routes inside it match the
+rest of the path. The scope owns those paths, so it answers 404 and 405 for them itself,
+and the routes after it don't match them. From [`02-routes`](02-routes/main.goose):
 
 ```rust
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::scope(cx, "/v1") {
-            rest::route(cx) { v1(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::scope(cx, "/v1") { v1(cx); };
     };
 }
 ```
@@ -40,21 +38,19 @@ are plain calls, not handler arguments as in Actix or Axum:
 
 ```rust
 fn v1(cx) {
-    if rest::on(cx, "GET", "/projects") {
+    rest::get(cx, "/projects") {
         let q, has_q = rest::query(cx, "q");
         let archived, has_archived = rest::query_bool(cx, "archived");
         let limit, has_limit = rest::query_int(cx, "limit");
         rest::json(cx, 200, Listing { q: q, archived: archived, limit: if has_limit { limit } else { 10 } });
-    } else if rest::on(cx, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id")));
-    } else if rest::on(cx, "GET", "/me") {
+    };
+    rest::get(cx, "/projects/:id") { rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id"))); };
+    rest::get(cx, "/me") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let theme, has_theme = rest::cookie(cx, "theme");
         rest::text(cx, 200, str(user, " likes ", if has_theme { theme } else { "light" }));
-    } else {
-        rest::otherwise(cx);
-    }
+    };
 }
 ```
 

@@ -12,13 +12,10 @@ fn show<H>(method: const u8[:], target: const u8[:]) {
 
 fn main() {
     show("GET", "/missing") { cx =>
-        rest::routes(cx) { cx => rest::otherwise(cx); };
+        rest::routes(cx) { cx => rest::get(cx, "/found") { rest::text(cx, 200, "ok"); }; };
     };
     show("POST", "/found") { cx =>
-        rest::routes(cx) { cx =>
-            if rest::on(cx, "GET", "/found") { rest::text(cx, 200, "ok"); }
-            else { rest::otherwise(cx); }
-        };
+        rest::routes(cx) { cx => rest::get(cx, "/found") { rest::text(cx, 200, "ok"); }; };
     };
     show("GET", "/private") { cx => rest::bearer(cx) { token => rest::text(cx, 200, token); }; };
     show("GET", "/private") { cx => rest::invalid_token(cx); };

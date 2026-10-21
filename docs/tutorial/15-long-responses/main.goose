@@ -47,17 +47,10 @@ struct St {
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::on(cx, "GET", "/v1/projects/:id/tasks.csv") {
-            rest::route(cx) { export_tasks(cx, project(cx)); };
-        } else if rest::on(cx, "GET", "/v1/projects/:id/files/*name") {
-            rest::route(cx) { download(cx, project(cx)); };
-        } else if rest::on(cx, "GET", "/v1/projects/:id/progress") {
-            rest::route(cx) { progress(cx, project(cx)); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::get(cx, "/v1/projects/:id/tasks.csv") { export_tasks(cx, project(cx)); };
+        rest::get(cx, "/v1/projects/:id/files/*name") { download(cx, project(cx)); };
+        rest::get(cx, "/v1/projects/:id/progress") { progress(cx, project(cx)); };
     };
 }
 

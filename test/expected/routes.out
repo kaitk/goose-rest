@@ -1,0 +1,132 @@
+GET /projects/7:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 9
+  project 7
+HEAD /projects/7:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 9
+GET /projects/0:
+  HTTP/1.1 404 Not Found
+  Content-Type: application/json
+  Content-Length: 29
+  {"error":"project_not_found"}
+GET /projects/x:
+  HTTP/1.1 400 Bad Request
+  Content-Type: application/json
+  Content-Length: 52
+  {"error":"invalid_parameter","detail":"id: integer"}
+POST /projects:
+  HTTP/1.1 201 Created
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 7
+  created
+PUT /projects/7:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 3
+  put
+PATCH /projects/7:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 7
+  patched
+DELETE /projects/7:
+  HTTP/1.1 204 No Content
+POST /projects/7:
+  HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD, PUT, PATCH, DELETE
+  Content-Type: application/json
+  Content-Length: 30
+  {"error":"method_not_allowed"}
+OPTIONS /projects/7:
+  HTTP/1.1 204 No Content
+  Allow: GET, HEAD, PUT, PATCH, DELETE
+OPTIONS *:
+  HTTP/1.1 204 No Content
+GET /nothing:
+  HTTP/1.1 404 Not Found
+  Content-Type: application/json
+  Content-Length: 21
+  {"error":"not_found"}
+BREW /projects/7:
+  HTTP/1.1 501 Not Implemented
+  Content-Type: application/json
+  Content-Length: 27
+  {"error":"not_implemented"}
+GET /a/../projects/7:
+  HTTP/1.1 400 Bad Request
+  Content-Type: application/json
+  Content-Length: 20
+  {"error":"bad_path"}
+GET /admin:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 5
+  admin
+GET /admin:
+  HTTP/1.1 404 Not Found
+  Content-Type: application/json
+  Content-Length: 21
+  {"error":"not_found"}
+GET /reports/daily:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 5
+  daily
+GET /reports/daily:
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: Bearer
+  Content-Type: application/json
+  Content-Length: 27
+  {"error":"unauthenticated"}
+GET /reports/weekly:
+  HTTP/1.1 404 Not Found
+  Content-Type: application/json
+  Content-Length: 21
+  {"error":"not_found"}
+POST /reports/daily:
+  HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD
+  Content-Type: application/json
+  Content-Length: 30
+  {"error":"method_not_allowed"}
+GET /team/members:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 7
+  members
+GET /team/members:
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: Bearer error="invalid_token"
+  Content-Type: application/json
+  Content-Length: 25
+  {"error":"invalid_token"}
+GET /team/nope:
+  HTTP/1.1 404 Not Found
+  Content-Type: application/json
+  Content-Length: 21
+  {"error":"not_found"}
+GET /old/list:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 4
+  list
+DELETE /old/list:
+  HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD
+  Content-Type: application/json
+  Content-Length: 30
+  {"error":"method_not_allowed"}
+GET /late/list:
+  HTTP/1.1 200 OK
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 9
+  late list
+DELETE /late/list:
+  HTTP/1.1 405 Method Not Allowed
+  Allow: GET, HEAD
+  Content-Type: application/json
+  Content-Length: 30
+  {"error":"method_not_allowed"}

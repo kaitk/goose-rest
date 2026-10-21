@@ -39,33 +39,26 @@ fn format(out: u8[>..]&, l: const Listing&) {
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::scope(cx, "/v1") {
-            rest::route(cx) { v1(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::scope(cx, "/v1") { v1(cx); };
     };
 }
 
 // The routes under /v1, matched without the prefix.
 fn v1(cx) {
-    if rest::on(cx, "GET", "/projects") {
+    rest::get(cx, "/projects") {
         let q, has_q = rest::query(cx, "q");
         let archived, has_archived = rest::query_bool(cx, "archived");
         let limit, has_limit = rest::query_int(cx, "limit");
         rest::json(cx, 200, Listing { q: q, archived: archived, limit: if has_limit { limit } else { 10 } });
-    } else if rest::on(cx, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id")));
-    } else if rest::on(cx, "GET", "/me") {
+    };
+    rest::get(cx, "/projects/:id") { rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id"))); };
+    rest::get(cx, "/me") {
         let user, has_user = rest::header(cx, "X-User");
         rest::require(cx, "X-User", has_user);
         let theme, has_theme = rest::cookie(cx, "theme");
         rest::text(cx, 200, str(user, " likes ", if has_theme { theme } else { "light" }));
-    } else {
-        rest::otherwise(cx);
-    }
+    };
 }
 
 fn find_project(cx, id: i64) -> const Project& {

@@ -10,11 +10,7 @@ import rest from "../../../";
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/hello/:name") {
-            rest::route(cx) { hello(cx, rest::param(cx, "name")); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/hello/:name") { hello(cx, rest::param(cx, "name")); };
     };
 }
 
@@ -23,7 +19,7 @@ fn hello(cx, name: const u8[:]) {
 }
 
 fn greeting(cx, name: const u8[:]) -> u8[>..] {
-    // Answers 400, and leaves every caller up to the rest::route around hello.
+    // Answers 400, and leaves every caller up to the route around hello.
     guard name.len <= 20 else { rest::fail(cx, 400, "name_too_long"); }
     return str("hello, ", name);
 }

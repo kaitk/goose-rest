@@ -43,7 +43,7 @@ fn main() {
     };
     shaped(GET, "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: 34\r\n\r\n",
                 "{\"error\":\"not_found\",\"status\":404}") { cx =>
-        rest::routes(cx) { cx => if rest::on(cx, "GET", "/q") { rest::text(cx, 200, "q"); } else { rest::otherwise(cx); } };
+        rest::routes(cx) { cx => rest::get(cx, "/q") { rest::text(cx, 200, "q"); }; };
     };
     print("a program's rest::error_body: ok");
 }

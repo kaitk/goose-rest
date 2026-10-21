@@ -1,6 +1,7 @@
 // goose-http's REST benchmark server on goose-rest: the same routes,
 // records, and JSON as goose-http's bench/rest/goose at the pin, served through
-// rest::serve, an http::router chain per tier, rest's extractors, its bearer
+// rest::serve, rest::routes for tiers A, F, and M and an http::router chain for
+// the others, rest's extractors, its bearer
 // middleware, and rest::fail with each tier's error shape (error_body below).
 // It loads the generator's dataset files (goose-http's bench/rest/gen.goose)
 // at startup. Tier A is HttpArena's production-stack application layer:
@@ -741,39 +742,36 @@ fn form(cx, buf: u8[>..]&) {
     answer(cx, status, buf);
 }
 
-// Tier A's routes, in goose-rest's own error shape.
+// Tier A's routes, in goose-rest's own error shape, inside rest::routes.
 fn arena(cx, buf: u8[>..]&) {
-    rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/api/items/:id") {
-            let i = index_of(rest::param(cx, "id"), item_count());
-            guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
-            if template { http::store_append(tpl.item, item_at[i], item_at[i + 1], buf); } else { item_open(buf, items[i]); }
-            served(buf);
-            rest::json_bytes(cx, 200, buf);
-        } else if rest::on(cx, "GET", "/api/me") {
-            let id, has = rest::header(cx, "x-user-id");
-            let i = if has { index_of(id, user_count()) } else { -1 };
-            guard i >= 0 else { rest::fail(cx, 401, "unknown_user"); }
-            if template { http::store_append(tpl.user, user_at[i], user_at[i + 1], buf); } else { user_open(buf, users[i]); }
-            served(buf);
-            rest::json_bytes(cx, 200, buf);
-        } else if rest::on(cx, "POST", "/api/items/:id") {
-            let i = index_of(rest::param(cx, "id"), item_count());
-            guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
-            guard valid_write(rest::body(cx)) else { rest::fail(cx, 422, "invalid_item"); }
-            rest::empty(cx, 204);
-        } else {
-            rest::otherwise(cx);
-        }
+    rest::get(cx, "/api/items/:id") {
+        let i = index_of(rest::param(cx, "id"), item_count());
+        guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
+        if template { http::store_append(tpl.item, item_at[i], item_at[i + 1], buf); } else { item_open(buf, items[i]); }
+        served(buf);
+        rest::json_bytes(cx, 200, buf);
+    };
+    rest::get(cx, "/api/me") {
+        let id, has = rest::header(cx, "x-user-id");
+        let i = if has { index_of(id, user_count()) } else { -1 };
+        guard i >= 0 else { rest::fail(cx, 401, "unknown_user"); }
+        if template { http::store_append(tpl.user, user_at[i], user_at[i + 1], buf); } else { user_open(buf, users[i]); }
+        served(buf);
+        rest::json_bytes(cx, 200, buf);
+    };
+    rest::post(cx, "/api/items/:id") {
+        let i = index_of(rest::param(cx, "id"), item_count());
+        guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
+        guard valid_write(rest::body(cx)) else { rest::fail(cx, 422, "invalid_item"); }
+        rest::empty(cx, 204);
     };
 }
 
 // Tier F, the bun-http-framework-benchmark's three routes (bench/rest/tiers).
 fn micro(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/") {
-            rest::text(cx, 200, "Hi");
-        } else if rest::on(cx, "GET", "/id/:id") {
+        rest::get(cx, "/") { rest::text(cx, 200, "Hi"); };
+        rest::get(cx, "/id/:id") {
             var b: u8[>..] = [];
             b.append(rest::param(cx, "id"));
             b.push(' ');
@@ -782,13 +780,12 @@ fn micro(cx) {
             http::start(cx.out, 200);
             http::field(cx.out, "x-powered-by", "benchmark");
             http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", b);
-        } else if rest::on(cx, "POST", "/json") {
+        };
+        rest::post(cx, "/json") {
             var out: u8[>..] = [];
             guard echo(rest::body(cx), out) else { rest::fail(cx, 400, "invalid_body"); }
             rest::json_bytes(cx, 200, out);
-        } else {
-            rest::otherwise(cx);
-        }
+        };
     };
 }
 
@@ -873,11 +870,11 @@ fn tier_a(cx, stack: bool) {
     if stack {
         rest::timed(cx, false) {
             rest::cors(cx, rest::Cors { origins: mw_origin(), .. }) {
-                rest::route(cx) { rest::bearer(cx) { token => arena(cx, buf); }; };
+                rest::routes(cx) { cx => rest::bearer(cx) { token => arena(cx, buf); }; };
             };
         };
     } else {
-        rest::route(cx) { arena(cx, buf); };
+        rest::routes(cx) { cx => arena(cx, buf); };
     }
 }
 
@@ -895,7 +892,7 @@ fn tier_c(cx, writes: bool) {
     rest::route(cx) { heavy(cx, buf, writes); };
 }
 
-fn tier_f(cx) { rest::route(cx) { micro(cx); }; }
+fn tier_f(cx) { micro(cx); }
 
 // Tier R through the if chain, in one route, or the generator's router,
 // which opens a route for each.

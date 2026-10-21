@@ -28,13 +28,12 @@ fn handle(cx) {
             rest::routes(cx) { cx =>
                 if rest::on(cx, "GET", "/health") {
                     rest::text(cx, 200, "ok");
-                } else if rest::scope(cx, "/admin") {
-                    rest::route(cx) { audited(cx) { admin(cx); }; };
                 } else if rest::on(cx, "PUT", "/v1/projects/:id") {
                     rest::route(cx) { rename(cx); };
                 } else if rest::on(cx, "GET", "/v1/projects/:id/report") {
                     rest::route(cx) { report(cx); };
                 } else {
+                    rest::scope(cx, "/admin") { rest::route(cx) { audited(cx) { admin(cx); }; }; };
                     api::dispatch(cx);
                 }
             };

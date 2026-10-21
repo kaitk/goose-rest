@@ -98,24 +98,20 @@ fn handle(cx) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
             rest::routes(cx) { cx =>
-                if rest::on(cx, "GET", "/health") {
-                    rest::text(cx, 200, "ok");
-                } else if rest::scope(cx, "/v1") {
-                    rest::route(cx) { projects(cx); };
-                } else {
-                    rest::otherwise(cx);
-                }
+                rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+                rest::scope(cx, "/v1") { projects(cx); };
             };
         };
     };
 }
 
-// The routes under /v1, inside the route.
+// The routes under /v1.
 fn projects(cx) {
-    if rest::on(cx, "GET", "/projects") {
+    rest::get(cx, "/projects") {
         let q, has_q = rest::query(cx, "q");
         rest::json(cx, 200, Listing { projects: cx.app.projects, q: q });
-    } else if rest::on(cx, "POST", "/projects") {
+    };
+    rest::post(cx, "/projects") {
         rest::bearer(cx) { token =>
             guard token == cx.app.token else { rest::invalid_token(cx); }
             let form = http::has_type(cx.req, "application/x-www-form-urlencoded");
@@ -123,9 +119,9 @@ fn projects(cx) {
             let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
             rest::json(cx, 201, p);
         };
-    } else if rest::on(cx, "GET", "/projects/:id") {
-        rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id")));
-    } else if rest::on(cx, "PUT", "/projects/:id/logo") {
+    };
+    rest::get(cx, "/projects/:id") { rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id"))); };
+    rest::put(cx, "/projects/:id/logo") {
         // A body past the read buffer runs this block twice, so nothing
         // before rest::body changes state.
         rest::bearer(cx) { token =>
@@ -134,16 +130,15 @@ fn projects(cx) {
             let logo = rest::body(cx, LOGO_LIMIT);
             rest::json(cx, 200, Logo { id: p.id, bytes: logo.len });
         };
-    } else if rest::on(cx, "DELETE", "/projects/:id") {
+    };
+    rest::delete(cx, "/projects/:id") {
         rest::bearer(cx) { token =>
             guard token == cx.app.token else { rest::invalid_token(cx); }
             let p .= find_project(cx, rest::param_int(cx, "id"));
             p.deleted = true;
             rest::empty(cx, 204);
         };
-    } else {
-        rest::otherwise(cx);
-    }
+    };
 }
 
 thread_fn worker(cfg: http::Config) {

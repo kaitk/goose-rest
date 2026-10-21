@@ -73,14 +73,14 @@ enum Use { None, Db, Mail }
 From [`main.goose`](12-two-lanes/main.goose):
 
 ```rust
-        } else if rest::on(cx, "GET", "/v1/projects/:id/tasks") {
-            rest::route(cx) { rest::ask(cx, cx.app.db, DbJob.Tasks { project: rest::param_int(cx, "id") }); };
-        } else if rest::on(cx, "POST", "/v1/projects/:id/members") {
-            rest::route(cx) {
-                let user, has_user = rest::query_int(cx, "user");
-                rest::require(cx, "user", has_user);
-                rest::ask(cx, cx.app.db, DbJob.AddMember { project: rest::param_int(cx, "id"), user: user });
-            };
+        rest::get(cx, "/v1/projects/:id/tasks") {
+            rest::ask(cx, cx.app.db, DbJob.Tasks { project: rest::param_int(cx, "id") });
+        };
+        rest::post(cx, "/v1/projects/:id/members") {
+            let user, has_user = rest::query_int(cx, "user");
+            rest::require(cx, "user", has_user);
+            rest::ask(cx, cx.app.db, DbJob.AddMember { project: rest::param_int(cx, "id"), user: user });
+        };
 ```
 
 ```rust

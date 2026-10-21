@@ -8,9 +8,5 @@ import common.users.structs;
 import settings.structs;
 
 fn routes(cx, user: users::User) {
-    if rest::on(cx, "GET", "") {
-        rest::json(cx, 200, Settings { user: user.id, time_zone: "Europe/Tallinn" });
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "") { rest::json(cx, 200, Settings { user: user.id, time_zone: "Europe/Tallinn" }); };
 }

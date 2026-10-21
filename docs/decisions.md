@@ -85,7 +85,8 @@ bounds what a generated router can save.
 Decided (2026-10-13): the generator writes the router. At 60 routes in prefix scopes,
 the last route of a scope, a 404 inside one, and a 405 each cost about 6,000
 instructions a request more than one route, because each `http::on` scans the path
-again from its start (`bench/routes.sh`). The if chain stays the API without a schema.
+again from its start (`bench/routes.sh`). Hand-written routes stay the API without a
+schema.
 
 ### The contract: OpenAPI, optionally written in TypeScript
 
@@ -200,9 +201,82 @@ placeholder by reference. `rest::serve_one(text[, app[, fresh]])` has the same s
 forms, with an optional `http::Config` after `fresh`, and after `fresh` the replies of
 a route that waits, `rest::Wake`s, which stand in for its lane (2026-10-15).
 
-Decided (2026-10-14): `rest::routes` does not open `rest::route`. Opening a
-route for every request costs more to save one line. The program opens one around
-the code that can fail; generated dispatch opens each of its own routes.
+Decided (2026-10-14), replaced on 2026-10-21 (below): `rest::routes` does not open
+`rest::route`. Opening a route for every request costs more to save one line. The
+program opens one around the code that can fail; generated dispatch opens each of its
+own routes.
+
+Decided (2026-10-21), replacing the decision above: routes are short, and readability
+wins over what that costs. A program's routes are statements in a row, as Actix's
+`web::scope` and `web::get` read, rather than an if chain of `rest::on` and
+`rest::route` that ends in `rest::otherwise`:
+
+```goose
+rest::routes(cx) { cx =>
+    rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+    rest::scope(cx, "/v1") {
+        rest::get(cx, "/projects/:id") { project(cx, rest::param_int(cx, "id")); };
+    };
+};
+```
+
+- `rest::routes` opens the request's one route around its block, and answers 404, 405
+  with `Allow`, OPTIONS, and 501 itself when the block left the request unanswered and
+  nothing waits: no reply, body, or room to send.
+- `rest::get`, `post`, `put`, `patch`, and `delete` match, mark the request taken, run
+  their block, and return as any block does. The routes and scopes after a taken
+  request don't match: each checks the mark inline, so one costs a branch. Code after
+  its block runs, a middleware's included.
+- `rest::scope(cx, "/p") { ... };` is a block: it owns the paths under its prefix,
+  gives `rest::routes`' answer when its block answered nothing, and takes the request.
+  No scope leaves the path narrowed for the routes after it.
+- `rest::scoped(cx) { ... };` is the building block for middleware that works after
+  its block or adds fields to answers. Inside `rest::routes` it runs its block as a
+  route of its own and gives the default answer there, so a failure, a 404, and a 405
+  inside the middleware get its fields; outside, it only runs the block.
+  `rest::cors`, `rest::timed`, `rest::security_headers`, and `rest::compressed` run
+  their block in it, so each has one name and works on either side of `rest::routes`.
+- Inside `routes`, `rest::route` joins the one route, so a stack that opens its route
+  works either side of it. Guards stay `if` conditions, around the routes they guard.
+- `rest::on` and `rest::otherwise` stay, as the lower-level pieces. `rest::otherwise`
+  answers nothing after a route that took the request, so it can follow
+  `rest::get`. Generated dispatch begins with `rest::untaken(cx)`, and answers
+  nothing after a program's route that took the request.
+
+The mark is goose-http's `Router.bad`, which marks a path the router refuses, and
+which `http::on` checks first. goose-rest sets it when a route takes the request, and
+tells the two apart by whether the path is routable. That depends on what `bad`
+means in goose-http, which goose-http's task 027 could change; if it does, the mark
+moves to a field of goose-rest's own.
+
+The cost is the route every request opens, including `/health` and the 404s that the
+if chain answered with none, and the mark's check after a match. On macOS, against
+the if chain, it's −74 to +149 instructions per request at 60 routes and +107 to +135
+at 1,111, under 1%, and +225 to +257 in a scope behind `rest::cors`, which opens a
+route of its own there. Requests per second stay within 3.2% of the if chain's, above
+and below, in single rounds
+([spike 12](../spikes/12-compact-routes/README.md#skip-based-routing-2026-10-21)).
+
+Rejected:
+
+- Design A, adopted on 2026-10-20 and paused before it merged: `rest::get` left
+  through `return from routes`. That skipped the work of every middleware between it
+  and `rest::routes`, so `rest::timed` and `rest::compressed` inside `routes` broke,
+  and it answered a failure inside a scope's middleware after the middleware had
+  unwound, without its fields.
+- Middleware that compiles only outside `rest::routes`, beside scoped versions such
+  as `rest::scoped_cors` that catch the leave in an inner `routes`. Two names for each
+  middleware, and a program's own untyped middleware still compiles in both places and
+  misbehaves inside `routes` without a word.
+- A field in goose-http's `Router` for the mark: goose-http would never read it.
+- The `bool` `rest::scope` beside the block form. It left the path narrowed, so the
+  routes after a scope that matched but answered nothing matched the rest of the path.
+- A route for each `rest::get`, which costs nothing but needs the if chain in a scope
+  behind middleware that fails, since that scope shares one route: two forms, and the
+  wrong one there goes out of line without a word. And a route's block given a context
+  of a marked router type, on which `rest::get` is overloaded. That costs about as
+  much, and changes the signatures of every `rest::route` block, every stack, and
+  every call that reads the router.
 
 Decided (2026-10-14): `rest::empty(cx, status)` answers without a body.
 It makes a 204 one call and preserves HTTP's framing: 204 and 304 have no
@@ -257,8 +331,10 @@ and the code that fails inlined into it, and each early answer compiled as a jum
 it so:
 
 - **One route per request.** A function that fails returns from the innermost
-  `attempt`, so a route nested in a route keeps both out of line. Middleware doesn't
-  open routes of its own.
+  `attempt`, so a route nested in a route keeps both out of line. Middleware opens no
+  route of its own outside `rest::routes`. Inside, goose-rest's runs its block in
+  `rest::scoped`'s route, which `test/inline_route.goose`'s C keeps inlined with the
+  request's.
 - **Functions that fail stay small.** A function that fails and stays a call needs its
   route's frame, which keeps the route, everything around it, and the handler out of
   line. The extractors fail in a few statements and do their work in leaves that

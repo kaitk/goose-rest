@@ -11,13 +11,8 @@ import projects.errors;
 import projects.rules;
 
 fn routes(cx, member: members::Member) {
-    if rest::on(cx, "GET", "") {
-        list(cx, member);
-    } else if rest::on(cx, "POST", "") {
-        create(cx, member);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "") { list(cx, member); };
+    rest::post(cx, "") { create(cx, member); };
 }
 
 fn list(cx, member: members::Member) {

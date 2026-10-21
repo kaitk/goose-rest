@@ -1,11 +1,12 @@
-// A handler behind goose-rest's middleware, rest::timed, rest::cors, a
-// prefix scope, and rest::bearer, around rest::route and a failure two calls
-// below it, written out under /v1 and as a stack calling a stack under /v2:
+// A handler behind goose-rest's middleware, rest::timed, rest::cors, block
+// scopes, and rest::bearer, around rest::get and a failure two calls below
+// it, written out under /v1 and as a stack calling a stack under /v2:
 // member_routes calls signed_in_routes, and the token passes through both
-// blocks.
+// blocks. Inside rest::routes, cors and timed run their block in
+// rest::scoped, a route of its own inside the request's one route.
 // scripts/test.sh compiles it with -O2 and checks that the C holds no
-// function of the middleware's, route's, the stacks', or the helpers that
-// fail: all of it is inlined into handle, each early answer a jump, as in
+// function of the middleware's, the routes', the scopes', the stacks', or the
+// helpers that fail: all of it is inlined into handle, each early answer a jump, as in
 // spike 04. handle itself stays a function, as a function given a large block
 // does (docs/goose-findings.md).
 import std;
@@ -28,9 +29,7 @@ fn load(cx, user: i64, id: i64) -> Item {
 }
 
 inline fn signed_in_routes<F>(cx) {
-    rest::route(cx) {
-        rest::bearer(cx) { token => F(token); };
-    };
+    rest::bearer(cx) { token => F(token); };
 }
 
 inline fn member_routes<F>(cx) {
@@ -43,31 +42,20 @@ inline fn member_routes<F>(cx) {
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::scope(cx, "/v1") {
+        rest::scope(cx, "/v1") {
             rest::cors(cx, rest::Cors { origins: "https://a.example", .. }) {
-                rest::route(cx) {
-                    rest::bearer(cx) { token =>
-                        let user = rest::int_of(cx, token, "token");
-                        if rest::on(cx, "GET", "/items/:id") {
-                            rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id")));
-                        } else {
-                            rest::otherwise(cx);
-                        }
-                    };
+                rest::bearer(cx) { token =>
+                    let user = rest::int_of(cx, token, "token");
+                    rest::get(cx, "/items/:id") { rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id"))); };
                 };
             };
-        } else if rest::scope(cx, "/v2") {
+        };
+        rest::scope(cx, "/v2") {
             member_routes(cx) { token =>
                 let user = rest::int_of(cx, token, "token");
-                if rest::on(cx, "GET", "/items/:id") {
-                    rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id")));
-                } else {
-                    rest::otherwise(cx);
-                }
+                rest::get(cx, "/items/:id") { rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id"))); };
             };
-        } else {
-            rest::otherwise(cx);
-        }
+        };
     };
 }
 

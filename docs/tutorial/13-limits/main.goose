@@ -66,30 +66,24 @@ fn format(out: u8[>..]&, r: const Report&) {
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::scope(cx, "/v1") {
-            rest::route(cx) { v1(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::scope(cx, "/v1") { v1(cx); };
     };
 }
 
 fn v1(cx) {
-    if rest::on(cx, "GET", "/projects/:id/summary") {
+    rest::get(cx, "/projects/:id/summary") {
         let ms, has_ms = rest::query_int(cx, "ms");
         let job = DbJob.Summary { project: rest::param_int(cx, "id"), ms: if has_ms { ms } else { 0 } };
         rest::ask(cx, cx.app.db, job, WAIT_MS);
-    } else if rest::on(cx, "GET", "/gone") {
-        rest::ask(cx, cx.app.db, DbJob.Gone, WAIT_MS);
-    } else if rest::on(cx, "POST", "/projects/:id/reports") {
+    };
+    rest::get(cx, "/gone") { rest::ask(cx, cx.app.db, DbJob.Gone, WAIT_MS); };
+    rest::post(cx, "/projects/:id/reports") {
         rest::ask(cx, cx.app.reports, ReportJob.Start { project: rest::param_int(cx, "id") });
-    } else if rest::on(cx, "GET", "/reports/:id") {
+    };
+    rest::get(cx, "/reports/:id") {
         rest::ask(cx, cx.app.reports, ReportJob.Status { id: rest::param_int(cx, "id") });
-    } else {
-        rest::otherwise(cx);
-    }
+    };
 }
 
 fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }

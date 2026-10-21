@@ -2,6 +2,28 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## Unreleased
+
+Shorter routes: a program's routes are statements in a row, and scopes are blocks
+([reference](docs/reference.md#1-context-and-routes),
+[decision](docs/decisions.md#the-api)).
+
+- `rest::get`, `post`, `put`, `patch`, and `delete` match a method and a pattern, take
+  the request, and run their block. The routes and scopes after a route that took the
+  request don't match, and the code after it runs.
+- `rest::routes` opens the request's one route, and answers 404, 405, OPTIONS, and 501
+  itself when its block answered nothing. Inside it, `rest::route` joins that route.
+- Breaking: `rest::scope(cx, "/p") { ... };` is a block, which owns the paths under
+  its prefix and answers a 404 or 405 for them itself. The `bool` `rest::scope` is
+  gone.
+- `rest::scoped(cx) { ... }` runs a middleware's block, inside `rest::routes`, as a
+  route of its own that gives the default answer. `rest::cors`, `rest::timed`,
+  `rest::security_headers`, and `rest::compressed` run their block in it, so each works
+  inside a scope, its errors, 404s, and 405s getting its fields.
+- `rest::on` and `rest::otherwise` stay; `rest::otherwise` answers nothing after a
+  route that took the request. The generated `dispatch` begins with
+  `rest::untaken(cx)`, and answers nothing after a hand-written route that took it.
+
 ## v0.2.1 (2026-10-20)
 
 The tier C benchmark's JWT check scans 16 bytes at a time, and the goose-http pin

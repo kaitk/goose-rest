@@ -10,11 +10,7 @@ import auth.errors;
 import auth.rules;
 
 fn routes(cx) {
-    if rest::on(cx, "POST", "/session") {
-        sign_in(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::post(cx, "/session") { sign_in(cx); };
 }
 
 // Signing in. On the worker: read the form, and ask the hasher lane.

@@ -22,20 +22,45 @@ resumes. The block receives a context with an `http::Router`:
 
 ```rust
 rest::routes(cx) { cx =>
-    if rest::on(cx, "GET", "/projects/:id") {
-        rest::route(cx) { show(cx, rest::param_int(cx, "id")); };
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "/projects/:id") { show(cx, rest::param_int(cx, "id")); };
+    rest::delete(cx, "/projects/:id") { remove(cx, rest::param_int(cx, "id")); };
 };
 ```
 
-`routes` builds the router and passes its context by reference; it doesn't open a
-`rest::route`. `on`, `scope`, `param`, `param_int`, and `otherwise` require that
-router's context, so calls outside the block fail to compile. A typed route helper
+`routes` builds the router, passes its context by reference, and runs its block as
+the request's one route, so a `rest::fail` anywhere inside answers. When the block
+leaves the request unanswered, with no reply, body, or room to send awaited, `routes`
+answers as `rest::otherwise` does: 404, 405 with `Allow`, OPTIONS, 501, and 400
+`bad_path`.
+
+| Call | Does |
+|---|---|
+| `rest::get(cx, pattern) { ... }` | For a GET or HEAD on `pattern`, takes the request and runs the block |
+| `rest::post`, `rest::put`, `rest::patch`, `rest::delete` | The same for their method |
+| `rest::scope(cx, "/v1") { ... }` | For a path that starts with the prefix at a segment boundary, runs the block, whose routes match the rest of the path; then answers as `routes` does if the block didn't, and takes the request |
+| `rest::route(cx) { ... }` | Inside `routes`, runs the block in its route; outside, opens a route of its own |
+| `rest::scoped(cx) { ... }` | Inside `routes`, runs the block as a route of its own, answers as `routes` does if the block didn't, and takes the request; outside, runs the block. For middleware ([Middleware](#2-middleware)) |
+| `rest::on(cx, method, pattern)` | Whether the request is `method` on `pattern`, for an `if` of the program's own; it doesn't take the request |
+| `rest::otherwise(cx)` | Answers as `routes` does when no route answered, before the block ends; after a route that took the request, nothing |
+| `rest::untaken(cx)` | Whether no route has taken the request yet; always true outside `routes` |
+
+A route that matches takes the request, and the routes and scopes after it don't match.
+Its block returns as any block does, so the code after the route runs, a middleware's
+work after its block included. A scope owns the paths under its prefix: the routes
+after it don't match them, and it answers a 404 or 405 for them itself, inside the
+middleware around it.
+
+A pattern has literal segments, `:name` for one segment, and `*name` at the end for
+the rest of the path. A route that matches with another method adds its method to the
+`Allow` of the 405 and OPTIONS answers, across scopes. A guard is an `if` around the
+routes it guards, `if admin(cx) { rest::get(cx, "/admin") { ... }; }`: a request that
+fails it gets 404, not 405. `get` and its kin, `scope`, `on`, `param`, `param_int`,
+and `otherwise` require that router's context, so calls outside the block fail to
+compile. A typed route helper
 can name `type Cx = rest::Cx<St, App, http::Router>;` and take `cx: Cx&`.
-The generated `api::dispatch(cx)` works with either context and reads the preceding
-routes' `Allow` inside the block. Generated handlers receive path parameters as
+The generated `api::dispatch(cx)` works with either context. Inside the block, it reads
+the preceding routes' `Allow`, and answers nothing after one of them took the request.
+Generated handlers receive path parameters as
 arguments; pass those to helpers rather than read the last hand-written match.
 
 `cx.kind` identifies the event the handler is called for: `http::REQUEST` for a request,
@@ -111,13 +136,30 @@ can have its own, and a public route none.
 | `rest::security_headers(cx, cfg) { ... }` | Adds a prepared security policy to every answer inside, errors included. HTML and API presets, configurable per scope: [Security headers](#22-security-headers). |
 | `rest::compressed(cx) { cx => ... }` | Compresses the answers inside, errors included, by the request's `Accept-Encoding`, with goose-http's gzip, deflate, and zstd. An optional module: [Compression](#21-compression). |
 | `rest::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `rest::invalid_token(cx)` refuses one. `rest::bearer_token(cx)` returns it, for a generated router's security check. |
-| `rest::scope(cx, "/v1")` | Whether the path starts with the prefix at a segment boundary; `rest::on` calls inside match the rest. `rest::otherwise(cx)` answers 404, 405, and OPTIONS across scopes. |
 
-`timed`, `cors`, and `security_headers` go outside `rest::route`, so errors get their
-fields; `bearer` and anything else that fails go inside it. A request has one route:
-routes nested in routes don't inline ([architecture](architecture.md#middleware-and-inlining)).
-A program's own `inline fn` can nest several middleware and pass its block on, so a scope
-has one level: [A stack of your own](tutorial/07-middleware.md#a-stack-of-your-own).
+`timed`, `cors`, `security_headers`, and `compressed` work on either side of
+`rest::routes`. Around it, every answer gets their fields, the 404s outside every
+scope included. Inside it, each runs its block in `rest::scoped`, so a failure, a 404,
+and a 405 inside it are answered there, with its fields. That also takes the request:
+inside `rest::routes`, put such middleware in a scope, or after the routes beside it.
+`bearer` and anything else that fails go inside `rest::routes`. A request has one
+route: routes nested in routes don't inline, `rest::scoped`'s aside
+([architecture](architecture.md#middleware-and-inlining)). A program's own `inline fn`
+can nest several middleware and pass its block on, so a scope has one level:
+[A stack of your own](tutorial/07-middleware.md#a-stack-of-your-own).
+
+A program's own middleware that works after its block, or adds fields to answers,
+runs its block in `rest::scoped`. Without it, the middleware sees a 404 in its block
+before `rest::routes` writes it, and a failure inside unwinds past it:
+
+```rust
+// Logs each request its block answers, with the status and the time it took.
+inline fn audited<F>(cx) {
+    let begun = clock_ns();
+    rest::scoped(cx) { F(); };
+    audit(cx.state, cx.req.method, cx.req.target, cx.out.stream.status, clock_ns() - begun);
+}
+```
 
 Which answers get the fields:
 
@@ -204,8 +246,10 @@ deflate when the weights are equal.
 | Begun with `rest::begin`, of a type `http::compressible` refuses, or with no type | As written |
 | `rest::file`, `rest::relay`'s reply in pieces, `http::begin` | As written |
 
-Put `compressed` outside `rest::route`, so that the route's errors are compressed, and
-inside `timed`, which then logs the compressed size. CORS and other fields added inside
+Put `compressed` around `rest::routes`, or around a scope's routes inside it, as
+[`examples/compress`](../examples/compress/main.goose) compresses two scopes with options
+of their own; either way the errors inside are compressed. Put it inside `timed`, which
+then logs the compressed size. CORS and other fields added inside
 it are kept. An answer written after the block returns, when a waiting route resumes,
 is compressed only if the resumed handler runs inside `compressed` too. Each answer
 inside is copied once, compressed or not: the response buffer can't shrink while a
@@ -307,7 +351,7 @@ rest::security_headers(cx, if starts_with(cx.req.target, "/embed") { embed } els
 Nesting `security_headers` isn't supported. The middleware restores the outer
 common fields when its block returns.
 
-Put the middleware outside `rest::route` so route errors carry its fields too.
+Around `rest::routes` or inside a scope, route errors carry its fields too.
 It preserves the selected policy for deferred replies, timeout errors, and
 bodies read in pieces, as `cors` does. A call after the request runs its block
 without reapplying fields. Body-gathering errors raised before the handler runs
@@ -323,7 +367,7 @@ no bytes to the connection's request state.
 ## 3. Extractors
 
 Each extractor reads one part of the request, and fails the route with 400 when that
-part is malformed ([Errors](#5-errors)), so it runs inside `rest::route`. A value that
+part is malformed ([Errors](#5-errors)), so it runs inside a route. A value that
 has escapes to decode is decoded into `cx.scratch`, which lasts until the handler
 returns. Otherwise the extractor returns the request's own bytes.
 
@@ -404,7 +448,7 @@ pieces too small for it. Bodies read with `rest::body_in_pieces` don't count aga
 budget: a route that takes large bodies, or many at once, reads them in pieces.
 
 ```rust
-rest::route(cx) {
+rest::post(cx, "/projects") {
     let body = rest::take<api::ProjectCreate>(cx);
     let page, has_page = rest::query_int(cx, "page");
     rest::json(cx, 201, create_project(cx, body, if has_page { page } else { 1 }));
@@ -455,7 +499,7 @@ passes its limit, when the route answers or fails before a body's `END`, when it
 fails with its response begun, or when goose-rest ends a paused response. Anything the case function writes is discarded. A route that answers at the
 `END`, or calls `rest::end`, gets none, nor does one that only asked.
 
-A failure after a response has begun can't be answered: its head has already been sent. `rest::route`
+A failure after a response has begun can't be answered: its head has already been sent. The route
 leaves the response unended, goose-http closes the connection, and the client sees the
 response cut short.
 
@@ -650,12 +694,12 @@ another shape, as the end of this section shows:
 | any | the code given | `rest::fail(cx, status, code)` in a route, or `rest::fail(a, status, code)` on a lane |
 | 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
 | 400 | `invalid_parameter`, with `detail` | the [extractors](#3-extractors), `rest::fail_param`, and the generated router: a parameter missing, malformed, or outside its schema, as `id: integer`, `q: required`, or `page: minimum` |
-| 400 | `bad_path` | `rest::otherwise`: a path with a dot-segment or an escaped control byte |
+| 400 | `bad_path` | `rest::routes` and `rest::otherwise`: a path with a dot-segment or an escaped control byte |
 | 401 | `unauthenticated`, with `WWW-Authenticate: Bearer` | `rest::bearer`: no bearer token |
 | 401 | `invalid_token`, with `WWW-Authenticate: Bearer error="invalid_token"` | `rest::invalid_token(cx)` |
 | 403 | `origin_not_allowed` | `rest::cors`: an `Origin` it doesn't list |
-| 404 | `not_found` | `rest::otherwise`: no route's path matched |
-| 405 | `method_not_allowed`, with an `Allow` field | `rest::otherwise`: a route's path matched with another method |
+| 404 | `not_found` | `rest::routes` and `rest::otherwise`: no route's path matched |
+| 405 | `method_not_allowed`, with an `Allow` field | `rest::routes` and `rest::otherwise`: a route's path matched with another method |
 | 403 | `forbidden` | `rest::file`: a file the program may not read |
 | 404 | `file_not_found` | `rest::file`: no file, or a directory, at the path |
 | 413 | `payload_too_large` | `rest::body`, `rest::body_in_pieces`, `rest::take` of a schema type, and the form extractors: a body over the limit |
@@ -668,7 +712,7 @@ another shape, as the end of this section shows:
 | 500 | `not_a_reply` | `rest::job` at another event than `WAKE`, as an upgraded connection's `BODY` during a wait |
 | 500 | `not_sending` | `rest::pause` without a response begun with `rest::begin` and still open |
 | 500 | `not_served` | `rest::body_in_pieces` or `rest::pause` with a context that `rest::serve` or `serve_one` didn't make |
-| 501 | `not_implemented` | `rest::otherwise`: a method HTTP doesn't define |
+| 501 | `not_implemented` | `rest::routes` and `rest::otherwise`: a method HTTP doesn't define |
 | 502 | `bad_reply` | `rest::job`, `rest::answer`, and `rest::relay`: a reply that doesn't hold its job, or a value of the type read |
 | 502 | `reply_too_large` | `rest::ask`: a reply of `rest::reply_value`, in pieces, past the worker's gather budget ([Lanes](#41-lanes)) |
 | 503 | `unavailable` | `rest::ask`: every box of the lane is full, or the lane is stopped ([Lanes](#41-lanes)) |

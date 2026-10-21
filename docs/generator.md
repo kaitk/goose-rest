@@ -226,7 +226,7 @@ let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 | OpenAPI | Goose |
 |---|---|
 | A path, `/projects/{id}` | matched segment by segment; a parameter takes a whole, non-empty segment |
-| An operation, `get`, `post`, ... | a function, `route_<operationId in snake_case>`, that calls `<handlers>::<operationId in snake_case>` inside `rest::route`; `dispatch` calls it |
+| An operation, `get`, `post`, ... | a function, `route_<operationId in snake_case>`, that calls `<handlers>::<operationId in snake_case>` inside `rest::route`, which inside `rest::routes` joins its route; `dispatch` calls it |
 | A path parameter, `"type": "integer"` | an `i64` from `rest::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
 | A path parameter, `"type": "string"`, with `format: ascii` or none | the segment, decoded, from `rest::path_str`, checked as ASCII for `format: ascii` |
 | Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
@@ -348,16 +348,16 @@ answers another method as one router would, listing the hand-written routes' met
 
 ```rust
 rest::routes(cx) { cx =>
-    if rest::on(cx, "PUT", "/uploads/:name") {
-        rest::route(cx) { upload(cx, rest::param(cx, "name")); };
-    } else {
-        api::dispatch(cx);
-    }
+    rest::put(cx, "/uploads/:name") { upload(cx, rest::param(cx, "name")); };
+    api::dispatch(cx);
 };
 ```
 
-`rest::scope(cx, prefix)` narrows the path for hand-written matching. `dispatch`
-matches the full request path from the schema. A generated handler gets each path
+`dispatch` begins with `rest::untaken(cx)`: after a hand-written route that took the
+request, it answers nothing. It answers every other request, so it comes after the
+hand-written routes. `rest::scope(cx, prefix) { ... }` narrows the path for the
+hand-written routes in its block. `dispatch` matches the full request path from the
+schema, so it goes outside every scope. A generated handler gets each path
 parameter as an argument; a helper that calls `rest::param` inside a routes block
 reads the last hand-written match instead.
 

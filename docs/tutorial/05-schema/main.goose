@@ -21,11 +21,8 @@ fn format(out: u8[>..]&, u: const Upload&) { rest::format_fields(out, u); }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "PUT", "/uploads/:name") {
-            rest::route(cx) { upload(cx); };
-        } else {
-            api::dispatch(cx);
-        }
+        rest::put(cx, "/uploads/:name") { upload(cx); };
+        api::dispatch(cx);
     };
 }
 

@@ -36,15 +36,9 @@ fn format(out: u8[>..]&, c: const Count&) { rest::format_fields(out, c); }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::on(cx, "POST", "/v1/projects/:id/tasks/import") {
-            rest::route(cx) { import_tasks(cx, project(cx)); };
-        } else if rest::on(cx, "GET", "/v1/projects/:id/tasks") {
-            rest::route(cx) { count_tasks(cx, project(cx)); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::post(cx, "/v1/projects/:id/tasks/import") { import_tasks(cx, project(cx)); };
+        rest::get(cx, "/v1/projects/:id/tasks") { count_tasks(cx, project(cx)); };
     };
 }
 

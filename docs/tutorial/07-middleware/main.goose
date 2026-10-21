@@ -14,60 +14,45 @@ inline fn resolve_tenant<F>(cx) {
 
 // The routes that need the token and a tenant: one level for a scope.
 inline fn member_routes<F>(cx) {
-    rest::route(cx) {
-        rest::bearer(cx) { token =>
-            guard token == "secret" else { rest::invalid_token(cx); }
-            resolve_tenant(cx) { tenant => F(tenant); };
-        };
+    rest::bearer(cx) { token =>
+        guard token == "secret" else { rest::invalid_token(cx); }
+        resolve_tenant(cx) { tenant => F(tenant); };
     };
 }
 
 fn handle(cx) {
-    // Outside every route, so that its errors get the timing and CORS fields too.
+    // Around every route, so that every answer gets the timing and CORS fields.
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            // The routes, with the middleware that can fail inside each scope's route.
+            // The routes, with the middleware that can fail inside each scope.
             rest::routes(cx) { cx =>
-                if rest::on(cx, "GET", "/health") {
-                    rest::text(cx, 200, "ok");
-                } else if rest::scope(cx, "/v1") {
+                rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+                rest::scope(cx, "/v1") {
                     // Every route under /v1 needs a tenant.
-                    rest::route(cx) {
-                        resolve_tenant(cx) { tenant => v1(cx, tenant); };
-                    };
-                } else if rest::scope(cx, "/admin") {
+                    resolve_tenant(cx) { tenant => v1(cx, tenant); };
+                };
+                rest::scope(cx, "/admin") {
                     // Every route under /admin needs the token.
-                    rest::route(cx) {
-                        rest::bearer(cx) { token =>
-                            guard token == "secret" else { rest::invalid_token(cx); }
-                            admin(cx);
-                        };
+                    rest::bearer(cx) { token =>
+                        guard token == "secret" else { rest::invalid_token(cx); }
+                        admin(cx);
                     };
-                } else if rest::scope(cx, "/v2") {
+                };
+                rest::scope(cx, "/v2") {
                     // The token and a tenant, as the member_routes stack.
                     member_routes(cx) { tenant => v1(cx, tenant); };
-                } else {
-                    rest::otherwise(cx);
-                }
+                };
             };
         };
     };
 }
 
 fn v1(cx, tenant: const u8[:]) {
-    if rest::on(cx, "GET", "/projects") {
-        rest::text(cx, 200, str("the projects of ", tenant));
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "/projects") { rest::text(cx, 200, str("the projects of ", tenant)); };
 }
 
 fn admin(cx) {
-    if rest::on(cx, "POST", "/reindex") {
-        rest::text(cx, 202, "reindexing");
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::post(cx, "/reindex") { rest::text(cx, 202, "reindexing"); };
 }
 
 thread_fn worker(cfg: http::Config) {

@@ -46,12 +46,11 @@ fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
 ```
 
 ```rust
-        if rest::on(cx, "POST", "/projects") {
-            rest::route(cx) {
-                let body = rest::take<ProjectCreate>(cx);
-                let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
-                rest::json(cx, 201, p);
-            };
+        rest::post(cx, "/projects") {
+            let body = rest::take<ProjectCreate>(cx);
+            let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
+            rest::json(cx, 201, p);
+        };
 ```
 
 ```text
@@ -109,14 +108,13 @@ struct Project {
 Hand-written routes can use the generated types directly:
 
 ```rust
-        if rest::on(cx, "POST", "/projects") {
-            rest::route(cx) {
-                let body = rest::take<api::ProjectCreate>(cx);
-                let p .= cx.app.projects.push(api::Project {
-                    id: cx.app.projects.len + 1, name: body.name, has_color: body.has_color, color: body.color,
-                });
-                rest::json(cx, 201, p);
-            };
+        rest::post(cx, "/projects") {
+            let body = rest::take<api::ProjectCreate>(cx);
+            let p .= cx.app.projects.push(api::Project {
+                id: cx.app.projects.len + 1, name: body.name, has_color: body.has_color, color: body.color,
+            });
+            rest::json(cx, 201, p);
+        };
 ```
 
 The generated reader reports the field and the check that failed. The writer omits

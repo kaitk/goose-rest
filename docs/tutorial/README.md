@@ -14,8 +14,8 @@ what the page shows matches what the code does.
 
 ## Part one: the basics
 
-1. [Running something](01-running.md): `rest::serve`, `rest::route`, `rest::fail`
-2. [Routes, path, query, and headers](02-routes.md): `rest::on`, `rest::param`, `rest::query`
+1. [Running something](01-running.md): `rest::serve`, `rest::routes`, `rest::fail`
+2. [Routes, path, query, and headers](02-routes.md): `rest::get` and its kin, `rest::param`, `rest::query`
 3. [Answers and errors](03-errors.md): `rest::json`, `rest::fail`, the error shape
 4. [JSON bodies](04-json.md): `rest::take`, `rest::json_body`, generated readers
 5. [The API from a schema](05-schema.md): `goose-rest gen`, `api::dispatch`, and hand-written routes alongside the generated router

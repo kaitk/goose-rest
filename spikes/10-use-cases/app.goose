@@ -32,13 +32,10 @@ fn handle(cx) {
     rest::routes(cx) { cx =>
         if rest::on(cx, "GET", "/health") {
             rest::text(cx, 200, "ok");
-        } else if rest::scope(cx, "/auth") {
-            rest::route(cx) { auth::routes(cx); };
-        } else if rest::scope(cx, "/entries") {
-            rest::route(cx) { entries::routes(cx); };
-        } else if rest::scope(cx, "/reports") {
-            rest::route(cx) { reports::routes(cx); };
         } else {
+            rest::scope(cx, "/auth") { rest::route(cx) { auth::routes(cx); }; };
+            rest::scope(cx, "/entries") { rest::route(cx) { entries::routes(cx); }; };
+            rest::scope(cx, "/reports") { rest::route(cx) { reports::routes(cx); }; };
             rest::otherwise(cx);
         }
     };

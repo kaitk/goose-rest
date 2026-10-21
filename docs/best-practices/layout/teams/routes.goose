@@ -8,11 +8,7 @@ import common.members.structs;
 import teams.structs;
 
 fn routes(cx, member: members::Member) {
-    if rest::on(cx, "GET", "") {
-        list(cx, member);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "") { list(cx, member); };
 }
 
 fn list(cx, member: members::Member) {

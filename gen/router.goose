@@ -235,8 +235,10 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     format(out, "\n// Answers a request through the handler in ", handlers, " that its path and method\n");
     out.append("// name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
     out.append("// a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,\n");
-    out.append("// the Allow lists the methods of the program's routes tried before dispatch first.\n");
+    out.append("// the Allow lists the methods of the program's routes tried before dispatch first,\n");
+    out.append("// and dispatch answers nothing when one of them took the request.\n");
     out.append("fn dispatch(cx) {\n");
+    out.append("    guard rest::untaken(cx) else { return; }\n");
     out.append("    let path = http::path_of(cx.req.target);\n");
     out.append("    let m = cx.req.method;\n");
     out.append("    guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }\n");

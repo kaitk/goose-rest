@@ -90,20 +90,14 @@ From [`state/app.goose`](state/app.goose):
 ```rust
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::on(cx, "GET", "/holidays") {
-            rest::route(cx) {
-                // This worker's own count: each worker keeps one.
-                cx.app.lookups++;
-                // The global, compiled into the program, which every worker reads.
-                rest::json(cx, 200, HOLIDAYS);
-            };
-        } else if rest::on(cx, "GET", "/lookups") {
-            rest::route(cx) { rest::text(cx, 200, str(cx.app.lookups)); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::get(cx, "/holidays") {
+            // This worker's own count: each worker keeps one.
+            cx.app.lookups++;
+            // The global, compiled into the program, which every worker reads.
+            rest::json(cx, 200, HOLIDAYS);
+        };
+        rest::get(cx, "/lookups") { rest::text(cx, 200, str(cx.app.lookups)); };
     };
 }
 ```

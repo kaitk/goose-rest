@@ -66,7 +66,7 @@ GET /v1/projects/1/tasks.csv 200 transfer-encoding: chunked lines=2001     read 
 A case function that neither sends nor ends at `MORE` makes goose-http close the
 connection. The case function gets `http::CLOSED` once if the response ends otherwise:
 when the client goes, or when the route fails with the response begun. Its head has
-already been sent, so the failure can't be answered in the error shape. `rest::route`
+already been sent, so the failure can't be answered in the error shape. The route
 leaves the response open and the connection closes, so the client sees it cut short. The
 export holds nothing to release, so it ignores `CLOSED`. A `HEAD` request gets the head
 alone, and no calls.

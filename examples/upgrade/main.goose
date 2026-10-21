@@ -18,13 +18,8 @@ struct St { use: Use = Use.None, bytes: i64 = 0 }
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::on(cx, "GET", "/echo") {
-            rest::route(cx) { echo(cx); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::get(cx, "/echo") { echo(cx); };
     };
 }
 

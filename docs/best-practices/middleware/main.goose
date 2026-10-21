@@ -15,34 +15,20 @@ fn handle(cx) {
     rest::timed(cx) {
         rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
             rest::routes(cx) { cx =>
-                if rest::on(cx, "GET", "/health") {
-                    public_routes(cx) { rest::text(cx, 200, "ok"); };
-                } else if rest::scope(cx, "/settings") {
-                    user_routes(cx) { user => settings(cx, user); };
-                } else if rest::scope(cx, "/organization") {
-                    member_routes(cx) { member => projects(cx, member); };
-                } else {
-                    rest::otherwise(cx);
-                }
+                public_routes(cx) { rest::get(cx, "/health") { rest::text(cx, 200, "ok"); }; };
+                rest::scope(cx, "/settings") { user_routes(cx) { user => settings(cx, user); }; };
+                rest::scope(cx, "/organization") { member_routes(cx) { member => projects(cx, member); }; };
             };
         };
     };
 }
 
 fn settings(cx, user: users::User) {
-    if rest::on(cx, "GET", "") {
-        rest::text(cx, 200, str("the settings of user ", user.id));
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "") { rest::text(cx, 200, str("the settings of user ", user.id)); };
 }
 
 fn projects(cx, member: members::Member) {
-    if rest::on(cx, "GET", "/projects") {
-        rest::text(cx, 200, str("the projects of organization ", member.organization));
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "/projects") { rest::text(cx, 200, str("the projects of organization ", member.organization)); };
 }
 
 thread_fn worker(cfg: http::Config) {

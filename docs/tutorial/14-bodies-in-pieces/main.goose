@@ -59,15 +59,9 @@ fn format(out: u8[>..]&, a: const Attached&) {
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
-        if rest::on(cx, "GET", "/health") {
-            rest::text(cx, 200, "ok");
-        } else if rest::on(cx, "POST", "/v1/projects/:id/attachments") {
-            rest::route(cx) { attach(cx, project(cx)); };
-        } else if rest::on(cx, "POST", "/v1/projects/:id/attachments/form") {
-            rest::route(cx) { attach_form(cx, project(cx)); };
-        } else {
-            rest::otherwise(cx);
-        }
+        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+        rest::post(cx, "/v1/projects/:id/attachments") { attach(cx, project(cx)); };
+        rest::post(cx, "/v1/projects/:id/attachments/form") { attach_form(cx, project(cx)); };
     };
 }
 

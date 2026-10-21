@@ -12,8 +12,8 @@
 # expected.txt beside it, the output its README records; a spike that spawns
 # a thread is built with goose build first. Spike 04's -O2 C must
 # also keep main as its only Goose function: everything else inlined. And
-# test/inline_route.goose's -O2 C must keep none of its middleware,
-# rest::route, or the functions that fail, all inlined into the handler: only
+# test/inline_route.goose's -O2 C must keep none of its middleware, routes,
+# scopes, or the functions that fail, all inlined into the handler: only
 # the handler and library leaves stay functions.
 #
 # GOOSE names the compiler (default: the pinned release, scripts/goose.sh),
@@ -193,7 +193,7 @@ fi
 step "inline_route's C"
 "$goose" -O2 -o "$root/build/inline_route.c" "$root/test/inline_route.goose"
 fns=$(grep -E '^static .*_g[0-9]*\(' "$root/build/inline_route.c" | grep -v ';' | sed 's/(.*//; s/.* //')
-kept=$(echo "$fns" | grep -E '^(find_item|load|format|member_routes|signed_in_routes)_g|^rest_(routes|route|attempt|fail|fail_auth|fail_param|cors|bearer|timed|int_of|param_int|path_int|decoded|fill_timing)_g' || true)
+kept=$(echo "$fns" | grep -E '^(find_item|load|format|member_routes|signed_in_routes)_g|^rest_(routes|route|routed|scoped|scope|get|route_on|taken|attempt|fail|fail_auth|fail_param|cors|bearer|timed|int_of|param_int|path_int|decoded|fill_timing)_g' || true)
 if [ -n "$kept" ] || ! echo "$fns" | grep -qx handle_g; then
     echo "inline_route: expected these inlined into handle_g:" $kept
     exit 1

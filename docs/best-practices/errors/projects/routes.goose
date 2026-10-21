@@ -10,13 +10,8 @@ import projects.errors;
 import projects.rules;
 
 fn routes(cx) {
-    if rest::on(cx, "GET", "/:id") {
-        show(cx);
-    } else if rest::on(cx, "DELETE", "/:id") {
-        remove(cx);
-    } else {
-        rest::otherwise(cx);
-    }
+    rest::get(cx, "/:id") { show(cx); };
+    rest::delete(cx, "/:id") { remove(cx); };
 }
 
 fn show(cx) {

@@ -19,11 +19,8 @@ thread_fn worker(cfg: http::Config) {
     var app = App { .. };
     let e = rest::serve_epoll(cfg, app) { cx =>
         rest::routes(cx) { cx =>
-            if rest::on(cx, "PUT", "/uploads/:name") {
-                rest::route(cx) { app::ok(cx); };
-            } else {
-                api::dispatch(cx);
-            }
+            rest::put(cx, "/uploads/:name") { app::ok(cx); };
+            api::dispatch(cx);
         };
     };
     guard e.code != 0 else { return; }

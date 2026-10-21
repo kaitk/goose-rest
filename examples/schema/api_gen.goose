@@ -145,8 +145,10 @@ let MAX_BODY: i64 = 2 * 1024 * 1024;
 // Answers a request through the handler in app that its path and method
 // name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of
 // a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,
-// the Allow lists the methods of the program's routes tried before dispatch first.
+// the Allow lists the methods of the program's routes tried before dispatch first,
+// and dispatch answers nothing when one of them took the request.
 fn dispatch(cx) {
+    guard rest::untaken(cx) else { return; }
     let path = http::path_of(cx.req.target);
     let m = cx.req.method;
     guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }

@@ -28,7 +28,7 @@ fn long(cx) {
             rest::route(cx) { rest::empty(cx, 204); };
         } else if admin(cx) && rest::on(cx, "GET", "/admin") {
             rest::route(cx) { rest::text(cx, 200, "admin"); };
-        } else if rest::scope(cx, "/reports") {
+        } else if compact::scope(cx, "/reports") {
             rest::route(cx) {
                 rest::bearer(cx) { token =>
                     guard token == "secret" else { rest::invalid_token(cx); }
@@ -48,7 +48,7 @@ fn short(cx) {
         compact::get(cx, "/projects/:id") { project(cx, rest::param_int(cx, "id")); };
         compact::delete(cx, "/projects/:id") { rest::empty(cx, 204); };
         if admin(cx) { compact::get(cx, "/admin") { rest::text(cx, 200, "admin"); }; }
-        if rest::scope(cx, "/reports") {
+        if compact::scope(cx, "/reports") {
             rest::bearer(cx) { token =>
                 guard token == "secret" else { rest::invalid_token(cx); }
                 compact::get(cx, "/daily") { rest::text(cx, 200, "daily"); };
@@ -63,7 +63,7 @@ fn short_b(cx) {
         marked::get(cx, "/projects/:id") { project(cx, rest::param_int(cx, "id")); };
         marked::delete(cx, "/projects/:id") { rest::empty(cx, 204); };
         if admin(cx) { marked::get(cx, "/admin") { rest::text(cx, 200, "admin"); }; }
-        if rest::scope(cx, "/reports") {
+        if compact::scope(cx, "/reports") {
             marked::route(cx) { cx =>
                 rest::bearer(cx) { token =>
                     guard token == "secret" else { rest::invalid_token(cx); }

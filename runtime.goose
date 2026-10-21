@@ -45,21 +45,78 @@ struct Cx<S, A, R> {
 // A context's router outside rest::routes: none.
 struct NoRouter { unused: bool = false }
 
-// Runs F(c), c being cx with a router over its request, so that the block's
-// rest::on, rest::scope, rest::param, and rest::otherwise take c alone. A
-// generated dispatch inside the block answers with the Allow of the routes
-// tried before it.
+// Runs F(c) as the request's one route, c being cx with a router over its
+// request, so that the block's rest::get and its kin, rest::scope,
+// rest::param, and rest::route take c alone. When the block leaves the
+// request unanswered, with nothing awaited, routes answers it as
+// rest::otherwise does: 404, 405 with Allow, OPTIONS, and 501. A generated
+// dispatch inside the block answers with the Allow of the routes tried
+// before it.
 //
 //   rest::routes(cx) { cx =>
-//       if rest::on(cx, "GET", "/health") { ... } else { rest::otherwise(cx); }
+//       rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
 //   };
 inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
+    let mark = cx.out.buf.len;
     var r = http::router(cx.req);
     var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
                        kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
                        kept: cx.kept, budget: cx.budget, router: r };
-    F(&c);   // a block given the local itself gets a copy of it
+    routed(c) {
+        F(&c);   // a block given the local itself gets a copy of it
+        settle(c, mark);
+    };
+}
+
+// Answers as rest::otherwise does when the routes tried since mark left the
+// request unanswered.
+fn settle(cx, mark: i64) {
+    guard unanswered(cx, mark) else { return; }
+    otherwise(cx);
+}
+
+// Marks the request taken: the router's bad, which http::on and rest::scope
+// check first, so that the routes and scopes after it in rest::routes'
+// block don't match. Outside rest::routes, nothing.
+fn taken<S, A>(cx: Cx<S, A, http::Router>&) { cx.router.bad = true; }
+
+fn taken<S, A>(cx: Cx<S, A, NoRouter>&) {}
+
+// Whether no route before has taken the request, for a generated dispatch
+// after a program's own routes.
+fn untaken<S, A>(cx: const Cx<S, A, http::Router>&) -> bool { !cx.router.bad }
+
+fn untaken<S, A>(cx: const Cx<S, A, NoRouter>&) -> bool { true }
+
+// Runs F, inside rest::routes as a route of its own: a failure inside F is
+// answered there, and a request F leaves unanswered gets rest::routes'
+// answer there, so that both are answered inside the middleware that calls
+// scoped, with the fields it adds. The request is then taken. Middleware
+// that adds fields to answers, or answers itself, runs its block in it;
+// outside rest::routes, scoped only runs F.
+//
+//   inline fn branded<F>(cx) {
+//       let common = cx.out.common;
+//       cx.out.common = BRAND;   // "X-Brand: acme\r\n"
+//       rest::scoped(cx) { F(); };
+//       cx.out.common = common;
+//   }
+inline fn scoped<S, A, F>(cx: Cx<S, A, http::Router>&) {
+    let mark = cx.out.buf.len;
+    routed(cx) { F(); };
+    settle(cx, mark);
+    taken(cx);
+}
+
+inline fn scoped<S, A, F>(cx: Cx<S, A, NoRouter>&) { F(); }
+
+// Whether cx's response is still unwritten from mark, with no reply, body,
+// or room to send awaited, as serve's settle_kept tells.
+fn unanswered(cx, mark: i64) -> bool {
+    guard cx.out.buf.len == mark && !cx.out.stream.waiting else { return false; }
+    var x .= cx.ex;
+    return !(x && (x.mode & LATER) != 0);
 }
 
 // The request state, or the worker state, of a program that keeps none.
@@ -832,13 +889,20 @@ inline fn attempt<F>() -> Failure[] {
 }
 
 // Runs F, the route's handler, and answers the failure if it or anything it
-// calls fails. The first answer wins: a failure after the handler wrote an
-// answer leaves it as it is, and one with a response open, its head sent,
-// cuts it short: the response stays unended and the connection closes, so
-// the client sees it end early. route can't take an answer back, since
+// calls fails. Inside rest::routes, F joins the request's one route there:
+// a function that fails returns to the innermost route, and a route inside
+// a route keeps both out of line.
+inline fn route<S, A, F>(cx: Cx<S, A, NoRouter>&) { routed(cx) { F(); }; }
+
+inline fn route<S, A, F>(cx: Cx<S, A, http::Router>&) { F(); }
+
+// The route around F. The first answer wins: a failure after the handler
+// wrote an answer leaves it as it is, and one with a response open, its head
+// sent, cuts it short: the response stays unended and the connection closes,
+// so the client sees it end early. routed can't take an answer back, since
 // shrinking the write buffer is refused while a slice of the request is live
 // (spec §5.1: a parameter's slices may point into any array of their type).
-inline fn route<F>(cx) {
+inline fn routed<F>(cx) {
     let mark = cx.out.buf.len;
     let failed = attempt(F);
     for f in failed {
@@ -1031,11 +1095,14 @@ fn empty(cx, status: i32) {
 // the JSON shape: an unknown method 501 not_implemented, a path the router
 // refused 400 bad_path, a path no route matched 404 not_found, and another
 // method of a path that did 405 method_not_allowed, with Allow. OPTIONS gets
-// 204 with that Allow, or for "*" without one. Inside rest::routes, as
-// rest::otherwise(cx); a program that builds its own http::router passes it.
+// 204 with that Allow, or for "*" without one. After a route that took the
+// request, it answers nothing. rest::routes answers so itself when its block
+// doesn't; a program that builds its own http::router passes it.
 fn otherwise<S, A>(cx: Cx<S, A, http::Router>&) { otherwise(cx, cx.router); }
 
 fn otherwise(cx, r: const http::Router&) {
+    // bad marks a taken request as well as a path the router refused.
+    guard !r.bad || !http::is_routable(http::path_of(cx.req.target)) else { return; }
     if !http::known_method(r.method) {
         write_error(cx.out, cx.state, 501, "not_implemented", "", -1, "");
     } else if r.bad {
