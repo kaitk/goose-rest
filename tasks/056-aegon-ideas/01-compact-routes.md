@@ -6,8 +6,13 @@ cost. Design A was adopted, by request (2026-10-20), and paused (2026-10-21): mo
 the programs found the snags below, which spike 12 didn't check
 ([Open](#open-the-snags-moving-the-programs-found-2026-10-21)). Skip-based routing
 with block scopes only is adopted instead (2026-10-21,
-[verdict](#verdict-skip-based-routing-with-block-scopes-2026-10-21)). Open: tier M's
-count on Linux, and `bench/routes.sh`'s and the REST benchmark's counts recorded.
+[verdict](#verdict-skip-based-routing-with-block-scopes-2026-10-21)), and merged.
+Todo, deferred by request (2026-10-21): `sudo bench/rest.sh count` on the Linux
+desktop, to check tier M's +431 on the merged server against today's form's 5,030.4
+(tier A 4,271.4, tier R 39,065.4, from `bench/results/2026-10-20T2001-rest-Tiamat`),
+and a full `bench/routes.sh` run on macOS; then record both
+([criteria](#acceptance-criteria)). A count in Docker on macOS wouldn't compare: it
+runs arm64 in a VM, against x86-64 baselines.
 
 ## Verdict: skip-based routing with block scopes (2026-10-21)
 
