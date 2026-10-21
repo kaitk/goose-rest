@@ -63,7 +63,7 @@ Work can start at any point unless the table says otherwise.
 | 052: database work on lanes | goose-postgres's and goose-sqlite's decisions and tasks; beside 047. |
 | 053: a contained scope in Goose | A design note only; not proposed until 051 has run in an application. |
 | 048: Aegon in the REST benchmark | Built and checked on the desktop, without tier D; the nightly run measures it. |
-| 056: what to take from Aegon | Verdicts set; seventeen subtasks. 01's design A waits on agreeing its fixed cost of 57 to 165 instructions per request. 02 to 08 are small and can run beside goose-http's TLS and h2 work; 16 and 17 wait on 052. 05 (JWT) unblocks 035's full example and parts of 047. |
+| 056: what to take from Aegon | Verdicts set; seventeen subtasks. 01, shorter routes, is adopted as skip-based routing with block scopes; its counts on Linux are open. 02 to 08 are small and can run beside goose-http's TLS and h2 work; 16 and 17 wait on 052. 05 (JWT) unblocks 035's full example and parts of 047. |
 | 055: a documentation site | Any time; its address waits on 046. |
 | 049: ACME | A package of its own; waits on goose-tls's tasks 001 and 003. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |

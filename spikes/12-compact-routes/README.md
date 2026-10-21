@@ -304,3 +304,193 @@ short form stayed out of line. `on` now runs the block and returns in separate a
   `rest::Cx<St, App, rest::Routed>`.
 - Code inside a route's block that names the outer `cx` still compiles, and a `get`
   there opens a second route, out of line. That's the hazard B was meant to remove.
+
+## Skip-based routing (2026-10-21)
+
+Adopted with block scopes only, on 2026-10-21
+([decisions](../../docs/decisions.md#the-api)): the package has no `bool`
+`rest::scope` now. The spike's programs that still use one, in today's form and in
+`if` chains, call `compact::scope`, the same function kept in `compact.goose`.
+`chain.goose` builds only against the package at `0fda9a2`, where its counts come
+from.
+
+Design A's `rest::get` leaves through `return from routes`, which skips the work of
+any middleware between it and `rest::routes`, and a failure inside a scope's
+middleware is answered outside it (task 056.01's snags 1 and 2; `after_block.goose`
+shows both on design A). Skip-based routing keeps A's syntax and drops the
+long-distance return:
+
+- A matched `rest::get` and its kin mark the request taken and return as any block
+  does. The mark is goose-http's `Router.bad`, which `http::on` and `rest::scope`
+  check first, so the routes and scopes after it don't match. No field or type is
+  added. `rest::routes` doesn't give its default answer when a route that matched
+  chose to answer nothing.
+- `rest::scoped(cx) { ... };`, inside `rest::routes`, runs its block as a route of its
+  own, gives `rest::routes`' default answer when the block left the request
+  unanswered, and takes the request. Outside `rest::routes` it only runs the block.
+  `rest::cors`, `rest::timed`, `rest::security_headers`, and `rest::compressed` run
+  their block in it, so each keeps one name and works in both places, and a
+  program's middleware can build on it.
+- `rest::scope(cx, "/p") { ... };`, a block form beside today's `bool` one, owns its
+  prefix: it gives the default answer when its block answered nothing, and takes the
+  request (snag 3).
+- The generated `dispatch` answers nothing when a route before it took the request.
+
+`skip.goose` answers 30 requests, and `after_block.goose`'s four cases now answer as
+today's form does. Checked:
+
+- Each of goose-rest's four middleware in a scope: 200, a failure, 404, and 405, with
+  the middleware's fields, and `compressed`'s 405 with the scope's `Allow`.
+- `test/middleware/later_routes.goose`: `later.goose`'s cases with the middleware
+  inside `rest::routes`. The fields are kept for an answer at WAKE and at TIMEOUT,
+  and for a body gathered first.
+- `test/router/beside_dispatch_short.goose`: `rest::put` and `rest::post` before
+  `api::dispatch`, with the same answers as `beside_dispatch.goose`.
+- A program's untyped middleware that works after its block runs that work. Without
+  `rest::scoped`, it sees status 0 for a 404 in its scope, which `rest::routes`
+  answers after it, and a failure unwinds past it. Its fields miss a failure's answer
+  too, as in today's form when the middleware holds no `rest::route`.
+- The routes after a scope don't match once a route in it, or its middleware, took
+  the request. After a `bool` scope that matched nothing, they still match the
+  narrowed path (snag 3). A block scope gives 404 there.
+- A statement after a matched route runs (snag 4 reversed).
+- A matched route that writes nothing gets serve's 500, not a 400.
+
+In `inline_skip.goose`'s -O2 C, `test/inline_route.goose`'s handler in this form with
+block scopes, every middleware, route, scope, and function that fails is inlined into
+`handle`, `cors`'s route inside the request's included. The answers are
+`inline_route.goose`'s, Server-Timing's milliseconds aside. `test/inline_route.goose`
+is now that handler, and `scripts/test.sh` checks its C.
+
+### The 60 routes
+
+`benchskip.sh` builds `skip60/`'s servers, each against its own package: today's form
+(`hand60*`) against `f7ca662`, where `short-routes` branched; A (`short60*` on
+`short-routes`, `fc4d51d`, in the script at `99d424a`); and skip-based routing
+(`short60*` with scopes in `if` chains, `block60*` with block scopes). It checks that
+every form answers every case with the same bytes, then counts. Three stacks:
+
+- **plain**: the spike's `hand60` and `short60`, `/v1/reports` behind a check that
+  can fail.
+- **m**: tier M's stack. `rest::timed` and `rest::cors` are outside `rest::routes`,
+  and `rest::bearer` is around `/v1`. Requests have an `Origin` and a token.
+- **c**: `/v1/reports` behind `rest::cors` rather than the check. In today's form,
+  cors goes outside a `rest::route` of the scope's own. In skip-based routing it's
+  inside `rest::routes`, in `rest::scoped`. `/v1/reports` comes first in `/v1` in
+  every form, as today's form must have it. Requests have an `Origin`. The failure
+  is `GET /v1/reports/time/abc`, a 400.
+
+| Case | Today | A | Skip, `if` |
+|---|---|---|---|
+| plain, first, `/health` | 18,116 | 18,251: +135 | 18,253: +137 |
+| plain, last route | 24,424 | 24,491: +67 | 24,534: +110 |
+| plain, 404 in the last scope | 24,184 | 24,237: +53 | 24,287: +103 |
+| plain, 404 outside every scope | 18,440 | 18,558: +118 | 18,566: +126 |
+| plain, 405 in the last scope | 24,527 | 24,594: +67 | 24,632: +105 |
+| plain, query | 20,655 | 20,700: +45 | 20,734: +79 |
+| m, first, `/health` | 20,870 | 20,988: +118 | 21,043: +173 |
+| m, last route | 29,317 | 29,297: −20 | 29,380: +63 |
+| m, 404 in the last scope | 29,138 | 29,108: −30 | 29,194: +56 |
+| m, 405 in the last scope | 29,610 | 29,590: −20 | 29,668: +58 |
+| c, last route | 23,938 | | 24,128: +190 |
+| c, failure | 21,582 | | 21,729: +147 |
+| c, 404 in the scope | 23,710 | | 23,908: +198 |
+| c, 405 in the scope | 24,094 | | 24,292: +198 |
+
+The means of three rounds of `benchskip.sh` at `6e6ebc1`, instructions per request.
+Each round is 2,000,000 requests per case, and the rounds interleave the servers. One
+worker, `h2load --h1 -c 256 -m 16 -t 8`, Apple M1 Pro, macOS 26.3.1, Darwin 25.3.0,
+h2load nghttp2/1.70.0, Goose `f114b5a`, 2026-10-20 (UTC), load average 2.7 at the start
+and 4.8 at the end. Within a server, the rounds differ by at most 11. A isn't measured
+on stack c: there it answers a failure, a 404, and a 405 without cors's fields. The
+block form's numbers from this run are replaced below: they predate the mark's check
+inline in the block scope.
+
+- **Middleware outside `rest::routes` costs nothing.** On stack m, A costs 20 to 30
+  fewer instructions than today's form on every case but the first, and skip-based
+  routing in `if` chains costs 56 to 63 more. The first case's +118 to +173 is the
+  request's one route, which today's form doesn't open for `/health`.
+- **Skip-based routing in `if` chains costs 30 to 80 more than A** on stack plain,
+  except on `/health` and the 404 outside every scope.
+- **A scope behind cors costs +147 to +198 with `if` chains** against today's
+  `cors { route { ... } }`.
+
+The block form, adopted, after the mark's check moved inline into the block scope and
+`rest::get` (`acae7d3`), against today's form and `if` chains in the same run:
+
+| Case | Today | Skip, `if` | Block scopes |
+|---|---|---|---|
+| plain, first, `/health` | 18,054 | 18,172: +118 | 18,158: +105 |
+| plain, last route | 24,363 | 24,408: +46 | 24,360: −3 |
+| plain, 404 in the last scope | 24,123 | 24,158: +35 | 24,127: +5 |
+| plain, 404 outside every scope | 18,377 | 18,489: +113 | 18,509: +133 |
+| plain, 405 in the last scope | 24,469 | 24,506: +37 | 24,469: 0 |
+| plain, query | 20,583 | 20,664: +82 | 20,732: +149 |
+| m, first, `/health` | 20,811 | 20,940: +129 | 20,934: +124 |
+| m, last route | 29,242 | 29,160: −82 | 29,168: −74 |
+| m, 404 in the last scope | 29,058 | 28,979: −79 | 28,998: −61 |
+| m, 405 in the last scope | 29,534 | 29,457: −76 | 29,470: −64 |
+| c, last route | 23,857 | 24,050: +193 | 24,111: +253 |
+| c, failure | 21,503 | 21,653: +149 | 21,733: +229 |
+| c, 404 in the scope | 23,636 | 23,819: +183 | 23,880: +244 |
+| c, 405 in the scope | 24,006 | 24,202: +196 | 24,263: +257 |
+
+A quick run of `benchskip.sh`: one round of 1,000,000 requests per case
+(`RUNS=1 N=1000000`), set up as above, at goose-rest `acae7d3`, 2026-10-21 (UTC), load
+average 2.9 at the start and 4.3 at the end. One round shows no spread: the `if`
+chains' differences here are up to 64 off the full run's above. Requests per second
+are within 3.2% of today's form in every case, above and below.
+
+- **Block scopes cost nothing in a scope without middleware**, −3 to +5 on stack plain
+  in `/v1`, and less than today's form behind tier M's stack, −61 to −74. `/health`
+  and the 404 outside every scope pay the request's one route, +105 to +133, and the
+  query case +149.
+- **A scope behind cors costs +229 to +257**, against today's
+  `cors { route { ... } }`, likely the route `rest::scoped` opens inside the
+  request's, and `v1`'s other scopes, each checking the mark after `/v1/reports` took
+  the request; not measured apart.
+
+### 1,111 routes
+
+`benchroutes.sh` with `CORS=1 FORMS="hand skip block" TODAY=<a worktree of f7ca662>`:
+`genroutes.sh`'s 1,111 routes with the second area, `/patient`, behind `rest::cors`,
+outside its `rest::route` in today's form and inside `rest::routes` in the others.
+Every request has an `Origin`. The middle case is in `/patient`. The three forms give
+the same bytes for each case, and for each with a tenant the check refuses.
+
+| Case | Today | Skip, `if` |
+|---|---|---|
+| first, `/health` | 18,441 | 18,602: +161 |
+| a route in `/patient`, behind cors | 25,452 | 25,584: +132 |
+| last route | 29,097 | 29,202: +105 |
+| 404 in the last scope | 28,979 | 29,095: +116 |
+| 404 outside every scope | 19,091 | 19,207: +116 |
+| 405 in the last scope | 29,394 | 29,510: +116 |
+
+The means of three rounds, set up as the 60 routes' are, at goose-rest `6e6ebc1`,
+2026-10-20 (UTC), load average 4.6 at the start and 4.5 at the end. Within a server,
+the rounds differ by at most 14. Requests per second are within 1% of today's form in
+every case for `if` chains. The block form's numbers from this run, +108 to +278, are
+replaced below.
+
+With `if` chains, skip-based routing costs +105 to +161, near A's +60 to +135 at
+1,111 routes without cors, and the scope behind cors costs no more than the others.
+Every scope's function stays a call, as in A, where today's form inlines them all.
+
+The block form, adopted, at `acae7d3`, in a quick run with the same command and
+`RUNS=1 N=1000000`, 2026-10-21 (UTC), load average 4.0 at the start and 4.9 at the end:
+
+| Case | Today | Skip, `if` | Block scopes |
+|---|---|---|---|
+| first, `/health` | 18,372 | 18,484: +112 | 18,490: +118 |
+| a route in `/patient`, behind cors | 25,363 | 25,485: +122 | 25,588: +225 |
+| last route | 29,002 | 29,070: +68 | 29,109: +107 |
+| 404 in the last scope | 28,884 | 28,960: +76 | 29,002: +118 |
+| 404 outside every scope | 18,999 | 19,134: +135 | 19,134: +135 |
+| 405 in the last scope | 29,295 | 29,377: +81 | 29,421: +126 |
+
+Block scopes cost +107 to +135 outside cors and +225 behind it, under 1% in every case:
+about 40 more than the `if` chains in the areas, and 100 more behind cors. Requests per
+second are within 1.1% of today's form but on `/health` and the 404 outside every
+scope, 2.3% and 2.4% lower, one round each. The binaries: today's form 385 KB, `if`
+chains 388 KB, block scopes 421 KB.
