@@ -42,15 +42,12 @@ CHANGELOG.md      what each tag adds
 
 ## Get Goose
 
-Until the next release, the scripts build Goose master `f114b5a` (2026-10-19), which
-`goose_commit` in `scripts/goose.sh` pins, as goose-http does: the pinned goose-http's
-`http::run` and `http::lane_open` need
-[aardappel/goose#37](https://github.com/aardappel/goose/pull/37), which no release has
-yet, and the commit has [#41](https://github.com/aardappel/goose/pull/41), which keeps
-gcc from dropping the stores to a `ByteSet` that the byte search reads, a miscompile in
-gcc builds on Linux and WSL. Building it needs CMake and a C++ compiler. Otherwise the scripts use the official
-Goose release that `scripts/goose.sh` pins: `v2026.2` (`3ee3871`), since 2026-10-16.
-The first script that needs the compiler fetches it into
+The scripts use the official Goose release that `scripts/goose.sh` pins: `v2026.3`
+(`8511ae3`), since 2026-10-21. It has
+[aardappel/goose#37](https://github.com/aardappel/goose/pull/37), which the pinned
+goose-http's `http::run` and `http::lane_open` need, and
+[#41](https://github.com/aardappel/goose/pull/41), gcc's `ByteSet` miscompile, for which
+the commit pinned before it was built. The first script that needs the compiler fetches it into
 `build/`, as goose-http's does
 ([its Get Goose](https://github.com/kaitk/goose-http/blob/main/docs/development.md#get-goose)).
 `scripts/goose.sh` is a copy of goose-http's script: keep the two the same. To fetch the compiler

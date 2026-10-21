@@ -51,7 +51,7 @@ functions:
 
 A program's root file declares both packages, goose-http at the reference that its
 goose-rest imports. The latest goose-rest release, `v0.2.1`, and the goose-http tag it
-imports, `v0.4.3`, build with Goose master `f114b5a`:
+imports, `v0.4.3`, build with Goose `v2026.3`:
 
 ```text
 import http from "github.com/kaitk/goose-http@v0.4.3";
@@ -60,7 +60,7 @@ import rest from "github.com/kaitk/goose-rest@v0.2.1";
 
 This tutorial tracks the libraries' `main` branches until their next releases. Its
 programs import goose-rest by its path (`import rest from "../../../";`) and the
-goose-http reference that goose-rest imports, and build with the Goose commit that
+goose-http reference that goose-rest imports, and build with the Goose release that
 [development](../development.md#get-goose) names.
 
 A server is a few worker threads, each running goose-http's event loop with your handler

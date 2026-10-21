@@ -19,23 +19,23 @@
 # Run directly, it prints the compiler's path, downloading it if needed:
 #   GOOSE=$(scripts/goose.sh)
 
-goose_release=v2026.2
-goose_commit=f114b5ac52cfad4bc73038aede53ac7e470b0ad3
+goose_release=v2026.3
+goose_commit=
 
 goose_fetch() {
     case ${GOOSE_ASSET:-$(uname -s)-$(uname -m)} in
     linux-x64 | Linux-x86_64)
         asset=linux-x64
-        sum=f9f0b448800b27b9d86fcd8341a08e8cda790ff86cd500c90e287fa1a616197c ;;
+        sum=06ac30284338269d3996d457412bf4f2b47c1f9a5601de65b6317187fe78d5c9 ;;
     macos-arm64 | Darwin-arm64)
         asset=macos-arm64
-        sum=d945c8cc1ce35f964ebde9a9e0a40e62533ff55010ed30bf2412af87aa44552a ;;
+        sum=2ffaaf46b3edde27aed03fcd9ebe73e9b6639cac30d8a6915f7dc00795b7aedf ;;
     macos-x64 | Darwin-x86_64)
         asset=macos-x64
-        sum=341053fb7122c2871f9bf1e8caa19ff45e96549b27804dac0c62d2e45974e649 ;;
+        sum=3c7f2895f3dcab5f39ee52808446b00688b975620d1d27e23694dd22b82abfe7 ;;
     windows-x64 | MINGW*-x86_64 | MSYS*-x86_64 | CYGWIN*-x86_64)
         asset=windows-x64
-        sum=16b44686cf4286a4868fb1b7d78c5aafa17eee679aea66b5e8268cc7513d458a ;;
+        sum=e30cfa398c0362cef4b8f311cf5496743920b6d3a6c4a6d818fc47ee1e56be7d ;;
     *) return 2 ;;
     esac
     name=goose-$goose_release-$asset

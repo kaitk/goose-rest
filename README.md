@@ -59,12 +59,10 @@ pass their tests on arm64 Linux.
 
 ## Quick start
 
-Build Goose at commit
-[`f114b5a`](https://github.com/aardappel/goose/commit/f114b5ac52cfad4bc73038aede53ac7e470b0ad3)
-and put its directory on `PATH`
-([Goose's build notes](https://github.com/aardappel/goose#build-and-run)): `http::run`
-needs [aardappel/goose#37](https://github.com/aardappel/goose/pull/37), which no Goose
-release has yet. Building a program also needs a C compiler and, on Linux, liburing:
+Install Goose [`v2026.3`](https://github.com/aardappel/goose/releases/tag/v2026.3): unpack
+the archive for your platform and put its directory on `PATH`
+([Goose's install notes](https://github.com/aardappel/goose#install-a-release)). Building
+a program also needs a C compiler and, on Linux, liburing:
 
 - **Linux:** gcc or clang, with `libc6-dev` and `liburing-dev` (Debian, Ubuntu).
 - **macOS:** the Xcode command line tools (`xcode-select --install`).
