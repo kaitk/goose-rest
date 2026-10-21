@@ -504,16 +504,18 @@ Decided (2026-10-21), extending the 2026-10-16 entry above: `rest::pause(cx, ms,
 pauses a route before its response has begun, with `u` in `cx.state.use`, so a route can
 wait on the worker's timer table and then answer a normal response, as HttpArena's
 `GET /delay/{ms}` needs. `rest::pause(cx, ms)` stays for a response `rest::begin` began.
-A new bit of `Exchange.mode`, `PAUSED`, marks the pre-response pause; `mode` widens from
-`u8` to `u16` between `pending: bool` and `limit: i64`, so `Exchange` keeps its 56-byte
-size. `PAUSED` stays out of `LATER`, so the common `REQUEST` path is unchanged and only
-`on_event`'s `http::TIMEOUT` branch checks it: when set, it clears the bit and either
-answers 503 `unavailable` with `Retry-After` if `clock_ns() < x.due` (goose-http's
-immediate `TIMEOUT` when no timer is free) or calls the handler with `http::TIMEOUT` and
-the fields the middleware kept. Clearing `PAUSED` leaves a later `rest::ask` in the same
-exchange to get 504 if its reply times out. Rejected: checking `due > 0` without a mode
-bit, which collides with `COLLECTING`'s use of `due` for a reply run's start and with
-`serve_one` setting `due = 0` for a non-early timeout.
+A new bit of `Exchange.mode`, `PAUSED`, marks the pre-response pause. `mode` widens from
+`u8` to `u16`, and `pending` becomes its bit `PENDING`, so `Exchange` keeps its 50 bytes:
+Goose packs its structs, so a wider field has no padding to fill. `PAUSED` stays out of
+`LATER`, and only `on_event`'s `http::TIMEOUT` branch checks it. When set, it clears the
+bit and either answers 503 `unavailable` with `Retry-After` if `clock_ns() < x.due`
+(goose-http's immediate `TIMEOUT` when no timer is free), or passes the `TIMEOUT` to the
+handler at the call `REQUEST` and `WAKE` use, with the fields the middleware kept. A
+second call to the handler would inline it twice in every program that serves.
+Clearing `PAUSED` leaves a later `rest::ask` in the same exchange to get 504 if its reply
+times out. Rejected: checking `due > 0` without a mode bit, which collides with
+`COLLECTING`'s use of `due` for a reply run's start and with `serve_one` setting
+`due = 0` for a non-early timeout.
 
 Decided (2026-10-16): an upgraded connection that waits on `rest::ask` keeps one
 variant, the one in `cx.state.waiting`, for every later call. From goose-http v0.3.3 the

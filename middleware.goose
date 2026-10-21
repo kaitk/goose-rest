@@ -105,7 +105,7 @@ fn answers_later(cx) -> bool {
     guard cx.kind == http::REQUEST else { return false; }
     var x .= cx.ex;
     guard x else { return false; }
-    guard (x.mode & GATHERING) == 0 || !x.pending else { return false; }
+    guard (x.mode & (GATHERING | PENDING)) != (GATHERING | PENDING) else { return false; }
     return cx.out.stream.waiting || (x.mode & RECEIVING) != 0;
 }
 

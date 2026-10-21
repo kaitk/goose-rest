@@ -35,7 +35,7 @@ fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, u) {
     var x .= cx.ex;
     guard x else { fail(cx, 500, "not_served"); }
     guard x.limit == 0 else { fail(cx, 500, "body_already_read"); }
-    let over = if x.pending { !cx.req.chunked && cx.req.body > limit } else { cx.body.len > limit };
+    let over = if (x.mode & PENDING) != 0 { !cx.req.chunked && cx.req.body > limit } else { cx.body.len > limit };
     if over { fail(cx, 413, "payload_too_large"); }
     x.limit = limit;
     x.len = 0;

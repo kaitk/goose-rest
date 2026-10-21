@@ -165,7 +165,8 @@ let RETRY_AFTER = "1";
 // response rest::begin began there holds an encoder (compression.goose).
 // COLLECTING says the exchange collects a reply_value's pieces in a run of
 // the spill (collect_reply). PAUSED says the route paused before beginning a
-// response (rest::pause).
+// response (rest::pause). PENDING says the body hasn't come whole: a bit
+// rather than a bool, which would cost each connection a byte.
 let GATHERING: u16 = 1;
 let RECEIVING: u16 = 2;
 let SENDING: u16 = 4;
@@ -176,6 +177,7 @@ let OFFERED: u16 = 32;
 let CODED: u16 = 64;
 let COLLECTING: u16 = 128;
 let PAUSED: u16 = 256;
+let PENDING: u16 = 512;
 
 // What serve keeps of a request past the handler's first call. A body
 // gathered for rest::body is a run of the worker's spill from at, of cap
@@ -187,7 +189,6 @@ let PAUSED: u16 = 256;
 // starts: an exchange has one wait, a pause's or a reply's, and a pause sets
 // due afresh.
 struct Exchange {
-    pending: bool = false,   // the body hasn't come whole
     mode: u16 = 0,
     limit: i64 = 0,          // the first rest::body's or rest::body_in_pieces's limit, 0 before it
     at: i64 = 0,
@@ -281,41 +282,30 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
             return if (st.ex.mode & COLLECTING) != 0 { -1 } else { out.buf.len };
         }
     }
+    // A pause's TIMEOUT before its time is goose-http's, given at once for
+    // want of a timer. One in time goes to H below, as a WAKE does, so that
+    // the handler is inlined at one call here.
     if ev.kind == http::TIMEOUT {
-        if (st.ex.mode & PAUSED) != 0 {
-            st.ex.mode &= ~PAUSED;
-            guard clock_ns() >= st.ex.due else {
-                end_wait(st, out, spill, budget, 503, "unavailable", false, RETRY_AFTER);
-                return -1;
-            }
-            var scratch: u8[>..] = [];
-            var fields: u8[>..] = [];
-            var kept = Kept { .. };
-            let from = out.buf.len;
-            var o = out;
-            o.common = kept_fields(out.common, st.ex, spill, fields);
-            var none = NoRouter { .. };
-            var cx = Cx<S, A, NoRouter> { req: ev.req, body: "", out: o, state: st.state, app: app, scratch: scratch,
-                                          kind: http::TIMEOUT, ex: st.ex, kept: kept, budget: budget, router: none };
-            H(cx);
-            settle_kept(st.ex, o, from, spill, budget);
-            return from;
+        let paused = (st.ex.mode & PAUSED) != 0;
+        st.ex.mode &= ~PAUSED;
+        guard paused && clock_ns() >= st.ex.due else {
+            drop_reply(st.ex, spill, budget);
+            end_wait(st, out, spill, budget, if paused { 503 } else { 504 }, if paused { "unavailable" } else { "timeout" },
+                     false, if paused { RETRY_AFTER } else { "" });
+            return -1;
         }
-        drop_reply(st.ex, spill, budget);
-        end_wait(st, out, spill, budget, 504, "timeout", false);
-        return -1;
     }
     if ev.kind == http::CLOSED {
         drop_kept(st.ex, spill, budget);
         drop_reply(st.ex, spill, budget);
     }
     var mark: i64 = -1;
-    if ev.kind == http::REQUEST || ev.kind == http::WAKE {
+    if ev.kind == http::REQUEST || ev.kind == http::WAKE || ev.kind == http::TIMEOUT {
         var scratch: u8[>..] = [];
         var fields: u8[>..] = [];
         var kept = Kept { .. };
-        let wake = ev.kind == http::WAKE;
-        st.ex.pending = !wake && !ev.whole;
+        let wake = ev.kind != http::REQUEST;
+        st.ex.mode = (st.ex.mode & ~PENDING) | (if !wake && !ev.whole { PENDING } else { 0 });
         mark = out.buf.len;
         var o = out;
         if wake { o.common = kept_fields(out.common, st.ex, spill, fields); }
@@ -363,7 +353,7 @@ fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, s
     while k != http::NO_EVENT {
         let before = out.buf.len;
         let gathered = k == GATHERED;
-        if gathered { st.ex.pending = false; }
+        if gathered { st.ex.mode &= ~PENDING; }
         let g = st.ex;
         let head = head_of(ev.req, gathered, g, spill);
         var scratch: u8[>..] = [];
@@ -594,8 +584,8 @@ fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, bu
     if (x.mode & (SENDING | UPGRADED)) != 0 && !open { return http::CLOSED; }
     if (x.mode & RECEIVING) != 0 {
         if out.buf.len > before && !open { return http::CLOSED; }
-        if !x.pending && k == http::REQUEST { return if ev.data.len > 0 { http::BODY } else { http::END }; }
-        if !x.pending && k == http::BODY { return http::END; }
+        if (x.mode & PENDING) == 0 && k == http::REQUEST { return if ev.data.len > 0 { http::BODY } else { http::END }; }
+        if (x.mode & PENDING) == 0 && k == http::BODY { return http::END; }
     }
     return http::NO_EVENT;
 }
@@ -815,7 +805,7 @@ fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     }
     guard (g.mode & RECEIVING) == 0 else { fail(cx, 500, "body_already_read"); }
     if g.limit == 0 { g.limit = limit; }
-    if g.pending {
+    if (g.mode & PENDING) != 0 {
         if !cx.req.chunked && cx.req.body > g.limit { fail(cx, 413, "payload_too_large"); }
         if !fits(cx.budget, run_size(cx.req)) {
             return [Failure { status: 503, at: -1, code: str("unavailable"), detail: "", challenge: "", retry: true }]
