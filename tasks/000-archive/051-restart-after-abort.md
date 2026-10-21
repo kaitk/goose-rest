@@ -1,7 +1,11 @@
 # 051: Workers and lanes that restart after an abort
 
-Status: todo. Reopens task 044, which the maintainer cancelled on 2026-10-19, with
-goose-http's parked `restart-workers` branch (`c0954f5`) as its base (2026-10-19).
+Status: cancelled by the maintainer on 2026-10-21, after a second look: an abort still
+ends the process, and goose-http's `restart-workers` branch is an experiment not pursued
+now. What each of its costs comes from, and the two findings kept, are in
+[goose-http's decision](https://github.com/kaitk/goose-http/blob/main/docs/decisions.md#a-crash-ends-the-process-and-a-service-manager-restarts-it).
+It reopened task 044, which the maintainer cancelled on 2026-10-19, with that branch
+(`c0954f5`) as its base. The text below describes the plan as it stood.
 
 A bug in a lane or a handler should end only its thread, and the program should serve
 on, as actix-web restarts a worker. Since Goose `ce1adbe` (#38), in the pin,

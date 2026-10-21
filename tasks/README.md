@@ -59,9 +59,8 @@ Work can start at any point unless the table says otherwise.
 | 043: workers started with `http::run` | Done on a pinned Goose commit; the README waits for releases. |
 | 046: rename to Plod | Deferred; the name check and the logo come first. |
 | 047: HttpArena | After 046; the master plan, with the work in goose-http, goose-tls, goose-sqlite, and goose-postgres. |
-| 051: restart after an abort | Un-parks goose-http's `restart-workers` branch; any time, beside 047. |
 | 052: database work on lanes | goose-postgres's and goose-sqlite's decisions and tasks; beside 047. |
-| 053: a contained scope in Goose | A design note only; not proposed until 051 has run in an application. |
+| 053: a contained scope in Goose | A design note only; it builds on task 051, cancelled on 2026-10-21, so it waits until restarts are pursued. |
 | 048: Aegon in the REST benchmark | Built and checked on the desktop, without tier D; the nightly run measures it. |
 | 056: what to take from Aegon | Verdicts set; seventeen subtasks. 01, shorter routes, is merged as skip-based routing with block scopes; tier M's count on Linux and a full `bench/routes.sh` run are todo. 02 to 08 are small and can run beside goose-http's TLS and h2 work; 16 and 17 wait on 052. 05 (JWT) unblocks 035's full example and parts of 047. |
 | 055: a documentation site | Any time; its address waits on 046. |
