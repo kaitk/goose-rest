@@ -1,0 +1,54 @@
+== TIER=a /api/items/1
+server	run	user instructions/req	user cycles/req	req/s
+restc-http	1	4155.1	1444.9	1055374
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	4271.4	1628.6	975757
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	4242.4	1572.8	1008885
+== TIER=a /api/me
+server	run	user instructions/req	user cycles/req	req/s
+restc-http	1	3637.1	1216.3	1158165
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	4047.4	1442.2	1071527
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	4030.4	1440.2	1034679
+== TIER=a /nothing
+server	run	user instructions/req	user cycles/req	req/s
+restc-http	1	2621.1	990.5	1230225
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3190.4	1257.3	1122104
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3191.4	1220.8	1144988
+== TIER=m /api/items/1
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	5030.4	1560.4	1008738
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	5461.4	1956.0	913863
+== TIER=f /
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	2416.4	962.4	1250635
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	2366.9	999.0	1219008
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	2309.9	996.3	1240718
+== TIER=f /id/1?name=bun
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	2991.4	1166.1	1150616
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3270.9	1255.1	1116140
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3233.9	1252.9	1132937
+== TIER=r /authorizations
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3167.4	1554.1	1033425
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	2741.4	775.3	1307745
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3082.9	1199.2	1142763
+== TIER=r /user/keys/id201
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	39065.4	12840.9	251720
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	3232.4	953.1	1228554
+server	run	user instructions/req	user cycles/req	req/s
+restc-rest	1	38990.9	11559.3	273287

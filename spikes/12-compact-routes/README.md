@@ -163,7 +163,76 @@ keeps 306 of the 500 as calls, the scopes behind a role. Why A's binary at 5,001
 is less than half the size of today's, with C of 13.3 MB against 14.6 MB, isn't
 measured.
 
-### Where the cost comes from
+### The REST benchmark
+
+On branch `routes1100`, the REST benchmark's goose-rest server serves tiers A, F, M, and
+R in design A with `FORM=short`, chosen once per worker. `bench/rest.sh` names it
+`goose-uring-rest-short` and `goose-epoll-rest-short`, and `count` counts it beside
+today's form. Tier R's chain in A, `app::chain_short`, is 203 `compact::get` and kin
+that `github_goose.py` writes. Both forms pass the tiers' checkers on macOS.
+
+A quick count on macOS, with the server built there without its `mallopt` call: two
+rounds of 500,000 requests per case, one worker on epoll, `h2load --h1 -c 256 -m 16 -t 8`,
+Apple M1 Pro, 2026-10-20.
+
+| Case | Today | A |
+|---|---|---|
+| tier A, `GET /api/items/1` | 19,522 / 19,531 | 19,509 / 19,518 |
+| tier M, `GET /api/items/1` | 22,907 / 22,905 | 22,904 / 22,905 |
+| tier R, route 201 of 203, `GET /user/keys/:id` | 61,583 / 61,585 | 57,263 / 57,265 |
+
+Tier R's A runs 4,320 fewer instructions per request (7%). Both match through `http::on`.
+Today's chain is 203 nested `else if` blocks, and A's is 203 statements in a row. Why
+that costs today's form more isn't measured.
+
+On Linux with io_uring, A serves tiers R and M as fast as today's form: every
+difference in requests per second is within the rounds' spread. The instruction counts
+there don't repeat macOS's. On tier R, A saves 74 instructions per request, not 4,320.
+On tier M, A costs 431 more (+8.6%), where macOS showed no difference. Neither
+difference is explained yet.
+
+Tier R, every GitHub route, requests per second:
+
+| Server | Round 1 | Round 2 | Round 3 | Mean | A against today's |
+|---|---:|---:|---:|---:|---:|
+| goose-uring-rest (today's) | 316,522 | 315,209 | 321,309 | 317,680 | |
+| goose-uring-rest-short (A) | 318,653 | 316,273 | 331,265 | 322,063 | +1.4%, within the spread |
+| goose-uring-rest-gen | 433,578 | 437,606 | 449,747 | 440,310 | |
+
+Tier M, beside tier A, requests per second:
+
+| Server | Case | Round 1 | Round 2 | Round 3 | Mean | A against today's |
+|---|---|---:|---:|---:|---:|---:|
+| today's | a | 404,328 | 527,226 | 549,832 | 493,795 | |
+| A | a | 523,622 | 532,774 | 541,224 | 532,540 | +7.8%, within the spread |
+| today's | m | 415,833 | 430,967 | 477,261 | 441,354 | |
+| A | m | 459,276 | 463,309 | 469,482 | 464,022 | +5.1%, within the spread |
+
+The rounds of today's form vary most. Its round 1 on case `a` is 404K against 527K and 550K.
+Without that round, A is 1.1% below today's form on case `a`.
+
+User instructions per request, from `bench/rest.sh count`, one run each. A run repeats
+to within 0.1 instructions ([goose-http's `bench/count.sh`](https://github.com/kaitk/goose-http/blob/v0.4.3/bench/count.sh)):
+
+| Case | Today's | A | A against today's | Generated router |
+|---|---:|---:|---:|---:|
+| tier R, route 201 of 203, `GET /user/keys/id201` | 39,065.4 | 38,990.9 | −74.5 (−0.2%) | 3,232.4 |
+| tier M, `GET /api/items/1` | 5,030.4 | 5,461.4 | +431.0 (+8.6%) | |
+| tier A, `GET /api/items/1` | 4,271.4 | 4,242.4 | −29.0 (−0.7%) | |
+
+How it was measured, on 2026-10-20: Tiamat, an AMD Ryzen 7 5800X3D with 16 logical
+CPUs, WSL2 kernel 6.18.54.1-microsoft-standard-WSL2, wrk 4.1.0 with
+`wrk-monotonic.so`. The command was
+`TIERS="r m" STEPS=none RUNS=3 EXTRA="goose-uring-rest goose-uring-rest-short" bench/rest.sh run`,
+at goose-rest `9beacff`, with goose-http `v0.4.3` and Goose `f114b5a`. Each server ran
+4 workers on CPUs 0 to 3. wrk ran on CPUs 4 to 15 with 8 threads and 256 connections,
+for a 5 s warm-up and then 15 s per cell. The 3 rounds interleaved the servers. The
+counts came from `bench/rest.sh count`, run as root. The machine wasn't idle: other
+sessions were working in WSL. The 1-minute load average was 0.24 before the run, with
+Windows CPU at 23%, and 10.11 after it, with Windows CPU at 5%. It was 1.78 after the
+counts. The result directory is `bench/results/2026-10-20T2001-rest-Tiamat`. Its
+`env.txt` shows goose-rest as blank and modified. That's wrong: the run used a
+worktree that Windows Git created, and WSL's Git can't read it.
 
 - **A.** The request's one route wraps all of `routes`' block, so every request pays
   for calling `route` and `attempt`. Today's form answers `/health` and the 404 outside
