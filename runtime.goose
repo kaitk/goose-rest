@@ -164,16 +164,18 @@ let RETRY_AFTER = "1";
 // OFFERED says the handler runs inside rest::compressed, and CODED that the
 // response rest::begin began there holds an encoder (compression.goose).
 // COLLECTING says the exchange collects a reply_value's pieces in a run of
-// the spill (collect_reply).
-let GATHERING: u8 = 1;
-let RECEIVING: u8 = 2;
-let SENDING: u8 = 4;
-let UPGRADED: u8 = 8;
-let LATER: u8 = 15;
-let KEPT: u8 = 16;
-let OFFERED: u8 = 32;
-let CODED: u8 = 64;
-let COLLECTING: u8 = 128;
+// the spill (collect_reply). PAUSED says the route paused before beginning a
+// response (rest::pause).
+let GATHERING: u16 = 1;
+let RECEIVING: u16 = 2;
+let SENDING: u16 = 4;
+let UPGRADED: u16 = 8;
+let LATER: u16 = 15;
+let KEPT: u16 = 16;
+let OFFERED: u16 = 32;
+let CODED: u16 = 64;
+let COLLECTING: u16 = 128;
+let PAUSED: u16 = 256;
 
 // What serve keeps of a request past the handler's first call. A body
 // gathered for rest::body is a run of the worker's spill from at, of cap
@@ -186,7 +188,7 @@ let COLLECTING: u8 = 128;
 // due afresh.
 struct Exchange {
     pending: bool = false,   // the body hasn't come whole
-    mode: u8 = 0,
+    mode: u16 = 0,
     limit: i64 = 0,          // the first rest::body's or rest::body_in_pieces's limit, 0 before it
     at: i64 = 0,
     len: i64 = 0,
@@ -280,6 +282,25 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         }
     }
     if ev.kind == http::TIMEOUT {
+        if (st.ex.mode & PAUSED) != 0 {
+            st.ex.mode &= ~PAUSED;
+            guard clock_ns() >= st.ex.due else {
+                end_wait(st, out, spill, budget, 503, "unavailable", false, RETRY_AFTER);
+                return -1;
+            }
+            var scratch: u8[>..] = [];
+            var fields: u8[>..] = [];
+            var kept = Kept { .. };
+            let from = out.buf.len;
+            var o = out;
+            o.common = kept_fields(out.common, st.ex, spill, fields);
+            var none = NoRouter { .. };
+            var cx = Cx<S, A, NoRouter> { req: ev.req, body: "", out: o, state: st.state, app: app, scratch: scratch,
+                                          kind: http::TIMEOUT, ex: st.ex, kept: kept, budget: budget, router: none };
+            H(cx);
+            settle_kept(st.ex, o, from, spill, budget);
+            return from;
+        }
         drop_reply(st.ex, spill, budget);
         end_wait(st, out, spill, budget, 504, "timeout", false);
         return -1;
@@ -751,13 +772,13 @@ fn set_word(b: u8[>..]&, at: i64, v: i64) {
 // short, as a failure cuts it (route), and without, the route gets the
 // event (on_later).
 fn end_wait<S>(st: Slot<S>&, out: http::Reply, spill: u8[>..]&, budget: Budget&, status: i32, code: const u8[:],
-               cut: bool) {
+               cut: bool, retry_after: const u8[:] = "") {
     var fields: u8[>..] = [];
     var o = out;
     o.common = kept_fields(out.common, st.ex, spill, fields);
     let from = out.buf.len;
     if !out.stream.open {
-        write_error(o, st.state, status, code, "", -1, "");
+        write_error(o, st.state, status, code, "", -1, "", "", retry_after);
     } else if cut {
         out.stream.open = false;
         out.keep_alive = false;

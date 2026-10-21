@@ -96,6 +96,22 @@ fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64) {
     http::later(cx.out, ms);
 }
 
+// Pauses a route before its response has begun for ms milliseconds, with u
+// in cx.state.use: the handler is called again with http::TIMEOUT then, and
+// answers or waits again. Past max_waiting, or with no mail slots,
+// goose-http gives TIMEOUT at once, and goose-rest answers 503 unavailable
+// with Retry-After without calling the handler. 500 already_waiting when the
+// route waits already, and 500 not_served outside serve and serve_one.
+fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64, u) {
+    var x .= cx.ex;
+    guard x else { fail(cx, 500, "not_served"); }
+    if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
+    cx.state.use = u;
+    x.due = clock_ns() + max(ms, 0) * 500000;
+    x.mode |= PAUSED;
+    http::later(cx.out, ms);
+}
+
 // Sends data, the next piece of the response rest::begin began, or bytes as
 // they are on a connection rest::upgrade took.
 fn send(cx, data: const u8[:]) {

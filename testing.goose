@@ -33,11 +33,11 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
 // data with tag, a reply as a lane sends it, which rest::play gives (wake),
 // or with timeout, the end of the wait, which rest::ask answers with 504,
 // and rest::pause's route gets as http::TIMEOUT. early makes that timeout
-// goose-http's own, given at once when it has no timer: a pause then ends
-// its response. sent is what the client of an upgraded connection sends
-// while the route waits, which comes as one http::BODY before the reply or
-// the timeout; on any other connection, goose-http holds it back, and
-// serve_one drops it.
+// goose-http's own, given at once when it has no timer: a pause before a
+// response begins then answers 503, and a pause after ends its response. sent
+// is what the client of an upgraded connection sends while the route waits,
+// which comes as one http::BODY before the reply or the timeout; on any other
+// connection, goose-http holds it back, and serve_one drops it.
 struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, early: bool = false, sent: const u8[:] = "" }
 
 // What a lane replied to one job under rest::play: data, the reply's bytes,

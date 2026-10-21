@@ -233,15 +233,18 @@ service manager, such as systemd, Docker, or Kubernetes, restarts it
 
 Every call after a request's first goes through the same case functions, not only a
 reply. A route that reads its body in pieces (`rest::body_in_pieces`), sends its
-response in pieces (`rest::begin`, `rest::file`), or takes an upgraded connection
+response in pieces (`rest::begin`, `rest::file`), pauses before a response begins
+(`rest::pause(cx, ms, u)`), or takes an upgraded connection
 (`rest::upgrade`) gives a variant of the program's `Use`, beside the lanes' marks,
 which carries what the route needs at each call. `rest::serve` then
 calls the handler again for each event of the exchange, with `cx.kind` saying which:
-`BODY`, `END`, `MORE`, or `CLOSED`. `CLOSED` comes once to a route that ended early, so
-that its case function releases what the state holds. A route that began a response
-can pause it with `rest::pause`, and gets `TIMEOUT` when the time has passed, for
-events sent over time: the exchange keeps the pause's deadline, so that goose-rest
-ends the response when goose-http, with no timer free, gives `TIMEOUT` at once. One case function per variant
+`BODY`, `END`, `MORE`, `TIMEOUT`, or `CLOSED`. `CLOSED` comes once to a route that ended early, so
+that its case function releases what the state holds. A route can pause before its
+response begins, or after `rest::begin`, with `rest::pause`, and gets `TIMEOUT` when
+the time has passed: the exchange keeps the pause's deadline, and a mode bit for a
+pause before `rest::begin`, so that when goose-http has no timer free and gives
+`TIMEOUT` at once, goose-rest answers 503 with `Retry-After` before `rest::begin` or
+ends an open response after it. One case function per variant
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#4-later-calls) has each call and event.
 

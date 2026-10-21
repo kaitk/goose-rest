@@ -167,7 +167,7 @@ Which answers get the fields:
 |---|---|---|
 | Written in the route, at the request | yes | yes, the route's time |
 | A response begun in the route (`rest::begin`, `rest::file`, `rest::upgrade`) | in its head | in its head |
-| Written at a later call ([Later calls](#4-later-calls)) of a route that called `rest::ask` or `rest::body_in_pieces` at the request: at `WAKE`, at a body's `BODY` or `END`, a response begun then, a 504 `timeout`, or a 413 past the limit | yes | yes, timed from the request to the answer's head |
+| Written at a later call ([Later calls](#4-later-calls)) of a route that called `rest::ask`, `rest::pause`, or `rest::body_in_pieces` at the request: at `WAKE` or `TIMEOUT`, at a body's `BODY` or `END`, a response begun then, a 504 `timeout`, a 503 `unavailable`, or a 413 past the limit | yes | yes, timed from the request to the answer's head |
 | Written once a body left to gather (`rest::body`) is whole, when the route runs again | yes | yes, timed from that run |
 | goose-rest's 413 or 503 while a body is gathered, for a chunked body past its limit or the gather budget | no | no |
 
@@ -487,6 +487,7 @@ and the request state holds the route's progress.
 | `rest::ask` | `http::WAKE`, at the lane's mark, with the job and its answer in `cx.reply`; on an upgraded connection, also `http::BODY` per arrival during the wait, and `http::TIMEOUT` | a refusal; a value's pieces, collected for one `WAKE`; `TIMEOUT`: 504 `timeout`, except on an upgraded connection |
 | `rest::body_in_pieces` | `http::BODY` per piece, in `cx.body`; then `http::END`; or `http::CLOSED` | the limit: 413 |
 | `rest::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
+| `rest::pause`, before `rest::begin` | `http::TIMEOUT` | goose-http's `TIMEOUT` at once, with no timer free: 503 `unavailable` with `Retry-After: 1` |
 | `rest::pause`, after `rest::begin` | `http::TIMEOUT`, the response still open; `http::CLOSED` if the client goes first | goose-http's `TIMEOUT` at once, with no timer free: the response ends, then `CLOSED` |
 | `rest::file` | `http::MORE`; `http::CLOSED`, both for `rest::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
 | `rest::upgrade` | `http::BODY` per arrival; `http::CLOSED` | |
@@ -507,6 +508,7 @@ response cut short.
 |---|---|---|
 | `rest::body_in_pieces(cx, limit, u)` | With `u`, a variant of `Use`, in `cx.state.use`: the body in pieces as they arrive, up to `limit` bytes. A body that came whole with its head comes as one `BODY` and the `END`, and an empty one as the `END` alone. The code around it runs once. | 413 `payload_too_large` for a `Content-Length` over `limit`, before the body is sent; a chunked body past it gets 413 and the connection closes. 500 `body_already_read` after `rest::body`, and `rest::body` after it. 500 `not_served` outside `rest::serve` and `serve_one`. |
 | `rest::begin(cx, status, content_type, length, u)` | With `u` in `cx.state.use`, begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. Inside `rest::compressed`, a response of a type worth compressing is compressed ([Compression](#21-compression)). | |
+| `rest::pause(cx, ms, u)` | With `u` in `cx.state.use`, pauses the route for `ms` milliseconds before a response has begun: `TIMEOUT` comes after `ms` milliseconds, and the case function answers or waits again. Needs `Config.mail_slots` and `max_waiting`: past `max_waiting`, or with no mail slots, goose-http has no timer and gives `TIMEOUT` at once, which goose-rest tells from the pause's own by the clock, halfway to `ms`, and answers with 503 `unavailable` and `Retry-After: 1` without calling the handler. | 500 `already_waiting`; 500 `not_served` outside `rest::serve` and `serve_one` |
 | `rest::pause(cx, ms)` | Pauses the response `rest::begin` began, for events sent over time such as Server-Sent Events: `TIMEOUT` comes after `ms` milliseconds, and the case function sends the next piece and pauses again, or ends. What was sent still goes out meanwhile, and no `MORE` comes until the pause ends; a `TIMEOUT` call that neither pauses nor ends gets `MORE` next. Call it in the route, or at `MORE` or `TIMEOUT`. Needs `Config.mail_slots` and `max_waiting`: past `max_waiting`, goose-http has no timer and gives `TIMEOUT` at once, which goose-rest tells from the pause's own by the clock, halfway to `ms`, and answers by ending the response. | 500 `not_sending` without a response begun and open; 500 `not_served` outside `rest::serve` and `serve_one` |
 | `rest::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `rest::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
@@ -704,7 +706,7 @@ another shape, as the end of this section shows:
 | 404 | `file_not_found` | `rest::file`: no file, or a directory, at the path |
 | 413 | `payload_too_large` | `rest::body`, `rest::body_in_pieces`, `rest::take` of a schema type, and the form extractors: a body over the limit |
 | 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded`; the multipart extractors: a body that isn't `multipart/form-data` with a usable boundary |
-| 500 | `already_waiting` | `rest::ask` while the route waits already, as at an upgraded connection's `BODY` during a wait |
+| 500 | `already_waiting` | `rest::ask` or `rest::pause(cx, ms, u)` while the route waits already, as at an upgraded connection's `BODY` during a wait |
 | 500 | `body_already_read` | `rest::body_in_pieces` after `rest::body`, or `rest::body` after `rest::body_in_pieces` |
 | 500 | `file_unreadable` | `rest::file`: a file that couldn't be opened for another reason |
 | 500 | `job_too_large` | `rest::ask`: a job that, with its length, doesn't fit one message of the reply ([Lanes](#41-lanes)) |
@@ -716,7 +718,7 @@ another shape, as the end of this section shows:
 | 502 | `bad_reply` | `rest::job`, `rest::answer`, and `rest::relay`: a reply that doesn't hold its job, or a value of the type read |
 | 502 | `reply_too_large` | `rest::ask`: a reply of `rest::reply_value`, in pieces, past the worker's gather budget ([Lanes](#41-lanes)) |
 | 503 | `unavailable` | `rest::ask`: every box of the lane is full, or the lane is stopped ([Lanes](#41-lanes)) |
-| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)) |
+| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)); `rest::pause(cx, ms, u)`: no timer free ([Later calls](#4-later-calls)) |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
 through `rest::no_route`, `rest::no_method`, and `rest::not_found`.
@@ -797,8 +799,8 @@ using an instance it keeps in its request state.
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
 | `rest::serve_one(text, app) { cx => ... }` | The same, with the worker state by reference in `cx.app` |
 | `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
-| `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask`, in order |
-| `rest::Wake { data, tag, timeout, early, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, as `rest::wake` gives them, or with `timeout: true`, the end of the wait, which is a `rest::pause`'s time come; with `early: true` as well, goose-http's `TIMEOUT` at once, for want of a timer; on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
+| `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask` or `rest::pause`, in order |
+| `rest::Wake { data, tag, timeout, early, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, as `rest::wake` gives them, or with `timeout: true`, the end of the wait, which is a `rest::pause`'s time come; with `early: true` as well, goose-http's `TIMEOUT` at once, for want of a timer (503 before `rest::begin`, or the end of the response after it); on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
 | `rest::play(lane, job) { u, a => ... }` | Runs `job`, a variant of `lane`'s enum, through the block, as `rest::lane` runs it, with no thread or mail, and returns its reply, a `rest::Played`: an answer, a refusal for a `rest::fail`, its code whole, or 500 `no_reply` for neither. `rest::still_wanted` is true. The block is the lane's own, `run(u, state, a)`, to test a use case, or a stand-in that replies what a test needs. |
 | `rest::wake(p)` | The `Wake` that gives a route what `p`, a `rest::Played`, replied |
 | `rest::refusal(p)` | The status and code of the refusal `p` replied, or 0 and `""` for an answer |
@@ -828,6 +830,7 @@ as `http::TIMEOUT`. On an upgraded connection, the `Wake`'s `sent` comes first, 
 no longer waits is dropped. A wait with no `Wake` left ends the exchange: the answer is
 what the route wrote, or 500 for nothing, and a route paused with its response open
 gets `http::CLOSED`, as for a client that goes. A paused route gets each `Wake` with
-`timeout: true` as its `http::TIMEOUT`. No thread runs and no time passes, so a reply
+`timeout: true` as its `http::TIMEOUT`, or with `early: true` as 503 before `rest::begin`
+and the end of the response after it. No thread runs and no time passes, so a reply
 that comes late, or a client that goes while its job waits, is tested over HTTP
 ([tutorial](tutorial/16-testing.md)).

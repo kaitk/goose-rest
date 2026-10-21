@@ -42,7 +42,7 @@ inline fn compressed<S, A, R, F>(cx: Cx<S, A, R>&, c: http::Compression = http::
     let outer = offered;
     offered = c;
     var x .= cx.ex;
-    var was: u8 = 0;
+    var was: u16 = 0;
     if x {
         was = x.mode & OFFERED;
         x.mode |= OFFERED;
