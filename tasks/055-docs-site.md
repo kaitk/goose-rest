@@ -26,7 +26,9 @@ rules out.
    site, their pages unchanged.
 4. Publish to GitHub Pages from `main`, built by CI, with links checked.
 
-The site's address waits on the name (task 046).
+The site's address is `kaitk.github.io/plod` (2026-10-23), GitHub Pages' default for
+the repository, so it needs no domain. Once the site is up, it becomes the repository's
+homepage on GitHub.
 
 ## Acceptance criteria
 
@@ -34,4 +36,4 @@ The site's address waits on the name (task 046).
 - [ ] Every reference page opens with what it does, an example, and its options table
 - [ ] The site builds locally with one documented command, and in CI on every push
 - [ ] Broken links fail the build
-- [ ] `README.md` links to the site
+- [ ] `README.md` links to the site, and the repository's homepage is set to it
