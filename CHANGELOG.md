@@ -2,6 +2,18 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.3.4 (2026-10-22)
+
+An HTTP client, from goose-http `v0.5.4`. Goose `v2026.3`, goose-http `v0.5.4`,
+goose-compress `v0.1.1`; `rest.websocket` declares goose-hash `v0.0.4`, and `rest.tls`
+goose-tls `v0.0.5`. No breaking changes in goose-rest's API.
+
+Added:
+
+- goose-http's `http.client`, its blocking HTTP/1.1 and HTTPS client on goose-tls,
+  reaches a goose-rest program through goose-http: a lane imports it to make requests,
+  with a JSON body from `rest::format_fields`.
+
 ## v0.3.3 (2026-10-22)
 
 A TLS connection's context chosen per connection, from goose-http `v0.5.3`. Goose
