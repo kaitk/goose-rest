@@ -65,6 +65,20 @@ traps apply too.
   holds a Windows path, so `git` in WSL answers "not a git repository", and
   `bench/rest.sh run` records goose-rest in `env.txt` as blank and "(modified)". Create
   a worktree that WSL benchmarks with from WSL's Git (2026-10-20).
+- Windows Git's installer sets `core.autocrlf=true`, so a checkout made on Windows has
+  CRLF files. The generator writes LF, and `bench/rest.sh build` stops with
+  "github_gen.goose is stale". Benchmark from a clone on WSL's own filesystem
+  (2026-10-22).
+- perf can't write its data to the Windows drive: `perf record` into a directory under
+  `/mnt/c` fails with "failed to write perf data, error: Bad address". Keep `OUT` on
+  WSL's filesystem (2026-10-22).
+- A perf built from the WSL kernel's source without libelf records, but its reports name
+  only kernel functions and show a program's own as bare addresses.
+  `perf version --build-options` shows `libelf: [ OFF ]`. Ubuntu 26.04's `linux-perf`
+  package (7.0) has it and reads WSL's 6.18 kernel's recordings (2026-10-22).
+- Ubuntu 22.04's liburing-dev is 2.1, which lacks what goose-http's io_uring loop needs
+  (`IORING_SETUP_SINGLE_ISSUER` and others), so the build fails. Use Ubuntu 26.04,
+  which has 2.14 (2026-10-22).
 
 ## Benchmarks
 
