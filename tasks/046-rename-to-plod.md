@@ -63,14 +63,9 @@ is named plod.
 
 ## The repository
 
-Imports name the repository, so `github.com/kaitk/goose-rest` stays in every import,
-link, and script until GitHub renames it. Then, in one commit:
-
-```sh
-scripts/rename-repo-url.sh --dry-run   # lists every file and line it would change
-scripts/rename-repo-url.sh
-scripts/test.sh
-```
+Imports name the repository, so `github.com/kaitk/goose-rest` stayed in every import,
+link, and script until GitHub renamed it on 2026-10-23. One commit then moved every URL
+with `scripts/rename-repo-url.sh`, which was removed once it had run.
 
 GitHub redirects the old URL after a rename, for git clones too, so a program pinned to
 `goose-rest@v0.3.4` or earlier keeps building.
@@ -87,7 +82,7 @@ GitHub redirects the old URL after a rename, for git clones too, so a program pi
 - [x] The repository, package, imports in every root under `test/`, `examples/`,
       `docs/tutorial/`, `docs/best-practices/`, `spikes/`, and `bench/`, the scripts,
       `README.md`, `CHANGELOG.md`, and `docs/` use the new name, in their own commit.
-      The repository's URL moved with `scripts/rename-repo-url.sh`. Recorded results and the benchmark server
+      The repository's URL moved in one scripted commit. Recorded results and the benchmark server
       `bench/rest/goose-rest/` keep the name they were measured under.
 - [x] `scripts/test.sh` passes
 - [x] `v0.4.0` is tagged, and the README's quick start, which imports it, builds

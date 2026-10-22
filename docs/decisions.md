@@ -40,8 +40,8 @@ entry.
   `namespace plod;` in the package, `plod::get`, and the modules `plod.compression`,
   `plod.websocket`, and `plod.tls`. The generator is `plod gen` and writes `plod::`.
   Error codes, JSON shapes, and HTTP behaviour don't change.
-- The repository stays `kaitk/goose-rest` until GitHub renames it to `kaitk/plod`;
-  `scripts/rename-repo-url.sh` then moves every URL in one commit. Renaming the
+- The repository stayed `kaitk/goose-rest` until the Plod tag, then GitHub renamed it
+  to `kaitk/plod` and one commit moved every URL (2026-10-23). Renaming the
   repository first would have broken every tagged import before a Plod tag existed.
 - The first Plod release is `v0.4.0`, a minor version, because every program changes
   its imports and namespace.
