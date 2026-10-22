@@ -36,6 +36,8 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   `rest::body_in_pieces` ended a body after its first piece. Whether a body came whole
   is goose-http's `Event.whole`, read where it's given, with no bit kept per
   connection.
+- `rest::upgrade` on an HTTP/2 stream, which goose-http answers 501, no longer gives the
+  route a `CLOSED`.
 
 ## v0.2.1 (2026-10-20)
 

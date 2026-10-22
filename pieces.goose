@@ -189,9 +189,11 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, 
 // route fails. http::upgrade_of(cx.req) says what the request asks to switch
 // to. A route that then waits on a lane (rest::ask) gets the bytes that come
 // meanwhile in the resume of the lane's mark, and sets cx.state.use back to
-// u's to get them where they went before.
+// u's to get them where they went before. An HTTP/2 stream can't switch:
+// goose-http answers it 501, and the route gets no calls.
 fn upgrade<S, A, R>(cx: Cx<S, A, R>&, protocol: const u8[:], u) {
     http::upgrade(cx.out, protocol);
+    guard cx.out.stream.open else { return; }
     cx.state.use = u;
     var x .= cx.ex;
     guard x else { return; }
