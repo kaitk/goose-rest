@@ -297,6 +297,13 @@ names no charset, and a client then guesses one for text past ASCII.
 Reusing `http::gather` is deferred: it changes the path for a body larger
 than the read buffer and needs the body tests and a tier D run on Linux.
 
+Decided (2026-10-22): a request no route took gets goose-http's verdict,
+`http::unrouted(r)`, which goose-rest writes in the program's error shape, rather than
+goose-rest deciding among 501, 400, 204, 405, and 404 again in `rest::otherwise`,
+`rest::no_route`, and `rest::not_found`. The generated router has no `http::Router`,
+so `no_route` and `not_found` build one from the method and path for the verdict, on
+those answers' paths alone.
+
 ### Compression
 
 Decided (2026-10-15): `rest::compressed` lives in `rest.compression`, a module `rest`

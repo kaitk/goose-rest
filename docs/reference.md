@@ -722,7 +722,8 @@ another shape, as the end of this section shows:
 | 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)); `rest::ask` and `rest::pause(cx, ms, u)`: no timer free ([Later calls](#4-later-calls)) |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
-through `rest::no_route`, `rest::no_method`, and `rest::not_found`.
+through `rest::no_route`, `rest::no_method`, and `rest::not_found`. Each takes the status
+from goose-http's `http::unrouted`.
 
 When a generated reader refuses a body, the error names the field and the check that
 failed, and gives the position in the body where the reader stopped, counted in bytes:

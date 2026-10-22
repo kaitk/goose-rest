@@ -38,6 +38,8 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   connection.
 - `rest::upgrade` on an HTTP/2 stream, which goose-http answers 501, no longer gives the
   route a `CLOSED`.
+- `rest::routes`, `rest::otherwise`, and the generated router take a request no route
+  took's status from `http::unrouted`, rather than deciding it again.
 
 ## v0.2.1 (2026-10-20)
 

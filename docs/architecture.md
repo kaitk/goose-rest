@@ -89,7 +89,9 @@ whether the path is routable. `rest::scope` narrows the router to a prefix for i
 block, and takes the request, so the scope owns the paths under it. When no route
 answered, `routes` answers 404, 405, and OPTIONS across scopes from the routes it
 passed, and 501 for an unknown method; a scope answers so itself, inside the
-middleware around it. An extractor runs only where the
+middleware around it. The status is goose-http's `http::unrouted`, the verdict its
+`otherwise` writes, and goose-rest writes it in the program's error shape, as the
+generated router does for the paths it doesn't match. An extractor runs only where the
 handler calls it, and `goose-http` keeps header lines as bytes until one is asked for,
 so a route parses only what it reads. A body taken as a schema type, with `rest::take`
 or by the generated router, arrives parsed and validated; a malformed one gets 400 and

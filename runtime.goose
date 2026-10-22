@@ -1036,36 +1036,22 @@ fn has_method(allow: const u8[:], method: const u8[:]) -> bool {
     return false;
 }
 
-// Answers a request whose path no route matched, as otherwise does: an
-// unknown method 501, a path with a dot-segment or an escaped control byte
-// 400, OPTIONS * 204, and anything else 404.
+// Answers a request whose method is unknown, or whose path the router
+// refuses, as otherwise does: 501 or 400.
 fn no_route(cx, method: const u8[:], path: const u8[:]) {
-    if !http::known_method(method) {
-        write_error(cx.out, cx.state, 501, "not_implemented", "", -1, "");
-    } else if !http::is_routable(path) {
-        write_error(cx.out, cx.state, 400, "bad_path", "", -1, "");
-    } else if method == "OPTIONS" && path == "*" {
-        http::start(cx.out, 204);
-        http::finish(cx.out, http::NO_TYPE, "");
-    } else {
-        write_error(cx.out, cx.state, 404, "not_found", "", -1, "");
-    }
+    let r = http::Router { method: method, path: path, params: [], allow: [], bad: !http::is_routable(path) };
+    unrouted(cx, r);
 }
 
-// no_route for a request whose method is known and whose path is routable,
-// as the generated routers have checked by then: OPTIONS * 204, and 404. A
-// path that only the program's routes before dispatch matched gets
-// no_method's answer with their Allow.
-fn not_found(cx, method: const u8[:], path: const u8[:]) {
-    let theirs = allow_before(cx);
-    if theirs.len > 0 {
-        allowed(cx, theirs);
-    } else if method == "OPTIONS" && path == "*" {
-        http::start(cx.out, 204);
-        http::finish(cx.out, http::NO_TYPE, "");
-    } else {
-        write_error(cx.out, cx.state, 404, "not_found", "", -1, "");
-    }
+// Answers a request whose method is known and whose path is routable, as
+// the generated routers have checked by then, and that no route matched, as
+// otherwise does: inside rest::routes, with the Allow of the program's routes
+// before dispatch.
+fn not_found<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], path: const u8[:]) { unrouted(cx, cx.router); }
+
+fn not_found<S, A>(cx: Cx<S, A, NoRouter>&, method: const u8[:], path: const u8[:]) {
+    let r = http::Router { method: method, path: path, params: [], allow: [], bad: false };
+    unrouted(cx, r);
 }
 
 // Answers status with v as JSON, written by v's format overload, which Goose
@@ -1115,18 +1101,23 @@ fn otherwise<S, A>(cx: Cx<S, A, http::Router>&) { otherwise(cx, cx.router); }
 fn otherwise(cx, r: const http::Router&) {
     // bad marks a taken request as well as a path the router refused.
     guard !r.bad || !http::is_routable(http::path_of(cx.req.target)) else { return; }
-    if !http::known_method(r.method) {
-        write_error(cx.out, cx.state, 501, "not_implemented", "", -1, "");
-    } else if r.bad {
-        write_error(cx.out, cx.state, 400, "bad_path", "", -1, "");
-    } else if r.method == "OPTIONS" && (r.path == "*" || r.allow.len > 0) {
-        http::start(cx.out, 204);
-        if r.allow.len > 0 { http::field(cx.out, "Allow", r.allow); }
-        http::finish(cx.out, http::NO_TYPE, "");
-    } else if r.allow.len == 0 {
-        write_error(cx.out, cx.state, 404, "not_found", "", -1, "");
-    } else {
-        write_error(cx.out, cx.state, 405, "method_not_allowed", "", -1, r.allow);
+    unrouted(cx, r);
+}
+
+// Answers a request no route took with http::unrouted's status, each error
+// in the program's shape. Each arm writes a constant status, which the
+// inline writers fold.
+fn unrouted(cx, r: const http::Router&) {
+    match http::unrouted(r) {
+        204 => {
+            http::start(cx.out, 204);
+            if r.allow.len > 0 { http::field(cx.out, "Allow", r.allow); }
+            http::finish(cx.out, http::NO_TYPE, "");
+        },
+        405 => write_error(cx.out, cx.state, 405, "method_not_allowed", "", -1, r.allow),
+        501 => write_error(cx.out, cx.state, 501, "not_implemented", "", -1, ""),
+        400 => write_error(cx.out, cx.state, 400, "bad_path", "", -1, ""),
+        _ => write_error(cx.out, cx.state, 404, "not_found", "", -1, ""),
     }
 }
 
