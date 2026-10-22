@@ -17,6 +17,14 @@ CORS, sessions, and middleware are left to a framework by `goose-http`'s scope
 The generator reads OpenAPI as its input. Writing an OpenAPI document from the routes,
 as Elysia's openapi plugin does, is planned for later (2026-10-15).
 
+An HTTP client is in scope, and it's goose-http's `http.client` (2026-10-22). The
+framework is to become Plod, for both sides of HTTP. A program makes its requests with
+`http::get`, `http::post`, and the rest directly, and writes a JSON body with the
+`format` overload its responses use, `rest::format_fields` for a struct's fields.
+goose-rest adds no wrapper: the client needs nothing of goose-rest's, and goose-acme
+uses the same one. Rejected: a module `rest.client`, drafted the same day, which used
+nothing of goose-rest's and would have left goose-acme with its own copy.
+
 ## The language
 
 The design rests on the properties of Goose that

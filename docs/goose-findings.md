@@ -553,7 +553,10 @@ Every goose-rest call takes the context first: `rest::text(cx, 200, "ok")`,
 they'd read `cx.text(200, "ok")`, `cx.fail(404, "project_not_found")`, and
 `cx.param_int("id")`, which is what a reader of Actix or Axum expects. A test that
 plays a lane writes `rest::wake(p)` for the `rest::Played` it got, where `p.wake()`
-fails the same way.
+fails the same way. goose-http's HTTP client reads
+`http::post(session, url) { req => http::bearer(req, key); }` where
+`session.post(url) { req => req.bearer(key); }` is meant; still so on `v2026.3`
+(2026-10-22).
 
 Workaround: name the namespace, `rest::text(cx, ...)`.
 
