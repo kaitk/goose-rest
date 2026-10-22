@@ -1,7 +1,7 @@
 // error: expected a value of type rest::Jobs<Reports>, got rest::Jobs<Writes>
 // wrong_jobs.goose's lane, opened with a value each thread takes too.
 import std;
-import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 import rest from "../../";
 enum Writes { Create { project: i64 } }
 enum Reports { Totals { project: i64 } }

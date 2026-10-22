@@ -5,7 +5,7 @@ namespace rest;
 
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 
 // A request's context: its head, its body, where its answer goes, the
 // application's request state, which goose-http keeps in the

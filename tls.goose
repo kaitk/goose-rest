@@ -3,14 +3,14 @@
 // needs goose-tls, which its root file declares at the tag goose-http's
 // tls.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+//   import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 //   import tls from "github.com/kaitk/goose-tls@v0.0.3";
 //   import rest from "github.com/kaitk/goose-rest@<tag>";
 //   import rest.tls;
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 import tls from "github.com/kaitk/goose-tls@v0.0.3";
 import http.tls;
 

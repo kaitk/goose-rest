@@ -7,7 +7,7 @@
 //   build/examples/websocket 8080
 //   websocat ws://localhost:8080/ws
 import std;
-import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import rest from "../../";
 import rest.websocket;

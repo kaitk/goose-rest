@@ -1,7 +1,7 @@
 // rest::body beside rest::body_in_pieces, before it and after it: the
 // second read fails with body_already_read.
 import std;
-import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 import rest from "../../";
 import expect from "../";
 import common;

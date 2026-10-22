@@ -31,7 +31,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
 
 // A reply message's tag: REPLY_REFUSED for a job its lane refused, which
 // holds a Refusal; REPLY_VALUE on every piece of a reply_value, which the
