@@ -4,7 +4,7 @@
 // its bytes back; then a subprotocol named in the 101, and the refusals in
 // goose-rest's error shape, a protocol that isn't a field value's among them.
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import rest from "../../";
 import rest.websocket;

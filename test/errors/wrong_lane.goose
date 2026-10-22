@@ -2,7 +2,7 @@
 // A report's job sent to the writer lane: a lane takes only its own enum's
 // variants, and the candidate's note says "cannot pass Reports.Totals as U".
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import rest from "../../";
 
 enum Writes { Create { project: i64 } }

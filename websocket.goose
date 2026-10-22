@@ -3,7 +3,7 @@
 // needs goose-hash, which its root file declares at the tag goose-http's
 // websocket.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+//   import http from "github.com/kaitk/goose-http@v0.5.0";
 //   import hash from "github.com/kaitk/goose-hash@v0.0.4";
 //   import rest from "github.com/kaitk/goose-rest@<tag>";
 //   import rest.websocket;
@@ -13,7 +13,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import http.websocket;
 

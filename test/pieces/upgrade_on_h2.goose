@@ -2,7 +2,7 @@
 // goose-http answers 501, and the route gets no later call, CLOSED
 // included, as for any answer at the request.
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import rest from "../../";
 import expect from "../";
 

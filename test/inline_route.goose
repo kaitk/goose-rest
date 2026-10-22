@@ -10,7 +10,7 @@
 // spike 04. handle itself stays a function, as a function given a large block
 // does (docs/goose-findings.md).
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import rest from "../";
 
 struct Item { id: i64, owner: i64 }

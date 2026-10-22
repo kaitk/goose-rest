@@ -4,7 +4,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 
 // What serve answers to text, one request's bytes, through H(cx) inside
 // rest::route: the status line, the fields, and the body, without Date or

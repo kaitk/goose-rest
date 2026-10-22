@@ -2,7 +2,7 @@
 // covers what they refuse: The subset (§4), Names (§5), and What it refuses
 // (§7.2), for anything under paths or security.
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import rest from "../../";
 import rest.gen.gen;
 import common;

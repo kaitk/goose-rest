@@ -4,7 +4,7 @@
 // a response begun whose reply passes its limit, and a refusal after a
 // piece. Each route gets CLOSED once where it should, and the run is freed.
 import std;
-import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
+import http from "github.com/kaitk/goose-http@v0.5.0";
 import rest from "../../";
 import expect from "../";
 
