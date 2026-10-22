@@ -1,7 +1,7 @@
 // A compressed response in pieces that ends early, the connection closed or
 // cut short by a failure: what was sent, then CLOSED, and the encoder back.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import rest from "../../";
 import rest.compression;

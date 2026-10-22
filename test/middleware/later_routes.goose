@@ -3,7 +3,7 @@
 // thread and answers its reply at WAKE, or 504 at TIMEOUT, and one that
 // gathers its body first.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
 import expect from "../";
 import common;

@@ -2,7 +2,7 @@
 // rest::serve_one: decoded, the first of a repeated field, each failure's
 // answer, the media type, and a body past the read buffer, gathered.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
 import expect from "../";
 import common;

@@ -2,7 +2,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 
 // A 200 event stream, with u in cx.state.use as for begin. Pause it with
 // rest::pause and finish it with rest::end.

@@ -6,7 +6,7 @@
 // OPTIONS, 501, and 400 for a dot-segment. Each answer is printed whole but
 // for its body, so a second answer appended would show.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
 import expect from "../";
 

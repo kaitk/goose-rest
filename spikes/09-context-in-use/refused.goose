@@ -2,7 +2,7 @@
 // router where there is none. goose check refuses the first; README.md has
 // each refusal, found by removing the ones before it.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
 import .api_gen;
 import .app;

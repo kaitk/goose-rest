@@ -22,7 +22,7 @@ inputs stayed in the request state, which grew to the largest job.
 - `catch_all/main.goose`: a catch-all `run` beside one lane's cases.
 - `sizes/main.goose`: the request state with each shape, beside spike 10's.
 
-Goose: commit `f114b5a`, the pin, with the same output as on `dcc2747`. goose-http: `v0.4.3`, with the same output as at `v0.4.2`, `v0.4.1`, `v0.4.0`, and `ff18ecc`.
+Goose: commit `f114b5a`, the pin, with the same output as on `dcc2747`. goose-http: `b5f82a2`, with the same output as at `v0.4.3`, `v0.4.2`, `v0.4.1`, `v0.4.0`, and `ff18ecc`.
 
 ```sh
 GOOSE=<build>/goose

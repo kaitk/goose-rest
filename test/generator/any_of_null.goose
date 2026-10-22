@@ -1,7 +1,7 @@
 // pydantic's and schemars' optional values, anyOf with null, generate what
 // a type array with null does.
 import std;
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
 import rest.gen.gen;
 import common;

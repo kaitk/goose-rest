@@ -1,6 +1,6 @@
 namespace rest;
 
-import http from "github.com/kaitk/goose-http@v0.4.3";
+import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 
 // Between http::start and http::finish, or rest::begin and its first send.
 // Validation and serialization are goose-http's; false writes nothing.
