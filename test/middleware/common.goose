@@ -2,7 +2,7 @@
 // a route behind CORS and Server-Timing that answers at a later call: at
 // WAKE, at TIMEOUT, or at a body's END.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import expect from "../";
 

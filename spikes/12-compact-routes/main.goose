@@ -6,7 +6,7 @@
 // own, beside a scope still in today's form. ask compares whole answers, so
 // a second answer appended would show. README.md has the verdict.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import .compact;
 import .marked;

@@ -4,7 +4,7 @@
 // asks gets bytes while the reply's pieces are being collected. Each reply's
 // run is freed, and the pause still ends.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import expect from "../";
 

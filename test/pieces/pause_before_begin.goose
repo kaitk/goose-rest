@@ -3,7 +3,7 @@
 // a rest::ask that times out (504), the middleware's kept fields on both,
 // and 500 already_waiting.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import expect from "../";
 

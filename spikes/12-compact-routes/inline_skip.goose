@@ -8,7 +8,7 @@
 //   goose -O2 -o inline_skip.c inline_skip.goose
 //   grep -E '^static .*_g[0-9]*\(' inline_skip.c | grep -v ';'
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 
 struct Item { id: i64, owner: i64 }

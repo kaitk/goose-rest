@@ -7,7 +7,7 @@
 //   genr60 http [port]   (WORKERS 1)
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../../";
 import .routes_gen;
 import .app;

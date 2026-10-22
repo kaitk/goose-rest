@@ -2,7 +2,7 @@
 // A thread that takes the writer lane's jobs, but runs only the reports
 // lane's: rest::lane gives each job as a Writes, which no run takes.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 
 enum Writes { Create { project: i64 } }

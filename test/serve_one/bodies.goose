@@ -2,7 +2,7 @@
 // one gathered and the route run again with it whole, one past rest::body's
 // limit, and one past the server's max_body.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import expect from "../";
 

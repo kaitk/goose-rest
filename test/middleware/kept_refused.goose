@@ -4,7 +4,7 @@
 // request, and its case function CLOSED; on a budget that can, the answer
 // at the END has them.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import expect from "../";
 

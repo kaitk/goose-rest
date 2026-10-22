@@ -3,7 +3,7 @@
 // failure comes first.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.2";
+import http from "github.com/kaitk/goose-http@v0.5.3";
 import rest from "../../";
 import expect from "../";
 import expect.gen.routes_gen;

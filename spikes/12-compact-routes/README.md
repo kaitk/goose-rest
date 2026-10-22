@@ -32,7 +32,7 @@ forms, for their C. The 60-route servers are `bench/routes/hand60.goose` (today'
 middleware that can fail. `bench/routes.sh` at commit `0fda9a2` builds and runs them.
 Later commits leave them out, so that a full run doesn't measure a form not adopted.
 
-Goose: commit `f114b5a`, the pin. goose-http: `v0.5.2`, with the same output as at `cbffc2a`, `5701a0d`, `b5f82a2`, and `v0.4.3`. goose-rest: `6ea1377`.
+Goose: commit `f114b5a`, the pin. goose-http: `v0.5.3`, with the same output as at `v0.5.2`, `cbffc2a`, `5701a0d`, `b5f82a2`, and `v0.4.3`. goose-rest: `6ea1377`.
 
 `genroutes.sh` writes a larger program in today's form or A, of 1,111 routes by default
 and 5,001 with nested middleware, and `benchroutes.sh` builds both forms and counts them
