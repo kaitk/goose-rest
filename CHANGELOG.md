@@ -2,6 +2,38 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.3.1 (2026-10-22)
+
+h2 over TLS, and less memory per TLS connection, from goose-http `v0.5.1`. Goose
+`v2026.3`, goose-http `v0.5.1`, goose-compress `v0.1.1`; `rest.websocket` declares
+goose-hash `v0.0.4`, and `rest.tls` goose-tls `v0.0.4`. No breaking changes in
+goose-rest's API; a program that imports `rest.tls` moves its goose-tls import to
+`v0.0.4`.
+
+Added:
+
+- `rest.tls` serves h2 over TLS: a context made with `["h2", "http/1.1"]` as its ALPN
+  protocols serves h2 to a client that chooses it and HTTP/1.1 to one that doesn't, on
+  one port, through `rest::serve` and `rest::serve_epoll` alike. Handlers don't change
+  ([reference](docs/reference.md#13-https)).
+
+Changed:
+
+- goose-tls `v0.0.4`'s TLS 1.3 server, written in Goose over libcrypto, holds 2.9 KB
+  per idle connection where libssl's held 28.5 KB, and sends session tickets. The kTLS
+  handoff is gone. A client whose ALPN offer shares no protocol with the context's now
+  fails with `no_application_protocol`. The build still needs CMake
+  and OpenSSL 3.
+
+Fixed, in goose-http:
+
+- On io_uring, a socket a handler waits on with `http::wait_socket` is released when
+  the handler answers in the call that waited, or when its h2 stream is reset, rather
+  than held open until the connection's next event or close.
+- An h2 stream refused with 413, for a body past `Config.max_body`, calls its handler
+  with `CLOSED` when it was owed a call, so a socket it holds is hung up.
+- An idle h2 connection, h2c or over TLS, is sent GOAWAY before it closes.
+
 ## v0.3.0 (2026-10-22)
 
 Shorter routes, goose-http's gather pool for gathered bodies and replies, WebSocket and

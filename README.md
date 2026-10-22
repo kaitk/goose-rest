@@ -42,7 +42,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#4-later-calls)). |
 | 🟢 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, `rest::begin` sends a response in pieces as the client takes them, and `rest::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#4-later-calls)). |
 | 🟢 | WebSocket | `rest::ws_upgrade` and `rest::ws_read`, in an optional module, over goose-http's RFC 6455 frames; `rest::upgrade` hands any other upgraded protocol's bytes to the route ([reference](docs/reference.md#43-websocket)). |
-| 🟢 | HTTPS | `rest::serve` and `rest::serve_epoll` with goose-http's TLS 1.3 listeners, in an optional module ([reference](docs/reference.md#13-https)). |
+| 🟢 | HTTPS | `rest::serve` and `rest::serve_epoll` with goose-http's TLS 1.3 listeners, serving h2 or HTTP/1.1 by ALPN, in an optional module ([reference](docs/reference.md#13-https)). |
 
 ### Middleware
 
@@ -72,8 +72,8 @@ a program also needs a C compiler and, on Linux, liburing:
 Save this as `hello.goose`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.0";
-import rest from "github.com/kaitk/goose-rest@v0.3.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
+import rest from "github.com/kaitk/goose-rest@v0.3.1";
 
 fn handle(cx) {
     rest::routes(cx) { cx =>
