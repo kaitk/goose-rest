@@ -1,7 +1,10 @@
 # 049: ACME, a package of its own
 
-Status: todo (asked for 2026-10-19). goose-tls's task 001 and its hooks for an outside
-ACME package (its task 003) are done (2026-10-19).
+Status: in-progress (asked for 2026-10-19).
+[goose-acme](https://github.com/kaitk/goose-acme), at `v0.0.2`, gets and renews
+certificates from Pebble (2026-10-22). A goose-rest server
+waits on goose-http: its `http.tls` must choose a context per connection, and its
+`connect` must resolve names for Let's Encrypt (goose-acme's task 001).
 
 A Goose server gets and renews its certificates from Let's Encrypt in the process, so one
 binary can face the internet without Caddy or nginx (task 047, "Beyond HttpArena: one
@@ -20,12 +23,12 @@ ACME is a package of its own, not part of goose-tls or goose-http (2026-10-19):
 - It changes with Let's Encrypt's API and policies, and tests against Pebble and Let's
   Encrypt's staging service, on its own schedule.
 
-Proposed: no I/O in the package, as in goose-tls and goose-postgres. Its state hands the
-program the HTTP requests to send and takes their responses, and tells the program which
-challenge certificate to serve and when a new certificate is ready. It then depends on
-goose-tls and goose-hash alone, and any server or HTTP client can carry it. goose-http,
-or goose-rest, adds a small driver over goose-http's outbound connections (goose-http's
-task 053).
+The package does no network I/O (2026-10-22). Its flow blocks, and calls overloads on
+two values the program passes: one carries each HTTPS request, the other serves each
+challenge certificate. This replaces the proposal of a state that hands the program
+each request: renewal runs every two months, on a lane. goose-acme's module
+`acme.socket` carries the requests over goose-http's blocking socket (its task 053).
+The package's decisions are in goose-acme's `docs/decisions.md`.
 
 ## What it needs
 
@@ -42,20 +45,30 @@ task 053).
 Out of scope, as in snowtime-native: wildcard certificates (TLS-ALPN-01 can't issue them)
 and the HTTP-01 and DNS-01 challenges.
 
-## Open
+## Answered
 
-- The package's name and repository (`goose-acme` is the obvious one), created when its
-  first code is near.
-- Whether it reads rustls-acme's cache directory, so a server moved from snowtime-native
-  keeps its certificates. rustls-acme's file format isn't checked yet.
+- The name is goose-acme (2026-10-22), on GitHub as `kaitk/goose-acme`.
+- The cache keeps rustls-acme's layout as its only format, with no setting
+  (2026-10-22): a server moved from snowtime-native keeps its account and certificates,
+  and the directory URL in each file's name keeps staging and production apart. A
+  goose-acme test reads a cache rustls-acme's way of writing it, and ring reads back
+  what goose-acme writes.
+- Goose's `os` can't set a file's mode, so a few lines of C in goose-acme make the
+  cache 0700 and its files 0600 (2026-10-22), until it can.
 
 ## Acceptance criteria
 
-- [ ] The package's repository, with the no-I/O design settled in its decisions
+- [x] The package's repository, with the no-I/O design settled in its decisions
+      (goose-acme `v0.0.2`, 2026-10-22)
 - [x] goose-tls has the hooks above (its task 003, 2026-10-19)
 - [ ] A certificate issued by a local Pebble to a goose-rest test server, and renewed
-      while it serves, without a restart
-- [ ] The same against Let's Encrypt's staging service
-- [ ] The cache's directory and file modes checked by a test
-- [ ] Used through no goose-http API but its outbound connections, shown by a test
-      driver that carries its requests another way
+      while it serves, without a restart. goose-acme's `scripts/pebble.sh` does this
+      with a Python server answering the challenges; a goose-rest server waits on
+      goose-http's `http.tls` choosing a context per connection
+- [ ] The same against Let's Encrypt's staging service, which waits on goose-http's
+      `connect` resolving names
+- [x] The cache's directory and file modes checked by a test (goose-acme's
+      `test/cache/modes.goose`)
+- [x] Used through no goose-http API but its outbound connections, shown by a test
+      driver that carries its requests another way (goose-acme's fake CA in
+      `test/fake.goose`)
