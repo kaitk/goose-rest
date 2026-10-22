@@ -1,6 +1,8 @@
 # 058: Uploads beside forms
 
-Status: todo (asked for 2026-10-20)
+Status: in-progress (asked for 2026-10-20). The memory gap's cause is found
+("Measured on Linux"); its fix is goose-http's gather pool (its task 059), and the
+rerun comes after goose-rest adopts it.
 
 With tier D's forms running beside its uploads, goose-rest serves fewer of both than
 goose-http alone, on both loops, and holds more memory on epoll. Alone, uploads are
@@ -63,3 +65,43 @@ Next, on Linux: `perf record` of both servers in the mixed run on each loop, to 
 where goose-rest's extra time goes; and, as a check of the package's share, the tier
 server's batch and form routes with `rest::body_in_pieces` and a spool, as goose-http
 reads them, measured once and not kept, since the tier measures `rest::body`.
+
+## Measured on Linux (2026-10-22)
+
+`bench/058-run.sh` on the branch `058-linux-run` (`bf03a53`), which isn't merged:
+Enkidu, a Ryzen 7 PRO 6850U, 16 logical CPUs, WSL2 kernel
+`6.18.54.1-microsoft-standard-WSL2`; goose-http `0a016bb0`, Goose v2026.3, gcc 15.2;
+4 workers on CPUs 0-3, wrk on 4-15 with 8 threads; one round of 10 s after 3 s of
+warm-up. "Pieces" is goose-rest's tier server with the batch and the form read by
+`rest::body_in_pieces` into the tier's own spool, as goose-http's server reads them.
+
+| Loop | Server | Uploads/s beside forms | Forms role req/s | Forms p99 ms | Peak RSS MB |
+|---|---|---:|---:|---:|---:|
+| epoll | goose-http | 80 | 5.1 K | 122 | 129 |
+| epoll | goose-rest | 83 | 5.3 K | 114 | 150 |
+| epoll | pieces | 77 | 4.8 K | 129 | 131 |
+| io_uring | goose-http | 104 | 4.7 K | 117 | 125 |
+| io_uring | goose-rest | 100 | 4.5 K | 111 | 121 |
+| io_uring | pieces | 96 | 4.5 K | 112 | 123 |
+
+Alone, uploads were 668-724 a second and 70-72 MB for all six.
+
+- **The rate gap doesn't show on this machine.** goose-rest serves as many uploads
+  and forms as goose-http alone on both loops, within one round's noise. Whether the
+  desktop's gap was that machine's or that session's is open: a rerun there with
+  three rounds settles it.
+- **Epoll's memory gap does, and its cause is the gathered bodies' own spill.** The
+  same server holds 150 MB with `rest::body` and 131 MB with the bodies in the tier's
+  spool, against goose-http's 129: about 20 MB more for a second arena per worker,
+  as the desktop's 17 MB. io_uring is even, on this run as on the desktop's; why only
+  epoll's peak grows is open.
+- **The profiles show no cost of the route's second run, nor of the budget's
+  scans.** `rest_gather_piece` takes about 10% of samples, as goose-http's `join`
+  does, both copying; JSON parsing takes most of the rest. `tier_c` takes about 5%
+  in goose-rest with `rest::body` and in pieces alike, though pieces never runs a
+  route twice, and none of `spill_end`, `free_at`, or `track` is among the top 25
+  symbols. Routing a gathered body once isn't worth its machinery for this tier.
+
+The fix: gathered bodies in goose-http's per-worker pool, which a budget bounds, as
+goose-http's task 059 designs it, so a worker keeps one arena. Then this run again,
+against goose-http alone, with three rounds.
