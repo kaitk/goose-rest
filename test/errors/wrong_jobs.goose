@@ -2,7 +2,7 @@
 // A lane of Writes opened with a thread that takes the reports lane's jobs:
 // thread_spawn checks the thread's rest::Jobs against lane_open's.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 
 enum Writes { Create { project: i64 } }

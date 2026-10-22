@@ -6,7 +6,7 @@
 // waits in turn, whole and in pieces, a timeout, and a wait with no wake
 // left.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 import expect from "../";
 

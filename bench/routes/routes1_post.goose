@@ -4,7 +4,7 @@
 //
 //   routes1_post http [port]   (WORKERS 1)
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 
 fn handle(req: const http::Request&, out: http::Reply) {
     var r = http::router(req);

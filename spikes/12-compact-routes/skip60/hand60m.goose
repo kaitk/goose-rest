@@ -5,7 +5,7 @@
 //
 //   hand60m http [port]   (WORKERS 1)
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 
 fn ok(cx) { http::respond(cx.out, 200, "text/plain", "ok"); }

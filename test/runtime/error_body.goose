@@ -1,7 +1,7 @@
 // A program's rest::error_body overload for its per-request state, which
 // shapes every error answer: a failure's and rest::otherwise's.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 import expect from "../";
 import common;

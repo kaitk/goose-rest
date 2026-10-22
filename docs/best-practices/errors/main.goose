@@ -7,7 +7,7 @@
 //   curl -s localhost:8080/projects/2
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../../";
 import projects.routes;
 

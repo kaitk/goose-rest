@@ -1,6 +1,6 @@
 // rest::path_of, on a parsed request's target and on the other forms.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 
 fn main() {

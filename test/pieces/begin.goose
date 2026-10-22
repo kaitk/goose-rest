@@ -1,7 +1,7 @@
 // rest::begin: a response sent in pieces, chunked and with a length, for
 // HEAD, and cut short by a failure.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 import expect from "../";
 import common;

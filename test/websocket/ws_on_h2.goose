@@ -2,7 +2,7 @@
 // not_implemented in goose-rest's error shape, nothing promised from the
 // gather pool, and no later call.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import rest from "../../";
 import rest.websocket;

@@ -1,7 +1,7 @@
 // The middleware's fields on an answer at a body's END, through
 // rest::serve_one: a body whole with its head, and one in pieces.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
 import rest from "../../";
 import expect from "../";
 import common;
