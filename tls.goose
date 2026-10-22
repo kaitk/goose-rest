@@ -22,8 +22,7 @@ import http.tls;
 //   var server = http::tls_server(ctx);
 //   rest::serve(cfg, app, St { .. }, server) { cx => handle(cx) };
 //   http::release(server);
-fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&,
-                  limits: Config = Config { .. }) -> http::Error {
+fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&) -> http::Error {
     return http::serve(cfg, Slot<S> { state: fresh }, server) { ev, st, out =>
         let mark = on_event(ev, st, app, out) { cx => H(cx) };
         if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => H(cx) }; }
@@ -32,8 +31,7 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&
 
 // serve with TLS on goose-http's epoll loop, which on Linux can hand a
 // connection's records to the kernel (tls::use_kernel).
-fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&,
-                        limits: Config = Config { .. }) -> http::Error {
+fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&) -> http::Error {
     return http::serve_epoll(cfg, Slot<S> { state: fresh }, server) { ev, st, out =>
         let mark = on_event(ev, st, app, out) { cx => H(cx) };
         if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => H(cx) }; }

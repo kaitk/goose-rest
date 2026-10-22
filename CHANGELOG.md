@@ -52,6 +52,8 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   `Cx.budget`, and `rest::Config.gather_budget` are gone: a program calls
   `http::gather_budget(bytes)` in `main` before `http::run`, and `rest::serve` and
   `rest::serve_one` leave the budget as it is.
+- Breaking: `rest::Config`, empty once the budget moved to goose-http, is gone, and
+  `rest::serve`, `rest::serve_epoll`, and `rest::serve_one` no longer take `limits`.
 
 WebSocket and HTTPS, each in a module `rest` doesn't import, made of goose-http's parts
 ([decisions](docs/decisions.md#websocket-and-https)).

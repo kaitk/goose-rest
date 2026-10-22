@@ -10,8 +10,7 @@ in order, and the [generator reference](generator.md) covers what `goose-rest ge
 by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each request's
 `cx.state` from `fresh`. A program with no state can call `rest::serve(cfg)`.
 With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
-`fresh`. `rest::serve(cfg, app, fresh, limits)` also takes goose-rest's own settings,
-a `rest::Config`, which has none yet. goose-http's `http::gather_budget(bytes)`, called
+`fresh`. goose-http's `http::gather_budget(bytes)`, called
 in `main` before `http::run`, bounds what each worker's gather pool promises at once:
 the bodies it gathers ([Extractors](#3-extractors)), the replies `rest::ask` waits for
 ([Lanes](#41-lanes)), and what the middleware keeps for an answer at a later call
@@ -149,7 +148,7 @@ thread_fn worker(cfg: http::Config, ctx: tls::Context) {
 }
 ```
 
-`rest::serve(cfg, app, fresh, server, limits)` serves HTTP/1.1 over TLS 1.3 on the
+`rest::serve(cfg, app, fresh, server)` serves HTTP/1.1 over TLS 1.3 on the
 listeners that ask for it, `Config.tls` or a `Listener`'s `tls`, and the rest as
 `rest::serve` does; `rest::serve_epoll` takes the same arguments. Handlers don't
 change, and a WebSocket on a TLS listener is `wss://`. The context, the listeners, what
@@ -890,15 +889,15 @@ using an instance it keeps in its request state.
 |---|---|
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
 | `rest::serve_one(text, app) { cx => ... }` | The same, with the worker state by reference in `cx.app` |
-| `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the request state, `cfg`'s limits, and `limits`, a `rest::Config`; `cfg` and `limits` are optional. The gather budget is the one `http::gather_budget` last set |
-| `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask` or `rest::pause`, in order |
+| `rest::serve_one(text, app, fresh, cfg) { cx => ... }` | The same, with `fresh` as the request state and `cfg`'s limits; `cfg` is optional. The gather budget is the one `http::gather_budget` last set |
+| `rest::serve_one(text, app, fresh, wakes, cfg) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask` or `rest::pause`, in order |
 | `rest::Wake { data, tag, timeout, early, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, as `rest::wake` gives them, or with `timeout: true`, the end of the wait, which is a `rest::pause`'s time come; with `early: true` as well, goose-http's `TIMEOUT` at once, tagged `http::NO_ROOM` for want of a timer (503 for `rest::ask` and before `rest::begin`, or the end of the response after it); on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
 | `rest::play(lane, job) { u, a => ... }` | Runs `job`, a variant of `lane`'s enum, through the block, as `rest::lane` runs it, with no thread or mail, and returns its reply, a `rest::Played`: an answer, a refusal for a `rest::fail`, its code whole, or 500 `no_reply` for neither. `rest::still_wanted` is true. The block is the lane's own, `run(u, state, a)`, to test a use case, or a stand-in that replies what a test needs. |
 | `rest::wake(p)` | The `Wake` that gives a route what `p`, a `rest::Played`, replied |
 | `rest::refusal(p)` | The status and code of the refusal `p` replied, or 0 and `""` for an answer |
 
 A body that doesn't fit in `cfg.max_head` with its head comes in pieces of
-`cfg.max_head` bytes: gathered as the server gathers it, within `limits`' gather budget,
+`cfg.max_head` bytes: gathered as the server gathers it, within the gather budget,
 so the block runs again once it's whole, or passed to a route that called `rest::body_in_pieces`. A body shorter than its
 `Content-Length` is a client that hung up midway: its pieces come, then `http::CLOSED`
 in place of `http::END`. A response begun with `rest::begin` or `rest::file` is taken to

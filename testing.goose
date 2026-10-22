@@ -9,7 +9,7 @@ import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d
 // What serve answers to text, one request's bytes, through H(cx) inside
 // rest::route: the status line, the fields, and the body, without Date or
 // Server. app is the worker state, fresh the request state, cfg the
-// limits goose-http applies, and limits goose-rest's. A body that doesn't
+// limits goose-http applies. A body that doesn't
 // fit in cfg.max_head with its head comes in pieces of cfg.max_head bytes:
 // gathered as serve gathers it, within http::gather_budget's, so H runs
 // again once it's whole if it called rest::body, or passed on
@@ -24,9 +24,9 @@ import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d
 // without Host is given "Host: localhost". A request goose-http refuses gets
 // its refusal, and H that doesn't answer 500, as from the server. A route
 // that waits (rest::ask) gets no reply here: see the serve_one below.
-fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = http::Config { .. },
-                      limits: Config = Config { .. }) -> u8[>..] {
-    return serve_one(text, app, fresh, [], cfg, limits) { cx => H(cx) };
+fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S,
+                      cfg: http::Config = http::Config { .. }) -> u8[>..] {
+    return serve_one(text, app, fresh, [], cfg) { cx => H(cx) };
 }
 
 // What serve_one gives a route that waits, in place of the thread it asked:
@@ -84,7 +84,7 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 //   let reply = rest::value_bytes(database::AssignReply { .. });
 //   let out = rest::serve_one(text, app, St { .. }, [rest::Wake { data: reply }]) { cx => handle(cx) };
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:],
-                      cfg: http::Config = http::Config { .. }, limits: Config = Config { .. }) -> u8[>..] {
+                      cfg: http::Config = http::Config { .. }) -> u8[>..] {
     var out: u8[>..] = [];
     let full = with_host(text);
     let req, status = http::parse(full, cfg.max_head, cfg.max_body, cfg.max_line, cfg.max_fields);

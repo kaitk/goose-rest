@@ -301,7 +301,8 @@ than the read buffer and needs the body tests and a tier D run on Linux. Replace
 Decided (2026-10-22), replacing goose-rest's own spill and its `Budget`: every run
 goose-rest keeps past a handler's call is an `http::Gather` of goose-http's gather pool,
 under the budget `http::gather_budget` sets, which a program calls in `main` before
-`http::run`; `rest::Config` has no field that mirrors it (2026-10-22)
+`http::run`, and goose-rest keeps no setting that mirrors it: `rest::Config`, left
+empty, is gone, and `serve` takes no settings of goose-rest's own (2026-10-22)
 ([goose-http's decision](https://github.com/kaitk/goose-http/blob/main/docs/decisions.md#the-gather-budget-counts-bytes-promised-and-refuses-at-admission)).
 The budget counts bytes promised, so each run is promised its most when it's admitted,
 and what the budget can't hold gets 503 `unavailable` with `Retry-After: 1` there:
