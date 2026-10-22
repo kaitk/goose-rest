@@ -1,6 +1,7 @@
 // rest::serve_one with a route that asks a lane, given what the lane's run
 // replies under rest::play: a value, whole and in pieces, a value past the
-// gather budget, a relay in one piece and in several with the job in front,
+// reply limit the route asked with, an ask the gather budget can't promise
+// its reply, a relay in one piece and in several with the job in front,
 // a refusal from a rest::fail on the lane, a run that replies nothing, two
 // waits in turn, whole and in pieces, a timeout, and a wait with no wake
 // left.
@@ -26,7 +27,8 @@ enum Use { None, Echo }
 
 struct St { use: Use = Use.None }
 
-struct App { to: rest::Lane<Echoes, Use> }
+// most is the reply limit of /narrow's ask.
+struct App { to: rest::Lane<Echoes, Use>, most: i64 = rest::REPLY_LIMIT }
 
 // What the lane's thread owns: here, what each job adds.
 struct Adder { by: i64 }
@@ -47,6 +49,8 @@ fn handle(cx) {
                 rest::ask(cx, cx.app.to, Echoes.Silent);
             } else if path == "/wide" {
                 rest::ask(cx, cx.app.to, Echoes.Wide { n: 7 });
+            } else if path == "/narrow" {
+                rest::ask(cx, cx.app.to, Echoes.Wide { n: 7 }, 5000, cx.app.most);
             } else {
                 rest::ask(cx, cx.app.to, Echoes.Twice { n: 1 });
             }
@@ -119,13 +123,20 @@ fn main() {
     expect::same(expect::body_of(answer("/wide", [rest::wake(wide)], thirds)), "wide 7: 49 seven", "a value after the job");
     print("a value of ", wide.data.len, " bytes in pieces of ", thirds.mail_size);
 
-    // A value the worker can't collect within its gather budget fails the
-    // route with 502 reply_too_large.
-    let none_left = rest::Config { gather_budget: wide.data.len };
+    // A value past the reply limit the route asked with fails the route with
+    // 502 reply_too_large.
+    app.most = wide.data.len - 1;
+    let past = answer("/narrow", [rest::wake(wide)], thirds);
+    print("past its limit: ", expect::status_of(past), " ", expect::body_of(past));
+    app.most = rest::REPLY_LIMIT;
+    // An ask the worker's gather budget can't promise its reply limit fails
+    // with 503 before its job is sent.
+    let none_left = rest::Config { gather_budget: rest::REPLY_LIMIT - 1 };
     let over = rest::serve_one(expect::request("GET", "/wide"), app, St { .. }, [rest::wake(wide)], thirds, none_left) { cx =>
         handle(cx);
     };
     print("over the budget: ", expect::status_of(over), " ", expect::body_of(over));
+    assert(find(over, "\r\nRetry-After: 1\r\n") >= 0);
 
     // A rest::fail on the lane fails the route with its status and code,
     // before the resume runs.

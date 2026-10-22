@@ -21,7 +21,7 @@ inline fn routes<S, A, F>(cx: rest::Cx<S, A, rest::NoRouter>&) {
     var c = rest::Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
                        kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
-                       kept: cx.kept, budget: cx.budget, router: r };
+                       kept: cx.kept, router: r };
     F(&c);
     if unanswered(c, mark) { rest::otherwise(c); }
 }
@@ -43,7 +43,7 @@ inline fn route<S, A, F>(cx: rest::Cx<S, A, http::Router>&) {
     var c = rest::Cx<S, A, Routed> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
                        kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
-                       kept: cx.kept, budget: cx.budget, router: m };
+                       kept: cx.kept, router: m };
     let mark = c.out.buf.len;
     let failed = rest::attempt() { F(&c); };
     for f in failed {

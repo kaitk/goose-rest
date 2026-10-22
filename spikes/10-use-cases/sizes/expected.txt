@@ -1,8 +1,8 @@
-tier M (NoState): state 1, Slot 51, Exchange 187, RingConn 234; 234 KB per 1,000 connections
-tiers C and D (Heavy): state 9, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
-lanes, Waiting: state 1, Slot 51, Exchange 187, RingConn 234; 234 KB per 1,000 connections
-lanes, Use with the sign-in's text: state 131, Slot 181, Exchange 317, RingConn 364; 364 KB per 1,000 connections
-lanes, Use with ids only: state 25, Slot 75, Exchange 211, RingConn 258; 258 KB per 1,000 connections
+tier M (NoState): state 1, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
+tiers C and D (Heavy): state 9, Slot 67, Exchange 203, RingConn 250; 250 KB per 1,000 connections
+lanes, Waiting: state 1, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
+lanes, Use with the sign-in's text: state 131, Slot 189, Exchange 325, RingConn 372; 372 KB per 1,000 connections
+lanes, Use with ids only: state 25, Slot 83, Exchange 219, RingConn 266; 266 KB per 1,000 connections
 EpollConn's fields beside its Exchange: 48
 Use.EntryCreate { .. } 24; a Use holding it 131; u8[..64] 65
 an Ask<Use> on a lane's box: 155 bytes; its to_bytes image: 157 of a 256-byte slot

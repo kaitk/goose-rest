@@ -225,7 +225,8 @@ fn resume(u: DbJob.Assign, cx) { rest::json(cx, 200, rest::answer<Assigned>(cx))
 `u` holds the job as the route sent it, so what the route needs when it resumes travels
 with the job, and the request state keeps only the mark. A job and its answer longer
 than one message of the worker's box, 256 bytes by default, come in pieces, which the
-worker collects before the `resume` runs, within the gather budget of
+worker collects before the `resume` runs, within the reply limit `rest::ask` takes, 64
+KB by default, which it promises from the gather budget of
 [page 10](10-large-bodies.md#body-limits-and-the-gather-budget). A reply that is
 sent on as it comes is [a reply in pieces](12-two-lanes.md#a-reply-in-pieces).
 

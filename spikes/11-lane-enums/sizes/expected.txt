@@ -1,11 +1,11 @@
-tier M (NoState): state 1, Slot 51, Exchange 187, RingConn 234; 234 KB per 1,000 connections
-tiers C and D (Heavy): state 9, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
-lanes, Waiting: state 1, Slot 51, Exchange 187, RingConn 234; 234 KB per 1,000 connections
-spike 10, Use with the sign-in's text: state 131, Slot 181, Exchange 317, RingConn 364; 364 KB per 1,000 connections
-spike 10, Use with ids only: state 25, Slot 75, Exchange 211, RingConn 258; 258 KB per 1,000 connections
-spike 11, the lane's mark: state 1, Slot 51, Exchange 187, RingConn 234; 234 KB per 1,000 connections
-spike 11, an outer enum holding the job: state 132, Slot 182, Exchange 318, RingConn 365; 365 KB per 1,000 connections
-spike 11, a field per lane: state 165, Slot 215, Exchange 351, RingConn 398; 398 KB per 1,000 connections
+tier M (NoState): state 1, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
+tiers C and D (Heavy): state 9, Slot 67, Exchange 203, RingConn 250; 250 KB per 1,000 connections
+lanes, Waiting: state 1, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
+spike 10, Use with the sign-in's text: state 131, Slot 189, Exchange 325, RingConn 372; 372 KB per 1,000 connections
+spike 10, Use with ids only: state 25, Slot 83, Exchange 219, RingConn 266; 266 KB per 1,000 connections
+spike 11, the lane's mark: state 1, Slot 59, Exchange 195, RingConn 242; 242 KB per 1,000 connections
+spike 11, an outer enum holding the job: state 132, Slot 190, Exchange 326, RingConn 373; 373 KB per 1,000 connections
+spike 11, a field per lane: state 165, Slot 223, Exchange 359, RingConn 406; 406 KB per 1,000 connections
 spike 10's Use: Ask image 157 bytes, echo 135 bytes
 Writes: Ask image 50 bytes, echo 28 bytes
 Reports: Ask image 34 bytes, echo 12 bytes

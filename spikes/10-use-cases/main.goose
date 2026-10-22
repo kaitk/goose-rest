@@ -40,12 +40,9 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
     var keep = r.keep_alive;
     var stream = http::Stream { later: http::address(box, key), .. };
     var st = rest::Slot<St> { state: St { .. } };
-    reusable[] var spill: u8[>..] = [];
-    var runs: rest::Run[>..] = [];
-    var budget = rest::Budget { size: rest::GATHER_BUDGET, runs: runs };
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: r.minor, head: false, stream: stream };
-    rest::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply,
-                   spill, budget) { cx => H(cx) };
+    rest::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply)
+                   { cx => H(cx) };
     var wakes: u8[>..] = [];
     while stream.waiting {
         assert(http::mail_wait(box, 5000));
@@ -55,7 +52,7 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
                 // The variant the route waits with, and whether the job failed.
                 format(wakes, "\n  wake: ", st.state.use, if tag == spike10::JOB_FAILED { ", job failed" } else { "" });
                 rest::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
-                                             tag: tag }, st, a, reply, spill, budget) { cx => H(cx) };
+                                             tag: tag }, st, a, reply) { cx => H(cx) };
             }
         };
     }

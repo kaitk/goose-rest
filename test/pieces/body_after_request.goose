@@ -54,14 +54,11 @@ fn answered(target: const u8[:]) -> u8[>..] {
     var keep = true;
     var stream = http::Stream { .. };
     var st = rest::Slot<St> { state: St { .. } };
-    reusable[] var spill: u8[>..] = [];
-    var runs: rest::Run[>..] = [];
-    var budget = rest::Budget { size: rest::GATHER_BUDGET, runs: runs };
     var app = rest::NoState { .. };
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: 1, head: false, stream: stream };
     fn send(kind: u8, data: const u8[:], whole: bool) {
-        rest::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, reply,
-                      spill, budget) { cx => handle(cx); };
+        rest::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, reply)
+            { cx => handle(cx); };
     }
     send(http::REQUEST, "", false);
     stream.waiting = false;

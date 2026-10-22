@@ -295,7 +295,48 @@ These replace copies of HTTP's constants and a slot size threaded through the
 context. `rest::text` keeps its own fields, `text/plain; charset=utf-8`: `http::TEXT`
 names no charset, and a client then guesses one for text past ASCII.
 Reusing `http::gather` is deferred: it changes the path for a body larger
-than the read buffer and needs the body tests and a tier D run on Linux.
+than the read buffer and needs the body tests and a tier D run on Linux. Replaced on
+2026-10-22 (below) by goose-http's gather pool, whose parts goose-rest composes.
+
+Decided (2026-10-22), replacing goose-rest's own spill and its `Budget`: every run
+goose-rest keeps past a handler's call is an `http::Gather` of goose-http's gather pool,
+under the budget `http::gather_budget` sets, which `rest::Config.gather_budget` gives
+each worker in `rest::serve`
+([goose-http's decision](https://github.com/kaitk/goose-http/blob/main/docs/decisions.md#the-gather-budget-counts-bytes-promised-and-refuses-at-admission)).
+The budget counts bytes promised, so each run is promised its most when it's admitted,
+and what the budget can't hold gets 503 `unavailable` with `Retry-After: 1` there:
+
+- A body that `rest::body` gathers: `http::gather_head` at the request, a
+  `Content-Length`'s exact size or a chunked body's limit, with the head. A chunked
+  body is then refused at its head, not once it grows past the budget, and is never
+  refused later; past its limit it gets 413, as before.
+- A reply `rest::ask` waits for: promised `most` bytes, a new parameter after `ms`,
+  `rest::REPLY_LIMIT`, 64 KB, by default, before the job is sent, so a lane does no work
+  for a reply the worker can't hold. A `rest::reply_value` past `most` gets 502
+  `reply_too_large`, as a body past its limit gets 413. The promise holds for every
+  ask, whether the lane replies in one message, in pieces collected, or relayed; it is a
+  count, and allocates nothing until a value comes in pieces. The reply's `Gather` is in
+  a table of the worker's, `replies`, which `Exchange.reply` indexes: in `Exchange` it
+  would grow every connection's slot by 40 bytes for routes that never ask.
+- What the middleware keeps for a later answer: promised its exact size at the request,
+  about 100 bytes. A budget too full for it answers the request 503 with the fields, ends
+  the route's wait, and gives a route reading its body `CLOSED`; before, these runs were
+  placed without a check.
+
+This lets go of the spill, `Budget`, `Run`, the mirror of the runs in use and the
+prediction of where the spill places the next (`track`, `untrack`, `spill_end`,
+`free_at`, `grown_end`, `grow_run`, `placed_end`, `fits`, `run_size`), goose-rest's own
+`gather_head`, `gather_piece`, and `release`, the reply run's 16-byte header, and the
+spill and budget parameters threaded through `serve`, `on_event`, `on_later`, and
+`serve_one`: the package is about 180 lines shorter. `Exchange` holds its run as an `http::Gather`, 58 bytes
+in all where it had 50, for the promise; a body received in pieces counts down from
+its limit, since a route reading pieces can keep fields in the run. The pool's length can pass the budget by what
+its free spans leave unused, which goose-http's decision accepts.
+
+Rejected: keeping the spill beside goose-http's pool, two arenas in a worker that
+gathers and later holds WebSocket runs; promising a reply at its first piece, which
+refuses it after the lane has done the work; and a `Gather` for the reply in
+`Exchange`, above.
 
 Decided (2026-10-22): a request no route took gets goose-http's verdict,
 `http::unrouted(r)`, which goose-rest writes in the program's error shape, rather than
@@ -763,7 +804,8 @@ replaces the rule above that a job and its answer fit one reply message for
 `rest::answer` to read them. `rest::reply_value` marks each of its pieces with a tag
 bit, `REPLY_VALUE`, beside `REPLY_REFUSED`, `REPLY_MORE`, and `REPLY_CONT`, and the
 worker appends each marked piece to a run of its spill, as it gathers a body for
-`rest::body`, counted against the same `gather_budget`. It calls the handler once, at
+`rest::body`, counted against the same `gather_budget` (since 2026-10-22, within the
+`most` that `rest::ask` promises it, [above](#the-api)). It calls the handler once, at
 the last piece, with the whole reply in `cx.reply`, so `rest::job` and `rest::answer`
 are unchanged. `rest::reply`'s pieces stay unmarked, and the handler gets each, which
 `rest::relay` sends on as a chunk.

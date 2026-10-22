@@ -72,9 +72,10 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
-// pieces of cfg.mail_size bytes, a reply_value's collected whole within
-// limits.gather_budget, a refusal in one, its code cut to fit as a lane cuts
-// it, or with the timeout. rest::ask checks its job against cfg.mail_size. A piece that comes
+// pieces of cfg.mail_size bytes, a reply_value's collected whole within the
+// most its rest::ask promised from limits.gather_budget, a refusal in one,
+// its code cut to fit as a lane cuts it, or with the timeout. rest::ask
+// checks its job against cfg.mail_size. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
 // no wake left ends the exchange with what the route wrote so far, or 500
 // if nothing; one with a response open is a client that goes, and H gets
@@ -105,24 +106,22 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
     let box, err = http::mail_open(2, cfg.mail_size);
     var stream = http::Stream { later: if err.code == 0 { http::address(box, 1) } else { http::MailAddress { .. } } };
     var st = Slot<S> { state: fresh };
-    reusable[] var spill: u8[>..] = [];
-    var runs: Run[>..] = [];
-    var budget = Budget { size: limits.gather_budget, runs: runs };
+    http::gather_budget(limits.gather_budget);
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: req.minor,
                               head: req.method == "HEAD", stream: stream };
     deliver(http::Event { kind: http::REQUEST, req: req, data: if whole { body } else { "" }, whole: whole,
-                          trailers: "" }, st, app, reply, spill, budget) { cx => H(cx) };
+                          trailers: "" }, st, app, reply) { cx => H(cx) };
     if !whole {
         // goose-http drops the rest of a body once the route has answered.
         var at = 0;
         while at < body.len && (out.len == 0 || stream.open) {
             let end = min(at + cfg.max_head, body.len);
             deliver(http::Event { kind: http::BODY, req: req, data: body[at..end], whole: false, trailers: "" },
-                    st, app, reply, spill, budget) { cx => H(cx) };
+                    st, app, reply) { cx => H(cx) };
             at = end;
         }
         deliver(http::Event { kind: if short { http::CLOSED } else { http::END }, req: req, data: "",
-                              whole: false, trailers: "" }, st, app, reply, spill, budget) { cx => H(cx) };
+                              whole: false, trailers: "" }, st, app, reply) { cx => H(cx) };
     }
     // MORE while a response is open, as the loop calls it for a client that
     // keeps up. A MORE that neither sends nor ends closes the connection, as
@@ -142,15 +141,15 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             if raw && !sent_after && after.len > 0 {
                 sent_after = true;
                 deliver(http::Event { kind: http::BODY, req: gone, data: after, whole: false, trailers: "" },
-                        st, app, reply, spill, budget) { cx => H(cx) };
+                        st, app, reply) { cx => H(cx) };
                 continue;
             }
             if !raw {
-                deliver(none, st, app, reply, spill, budget) { cx => H(cx) };
+                deliver(none, st, app, reply) { cx => H(cx) };
             }
             if raw || (out.len == before && !stream.moved && stream.open && !stream.waiting) {
                 deliver(http::Event { kind: http::CLOSED, req: req, data: "", whole: false, trailers: "" },
-                        st, app, reply, spill, budget) { cx => H(cx) };
+                        st, app, reply) { cx => H(cx) };
                 break;
             }
         }
@@ -159,7 +158,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         next++;
         if w.sent.len > 0 && stream.framing == http::Framing.Raw {
             deliver(http::Event { kind: http::BODY, req: gone, data: w.sent, whole: false, trailers: "" },
-                    st, app, reply, spill, budget) { cx => H(cx) };
+                    st, app, reply) { cx => H(cx) };
             // An end, or a failure that cut the connection, stops the wait,
             // as goose-http stops it.
             if !stream.open {
@@ -173,7 +172,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             stream.rearm = false;
             deliver(http::Event { kind: http::TIMEOUT, req: gone, data: "", whole: false, trailers: "",
                                   tag: if w.early { http::NO_ROOM } else { 0 } },
-                    st, app, reply, spill, budget) { cx => H(cx) };
+                    st, app, reply) { cx => H(cx) };
             continue;
         }
         var at = 0;
@@ -187,7 +186,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             stream.rearm = false;
             deliver(http::Event { kind: http::WAKE, req: gone, data: data[at..end], whole: false, trailers: "",
                                   tag: if more { tag | REPLY_MORE } else { tag } },
-                    st, app, reply, spill, budget) { cx => H(cx) };
+                    st, app, reply) { cx => H(cx) };
             guard more else { break; }
             at = end;
             tag = REPLY_CONT | (w.tag & REPLY_VALUE);
@@ -198,7 +197,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         stream.waiting = false;
         stream.rearm = false;
         deliver(http::Event { kind: http::CLOSED, req: gone, data: "", whole: false, trailers: "" },
-                st, app, reply, spill, budget) { cx => H(cx) };
+                st, app, reply) { cx => H(cx) };
     }
     if err.code == 0 { http::mail_close(box); }
     if out.len == 0 { http::refuse(out, 500, ""); }
@@ -206,9 +205,9 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
 }
 
 // ev handled as serve handles it, with H inside rest::route.
-fn deliver<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&, budget: Budget&) {
-    let mark = on_event(ev, st, app, out, spill, budget) { cx => route(cx) { H(cx); }; };
-    if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => route(cx) { H(cx); }; }; }
+fn deliver<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply) {
+    let mark = on_event(ev, st, app, out) { cx => route(cx) { H(cx); }; };
+    if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => route(cx) { H(cx); }; }; }
 }
 
 // serve_one for a program that keeps no request state.

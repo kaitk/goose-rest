@@ -19,7 +19,7 @@ inline fn routes<S, A, F>(cx: rest::Cx<S, A, rest::NoRouter>&) {
     var c = rest::Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
                        kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
-                       kept: cx.kept, budget: cx.budget, router: r };
+                       kept: cx.kept, router: r };
     rest::route(c) {
         F(&c);
         if unanswered(c, mark) { rest::otherwise(c); }

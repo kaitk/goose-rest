@@ -40,6 +40,16 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   route a `CLOSED`.
 - `rest::routes`, `rest::otherwise`, and the generated router take a request no route
   took's status from `http::unrouted`, rather than deciding it again.
+- Gathered bodies, collected replies, and the fields middleware keeps for a later answer
+  are runs of goose-http's gather pool, under the budget `rest::Config.gather_budget`
+  sets with `http::gather_budget`, in place of goose-rest's own spill. Each is promised
+  its most when it's admitted, and refused there with 503 `unavailable` and
+  `Retry-After: 1`. Breaking: a chunked body is refused at its head when the budget
+  can't promise its route's limit, not once it grows past the budget; `rest::ask` takes
+  `most`, the reply's limit, `rest::REPLY_LIMIT`, 64 KB, by default, promised before
+  the job is sent, and a `rest::reply_value` past it gets 502 `reply_too_large`, where
+  the budget alone bounded it; `rest::GATHER_BUDGET`, `rest::Budget`, `rest::Run`, and
+  `Cx.budget` are gone.
 
 ## v0.2.1 (2026-10-20)
 

@@ -110,13 +110,13 @@ worker keeps that memory after the request, for the bodies it gathers next: the 
 has gathered at once stays with it for its life. The route then reads the whole body in
 one call, and the worker answers no other request meanwhile.
 
-The gather budget bounds that memory. When a route calls `rest::body`, a body with a
-`Content-Length` reserves its whole length plus its head. A chunked body takes space as
-it grows. If the worker has no room within the budget, it answers 503 with
-`Retry-After: 1`, in the program's error shape. For a body with a `Content-Length`, this
-happens at once, before the client sends it. For a chunked body, it happens when the
-body can no longer grow, and the connection closes. The client can try again a second
-later, once the worker has answered the requests whose bodies it gathered in the meantime.
+The gather budget bounds what the worker promises its bodies at once. When a route
+calls `rest::body`, a body with a `Content-Length` is promised its whole length plus its
+head, and a chunked body the route's limit plus its head. If the budget can't promise
+that much, the worker answers 503 with `Retry-After: 1`, in the program's error shape,
+at once, before the client sends the body; a body it admits is never refused later. The
+client can try again a second later, once the worker has answered the requests whose
+bodies it gathered in the meantime.
 
 The default, 64 MB, lets a worker gather 63 bodies at the 1 MB limit at once, since each
 takes its head too. The import sets a budget of its own, in the `rest::Config` it

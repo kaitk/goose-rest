@@ -198,9 +198,9 @@ an `await`. The job crosses as a `to_bytes` image, with no JSON between threads,
 the lane's box carries bytes in fixed-size slots, as goose-http's
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
 explains. A reply longer than a slot comes in pieces. The lane marks the pieces of a
-`rest::reply_value`, and the worker collects them in its spill, under the same gather
-budget as the bodies it gathers, and calls the `resume` once with the whole reply, so
-`rest::answer` reads any size the budget allows. `rest::reply`'s pieces go unmarked,
+`rest::reply_value`, and the worker collects them in a run of goose-http's gather
+pool, as it gathers bodies, up to the reply limit `rest::ask` promised from the same
+budget, and calls the `resume` once with the whole reply. `rest::reply`'s pieces go unmarked,
 and `rest::relay` sends each on as a chunk as it comes. Either way the job, behind its
 4-byte length, must fit the first piece, which the `resume` and `relay` read it from:
 `rest::ask` checks it against the reply's slot size before it sends the job, and fails
@@ -257,13 +257,21 @@ a 504 can't follow the 101, and which sets the upgrade's variant back when the w
 ends. Only the `WAKE` carries a job to dispatch on, so that `resume` tells the events
 apart by `cx.kind`. An exchange has one wait, so a second `rest::ask` during it fails.
 
-A body gathered for `rest::body` and a `rest::reply_value` collected from its pieces
-are each a run of the worker's spill, which `rest::Config`'s `gather_budget` bounds. A
-reply's run starts with its length and capacity, and the exchange keeps only where it
-starts, so that the slot that goose-http copies for each request stays small. The
-run is freed once the `resume` has had the reply, or when the client goes, the time limit
-passes, the reply passes the budget, or the route stops waiting, ends, or fails at a
-later call. A reply past the budget cuts a response begun, and its route gets `CLOSED`.
+A body gathered for `rest::body`, a reply `rest::ask` waits for, and what a route's
+middleware keeps for a later answer are each an `http::Gather`, a run of goose-http's
+gather pool and the bytes promised it, under the budget `rest::Config`'s
+`gather_budget` sets with `http::gather_budget`
+([goose-http's parts](https://github.com/kaitk/goose-http/blob/main/docs/api.md#parts)).
+Each is promised its most at admission, so what the budget can't hold is refused there,
+with 503, and never partway: a body at `rest::body`, with its `Content-Length` or its
+route's limit; a reply at `rest::ask`, before its job is sent, with the ask's limit;
+and the middleware's fields at the request. The exchange keeps the body's run, or the
+fields', in its slot; a reply's is in a table of the worker's, which the exchange finds
+by index, so that the slot goose-http copies for each request doesn't grow for routes
+that never ask. A reply's run is freed once the `resume` has had the reply, or when the
+client goes, the time limit passes, the reply passes its limit, or the route stops
+waiting, ends, or fails at a later call. A reply past its limit gets 502, or cuts a
+response begun, and its route gets `CLOSED`.
 
 A route's middleware keeps what it decided with the exchange, so an answer written at a
 later call still gets the CORS fields, security policy, and `Server-Timing`. A file

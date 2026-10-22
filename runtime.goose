@@ -38,9 +38,6 @@ struct Cx<S, A, R> {
     // What the middleware decided for an answer at a later call, under
     // serve; null elsewhere.
     kept: Kept? = null,
-    // The worker's budget for bodies being gathered, under serve; null
-    // elsewhere.
-    budget: Budget? = null,
     router: R&,
 }
 
@@ -64,7 +61,7 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     var c = Cx<S, A, http::Router> { req: cx.req, body: cx.body, out: cx.out, state: cx.state,
                        app: cx.app, scratch: cx.scratch,
                        kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
-                       kept: cx.kept, budget: cx.budget, router: r };
+                       kept: cx.kept, router: r };
     routed(c) {
         F(&c);   // a block given the local itself gets a copy of it
         settle(c, mark);
@@ -128,30 +125,15 @@ struct NoState { unused: bool = false }
 let BODY_LIMIT = 1024 * 1024;
 
 // goose-rest's settings for serve, beside goose-http's http::Config.
-// gather_budget is the most bytes a worker's spill, which keeps its
-// high-water mark for the worker's life, reaches for the bodies it gathers
-// for rest::body, heads included, and the replies of rest::reply_value it
-// collects from pieces: a body that the spill can't place within it gets 503
-// unavailable with Retry-After, at its head for a body with a
-// Content-Length, or once a chunked body grows past it, and a reply 502
-// reply_too_large. Bodies read with rest::body_in_pieces, and replies
-// relayed, don't count.
-struct Config { gather_budget: i64 = GATHER_BUDGET }
-
-// 63 bodies at goose-http's default max_body of 1 MB at once, with their
-// heads, or three at a 16 MB limit, in each worker.
-let GATHER_BUDGET: i64 = 64 * 1024 * 1024;
-
-// A run of the spill in use, a gathered body's, a reply's being collected,
-// or what an exchange's middleware kept; a cap of 0 is a free entry of
-// Budget.runs.
-struct Run { at: i64 = 0, cap: i64 = 0 }
-
-// A worker's spill as its gather budget sees it: size, the most bytes it
-// may reach, len, its length, and the runs in use, whose places say where
-// the spill puts the next run (spill_end). The middleware's kept runs, about
-// 100 bytes each, are placed without a check.
-struct Budget { size: i64, len: i64 = 0, runs: Run[>..]& }
+// gather_budget is the most bytes the worker's gather pool promises at once
+// (http::gather_budget): to the bodies rest::body gathers, heads included,
+// the replies rest::ask waits for, at its reply limit each, and what the
+// middleware keeps for an answer at a later call. A body the budget can't
+// promise its bytes gets 503 unavailable with Retry-After at its head, and a
+// rest::ask the same before its job is sent. Bodies read with
+// rest::body_in_pieces, and replies relayed, take nothing beyond their
+// promise.
+struct Config { gather_budget: i64 = http::GATHER_BUDGET }
 
 // The seconds a 503 past the budget asks a client to wait, the fewest the
 // field can say: the budget frees as soon as a body being gathered is
@@ -165,9 +147,9 @@ let RETRY_AFTER = "1";
 // the exchange keeps what its middleware decided for a later answer.
 // OFFERED says the handler runs inside rest::compressed, and CODED that the
 // response rest::begin began there holds an encoder (compression.goose).
-// COLLECTING says the exchange collects a reply_value's pieces in a run of
-// the spill (collect_reply). PAUSED says the route paused before beginning a
-// response (rest::pause).
+// ASKED says the exchange holds a promise for the reply rest::ask waits for,
+// which collects a reply_value's pieces (collect_reply). PAUSED says the
+// route paused before beginning a response (rest::pause).
 let GATHERING: u16 = 1;
 let RECEIVING: u16 = 2;
 let SENDING: u16 = 4;
@@ -176,25 +158,28 @@ let LATER: u16 = 15;
 let KEPT: u16 = 16;
 let OFFERED: u16 = 32;
 let CODED: u16 = 64;
-let COLLECTING: u16 = 128;
+let ASKED: u16 = 128;
 let PAUSED: u16 = 256;
 
-// What serve keeps of a request past the handler's first call. A body
-// gathered for rest::body is a run of the worker's spill from at, of cap
-// bytes, that holds the head rebuilt (head bytes) and then the body so
-// far; a body received in pieces counts its bytes so far in len. With KEPT,
-// at and cap are instead the run stash_kept wrote, and head the length of
-// its fields: a route keeps it only once its body is gathered. With
-// COLLECTING, reply is where the run of a reply being collected starts.
+// What serve keeps of a request past the handler's first call. run is a run
+// of the worker's gather pool: a body gathered for rest::body, the head
+// rebuilt (run.head bytes) and then the body so far, or with KEPT, what
+// stash_kept wrote, run.head being the length of its fields: a route keeps
+// it only once its body is gathered. A body received in pieces counts its
+// bytes down from limit, which a route reading pieces keeps fields beside.
+// With ASKED, reply is the entry of replies that holds the reply's promise
+// and its run.
 struct Exchange {
     mode: u16 = 0,
     limit: i64 = 0,          // the first rest::body's or rest::body_in_pieces's limit, 0 before it
-    at: i64 = 0,
-    len: i64 = 0,
-    cap: i64 = 0,
-    head: i64 = 0,
+    run: http::Gather = http::Gather { .. },
     reply: i64 = 0,
 }
+
+// Each worker's runs for the replies its routes wait for, found by
+// Exchange.reply: a Gather in every exchange would cost every connection's
+// slot 40 bytes for routes that never ask.
+reusable var replies: http::Gather[>..] = [];
 
 // goose-http's state for each request: the program's, and the exchange's.
 struct Slot<S> { state: S, ex: Exchange = Exchange { .. } }
@@ -206,20 +191,17 @@ struct Slot<S> { state: S, ex: Exchange = Exchange { .. } }
 // and the request state, starting from fresh, in cx.state. A body that
 // doesn't come with its head is gathered when a route asks for it
 // (rest::body), and H runs again once it's whole, within limits'
-// gather_budget. Each worker calls serve, so the spill, a local of this
-// call, and its budget are that worker's own.
+// gather_budget, which each worker sets for its own pool here.
 //
 //   var app = App { .. };
 //   rest::serve(cfg, app) { cx => handle(cx) };
 fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config { .. }) -> http::Error {
-    reusable[] var spill: u8[>..] = [];
-    var runs: Run[>..] = [];
-    var budget = Budget { size: limits.gather_budget, runs: runs };
+    http::gather_budget(limits.gather_budget);
     return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        let mark = on_event(ev, st, app, out, spill, budget) { cx => H(cx) };
+        let mark = on_event(ev, st, app, out) { cx => H(cx) };
         // Here, not in on_event: a function holding a call given a block
         // that stays a call isn't inlined.
-        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => H(cx) }; }
+        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => H(cx) }; }
     };
 }
 
@@ -228,12 +210,10 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config 
 // emitted it out of line, about 200 more instructions per request on Linux
 // (2026-10-22).
 fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config { .. }) -> http::Error {
-    reusable[] var spill: u8[>..] = [];
-    var runs: Run[>..] = [];
-    var budget = Budget { size: limits.gather_budget, runs: runs };
+    http::gather_budget(limits.gather_budget);
     return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        let mark = on_event(ev, st, app, out, spill, budget) { cx => H(cx) };
-        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => H(cx) }; }
+        let mark = on_event(ev, st, app, out) { cx => H(cx) };
+        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => H(cx) }; }
     };
 }
 
@@ -262,25 +242,22 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 // once collect_reply has collected them; the later pieces of a reply relay
 // sends on itself; and 504 when a reply doesn't come in time, or 503 when
 // goose-http had no room for the wait, except on an upgraded connection,
-// whose route on_later calls with the TIMEOUT. A reply
-// cut short by its time limit leaves the response open, and goose-http
-// closes the connection.
-// An answer after REQUEST gets the fields its middleware kept (stash_kept).
-// Returns out.buf.len from before its call to H, or after a reply past the
-// budget, or -1 for none, for
-// on_later, which the caller then calls for a route that reads, sends, or
-// upgrades (Exchange.mode).
-inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&,
-                            budget: Budget&) -> i64 {
+// whose route on_later calls with the TIMEOUT. A reply cut short by its
+// time limit leaves the response open, and goose-http closes the
+// connection. An answer after REQUEST gets the fields its middleware kept
+// (stash_kept). Returns out.buf.len from before its call to H, or after a
+// reply past its limit, or -1 for none, for on_later, which the caller then
+// calls for a route that reads, sends, or upgrades (Exchange.mode).
+inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply) -> i64 {
     if ev.kind == http::WAKE && (ev.tag & (REPLY_CONT | REPLY_VALUE)) != 0 {
         if (ev.tag & REPLY_VALUE) == 0 {
             relay_piece(out, ev.data, (ev.tag & REPLY_MORE) != 0);
             return -1;
         }
-        // A reply past the budget, with COLLECTING cleared, goes on to after,
+        // A reply past its limit, with ASKED cleared, goes on to after,
         // which gives CLOSED to a route whose response it cut.
-        if (ev.tag & (REPLY_CONT | REPLY_MORE)) != 0 && !collect_reply(st, ev.data, ev.tag, out, spill, budget) {
-            return if (st.ex.mode & COLLECTING) != 0 { -1 } else { out.buf.len };
+        if (ev.tag & (REPLY_CONT | REPLY_MORE)) != 0 && !collect_reply(st, ev.data, ev.tag, out) {
+            return if (st.ex.mode & ASKED) != 0 { -1 } else { out.buf.len };
         }
     }
     // A TIMEOUT tagged NO_ROOM is goose-http's, given at once for want of a
@@ -293,15 +270,15 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         st.ex.mode &= ~PAUSED;
         guard paused && !no_room else {
             let refused = paused || no_room;
-            drop_reply(st.ex, spill, budget);
-            end_wait(st, out, spill, budget, if refused { 503 } else { 504 }, if refused { "unavailable" } else { "timeout" },
-                     false, if refused { RETRY_AFTER } else { "" });
+            drop_reply(st.ex);
+            end_wait(st, out, if refused { 503 } else { 504 }, if refused { "unavailable" } else { "timeout" }, false,
+                     if refused { RETRY_AFTER } else { "" });
             return -1;
         }
     }
     if ev.kind == http::CLOSED {
-        drop_kept(st.ex, spill, budget);
-        drop_reply(st.ex, spill, budget);
+        drop_kept(st.ex);
+        drop_reply(st.ex);
     }
     var mark: i64 = -1;
     if ev.kind == http::REQUEST || ev.kind == http::WAKE || ev.kind == http::TIMEOUT {
@@ -311,21 +288,30 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         let wake = ev.kind != http::REQUEST;
         mark = out.buf.len;
         var o = out;
-        if wake { o.common = kept_fields(out.common, st.ex, spill, fields); }
+        if wake { o.common = kept_fields(out.common, st.ex, fields); }
+        // The wait's reply, which H reads, and frees after it: H may ask again.
+        var done: i64 = -1;
+        if wake && (st.ex.mode & ASKED) != 0 {
+            done = st.ex.reply;
+            st.ex.mode &= ~ASKED;
+        }
         var none = NoRouter { .. };
         var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: o, state: st.state,
                                       app: app, scratch: scratch, kind: ev.kind,
-                                      reply: if wake { collected(st.ex, ev.data, ev.tag, spill) } else { "" },
+                                      reply: if wake { collected(done, ev.data, ev.tag) } else { "" },
                                       refused: wake && (ev.tag & REPLY_REFUSED) != 0,
                                       more: if wake { (ev.tag & REPLY_MORE) != 0 } else { !ev.whole },
-                                      ex: st.ex, kept: kept, budget: budget, router: none };
+                                      ex: st.ex, kept: kept, router: none };
         H(cx);
         if wake {
-            settle_kept(st.ex, o, mark, spill, budget);
-            drop_reply(st.ex, spill, budget);
+            settle_kept(st.ex, o, mark);
+            if done >= 0 { free_reply(done); }
         } else if kept.taken {
-            let at, n, len = stash_kept(kept, scratch, out.common, ev.req, spill, budget);
-            keep_run(st.ex, at, n, len);
+            if stash_kept(kept, scratch, out.common, ev.req, st.ex.run) {
+                st.ex.mode |= KEPT;
+            } else {
+                refuse_kept(st, out, scratch[kept.from..kept.to]);
+            }
         }
     }
     return mark;
@@ -345,18 +331,17 @@ let GATHERED: u8 = 254;
 // on_later where it's called once, as goose-http's loop calls serve's block
 // once in each place: no Goose construct keeps it out of line
 // (docs/goose-findings.md).
-fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&, budget: Budget&,
-                     mark: i64) {
+fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, mark: i64) {
     var fields: u8[>..] = [];
     var o = out;
-    o.common = kept_fields(out.common, st.ex, spill, fields);
+    o.common = kept_fields(out.common, st.ex, fields);
     let from = out.buf.len;
-    var k = if mark >= 0 { after(ev, st, o, spill, budget, ev.kind, mark) } else { arrived(ev, st, o, spill, budget) };
+    var k = if mark >= 0 { after(ev, st, o, ev.kind, mark) } else { arrived(ev, st, o) };
     while k != http::NO_EVENT {
         let before = out.buf.len;
         let gathered = k == GATHERED;
-        let g = st.ex;
-        let head = head_of(ev.req, gathered, g, spill);
+        let g = st.ex.run;
+        let head = head_of(ev.req, gathered, g);
         var scratch: u8[>..] = [];
         var kept = Kept { .. };
         var none = NoRouter { .. };
@@ -371,26 +356,29 @@ fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, s
             o
         };
         var cx = Cx<S, A, NoRouter> { req: head,
-                                      body: if gathered { spill[g.at + g.head..g.at + g.len] }
+                                      body: if gathered { http::gathered[g.at + g.head..g.at + g.len] }
                                             else if k == http::BODY { ev.data } else { "" },
                                       out: r, state: st.state, app: app, scratch: scratch,
                                       kind: if gathered { http::REQUEST } else { k }, ex: st.ex, kept: kept,
-                                      budget: budget, router: none };
+                                      router: none };
         H(cx);
         // Stashed before after releases the gathered run, which head points into.
-        var at: i64 = -1;
-        var n: i64 = 0;
-        var len: i64 = 0;
-        if gathered && kept.taken { at, n, len = stash_kept(kept, scratch, out.common, head, spill, budget); }
-        k = after(ev, st, o, spill, budget, k, before);
-        keep_run(st.ex, at, n, len);
+        var stash = http::Gather { .. };
+        if gathered && kept.taken && !stash_kept(kept, scratch, out.common, head, stash) {
+            refuse_kept(st, out, scratch[kept.from..kept.to]);
+        }
+        k = after(ev, st, o, k, before);
+        if stash.most > 0 {
+            st.ex.run = stash;
+            st.ex.mode |= KEPT;
+        }
     }
     // A route that stopped the wait at a later call, or ended, as with
     // rest::end on an upgraded connection, whose wait goose-http clears only
     // once the handler returns, gets no more of the reply it collected. A
     // route that receives its body has no stream open, and still waits.
-    if !out.stream.waiting || (!out.stream.open && (st.ex.mode & LATER) == 0) { drop_reply(st.ex, spill, budget); }
-    settle_kept(st.ex, o, from, spill, budget);
+    if !out.stream.waiting || (!out.stream.open && (st.ex.mode & LATER) == 0) { drop_reply(st.ex); }
+    settle_kept(st.ex, o, from);
 }
 
 // What the middleware around a route decided at its request (rest::cors,
@@ -412,47 +400,50 @@ let KEPT_HEAD = 9;
 let KEPT_TIMED: u8 = 1;
 let KEPT_LOG: u8 = 2;
 
-// Copies what k holds into a new run of the spill: begun, the flags, its
-// fields in scratch past base, the loop's common fields, which are the
-// current ones at the later answer, and for the log req's method and
-// target, and records it in budget. Returns the run's start and length, and
-// the length of its fields.
+// Copies what k holds into g, a run of the gather pool promised its exact
+// size: begun, the flags, its fields in scratch past base, the loop's common
+// fields, which are the current ones at the later answer, and for the log
+// req's method and target, with g.head the length of its fields. Returns
+// false, keeping nothing, when the worker's budget can't promise the run.
 fn stash_kept(k: const Kept&, scratch: const u8[:], base: const u8[:], req: const http::Request&,
-              spill: u8[>..]&, budget: Budget&) -> i64, i64, i64 {
+              g: http::Gather&) -> bool {
     let all = scratch[k.from..k.to];
     let fields = if k.taken && starts_with(all, base) { all[base.len..] } else { "" };
     let line = if k.timed && k.log { req.method.len + 1 + req.target.len } else { 0 };
-    let run = spill.alloc_slice(KEPT_HEAD + fields.len + line);
-    for i in 8 { run[i] = ((k.begun >> (i * 8)) & 0xFF) as u8; }
-    run[8] = (if k.timed { KEPT_TIMED } else { 0 }) | (if k.log { KEPT_LOG } else { 0 });
-    var at = KEPT_HEAD;
-    copy_into(run[at..at + fields.len], fields);
-    at += fields.len;
+    guard http::gather_promise(g, KEPT_HEAD + fields.len + line) else { return false; }
+    var head: u8[..KEPT_HEAD] = [];
+    for i in 8 { head.push(((k.begun >> (i * 8)) & 0xFF) as u8); }
+    head.push((if k.timed { KEPT_TIMED } else { 0 }) | (if k.log { KEPT_LOG } else { 0 }));
+    http::gather_piece(g, head);
+    http::gather_piece(g, fields);
     if line > 0 {
-        copy_into(run[at..at + req.method.len], req.method);
-        run[at + req.method.len] = ' ';
-        copy_into(run[at + req.method.len + 1..], req.target);
+        http::gather_piece(g, req.method);
+        http::gather_piece(g, " ");
+        http::gather_piece(g, req.target);
     }
-    track(budget, spill.index_of(run[0]), run.len, spill.len);
-    return spill.index_of(run[0]), run.len, fields.len;
+    g.head = fields.len;
+    return true;
 }
 
-// Makes x keep the run at, of n bytes, that stash_kept wrote; nothing for
-// an at of -1.
-fn keep_run(x: Exchange&, at: i64, n: i64, len: i64) {
-    guard at >= 0 else { return; }
-    x.at = at;
-    x.cap = n;
-    x.head = len;
-    x.mode |= KEPT;
+// Answers 503 unavailable, with common for its fields, for a route that
+// left its answer to a later call when the worker's budget can't keep what
+// its middleware decided for it: the wait ends, and a route reading its body
+// gets CLOSED (after).
+fn refuse_kept<S>(st: Slot<S>&, out: http::Reply, common: const u8[:]) {
+    out.stream.waiting = false;
+    out.stream.rearm = false;
+    drop_reply(st.ex);
+    var o = out;
+    o.common = common;
+    write_error(o, st.state, 503, "unavailable", "", -1, "", "", RETRY_AFTER);
 }
 
 // common, or with KEPT, common and then the fields x kept, onto fields,
 // which the result then points into.
-fn kept_fields(common: const u8[:], x: const Exchange&, spill: const u8[:], fields: u8[>..]&) -> const u8[:] {
+fn kept_fields(common: const u8[:], x: const Exchange&, fields: u8[>..]&) -> const u8[:] {
     guard (x.mode & KEPT) != 0 else { return common; }
     fields.append(common);
-    fields.append(spill[x.at + KEPT_HEAD..x.at + KEPT_HEAD + x.head]);
+    fields.append(http::gathered[x.run.at + KEPT_HEAD..x.run.at + KEPT_HEAD + x.run.head]);
     return fields;
 }
 
@@ -460,14 +451,14 @@ fn kept_fields(common: const u8[:], x: const Exchange&, spill: const u8[:], fiel
 // first: fills in its Server-Timing and writes timed's log line, then frees
 // the run. Frees it also once the exchange owes the route no more calls,
 // as when goose-http answers 500 for a route that didn't.
-fn settle_kept(x: Exchange&, out: http::Reply, from: i64, spill: u8[>..]&, budget: Budget&) {
+fn settle_kept(x: Exchange&, out: http::Reply, from: i64) {
     guard (x.mode & KEPT) != 0 else { return; }
     if out.buf.len == from {
         guard !out.stream.waiting && (x.mode & LATER) == 0 else { return; }
-        drop_kept(x, spill, budget);
+        drop_kept(x);
         return;
     }
-    let run = spill[x.at..x.at + x.cap];
+    let run = http::gathered[x.run.at..x.run.at + x.run.len];
     let flags = run[8];
     if (flags & KEPT_TIMED) != 0 {
         var begun: i64 = 0;
@@ -477,52 +468,44 @@ fn settle_kept(x: Exchange&, out: http::Reply, from: i64, spill: u8[>..]&, budge
         }
         var ms: u8[..32] = [];
         format_ms(ms, clock_ns() - begun);
-        let fields = run[KEPT_HEAD..KEPT_HEAD + x.head];
+        let fields = run[KEPT_HEAD..KEPT_HEAD + x.run.head];
         let at = find(fields, TIMING);
         if at >= 0 { fill_timing(out, from, out.common.len - fields.len + at, ms); }
         if (flags & KEPT_LOG) != 0 {
-            write_stderr(str(run[KEPT_HEAD + x.head..], " ", out.stream.status, " ", out.buf.len - from, " ", ms, "\n"));
+            write_stderr(str(run[KEPT_HEAD + x.run.head..], " ", out.stream.status, " ", out.buf.len - from, " ", ms,
+                             "\n"));
         }
     }
-    drop_kept(x, spill, budget);
+    drop_kept(x);
 }
 
 // Frees the run x kept, if any.
-fn drop_kept(x: Exchange&, spill: u8[>..]&, budget: Budget&) {
+fn drop_kept(x: Exchange&) {
     guard (x.mode & KEPT) != 0 else { return; }
-    spill.free_slice(spill[x.at..x.at + x.cap]);
-    untrack(budget, x.at);
-    x.at = 0;
-    x.cap = 0;
-    x.head = 0;
+    http::release_gather(x.run);
     x.mode &= ~KEPT;
 }
 
 // What on_later calls H with for ev, an event after the request's first
 // call, http::NO_EVENT for nothing, and what serve does itself: a gathered
 // body's pieces, and the limit of one gathered or received. Past its limit
-// a body gets 413 and the connection closes, as http::body_within does, and
-// a gathered one past the budget 503.
-fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, budget: Budget&) -> u8 {
+// a body gets 413 and the connection closes, as http::body_within does.
+fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply) -> u8 {
     let x .= st.ex;
     let k = ev.kind;
     if x.mode & GATHERING != 0 {
         if k == http::BODY {
-            let status = gather_piece(x, ev.data, spill, budget);
-            guard status == 0 else {
-                release(x, spill, budget);
+            // The run was promised the limit, which only a chunked body can pass.
+            guard http::gather_piece(x.run, ev.data) else {
+                release(x);
                 out.keep_alive = false;
-                if status == 413 {
-                    write_error(out, st.state, 413, "payload_too_large", "", -1, "");
-                } else {
-                    write_error(out, st.state, 503, "unavailable", "", -1, "", "", RETRY_AFTER);
-                }
+                write_error(out, st.state, 413, "payload_too_large", "", -1, "");
                 return http::NO_EVENT;
             }
         } else if k == http::END {
             return GATHERED;
         } else if k == http::CLOSED {
-            release(x, spill, budget);
+            release(x);
         }
         return http::NO_EVENT;
     }
@@ -539,8 +522,8 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, 
         return k;
     }
     if k == http::BODY && (x.mode & RECEIVING) != 0 {
-        x.len += ev.data.len;
-        guard x.len <= x.limit else {
+        x.limit -= ev.data.len;
+        guard x.limit >= 0 else {
             out.keep_alive = false;
             if out.stream.open {
                 out.stream.open = false;
@@ -564,21 +547,22 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, 
 // gathering rest::body left the route for, the BODY and END of a body that
 // came whole, or CLOSED for a route that answered before its body's END or
 // that rest::route cut short (route), as the end of its exchange.
-fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, budget: Budget&, k: u8,
-            before: i64) -> u8 {
+fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, k: u8, before: i64) -> u8 {
     let x .= st.ex;
     if k == http::CLOSED {
         if (x.mode & CODED) != 0 { release_coded(x, out.fd); }
-        drop_reply(x, spill, budget);
+        drop_reply(x);
         x.mode &= KEPT;
         return http::NO_EVENT;
     }
     if (x.mode & GATHERING) != 0 {
+        // An answer after rest::body left the route, as a middleware's, ends
+        // the gathering.
         guard k == GATHERED else {
-            if out.buf.len == before { gather_head(x, ev.req, spill, budget); } else { x.mode &= ~GATHERING; }
+            if out.buf.len > before { release(x); }
             return http::NO_EVENT;
         }
-        release(x, spill, budget);
+        release(x);
     }
     let open = out.stream.open;
     if k == http::END { x.mode &= ~RECEIVING; }
@@ -593,130 +577,45 @@ fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, bu
 }
 
 // The head of the request H is called for: req, or for a gathered body, the
-// head parsed again from its copy in the spill.
-fn head_of(req: const http::Request&, gathered: bool, x: const Exchange&, spill: const u8[:]) -> http::Request {
+// head parsed again from its copy in g's run.
+fn head_of(req: const http::Request&, gathered: bool, g: const http::Gather&) -> http::Request {
     guard gathered else { return req; }
-    let r, status = http::parse(spill[x.at..x.at + x.head], x.head, x.len);
+    let r, status = http::parse(http::gathered[g.at..g.at + g.head], g.head, g.len);
     return r;
 }
 
-// The run a chunked body's gathering starts with, which doubles as it fills.
-let CHUNKED_RUN = 16384;
+// The most bytes of a reply rest::ask takes unless a route says otherwise:
+// its promise from the worker's gather budget while it waits.
+let REPLY_LIMIT: i64 = 64 * 1024;
 
-// The bytes of the run req's body is gathered into at first: the head
-// gather_head rebuilds, and the body's length, or for a chunked body
-// CHUNKED_RUN in all.
-fn run_size(req: const http::Request&) -> i64 {
-    let head = req.method.len + 1 + req.target.len + " HTTP/1.x\r\n".len + req.fields.len + 2;
-    return if req.chunked { max(head, CHUNKED_RUN) } else { head + req.body };
-}
-
-// Starts g's run with the head rebuilt from req, whose bytes goose-http
-// reuses once its handler returns, and records it in budget. A body with a
-// Content-Length gets a run of the head and the body's exact size, which
-// never grows or moves; a chunked one, of CHUNKED_RUN bytes. rest::body has
-// checked that it fits.
-fn gather_head(g: Exchange&, req: const http::Request&, spill: u8[>..]&, budget: Budget&) {
-    var head: u8[>..] = [];
-    head.append(req.method);
-    head.push(' ');
-    head.append(req.target);
-    head.append(" HTTP/1.");
-    format(head, req.minor);
-    head.append("\r\n");
-    head.append(req.fields);
-    head.append("\r\n");
-    let cap = run_size(req);
-    let run = spill.alloc_slice(cap);
-    copy_into(run[..head.len], head);
-    g.at = spill.index_of(run[0]);
-    g.cap = cap;
-    g.head = head.len;
-    g.len = head.len;
-    track(budget, g.at, cap, spill.len);
-}
-
-// Appends data to g's run, doubling it when it's full, or growing it only as
-// far as data needs when a doubled run would take the spill past the budget.
-// Returns 0, or 413 for a body that would pass g's limit, or 503 for one
-// that the spill can't hold within the budget.
-fn gather_piece(g: Exchange&, data: const u8[:], spill: u8[>..]&, budget: Budget&) -> i32 {
-    let n = g.len + data.len;
-    guard n - g.head <= g.limit else { return 413; }
-    let at, cap = grow_run(g.at, g.cap, n, spill, budget);
-    guard cap > 0 else { return 503; }
-    g.at = at;
-    g.cap = cap;
-    copy_into(spill[g.at + g.len..g.at + n], data);
-    g.len = n;
-    return 0;
-}
-
-// The run at at, of cap bytes, or a new one for a cap of 0, made to hold n
-// bytes, and recorded in budget: as it is when it holds them already, or
-// else doubled, or grown only as far as n when a doubled run would take the
-// spill past the budget. Returns its start and its capacity, or a capacity
-// of 0, the run left as it was, when the spill can't hold n bytes within the
-// budget.
-fn grow_run(at: i64, cap: i64, n: i64, spill: u8[>..]&, budget: Budget&) -> i64, i64 {
-    guard n > cap else { return at, cap; }
-    var want = max(n, cap * 2);
-    if placed_end(budget, at, cap, want) > budget.size { want = n; }
-    guard placed_end(budget, at, cap, want) <= budget.size else { return at, 0; }
-    var start: i64 = 0;
-    if cap > 0 {
-        let run = spill.realloc_slice(spill[at..at + cap], want);
-        untrack(budget, at);
-        start = spill.index_of(run[0]);
-    } else {
-        let run = spill.alloc_slice(want);
-        start = spill.index_of(run[0]);
-    }
-    track(budget, start, want, spill.len);
-    return start, want;
-}
-
-// The length the spill has once the run at at, of cap bytes, grows to n, or
-// once it places a new run of n for a cap of 0.
-fn placed_end(b: const Budget&, at: i64, cap: i64, n: i64) -> i64 {
-    return if cap > 0 { grown_end(b, at, cap, n) } else { spill_end(b, n, -1) };
-}
-
-// A collected reply's run starts with the reply's length and the run's
-// capacity, 8 bytes each, least significant first.
-let REPLY_HEAD = 16;
-
-// Adds data, a piece with tag of a reply its lane marked REPLY_VALUE, to the
-// run of the spill the exchange collects it in, from x.reply with COLLECTING,
-// and has the route wait for the next piece while more follows, with the
-// time limit rest::ask gave. Returns true once the reply is whole, for
-// on_event to call the handler with it, and false while more follows, or
-// for a reply the spill can't hold within the budget: then the run is freed
-// and the route answered 502 reply_too_large, or cut short with its response
-// begun, and the later pieces find the exchange no longer waiting.
-fn collect_reply<S>(st: Slot<S>&, data: const u8[:], tag: i32, out: http::Reply, spill: u8[>..]&,
-                    budget: Budget&) -> bool {
-    let x .= st.ex;
-    var at: i64 = 0;
-    var cap: i64 = 0;
-    var len: i64 = 0;
-    if (x.mode & COLLECTING) != 0 {
-        at = x.reply;
-        len = word(spill, at);
-        cap = word(spill, at + 8);
-    }
-    let n = REPLY_HEAD + len + data.len;
-    let start, room = grow_run(at, cap, n, spill, budget);
-    guard room > 0 else {
-        drop_reply(x, spill, budget);
-        end_wait(st, out, spill, budget, 502, "reply_too_large", true);
+// Promises the reply x waits for up to most bytes of the worker's gather
+// pool, in an entry of replies, or returns false where the budget can't.
+fn promise_reply(x: Exchange&, most: i64) -> bool {
+    let i = replies.alloc_index(http::Gather { .. });
+    guard http::gather_promise(replies[i], most) else {
+        replies.free(i);
         return false;
     }
-    copy_into(spill[start + REPLY_HEAD + len..start + n], data);
-    set_word(spill, start, len + data.len);
-    set_word(spill, start + 8, room);
-    x.reply = start;
-    x.mode |= COLLECTING;
+    x.reply = i;
+    x.mode |= ASKED;
+    return true;
+}
+
+// Adds data, a piece with tag of a reply its lane marked REPLY_VALUE, to the
+// run that collects it, up to the most rest::ask promised it, and has the
+// route wait for the next piece while more follows, with the time limit
+// rest::ask gave. Returns true once the reply is whole, for on_event to
+// call the handler with it, and false while more follows, or for a reply
+// past its limit: then the run is freed and the route answered 502
+// reply_too_large, or cut short with its response begun, and the later
+// pieces find the exchange no longer waiting.
+fn collect_reply<S>(st: Slot<S>&, data: const u8[:], tag: i32, out: http::Reply) -> bool {
+    let x .= st.ex;
+    guard (x.mode & ASKED) != 0 && http::gather_piece(replies[x.reply], data) else {
+        drop_reply(x);
+        end_wait(st, out, 502, "reply_too_large", true);
+        return false;
+    }
     guard (tag & REPLY_MORE) == 0 else {
         http::later(out, out.stream.wait_ms);
         return false;
@@ -724,34 +623,24 @@ fn collect_reply<S>(st: Slot<S>&, data: const u8[:], tag: i32, out: http::Reply,
     return true;
 }
 
-// The reply x collected, for a last piece with tag, or else data, the
-// message, as a refusal is.
-fn collected(x: const Exchange&, data: const u8[:], tag: i32, spill: const u8[:]) -> const u8[:] {
-    guard (x.mode & COLLECTING) != 0 && (tag & REPLY_VALUE) != 0 else { return data; }
-    let from = x.reply + REPLY_HEAD;
-    return spill[from..from + word(spill, x.reply)];
+// The reply in the entry done of replies, for a last piece with tag, or else
+// data, the message, as a refusal is.
+fn collected(done: i64, data: const u8[:], tag: i32) -> const u8[:] {
+    guard done >= 0 && (tag & REPLY_VALUE) != 0 && replies[done].len > 0 else { return data; }
+    let g = replies[done];
+    return http::gathered[g.at..g.at + g.len];
 }
 
-// Frees the run of the reply x collects, if any.
-fn drop_reply(x: Exchange&, spill: u8[>..]&, budget: Budget&) {
-    guard (x.mode & COLLECTING) != 0 else { return; }
-    spill.free_slice(spill[x.reply..x.reply + word(spill, x.reply + 8)]);
-    untrack(budget, x.reply);
-    x.reply = 0;
-    x.mode &= ~COLLECTING;
+// Frees the promise and the run of the reply x waits for, if any.
+fn drop_reply(x: Exchange&) {
+    guard (x.mode & ASKED) != 0 else { return; }
+    free_reply(x.reply);
+    x.mode &= ~ASKED;
 }
 
-fn word(b: const u8[:], at: i64) -> i64 {
-    var v: i64 = 0;
-    for i in 8 {
-        let byte: i64 = b[at + i];
-        v |= byte << (i * 8);
-    }
-    return v;
-}
-
-fn set_word(b: u8[>..]&, at: i64, v: i64) {
-    for i in 8 { b[at + i] = ((v >> (i * 8)) & 0xFF) as u8; }
+fn free_reply(i: i64) {
+    http::release_gather(replies[i]);
+    replies.free(i);
 }
 
 // Answers status and code for a route whose wait ended without a reply for
@@ -759,11 +648,11 @@ fn set_word(b: u8[>..]&, at: i64, v: i64) {
 // begun, or an upgraded connection, isn't answered: with cut, it's cut
 // short, as a failure cuts it (route), and without, the route gets the
 // event (on_later).
-fn end_wait<S>(st: Slot<S>&, out: http::Reply, spill: u8[>..]&, budget: Budget&, status: i32, code: const u8[:],
-               cut: bool, retry_after: const u8[:] = "") {
+fn end_wait<S>(st: Slot<S>&, out: http::Reply, status: i32, code: const u8[:], cut: bool,
+               retry_after: const u8[:] = "") {
     var fields: u8[>..] = [];
     var o = out;
-    o.common = kept_fields(out.common, st.ex, spill, fields);
+    o.common = kept_fields(out.common, st.ex, fields);
     let from = out.buf.len;
     if !out.stream.open {
         write_error(o, st.state, status, code, "", -1, "", "", retry_after);
@@ -771,32 +660,26 @@ fn end_wait<S>(st: Slot<S>&, out: http::Reply, spill: u8[>..]&, budget: Budget&,
         out.stream.open = false;
         out.keep_alive = false;
     }
-    settle_kept(st.ex, o, from, spill, budget);
-    drop_kept(st.ex, spill, budget);
+    settle_kept(st.ex, o, from);
+    drop_kept(st.ex);
 }
 
-// Frees g's run of the spill, and stops gathering.
-fn release(g: Exchange&, spill: u8[>..]&, budget: Budget&) {
-    if g.cap > 0 {
-        spill.free_slice(spill[g.at..g.at + g.cap]);
-        untrack(budget, g.at);
-    }
-    g.at = 0;
-    g.len = 0;
-    g.cap = 0;
-    g.head = 0;
-    g.mode &= ~GATHERING;
+// Frees x's gathered run, and stops gathering.
+fn release(x: Exchange&) {
+    http::release_gather(x.run);
+    x.mode &= ~GATHERING;
 }
 
 // The request's body, of at most limit bytes: a longer one fails the route
 // with 413 payload_too_large. The first call's limit holds for the request.
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
-// runs twice up to its first rest::body. A body the worker's spill can't
-// place within its gather budget fails with 503 unavailable and Retry-After
-// (Config). After rest::body_in_pieces, 500 body_already_read, and at a
-// later call than the request's, 500 body_too_late: the head that gathering
-// needs has gone by then.
+// runs twice up to its first rest::body. A body the worker's gather budget
+// can't promise its bytes, a Content-Length's or a chunked body's limit,
+// with its head, fails with 503 unavailable and Retry-After (Config). After
+// rest::body_in_pieces, 500 body_already_read, and at a later call than the
+// request's, 500 body_too_late: the head that gathering needs has gone by
+// then.
 fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     var g .= cx.ex;
     guard g else {
@@ -808,84 +691,12 @@ fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     if g.limit == 0 { g.limit = limit; }
     if cx.more {
         if !cx.req.chunked && cx.req.body > g.limit { fail(cx, 413, "payload_too_large"); }
-        if !fits(cx.budget, run_size(cx.req)) {
-            return [Failure { status: 503, at: -1, code: str("unavailable"), detail: "", challenge: "", retry: true }]
-                from attempt;
-        }
+        if !http::gather_head(g.run, cx.req, g.limit) { unavailable(cx); }
         g.mode |= GATHERING;
         return [Failure { status: 0, at: -1, code: "", detail: "", challenge: "" }] from attempt;
     }
     if cx.body.len > g.limit { fail(cx, 413, "payload_too_large"); }
     return cx.body;
-}
-
-// Whether the spill can place a run of n bytes within budget; any without
-// one.
-fn fits(budget: const Budget?, n: i64) -> bool {
-    guard budget else { return true; }
-    return spill_end(budget, n, -1) <= budget.size;
-}
-
-// The length the spill has once it places a run of n bytes, as
-// alloc_slice places it (spec §5.4): every byte of the spill outside the
-// runs in use is free, so at the first start, 0 or a run's end, with n free
-// bytes after it, or else after the last run, growing the spill. skip, a
-// run's start or -1, is left out, as realloc_slice frees a run it moves.
-fn spill_end(b: const Budget&, n: i64, skip: i64) -> i64 {
-    if free_at(b, 0, n, skip) { return b.len; }
-    var last: i64 = 0;
-    for r in b.runs {
-        if r.cap > 0 && r.at != skip {
-            if free_at(b, r.at + r.cap, n, skip) { return b.len; }
-            last = max(last, r.at + r.cap);
-        }
-    }
-    return max(b.len, last + n);
-}
-
-// Whether the n bytes from at are inside the spill and in no run but skip.
-fn free_at(b: const Budget&, at: i64, n: i64, skip: i64) -> bool {
-    guard at + n <= b.len else { return false; }
-    for r in b.runs {
-        if r.cap > 0 && r.at != skip && r.at < at + n && at < r.at + r.cap { return false; }
-    }
-    return true;
-}
-
-// The length the spill has once the run at at, of cap bytes, grows to n, as
-// realloc_slice grows it: in place when no run follows it or the free bytes
-// after it hold the growth, or else moved where spill_end places it.
-fn grown_end(b: const Budget&, at: i64, cap: i64, n: i64) -> i64 {
-    var next: i64 = -1;
-    for r in b.runs {
-        if r.cap > 0 && r.at > at && (next < 0 || r.at < next) { next = r.at; }
-    }
-    if next < 0 { return max(b.len, at + n); }
-    if next - at >= n { return b.len; }
-    return spill_end(b, n, at);
-}
-
-// Records the run the spill handed out at at, of cap bytes, and its length
-// len after.
-fn track(b: Budget&, at: i64, cap: i64, len: i64) {
-    b.len = len;
-    for i in b.runs.len {
-        if b.runs[i].cap == 0 {
-            b.runs[i] = Run { at: at, cap: cap };
-            return;
-        }
-    }
-    b.runs.push(Run { at: at, cap: cap });
-}
-
-// Records that the run at at is free.
-fn untrack(b: Budget&, at: i64) {
-    for i in b.runs.len {
-        if b.runs[i].cap > 0 && b.runs[i].at == at {
-            b.runs[i].cap = 0;
-            return;
-        }
-    }
 }
 
 // What fail answers with: challenge, when not empty, goes in a
@@ -934,6 +745,13 @@ inline fn routed<F>(cx) {
 // Every caller runs inside rest::route, or the program doesn't compile.
 fn fail(cx, status: i32, code: const u8[:]) {
     return [Failure { status: status, at: -1, code: str(code), detail: "", challenge: "" }] from attempt;
+}
+
+// Leaves the enclosing route with 503 unavailable and Retry-After, for what
+// the worker's gather budget can't promise.
+fn unavailable(cx) {
+    return [Failure { status: 503, at: -1, code: str("unavailable"), detail: "", challenge: "", retry: true }]
+        from attempt;
 }
 
 // Leaves the enclosing route with 401 {"error": code} and a WWW-Authenticate

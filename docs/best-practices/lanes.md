@@ -327,7 +327,8 @@ fn resume(u: Use.Hash, cx) { resume(rest::job<Hashes>(cx), cx); }
 A job's `resume` gets the job as the route sent it, so what it needs from the request
 travels in the job, and the request state keeps only the mark. A job and its answer
 longer than one message of the worker's box, 256 bytes by default, come in pieces,
-which the worker collects within its gather budget before the `resume` runs
+which the worker collects within the reply limit `rest::ask` takes, promised from its
+gather budget, before the `resume` runs
 ([Lanes](../reference.md#41-lanes)). To send a long answer on as it comes, reply with
 `rest::reply` and answer with `rest::relay`
 ([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)).

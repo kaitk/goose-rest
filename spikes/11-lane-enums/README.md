@@ -172,12 +172,15 @@ enum, its mark in `Use`, and its mark's `resume`, three lines in `app.goose`, an
 
 | Request state | State | `rest::Slot` | goose-http's `RingConn` |
 |---|---:|---:|---:|
-| Tier M (`rest::NoState`) | 1 | 51 | 234 |
-| Spike 10's `Use` | 131 | 181 | 364 |
-| Spike 10's `Use` without the sign-in | 25 | 75 | 258 |
-| The lane's mark | 1 | 51 | 234 |
-| An outer enum holding the job | 132 | 182 | 365 |
-| A field per lane | 165 | 215 | 398 |
+| Tier M (`rest::NoState`) | 1 | 59 | 242 |
+| Spike 10's `Use` | 131 | 189 | 372 |
+| Spike 10's `Use` without the sign-in | 25 | 83 | 266 |
+| The lane's mark | 1 | 59 | 242 |
+| An outer enum holding the job | 132 | 190 | 373 |
+| A field per lane | 165 | 223 | 406 |
+
+The `Slot`s are 8 bytes larger than when the spike ran, for the promise in the
+`http::Gather` that `rest::Exchange` holds from 2026-10-22.
 
 The mark costs a connection nothing over tier M. The bytes move to the mail: each
 reply carries its job back, 28 bytes for a `Writes` job, 12 for `Reports`, and 135 for

@@ -139,7 +139,7 @@ A reply larger than a slot in the worker's box, `Config.mail_size` bytes, comes 
 pieces. Pass the program's `http::Config` as `serve_one`'s `cfg` to split a reply as
 the server does: `rest::relay` sends the pieces of a `rest::reply` on as chunks, and
 the pieces of a `rest::reply_value` are collected for `rest::answer`, within the
-gather budget of the `rest::Config` after it. A small `mail_size` tests both.
+reply limit `rest::ask` promises from the gather budget of the `rest::Config` after it. A small `mail_size` tests both.
 
 `scripts/test.sh` runs every `test.goose` under `docs/tutorial/`; to run one on its own, use
 `goose docs/tutorial/11-waiting/test.goose`.

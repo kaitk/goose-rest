@@ -31,7 +31,7 @@ fn handle(cx) {
         rest::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
         rest::route(cx) {
-            if cx.req.target == "/big" { rest::ask(cx, cx.app.bigs, blob()); } else { rest::ask(cx, cx.app.codes, Codes.Refuse { n: 300 }); }
+            if cx.req.target == "/big" { rest::ask(cx, cx.app.bigs, blob(), 5000, 1 << 20); } else { rest::ask(cx, cx.app.codes, Codes.Refuse { n: 300 }); }
         };
     }
 }

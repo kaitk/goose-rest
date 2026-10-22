@@ -96,8 +96,12 @@ fn is_waiting(cx) -> bool { cx.out.stream.waiting }
 // goose-http has no room for the wait, and the route gets 503 unavailable
 // with Retry-After at once. On an upgraded connection, the mark's resume gets
 // the client's bytes as BODY while it waits, and TIMEOUT in place of 504 or
-// 503.
-fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000) {
+// 503. Under serve, the reply is promised most bytes of the worker's gather
+// budget (Config) while the route waits, a reply_value's pieces collected
+// within them: a budget that can't promise them fails the route with 503
+// unavailable and Retry-After before the job is sent, and a reply_value
+// past them gets 502 reply_too_large.
+fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000, most: i64 = REPLY_LIMIT) {
     if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
     let back = http::later(cx.out, ms);
     let piece = http::mail_slot_size(back);
@@ -106,9 +110,16 @@ fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000) {
         cx.out.stream.rearm = false;
         fail(cx, 500, "job_too_large");
     }
+    var x .= cx.ex;
+    if x && !promise_reply(x, most) {
+        cx.out.stream.waiting = false;
+        cx.out.stream.rearm = false;
+        unavailable(cx);
+    }
     guard http::lane_send_value(lane.lane, 0, Ask<U> { reply: back, piece: piece, job: job }) == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
+        if x { drop_reply(x); }
         fail(cx, 503, "unavailable");
     }
     cx.state.use = lane.mark;
@@ -176,7 +187,8 @@ fn still_wanted<U>(a: const Asked<U>&) -> bool {
 // Replies v, a flat value, to the route that asked a, after the job: what
 // rest::answer reads. Returns false when the route has gone, as reply does.
 // Its pieces are marked REPLY_VALUE, and the worker collects them whole in
-// its spill, within its gather budget, before the resume runs.
+// its gather pool, within the most rest::ask promised, before the resume
+// runs.
 fn reply_value<U>(a: Asked<U>&, v) -> bool { reply_tagged(a, value_bytes(v), REPLY_VALUE) }
 
 // Replies data to the route that asked a, after the job, in pieces of at

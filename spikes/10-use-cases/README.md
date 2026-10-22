@@ -178,22 +178,25 @@ payload. `sizes/main.goose`, in bytes (`expected.txt` there):
 
 | Request state | State | `rest::Slot` | goose-http's `RingConn` |
 |---|---:|---:|---:|
-| Tier M (`rest::NoState`) | 1 | 51 | 234 |
-| Tiers C and D (`Heavy`) | 9 | 59 | 242 |
-| The lanes, `Waiting` | 1 | 51 | 234 |
-| The lanes, `Use` | 131 | 181 | 364 |
-| The lanes, `Use` without the sign-in | 25 | 75 | 258 |
+| Tier M (`rest::NoState`) | 1 | 59 | 242 |
+| Tiers C and D (`Heavy`) | 9 | 67 | 250 |
+| The lanes, `Waiting` | 1 | 59 | 242 |
+| The lanes, `Use` | 131 | 189 | 372 |
+| The lanes, `Use` without the sign-in | 25 | 83 | 266 |
+
+The `Slot`s are 8 bytes larger than when the spike ran, for the promise in the
+`http::Gather` that `rest::Exchange` holds from 2026-10-22.
 
 The sign-in's two `u8[..64]` fields, 65 bytes each, make 130 of the 131. With ids
 alone, the largest job is three `i64`s, and a connection grows by 24 bytes, 10%. With
-the sign-in's text, it grows by 130 bytes, 56%: 130 KB per 1,000 connections, or 8 KB
+the sign-in's text, it grows by 130 bytes, 54%: 130 KB per 1,000 connections, or 8 KB
 for a worker's share of the benchmark's 256 connections. A program pays this only when
 it waits: tier M has no `Use`, and its state stays one byte.
 
 Two costs follow:
 
 - goose-http resets the state from `fresh` for each request, so the reset copies the
-  whole `Slot`, 181 bytes in place of 51. Not measured.
+  whole `Slot`, 189 bytes in place of 59. Not measured.
 - A job's input stays in the connection's state until the route waits again or the
   next request resets it: here, the password. The package should set `cx.state.use`
   back to `None` once the route has answered.

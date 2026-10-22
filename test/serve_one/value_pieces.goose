@@ -1,8 +1,8 @@
-// A rest::reply_value in pieces, event by event as serve gives them, with
-// the worker's spill and gather budget: the reply's run holds the pieces
-// while they come, and is freed once the resume has the value, when the
-// route then waits again, when the client goes mid-reply, and when the wait
-// times out mid-reply.
+// A rest::reply_value in pieces, event by event as serve gives them, in
+// the worker's gather pool: the reply's run holds the pieces while they
+// come, within the limit its ask promised, and is freed once the resume has
+// the value, when the route then waits again, when the client goes
+// mid-reply, when the wait times out mid-reply, and past the limit.
 import std;
 import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
@@ -14,7 +14,8 @@ enum Use { None, Count }
 
 struct St { use: Use = Use.None }
 
-struct App { to: rest::Lane<Counts, Use> }
+// most is the reply limit of the route's first ask.
+struct App { to: rest::Lane<Counts, Use>, most: i64 = rest::REPLY_LIMIT }
 
 // A value wider than a piece.
 struct Row { n: i64, digits: u8[..40] }
@@ -23,7 +24,7 @@ fn handle(cx) {
     if rest::resumed(cx) {
         rest::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
-        rest::route(cx) { rest::ask(cx, cx.app.to, Counts.Next { n: 1 }); };
+        rest::route(cx) { rest::ask(cx, cx.app.to, Counts.Next { n: 1 }, 5000, cx.app.most); };
     }
 }
 
@@ -38,7 +39,7 @@ fn resume(u: Counts.Next, cx) {
 
 fn run(u: Counts.Next, a) { rest::reply_value(a, Row { n: u.n, digits: "0123456789" }); }
 
-// One exchange of a worker whose spill and budget the caller holds.
+// One exchange of a worker, whose gather pool the test's thread holds.
 struct Conn {
     req: http::Request,
     st: rest::Slot<St> = rest::Slot<St> { state: St { .. } },
@@ -46,8 +47,7 @@ struct Conn {
     stream: http::Stream = http::Stream { .. },
 }
 
-fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i32, spill: u8[>..]&,
-        budget: rest::Budget&) {
+fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i32) {
     let reply = http::Reply { buf: out, common: "", keep_alive: c.keep, minor: 1, head: false, stream: c.stream };
     // goose-http's wait ends before the event that ends it.
     if kind != http::REQUEST {
@@ -55,30 +55,25 @@ fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i3
         c.stream.rearm = false;
     }
     rest::deliver(http::Event { kind: kind, req: c.req, data: data, whole: true, trailers: "", tag: tag }, c.st, app,
-                  reply, spill, budget) { cx => handle(cx); };
-    assert(budget.len == spill.len && spill.len <= budget.size);
+                  reply) { cx => handle(cx); };
+    assert(http::gather_promised <= http::gather_most);
 }
 
 // Pieces from..to of p's reply in pieces of size bytes, tagged as a lane
 // sends them, while the exchange waits: goose-http drops the others.
-fn wake(c: Conn&, out: u8[>..]&, app: App&, p: const rest::Played&, size: i64, from: i64, to: i64, spill: u8[>..]&,
-        budget: rest::Budget&) {
+fn wake(c: Conn&, out: u8[>..]&, app: App&, p: const rest::Played&, size: i64, from: i64, to: i64) {
     for i in from..to {
         if !c.stream.waiting { return; }
         let at = i * size;
         let end = min(at + size, p.data.len);
         let first = if i == 0 { p.tag } else { rest::REPLY_CONT | (p.tag & rest::REPLY_VALUE) };
         let tag = if end < p.data.len { first | rest::REPLY_MORE } else { first };
-        send(c, out, app, http::WAKE, p.data[at..end], tag, spill, budget);
+        send(c, out, app, http::WAKE, p.data[at..end], tag);
     }
 }
 
 // The bytes of the runs in use.
-fn in_use(b: const rest::Budget&) -> i64 {
-    var n: i64 = 0;
-    for r in b.runs { n += r.cap; }
-    return n;
-}
+fn in_use() -> i64 { http::gather_promised }
 
 fn main() {
     let box, e = http::mail_open(16, 256);
@@ -87,9 +82,6 @@ fn main() {
     let text = expect::request("GET", "/count");
     let req, status = http::parse(text);
     assert(status == 200);
-    reusable[] var spill: u8[>..] = [];
-    var runs: rest::Run[>..] = [];
-    var b = rest::Budget { size: 1 << 20, runs: runs };
     let one = rest::play(app.to, Counts.Next { n: 1 }) { u, a => run(u, a); };
     let two = rest::play(app.to, Counts.Next { n: 2 }) { u, a => run(u, a); };
     let size = (one.data.len + 2) / 3;
@@ -100,45 +92,43 @@ fn main() {
     // reply until its resume has it.
     var c = Conn { req: req };
     var out: u8[>..] = [];
-    send(c, out, app, http::REQUEST, "", 0, spill, b);
-    wake(c, out, app, one, size, 0, 2, spill, b);
-    print("two pieces of three: waiting ", c.stream.waiting, ", answered ", out.len > 0, ", in the spill ",
-          in_use(b) > 0);
-    wake(c, out, app, one, size, 2, 3, spill, b);
-    print("the third, then a second wait: waiting ", c.stream.waiting, ", in the spill ", in_use(b));
-    wake(c, out, app, two, size, 0, 3, spill, b);
+    send(c, out, app, http::REQUEST, "", 0);
+    wake(c, out, app, one, size, 0, 2);
+    print("two pieces of three: waiting ", c.stream.waiting, ", answered ", out.len > 0, ", promised ",
+          in_use() > 0);
+    wake(c, out, app, one, size, 2, 3);
+    print("the third, then a second wait: waiting ", c.stream.waiting, ", promised ", in_use());
+    wake(c, out, app, two, size, 0, 3);
     expect::same(expect::body_of(out), "2 0123456789", "two waits");
-    print("answered: ", expect::body_of(out), ", in the spill ", in_use(b));
+    print("answered: ", expect::body_of(out), ", promised ", in_use());
 
     // A client that goes mid-reply: CLOSED frees the run.
     var gone = Conn { req: req };
     var gone_out: u8[>..] = [];
-    send(gone, gone_out, app, http::REQUEST, "", 0, spill, b);
-    wake(gone, gone_out, app, one, size, 0, 2, spill, b);
-    assert(in_use(b) > 0);
-    send(gone, gone_out, app, http::CLOSED, "", 0, spill, b);
-    print("gone mid-reply: answered ", gone_out.len > 0, ", in the spill ", in_use(b));
+    send(gone, gone_out, app, http::REQUEST, "", 0);
+    wake(gone, gone_out, app, one, size, 0, 2);
+    assert(in_use() > 0);
+    send(gone, gone_out, app, http::CLOSED, "", 0);
+    print("gone mid-reply: answered ", gone_out.len > 0, ", promised ", in_use());
 
     // The wait's time runs out mid-reply: 504, and the run is freed.
     var late = Conn { req: req };
     var late_out: u8[>..] = [];
-    send(late, late_out, app, http::REQUEST, "", 0, spill, b);
-    wake(late, late_out, app, one, size, 0, 1, spill, b);
-    assert(in_use(b) > 0);
-    send(late, late_out, app, http::TIMEOUT, "", 0, spill, b);
-    print("timed out mid-reply: ", expect::status_of(late_out), " ", expect::body_of(late_out), ", in the spill ",
-          in_use(b));
+    send(late, late_out, app, http::REQUEST, "", 0);
+    wake(late, late_out, app, one, size, 0, 1);
+    assert(in_use() > 0);
+    send(late, late_out, app, http::TIMEOUT, "", 0);
+    print("timed out mid-reply: ", expect::status_of(late_out), " ", expect::body_of(late_out), ", promised ",
+          in_use());
 
-    // Over a budget smaller than the reply: 502, the run freed, and the
+    // Past a reply limit smaller than the reply: 502, the run freed, and the
     // pieces after it find the exchange no longer waiting.
-    var small_runs: rest::Run[>..] = [];
-    var small = rest::Budget { size: one.data.len, runs: small_runs };
-    reusable[] var other: u8[>..] = [];
+    app.most = one.data.len - 1;
     var over = Conn { req: req };
     var over_out: u8[>..] = [];
-    send(over, over_out, app, http::REQUEST, "", 0, other, small);
-    wake(over, over_out, app, one, size, 0, 3, other, small);
-    print("over the budget: ", expect::status_of(over_out), " ", expect::body_of(over_out), ", waiting ",
-          over.stream.waiting, ", in the spill ", in_use(small));
+    send(over, over_out, app, http::REQUEST, "", 0);
+    wake(over, over_out, app, one, size, 0, 3);
+    print("past its limit: ", expect::status_of(over_out), " ", expect::body_of(over_out), ", waiting ",
+          over.stream.waiting, ", promised ", in_use());
     http::mail_close(box);
 }

@@ -69,7 +69,7 @@ fn run(u: Feeds.Next, a) { rest::reply_value(a, Row { n: u.n, digits: "012345678
 
 fn run_as(n: i64, a) { rest::reply_value(a, Row { n: n, digits: "0123456789" }); }
 
-// One exchange of a worker whose spill and budget the caller holds, as
+// One exchange of a worker, whose gather pool the test's thread holds, as
 // value_pieces.goose has it.
 struct Conn {
     req: http::Request,
@@ -78,8 +78,7 @@ struct Conn {
     stream: http::Stream = http::Stream { .. },
 }
 
-fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i32, spill: u8[>..]&,
-        budget: rest::Budget&) {
+fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i32) {
     let reply = http::Reply { buf: out, common: "", keep_alive: c.keep, minor: 1, head: false, stream: c.stream };
     // goose-http's wait ends before the event that ends it; an upgraded
     // connection's BODY comes during it.
@@ -88,14 +87,10 @@ fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i3
         c.stream.rearm = false;
     }
     rest::deliver(http::Event { kind: kind, req: c.req, data: data, whole: true, trailers: "", tag: tag }, c.st, app,
-                  reply, spill, budget) { cx => handle(cx); };
+                  reply) { cx => handle(cx); };
 }
 
-fn in_use(b: const rest::Budget&) -> i64 {
-    var n: i64 = 0;
-    for r in b.runs { n += r.cap; }
-    return n;
-}
+fn in_use() -> i64 { http::gather_promised }
 
 fn main() {
     let box, e = http::mail_open(16, 256);
@@ -114,27 +109,23 @@ fn main() {
                                  rest::wake(two)], small) { cx => handle(cx); };
     expect::same(expect::body_of(ticks), "d\r\n1 0123456789\n\r\nd\r\n2 0123456789\n\r\n0\r\n\r\n", "paused, then asked");
 
-    // The same, event by event, with the spill in view: each run is freed,
+    // The same, event by event, with the promises in view: each run is freed,
     // and the route pauses again after the first reply.
     let text = expect::request("GET", "/ticks");
     let req, status = http::parse(text);
     assert(status == 200);
-    reusable[] var spill: u8[>..] = [];
-    var runs: rest::Run[>..] = [];
-    var b = rest::Budget { size: 1 << 20, runs: runs };
     var c = Conn { req: req };
     var out: u8[>..] = [];
-    send(c, out, app, http::REQUEST, "", 0, spill, b);
-    send(c, out, app, http::TIMEOUT, "", 0, spill, b);
+    send(c, out, app, http::REQUEST, "", 0);
+    send(c, out, app, http::TIMEOUT, "", 0);
     for i in 3 {
         let at = i * size;
         let end = min(at + size, one.data.len);
         let first = if i == 0 { one.tag } else { rest::REPLY_CONT | rest::REPLY_VALUE };
-        send(c, out, app, http::WAKE, one.data[at..end], if end < one.data.len { first | rest::REPLY_MORE } else { first },
-             spill, b);
+        send(c, out, app, http::WAKE, one.data[at..end], if end < one.data.len { first | rest::REPLY_MORE } else { first });
     }
-    print("after the first reply: paused ", c.stream.waiting, ", collecting ", (c.st.ex.mode & rest::COLLECTING) != 0,
-          ", in the spill ", in_use(b));
+    print("after the first reply: paused ", c.stream.waiting, ", collecting ", (c.st.ex.mode & rest::ASKED) != 0,
+          ", promised ", in_use());
 
     // An upgraded connection that asks: bytes come between the reply's
     // pieces, and the run holds the pieces meanwhile.
@@ -143,16 +134,15 @@ fn main() {
     assert(up_status == 200);
     var u = Conn { req: up_req };
     var up_out: u8[>..] = [];
-    send(u, up_out, app, http::REQUEST, "", 0, spill, b);
+    send(u, up_out, app, http::REQUEST, "", 0);
     for i in 3 {
         let at = i * size;
         let end = min(at + size, nine.data.len);
         let first = if i == 0 { nine.tag } else { rest::REPLY_CONT | rest::REPLY_VALUE };
-        send(u, up_out, app, http::WAKE, nine.data[at..end], if end < nine.data.len { first | rest::REPLY_MORE } else { first },
-             spill, b);
-        if i == 0 { send(u, up_out, app, http::BODY, "hello", 0, spill, b); }
+        send(u, up_out, app, http::WAKE, nine.data[at..end], if end < nine.data.len { first | rest::REPLY_MORE } else { first });
+        if i == 0 { send(u, up_out, app, http::BODY, "hello", 0); }
     }
     expect::same(expect::body_of(up_out), "[hello]9 0123456789\n", "upgraded, bytes mid-reply");
-    print("upgraded: open ", u.stream.open, ", in the spill ", in_use(b));
+    print("upgraded: open ", u.stream.open, ", promised ", in_use());
     http::mail_close(box);
 }

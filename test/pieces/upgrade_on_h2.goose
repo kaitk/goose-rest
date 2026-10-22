@@ -26,13 +26,9 @@ fn main() {
     var keep = true;
     var stream = http::Stream { .. };
     var st = rest::Slot<St> { state: St { .. } };
-    reusable[] var spill: u8[>..] = [];
-    var runs: rest::Run[>..] = [];
-    var budget = rest::Budget { size: rest::GATHER_BUDGET, runs: runs };
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: http::H2_MINOR, head: false,
                               stream: stream };
-    rest::deliver(http::Event { kind: http::REQUEST, req: req, data: "", whole: true, trailers: "" }, st, app, reply,
-                  spill, budget) { cx =>
+    rest::deliver(http::Event { kind: http::REQUEST, req: req, data: "", whole: true, trailers: "" }, st, app, reply) { cx =>
         if rest::resumed(cx) { resume(cx.state.use, cx); } else { rest::upgrade(cx, "echo", Use.Echo); }
     };
     expect::same(expect::status_of(out), "HTTP/1.1 501 Not Implemented", "h2's answer");

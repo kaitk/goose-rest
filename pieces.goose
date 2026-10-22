@@ -40,7 +40,6 @@ fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, u) {
     let over = if cx.more { !cx.req.chunked && cx.req.body > limit } else { cx.body.len > limit };
     if over { fail(cx, 413, "payload_too_large"); }
     x.limit = limit;
-    x.len = 0;
     x.mode |= RECEIVING;
     cx.state.use = u;
 }
@@ -133,7 +132,7 @@ fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
         return;
     }
     if (x.mode & CODED) != 0 { end_coded(x, cx.out, trailers); } else { http::end(cx.out, trailers); }
-    x.mode &= KEPT | COLLECTING;
+    x.mode &= KEPT | ASKED;
 }
 
 // What a response rest::begin begins inside rest::compressed does: these

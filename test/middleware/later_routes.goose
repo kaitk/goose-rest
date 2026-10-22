@@ -46,14 +46,11 @@ fn answered_later(text: const u8[:], which: const u8[:], timeout: bool = false,
     var keep = true;
     var stream = http::Stream { .. };
     var st = rest::Slot<St> { state: St { .. } };
-    reusable[] var spill: u8[>..] = [];
-    var runs: rest::Run[>..] = [];
-    var budget = rest::Budget { size: rest::GATHER_BUDGET, runs: runs };
     var app = rest::NoState { .. };
     let first = http::Reply { buf: out, common: "Server: t\r\n", keep_alive: keep, minor: 1, head: false,
                               stream: stream };
     fn send(kind: u8, data: const u8[:]) {
-        rest::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, first, spill, budget)
+        rest::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, first)
             { cx => later_routes(cx, what, which, to); };
     }
     send(http::REQUEST, if whole { body } else { "" });
@@ -71,10 +68,10 @@ fn answered_later(text: const u8[:], which: const u8[:], timeout: bool = false,
                               stream: stream };
     rest::deliver(http::Event { kind: if timeout { http::TIMEOUT } else { http::WAKE }, req: none,
                                 data: if timeout { "" } else { reply.data }, whole: false, trailers: "" },
-                  st, app, later, spill, budget) { cx =>
+                  st, app, later) { cx =>
         if rest::resumed(cx) { resume(cx.state.use, cx); } else { later_routes(cx, what, which, to); }
     };
-    assert(st.ex.mode == 0 && st.ex.cap == 0);
+    assert(st.ex.mode == 0 && st.ex.run.cap == 0 && http::gather_promised == 0);
     return out;
 }
 
