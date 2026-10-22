@@ -11,7 +11,7 @@ import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d
 // Server. app is the worker state, fresh the request state, cfg the
 // limits goose-http applies, and limits goose-rest's. A body that doesn't
 // fit in cfg.max_head with its head comes in pieces of cfg.max_head bytes:
-// gathered as serve gathers it, within limits.gather_budget, so H runs
+// gathered as serve gathers it, within http::gather_budget's, so H runs
 // again once it's whole if it called rest::body, or passed on
 // to a route that called rest::body_in_pieces. A body shorter than its
 // Content-Length is a client that hung up midway: its pieces come, then
@@ -73,7 +73,7 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
 // pieces of cfg.mail_size bytes, a reply_value's collected whole within the
-// most its rest::ask promised from limits.gather_budget, a refusal in one,
+// most its rest::ask promised from the gather budget, a refusal in one,
 // its code cut to fit as a lane cuts it, or with the timeout. rest::ask
 // checks its job against cfg.mail_size. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
@@ -106,7 +106,6 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
     let box, err = http::mail_open(2, cfg.mail_size);
     var stream = http::Stream { later: if err.code == 0 { http::address(box, 1) } else { http::MailAddress { .. } } };
     var st = Slot<S> { state: fresh };
-    http::gather_budget(limits.gather_budget);
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: req.minor,
                               head: req.method == "HEAD", stream: stream };
     deliver(http::Event { kind: http::REQUEST, req: req, data: if whole { body } else { "" }, whole: whole,

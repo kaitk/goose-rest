@@ -31,13 +31,16 @@ fn answer(budget: i64, log: u8[>..]&) -> u8[>..] {
     for i in 600 { text.push('a'); }
     var app = App { log: log };
     let cfg = http::Config { max_head: 512, .. };
-    return rest::serve_one(text, app, St { .. }, cfg, rest::Config { gather_budget: budget }) { cx =>
+    http::gather_budget(budget);
+    let out = rest::serve_one(text, app, St { .. }, cfg) { cx =>
         if rest::resumed(cx) {
             resume(cx.state.use, cx);
         } else {
             rest::cors(cx, rest::Cors { origins: "https://a.example" }) { rest::body_in_pieces(cx, 1 << 20, Use.Up); };
         }
     };
+    http::gather_budget(http::GATHER_BUDGET);
+    return out;
 }
 
 fn main() {

@@ -87,7 +87,7 @@ applies to the bodies a worker gathers at once:
 | A route's | its first `rest::body(cx, limit)`, 1 MB without one | 413 `{"error":"payload_too_large"}` |
 | A generated route's | `x-body-limit` on its `requestBody`, in bytes | the same |
 | The server's | `http::Config`'s `max_body`, 1 MB by default | goose-http's 413, without a body, before any route runs |
-| The gather budget, per worker | `rest::Config`'s `gather_budget`, 64 MB by default | 503 `{"error":"unavailable"}` with `Retry-After: 1` |
+| The gather budget, per worker | `http::gather_budget(bytes)` in `main`, 64 MB by default | 503 `{"error":"unavailable"}` with `Retry-After: 1` |
 
 The import accepts up to 256 KB, below the server's 1 MB limit, so the program keeps
 the default. A route that accepts more raises `max_body` to its limit, as
@@ -119,17 +119,13 @@ client can try again a second later, once the worker has answered the requests w
 bodies it gathered in the meantime.
 
 The default, 64 MB, lets a worker gather 63 bodies at the 1 MB limit at once, since each
-takes its head too. The import sets a budget of its own, in the `rest::Config` it
-passes to `rest::serve` after the request state, here none:
+takes its head too. The import sets a budget of its own with goose-http's
+`http::gather_budget`, in `main` before `http::run`, for every worker:
 
 ```rust
-// The most bytes the worker gathers at once: 15 imports at the limit, with
-// their heads, where the default, 64 MB, would take 255.
-let LIMITS = rest::Config { gather_budget: 16 * IMPORT_LIMIT };
-```
-
-```rust
-    let e = rest::serve(cfg, app, rest::NoState { .. }, LIMITS) { cx => handle(cx) };
+    // The most bytes each worker gathers at once: 15 imports at the limit,
+    // with their heads, where the default, 64 MB, would take 255.
+    http::gather_budget(16 * IMPORT_LIMIT);
 ```
 
 A body too large to gather, such as an attachment of any size, or an import of many

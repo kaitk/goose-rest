@@ -131,10 +131,11 @@ fn main() {
     app.most = rest::REPLY_LIMIT;
     // An ask the worker's gather budget can't promise its reply limit fails
     // with 503 before its job is sent.
-    let none_left = rest::Config { gather_budget: rest::REPLY_LIMIT - 1 };
-    let over = rest::serve_one(expect::request("GET", "/wide"), app, St { .. }, [rest::wake(wide)], thirds, none_left) { cx =>
+    http::gather_budget(rest::REPLY_LIMIT - 1);
+    let over = rest::serve_one(expect::request("GET", "/wide"), app, St { .. }, [rest::wake(wide)], thirds) { cx =>
         handle(cx);
     };
+    http::gather_budget(http::GATHER_BUDGET);
     print("over the budget: ", expect::status_of(over), " ", expect::body_of(over));
     assert(find(over, "\r\nRetry-After: 1\r\n") >= 0);
 

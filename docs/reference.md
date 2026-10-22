@@ -11,10 +11,11 @@ by reference in `cx.app`. `rest::serve(cfg, app, fresh)` also starts each reques
 `cx.state` from `fresh`. A program with no state can call `rest::serve(cfg)`.
 With request state alone, bind `var app = rest::NoState { .. };` and pass it beside
 `fresh`. `rest::serve(cfg, app, fresh, limits)` also takes goose-rest's own settings,
-a `rest::Config`: its `gather_budget` bounds what a worker's gather pool promises at
-once: the bodies it gathers ([Extractors](#3-extractors)), the replies `rest::ask` waits
-for ([Lanes](#41-lanes)), and what the middleware keeps for an answer at a later call
-([Middleware](#2-middleware)), through `http::gather_budget`. `rest::serve_epoll` has
+a `rest::Config`, which has none yet. goose-http's `http::gather_budget(bytes)`, called
+in `main` before `http::run`, bounds what each worker's gather pool promises at once:
+the bodies it gathers ([Extractors](#3-extractors)), the replies `rest::ask` waits for
+([Lanes](#41-lanes)), and what the middleware keeps for an answer at a later call
+([Middleware](#2-middleware)). `rest::serve_epoll` has
 the same forms.
 
 The context is `rest::Cx<S, A, R>`: the request state, the worker state, and the
@@ -438,12 +439,14 @@ Each worker gathers bodies into goose-http's gather pool, memory it keeps for it
 at the most it has held at once
 ([goose-http's parts](https://github.com/kaitk/goose-http/blob/main/docs/api.md#parts)).
 A body with a `Content-Length` takes its head and its length, in one run placed at its
-head, and a chunked one 16 KB, doubling as it fills. `rest::Config`'s `gather_budget`,
-64 MB by default, is the most the worker promises at once, so that the memory follows
-the configuration rather than what clients send (`http::gather_budget`):
+head, and a chunked one 16 KB, doubling as it fills. The gather budget, 64 MB by
+default, is the most the worker promises at once, so that the memory follows the
+configuration rather than what clients send. A program sets it with goose-http's
+`http::gather_budget`, in `main` before `http::run`, for every worker:
 
 ```rust
-rest::serve(cfg, app, St { .. }, rest::Config { gather_budget: 16 * 1024 * 1024 }) { cx => handle(cx) };
+http::gather_budget(16 * 1024 * 1024);
+http::run(cfg, worker);
 ```
 
 A body is promised its bytes at its head: a `Content-Length`'s, or for a chunked body
@@ -627,8 +630,8 @@ rest::lane_stop(reports);
 the worker's box, `http::Config.mail_size` bytes, 256 by default, comes in pieces. The
 pieces of a `rest::reply_value` carry a tag bit of their own, `rest::REPLY_VALUE`, and
 the worker collects them in a run of its gather pool, the memory it gathers bodies in,
-up to the `most` bytes `rest::ask` promised the reply from `rest::Config`'s
-`gather_budget` ([Extractors](#3-extractors)): the echoed job, its length, and the
+up to the `most` bytes `rest::ask` promised the reply from the gather budget
+([Extractors](#3-extractors)): the echoed job, its length, and the
 value. The `resume` runs once,
 at the last piece, with the whole reply, so `rest::job` and `rest::answer` read it as
 they read one message. The wait's time limit restarts at each piece. A reply past
@@ -814,7 +817,7 @@ using an instance it keeps in its request state.
 |---|---|
 | `rest::serve_one(text) { cx => ... }` | The response's bytes to `text`, one request's bytes, answered through the block inside `rest::route`, as `rest::serve` answers it |
 | `rest::serve_one(text, app) { cx => ... }` | The same, with the worker state by reference in `cx.app` |
-| `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the request state, `cfg`'s limits, and `limits`, a `rest::Config`, for the gather budget; `cfg` and `limits` are optional |
+| `rest::serve_one(text, app, fresh, cfg, limits) { cx => ... }` | The same, with `fresh` as the request state, `cfg`'s limits, and `limits`, a `rest::Config`; `cfg` and `limits` are optional. The gather budget is the one `http::gather_budget` last set |
 | `rest::serve_one(text, app, fresh, wakes, cfg, limits) { cx => ... }` | The same, with `wakes`, a `rest::Wake` for each wait of a route that calls `rest::ask` or `rest::pause`, in order |
 | `rest::Wake { data, tag, timeout, early, sent }` | What a wait gets in place of the thread it asked: a reply of `data` with `tag`, as `rest::wake` gives them, or with `timeout: true`, the end of the wait, which is a `rest::pause`'s time come; with `early: true` as well, goose-http's `TIMEOUT` at once, tagged `http::NO_ROOM` for want of a timer (503 for `rest::ask` and before `rest::begin`, or the end of the response after it); on an upgraded connection, `sent` comes first, as one `http::BODY` during the wait |
 | `rest::play(lane, job) { u, a => ... }` | Runs `job`, a variant of `lane`'s enum, through the block, as `rest::lane` runs it, with no thread or mail, and returns its reply, a `rest::Played`: an answer, a refusal for a `rest::fail`, its code whole, or 500 `no_reply` for neither. `rest::still_wanted` is true. The block is the lane's own, `run(u, state, a)`, to test a use case, or a stand-in that replies what a test needs. |

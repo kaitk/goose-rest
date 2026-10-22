@@ -259,8 +259,8 @@ apart by `cx.kind`. An exchange has one wait, so a second `rest::ask` during it 
 
 A body gathered for `rest::body`, a reply `rest::ask` waits for, and what a route's
 middleware keeps for a later answer are each an `http::Gather`, a run of goose-http's
-gather pool and the bytes promised it, under the budget `rest::Config`'s
-`gather_budget` sets with `http::gather_budget`
+gather pool and the bytes promised it, under the budget a program sets with
+`http::gather_budget` in `main`, before `http::run`
 ([goose-http's parts](https://github.com/kaitk/goose-http/blob/main/docs/api.md#parts)).
 Each is promised its most at admission, so what the budget can't hold is refused there,
 with 503, and never partway: a body at `rest::body`, with its `Content-Length` or its

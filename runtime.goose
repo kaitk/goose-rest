@@ -124,16 +124,16 @@ struct NoState { unused: bool = false }
 // The most bytes of a body rest::body takes unless a route says otherwise.
 let BODY_LIMIT = 1024 * 1024;
 
-// goose-rest's settings for serve, beside goose-http's http::Config.
-// gather_budget is the most bytes the worker's gather pool promises at once
-// (http::gather_budget): to the bodies rest::body gathers, heads included,
-// the replies rest::ask waits for, at its reply limit each, and what the
-// middleware keeps for an answer at a later call. A body the budget can't
-// promise its bytes gets 503 unavailable with Retry-After at its head, and a
-// rest::ask the same before its job is sent. Bodies read with
-// rest::body_in_pieces, and replies relayed, take nothing beyond their
-// promise.
-struct Config { gather_budget: i64 = http::GATHER_BUDGET }
+// goose-rest's settings for serve, beside goose-http's http::Config: none
+// yet. The worker's gather budget is goose-http's, http::gather_budget,
+// which a program sets in main before http::run. It bounds the bodies
+// rest::body gathers, heads included, the replies rest::ask waits for, at
+// its reply limit each, and what the middleware keeps for an answer at a
+// later call. A body the budget can't promise its bytes gets 503
+// unavailable with Retry-After at its head, and a rest::ask the same before
+// its job is sent. Bodies read with rest::body_in_pieces, and replies
+// relayed, take nothing beyond their promise.
+struct Config {}
 
 // The seconds a 503 past the budget asks a client to wait, the fewest the
 // field can say: the budget frees as soon as a body being gathered is
@@ -190,13 +190,12 @@ struct Slot<S> { state: S, ex: Exchange = Exchange { .. } }
 // connection's bytes (pieces.goose). app, the worker state, is in cx.app,
 // and the request state, starting from fresh, in cx.state. A body that
 // doesn't come with its head is gathered when a route asks for it
-// (rest::body), and H runs again once it's whole, within limits'
-// gather_budget, which each worker sets for its own pool here.
+// (rest::body), and H runs again once it's whole, within the worker's
+// gather budget (http::gather_budget).
 //
 //   var app = App { .. };
 //   rest::serve(cfg, app) { cx => handle(cx) };
 fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config { .. }) -> http::Error {
-    http::gather_budget(limits.gather_budget);
     return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
         let mark = on_event(ev, st, app, out) { cx => H(cx) };
         // Here, not in on_event: a function holding a call given a block
@@ -210,7 +209,6 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config 
 // emitted it out of line, about 200 more instructions per request on Linux
 // (2026-10-22).
 fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config { .. }) -> http::Error {
-    http::gather_budget(limits.gather_budget);
     return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
         let mark = on_event(ev, st, app, out) { cx => H(cx) };
         if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => H(cx) }; }
