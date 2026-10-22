@@ -1,10 +1,10 @@
 # 049: ACME, a package of its own
 
 Status: in-progress (asked for 2026-10-19).
-[goose-acme](https://github.com/kaitk/goose-acme), at `v0.0.2`, gets and renews
-certificates from Pebble (2026-10-22). A goose-rest server
-waits on goose-http: its `http.tls` must choose a context per connection, and its
-`connect` must resolve names for Let's Encrypt (goose-acme's task 001).
+[goose-acme](https://github.com/kaitk/goose-acme), at `v0.0.3`, gets and renews
+certificates from Pebble, and reaches Let's Encrypt's staging service by name through
+goose-http `v0.5.2` (2026-10-22). A goose-rest server waits on goose-http's `http.tls`
+choosing a context per connection (goose-acme's task 001).
 
 A Goose server gets and renews its certificates from Let's Encrypt in the process, so one
 binary can face the internet without Caddy or nginx (task 047, "Beyond HttpArena: one
@@ -59,14 +59,15 @@ and the HTTP-01 and DNS-01 challenges.
 ## Acceptance criteria
 
 - [x] The package's repository, with the no-I/O design settled in its decisions
-      (goose-acme `v0.0.2`, 2026-10-22)
+      (goose-acme `v0.0.3`, 2026-10-22)
 - [x] goose-tls has the hooks above (its task 003, 2026-10-19)
 - [ ] A certificate issued by a local Pebble to a goose-rest test server, and renewed
       while it serves, without a restart. goose-acme's `scripts/pebble.sh` does this
       with a Python server answering the challenges; a goose-rest server waits on
       goose-http's `http.tls` choosing a context per connection
-- [ ] The same against Let's Encrypt's staging service, which waits on goose-http's
-      `connect` resolving names
+- [ ] The same against Let's Encrypt's staging service, for a public name. The flow
+      reached it by name, created an account, and was refused an order for
+      `example.com` by policy (2026-10-22); a whole certificate waits on the server above
 - [x] The cache's directory and file modes checked by a test (goose-acme's
       `test/cache/modes.goose`)
 - [x] Used through no goose-http API but its outbound connections, shown by a test

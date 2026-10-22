@@ -63,6 +63,6 @@ Work can start at any point unless the table says otherwise.
 | 048: Aegon in the REST benchmark | Built and checked on the desktop, without tier D; the nightly run measures it. |
 | 056: what to take from Aegon | Verdicts set; seventeen subtasks. 01, shorter routes, is merged as skip-based routing with block scopes; tier M's count on Linux and a full `bench/routes.sh` run are todo. 02 to 08 are small and can run beside goose-http's TLS and h2 work; 16 and 17 wait on 052. 05 (JWT) unblocks 035's full example and parts of 047. |
 | 055: a documentation site | Any time; its address waits on 046. |
-| 049: ACME | goose-acme `v0.0.2` works against Pebble; a goose-rest server waits on goose-http's `http.tls` choosing a context per connection, and Let's Encrypt on its `connect` resolving names. |
+| 049: ACME | goose-acme `v0.0.3` works against Pebble and reaches Let's Encrypt's staging service; a goose-rest server waits on goose-http's `http.tls` choosing a context per connection. |
 | 013: embedded aarch64 | Waits on an x86-64 host and a board. |
 | 018: Goose releases | Waits only on a WSL run. |
