@@ -90,4 +90,5 @@ GitHub redirects the old URL after a rename, for git clones too, so a program pi
       The repository's URL moved with `scripts/rename-repo-url.sh`. Recorded results and the benchmark server
       `bench/rest/goose-rest/` keep the name they were measured under.
 - [x] `scripts/test.sh` passes
-- [ ] `v0.4.0` is tagged, and the README's quick start, which imports it, builds
+- [x] `v0.4.0` is tagged, and the README's quick start, which imports it, builds
+      (from GitHub, 2026-10-23)
