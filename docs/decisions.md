@@ -342,8 +342,8 @@ Decided (2026-10-22): a request no route took gets goose-http's verdict,
 `http::unrouted(r)`, which goose-rest writes in the program's error shape, rather than
 goose-rest deciding among 501, 400, 204, 405, and 404 again in `rest::otherwise`,
 `rest::no_route`, and `rest::not_found`. The generated router has no `http::Router`,
-so `no_route` and `not_found` build one from the method and path for the verdict, on
-those answers' paths alone.
+so `no_route` and `not_found` take the verdict from its parts,
+`http::unrouted(method, path, routable, allow)`, rather than build a Router for it.
 
 ### Compression
 

@@ -857,19 +857,19 @@ fn has_method(allow: const u8[:], method: const u8[:]) -> bool {
 // Answers a request whose method is unknown, or whose path the router
 // refuses, as otherwise does: 501 or 400.
 fn no_route(cx, method: const u8[:], path: const u8[:]) {
-    let r = http::Router { method: method, path: path, params: [], allow: [], bad: !http::is_routable(path) };
-    unrouted(cx, r);
+    unrouted(cx, http::unrouted(method, path, http::is_routable(path), ""), "");
 }
 
 // Answers a request whose method is known and whose path is routable, as
 // the generated routers have checked by then, and that no route matched, as
 // otherwise does: inside rest::routes, with the Allow of the program's routes
 // before dispatch.
-fn not_found<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], path: const u8[:]) { unrouted(cx, cx.router); }
+fn not_found<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], path: const u8[:]) {
+    unrouted(cx, http::unrouted(cx.router), cx.router.allow);
+}
 
 fn not_found<S, A>(cx: Cx<S, A, NoRouter>&, method: const u8[:], path: const u8[:]) {
-    let r = http::Router { method: method, path: path, params: [], allow: [], bad: false };
-    unrouted(cx, r);
+    unrouted(cx, http::unrouted(method, path, true, ""), "");
 }
 
 // Answers status with v as JSON, written by v's format overload, which Goose
@@ -919,20 +919,20 @@ fn otherwise<S, A>(cx: Cx<S, A, http::Router>&) { otherwise(cx, cx.router); }
 fn otherwise(cx, r: const http::Router&) {
     // bad marks a taken request as well as a path the router refused.
     guard !r.bad || !http::is_routable(http::path_of(cx.req.target)) else { return; }
-    unrouted(cx, r);
+    unrouted(cx, http::unrouted(r), r.allow);
 }
 
-// Answers a request no route took with http::unrouted's status, each error
-// in the program's shape. Each arm writes a constant status, which the
-// inline writers fold.
-fn unrouted(cx, r: const http::Router&) {
-    match http::unrouted(r) {
+// Answers a request no route took with status, http::unrouted's, and allow
+// in Allow for a 204 or 405, each error in the program's shape. Each arm
+// writes a constant status, which the inline writers fold.
+fn unrouted(cx, status: i32, allow: const u8[:]) {
+    match status {
         204 => {
             http::start(cx.out, 204);
-            if r.allow.len > 0 { http::field(cx.out, "Allow", r.allow); }
+            if allow.len > 0 { http::field(cx.out, "Allow", allow); }
             http::finish(cx.out, http::NO_TYPE, "");
         },
-        405 => write_error(cx.out, cx.state, 405, "method_not_allowed", "", -1, r.allow),
+        405 => write_error(cx.out, cx.state, 405, "method_not_allowed", "", -1, allow),
         501 => write_error(cx.out, cx.state, 501, "not_implemented", "", -1, ""),
         400 => write_error(cx.out, cx.state, 400, "bad_path", "", -1, ""),
         _ => write_error(cx.out, cx.state, 404, "not_found", "", -1, ""),
