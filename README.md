@@ -79,7 +79,7 @@ Save this as `hello.goose`:
 
 ```rust
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import plod from "github.com/kaitk/goose-rest@v0.4.0";
+import plod from "github.com/kaitk/plod@v0.4.0";
 
 fn handle(cx) {
     plod::routes(cx) { cx =>

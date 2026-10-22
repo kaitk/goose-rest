@@ -5,7 +5,7 @@
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
 //   import tls from "github.com/kaitk/goose-tls@v0.0.5";
-//   import plod from "github.com/kaitk/goose-rest@<tag>";
+//   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.tls;
 namespace plod;
 

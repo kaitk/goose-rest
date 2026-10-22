@@ -5,7 +5,7 @@
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
 //   import compress from "github.com/kaitk/goose-compress@v0.1.1";
-//   import plod from "github.com/kaitk/goose-rest@<tag>";
+//   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.compression;
 namespace plod;
 

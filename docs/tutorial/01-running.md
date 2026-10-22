@@ -55,7 +55,7 @@ imports, `v0.5.4`, build with Goose `v2026.3`:
 
 ```text
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import plod from "github.com/kaitk/goose-rest@v0.4.0";
+import plod from "github.com/kaitk/plod@v0.4.0";
 ```
 
 This tutorial tracks the libraries' `main` branches until their next releases. Its

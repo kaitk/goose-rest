@@ -5,7 +5,7 @@
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
 //   import hash from "github.com/kaitk/goose-hash@v0.0.4";
-//   import plod from "github.com/kaitk/goose-rest@<tag>";
+//   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.websocket;
 //
 // The program keeps the connection's http::WebSocket in its request state,

@@ -279,7 +279,7 @@ purpose, update its README and its `expected.txt` together.
 A program outside the repository imports the package in the same way as a user's program,
 at a release tag or a pushed commit identified by its full hash, alongside goose-http at the pin
 ([README](../README.md#quick-start)). The compiler fetches it into
-`~/.goose/pkg/github.com/kaitk/goose-rest/<12-hex hash>/`. Check it with `goose build`
+`~/.goose/pkg/github.com/kaitk/plod/<12-hex hash>/`. Check it with `goose build`
 and a program whose `main` spawns a `thread_fn` that calls `http::serve`: `goose run`
 refuses it ("JIT mode does not support threads yet"), as TinyCC can't place
 thread-local storage. Before pushing, a

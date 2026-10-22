@@ -136,7 +136,7 @@ import the module, and give each worker goose-http's `http::TlsServer`:
 ```rust
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
-import plod from "github.com/kaitk/goose-rest@<tag>";
+import plod from "github.com/kaitk/plod@<tag>";
 import plod.tls;
 
 thread_fn worker(cfg: http::Config, ctx: tls::Context) {
@@ -264,7 +264,7 @@ module:
 ```rust
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import plod from "github.com/kaitk/goose-rest@<tag>";
+import plod from "github.com/kaitk/plod@<tag>";
 import plod.compression;
 
 fn handle(cx) {
@@ -771,7 +771,7 @@ module, and keep the connection's `http::WebSocket` in the request state:
 ```rust
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import plod from "github.com/kaitk/goose-rest@<tag>";
+import plod from "github.com/kaitk/plod@<tag>";
 import plod.websocket;
 
 enum Use { None, Echo }
