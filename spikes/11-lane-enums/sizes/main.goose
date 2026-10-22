@@ -4,7 +4,7 @@
 // lane. And what the reply carries back of the job. Sizes are of the packed
 // layout (spec C.2), from bytes_of a one-element array.
 import std;
-import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
 import rest from "../../../";
 
 // Spike 10's states: docs/best-practices/lanes/app.goose's steps, the one

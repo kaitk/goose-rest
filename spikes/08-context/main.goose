@@ -1,7 +1,7 @@
 // Spike 08: hand-written routes whose functions take only cx, with the
 // worker's state and the router in it. README.md has the verdict.
 import std;
-import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
 import .rest;
 
 struct App { name: const u8[:], projects: i64 }

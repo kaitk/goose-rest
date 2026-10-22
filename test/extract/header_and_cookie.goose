@@ -1,7 +1,7 @@
 // rest::header and rest::cookie, by name in any case for a header and in
 // its own for a cookie, rest::int_of, and each failure's answer.
 import std;
-import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
 import rest from "../../";
 import expect from "../";
 import common;

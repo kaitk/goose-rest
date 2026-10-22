@@ -2,12 +2,12 @@
 // program declares both packages in its root file, goose-http at the
 // reference this file imports it at, a release tag or a commit:
 //
-//   import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
+//   import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
 //   import rest from "github.com/kaitk/goose-rest@<commit>";
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
 import .check;
 import .runtime;
 import .extract;

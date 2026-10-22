@@ -4,7 +4,7 @@
 //   build/goose-rest gen docs/tutorial/04-json/types/api.json -o docs/tutorial/04-json/types/api_gen.goose
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
 import rest from "../../../../";
 import .api_gen;
 
