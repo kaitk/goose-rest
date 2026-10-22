@@ -8,7 +8,7 @@
 //   curl -s -X POST 'localhost:8080/v1/projects/1/members?user=3'
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.3";
+import http from "github.com/kaitk/goose-http@v0.5.4";
 import rest from "../../../";
 import db from "../db/";
 

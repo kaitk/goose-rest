@@ -1,7 +1,7 @@
 // What the runtime's tests share: a context to call a handler with, and a
 // project that a route loads through two calls that may fail.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.3";
+import http from "github.com/kaitk/goose-http@v0.5.4";
 import rest from "../../";
 import expect from "../";
 

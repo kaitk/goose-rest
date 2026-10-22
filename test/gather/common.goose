@@ -2,7 +2,7 @@
 // worker, event by event as serve gives them, in the worker's gather pool
 // and under its budget, and a route that reads its body whole or in pieces.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.3";
+import http from "github.com/kaitk/goose-http@v0.5.4";
 import rest from "../../";
 import expect from "../";
 

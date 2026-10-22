@@ -11,7 +11,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.3";
+import http from "github.com/kaitk/goose-http@v0.5.4";
 import rest from "../../../";
 import db from "../db/";
 

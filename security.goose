@@ -2,7 +2,7 @@
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.3";
+import http from "github.com/kaitk/goose-http@v0.5.4";
 
 struct SecurityHeaders {
     nosniff: bool = true,

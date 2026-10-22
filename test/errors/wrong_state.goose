@@ -2,7 +2,7 @@
 // A typed route helper given a context whose per-request state is another
 // type than the one it names.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.3";
+import http from "github.com/kaitk/goose-http@v0.5.4";
 import rest from "../../";
 
 struct Session { user: i64 = 0 }
