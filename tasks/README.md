@@ -45,7 +45,6 @@ Work can start at any point unless the table says otherwise.
 
 | Open work | Remaining outcome or dependency |
 |---|---|
-| 058: uploads beside forms | goose-rest serves 11-12% fewer uploads and forms than goose-http alone when both run, and holds 17 MB more on epoll; find the cause. |
 | 020: memory | Done on Linux (2026-10-20); stays here while task 027 uses its method. |
 | 023: bodies and responses in pieces | Done (2026-10-20); three follow-ups under its "Left open": compression in pieces, `TIMEOUT` after a begun response, and precompressed files. |
 | 025: middleware fields on later answers, and 029: the gathering budget | Done; tier M's instructions per request on Linux record what each added. |

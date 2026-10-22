@@ -255,7 +255,10 @@ From the runs in this file:
   behind goose-http alone, and behind every framework that serves them: dusty-routes's
   1,230, actix-web's 1,201, ntex's 1,198, and Axum's 1,168.
 - **Uploads beside forms**: 150-156 a second on io_uring against goose-http's 170-175,
-  with forms at 6.7-6.9 K/s against 7.7-7.8 K/s.
+  with forms at 6.7-6.9 K/s against 7.7-7.8 K/s. On a Ryzen 7 PRO 6850U with
+  goose-http's gather pool (2026-10-22), 5.6% behind on epoll and 7.3% on io_uring,
+  and 19 MB more on epoll. goose-rest's tier server reads each form whole with
+  `rest::body`, where goose-http's reads it in pieces (task 058).
 - **Reads beside uploads on io_uring**: p99 6.33-8.67 ms, as on goose-http's io_uring
   loop, against dusty-routes's 0.65-3.20 ms, ntex's 1.83-4.83 ms, and goose-rest's own
   0.40-1.28 ms on epoll.

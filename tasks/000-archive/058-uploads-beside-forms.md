@@ -1,8 +1,8 @@
 # 058: Uploads beside forms
 
-Status: in-progress (asked for 2026-10-20). One arena didn't close epoll's memory
-gap ("After the gather pool"): it comes from reading the bodies whole, not from where
-they're kept. With three rounds, the rate gap shows on this machine too.
+Status: done (2026-10-22). The gaps come from tier D's forms read whole with
+`rest::body`, and they stay: the tier server keeps reading its forms as a goose-rest
+program would ("Decided").
 
 With tier D's forms running beside its uploads, goose-rest serves fewer of both than
 goose-http alone, on both loops, and holds more memory on epoll. Alone, uploads are
@@ -28,11 +28,11 @@ it, and on epoll the gathered bodies would explain the 17 MB.
 
 ## Acceptance criteria
 
-- [ ] The cause found and measured on Linux, for the rate on both loops and for
+- [x] The cause found and measured on Linux, for the rate on both loops and for
       epoll's memory
-- [ ] Fixed in the package or the tier server, or recorded here with the reason it
+- [x] Fixed in the package or the tier server, or recorded here with the reason it
       stays
-- [ ] Uploads beside forms rerun against goose-http alone, recorded in
+- [x] Uploads beside forms rerun against goose-http alone, recorded in
       `docs/benchmarks.md`
 
 ## Found from the code (2026-10-22)
@@ -128,3 +128,12 @@ second are the median, with the range.
   within its noise. On epoll the ranges don't overlap; on io_uring they do.
 
 Both point at the first candidate: forms read whole beside uploads read in pieces.
+The memory is measured both ways; the rate only in the one-round run above, where
+the server reading in pieces wasn't faster than goose-rest's.
+
+## Decided (2026-10-22)
+
+The tier server keeps `rest::body` for its forms. A goose-rest program reads a small
+body whole, and the benchmark measures what such a program costs. Reading whole holds
+each form until it's complete, within the worker's gather budget. A route that must
+hold less reads in pieces with `rest::body_in_pieces`, as goose-http's server does.
