@@ -18,7 +18,8 @@
 #   bench/rest.sh run     goose-http's bench/rest.sh run with SERVERS, then
 #                         tiers F, R, and M at saturation, into the same OUT
 #   bench/rest.sh count   as root: count.sh's user instructions per request on
-#                         goose-http alone and goose-rest, one request each
+#                         goose-http alone and goose-rest, one request each,
+#                         on LOOP's loop (default: epoll; or uring)
 #
 # Linux only but for check: run and count need taskset, /proc, and perf.
 #
@@ -275,7 +276,7 @@ if [ "$1" = count ]; then
     # goose, and passes on the environment.
     ln -sf "$bin/rest" "$gh/build/bench/restc-http"
     ln -sf "$bin/rest-goose-rest" "$gh/build/bench/restc-rest"
-    export REST_DATA="$data" LOOP=epoll
+    export REST_DATA="$data" LOOP="${LOOP:-epoll}"
     # tier, target, status class, servers
     while read -r tier target class servers; do
         echo "== TIER=$tier $target"
