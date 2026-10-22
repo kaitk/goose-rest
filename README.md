@@ -72,8 +72,8 @@ a program also needs a C compiler and, on Linux, liburing:
 Save this as `hello.goose`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.1";
-import rest from "github.com/kaitk/goose-rest@v0.3.1";
+import http from "github.com/kaitk/goose-http@v0.5.2";
+import rest from "github.com/kaitk/goose-rest@v0.3.2";
 
 fn handle(cx) {
     rest::routes(cx) { cx =>

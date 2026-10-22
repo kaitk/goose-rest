@@ -2,6 +2,20 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.3.2 (2026-10-22)
+
+Faster TLS, from goose-tls `v0.0.5`. Goose `v2026.3`, goose-http `v0.5.2`,
+goose-compress `v0.1.1`; `rest.websocket` declares goose-hash `v0.0.4`, and `rest.tls`
+goose-tls `v0.0.5`. No breaking changes in goose-rest's API; a program that imports
+`rest.tls` moves its goose-tls import to `v0.0.5`.
+
+Changed:
+
+- goose-tls `v0.0.5` cuts its TLS server's overhead: one HKDF and one HMAC context
+  reused through a handshake, and records decrypted in place. In goose-tls's own
+  measurements, 8.3% less CPU a json-like request, 2.7% a full handshake, and 11.8% a
+  resumed one.
+
 ## v0.3.1 (2026-10-22)
 
 h2 over TLS, and less memory per TLS connection, from goose-http `v0.5.1`. Goose
