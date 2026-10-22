@@ -110,7 +110,9 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
         let o = t.ops[r.first_op + j];
         if o.method == "GET" { format(t.out, ind, "if m == \"GET\" || m == \"HEAD\" {\n"); }
         else { format(t.out, ind, "if m == \"", o.method, "\" {\n"); }
-        format(t.out, ind, "    route_", o.handler, "(cx");
+        // By reference: an untyped parameter given rest::Cx itself copies
+        // it, which gcc keeps at a call that stays one.
+        format(t.out, ind, "    route_", o.handler, "(&cx");
         for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
             if s.param { format(t.out, ", s", i + 1); }
         }

@@ -26,7 +26,7 @@ fn dispatch(cx) {
             5 => {
                 if path == "/meta" {
                     if m == "GET" || m == "HEAD" {
-                        route_r90(cx);
+                        route_r90(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -34,7 +34,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user" {
                     if m == "GET" || m == "HEAD" {
-                        route_r186(cx);
+                        route_r186(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -44,7 +44,7 @@ fn dispatch(cx) {
             6 => {
                 if path == "/feeds" {
                     if m == "GET" || m == "HEAD" {
-                        route_r17(cx);
+                        route_r17(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -52,11 +52,11 @@ fn dispatch(cx) {
                 }
                 if path == "/gists" {
                     if m == "GET" || m == "HEAD" {
-                        route_r42(cx);
+                        route_r42(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r44(cx);
+                        route_r44(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -64,7 +64,7 @@ fn dispatch(cx) {
                 }
                 if path == "/users" {
                     if m == "GET" || m == "HEAD" {
-                        route_r187(cx);
+                        route_r187(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -74,7 +74,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/events" {
                     if m == "GET" || m == "HEAD" {
-                        route_r8(cx);
+                        route_r8(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -82,7 +82,7 @@ fn dispatch(cx) {
                 }
                 if path == "/issues" {
                     if m == "GET" || m == "HEAD" {
-                        route_r60(cx);
+                        route_r60(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -90,7 +90,7 @@ fn dispatch(cx) {
                 }
                 if path == "/emojis" {
                     if m == "GET" || m == "HEAD" {
-                        route_r85(cx);
+                        route_r85(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -100,7 +100,7 @@ fn dispatch(cx) {
             9 => {
                 if path == "/markdown" {
                     if m == "POST" {
-                        route_r88(cx);
+                        route_r88(&cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -110,7 +110,7 @@ fn dispatch(cx) {
             10 => {
                 if path == "/user/orgs" {
                     if m == "GET" || m == "HEAD" {
-                        route_r93(cx);
+                        route_r93(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -118,11 +118,11 @@ fn dispatch(cx) {
                 }
                 if path == "/user/keys" {
                     if m == "GET" || m == "HEAD" {
-                        route_r200(cx);
+                        route_r200(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r202(cx);
+                        route_r202(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -132,7 +132,7 @@ fn dispatch(cx) {
             11 => {
                 if path == "/rate_limit" {
                     if m == "GET" || m == "HEAD" {
-                        route_r91(cx);
+                        route_r91(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -140,7 +140,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user/teams" {
                     if m == "GET" || m == "HEAD" {
-                        route_r114(cx);
+                        route_r114(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -148,11 +148,11 @@ fn dispatch(cx) {
                 }
                 if path == "/user/repos" {
                     if m == "GET" || m == "HEAD" {
-                        route_r124(cx);
+                        route_r124(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r128(cx);
+                        route_r128(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -162,7 +162,7 @@ fn dispatch(cx) {
             12 => {
                 if path == "/user/issues" {
                     if m == "GET" || m == "HEAD" {
-                        route_r61(cx);
+                        route_r61(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -170,7 +170,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/code" {
                     if m == "GET" || m == "HEAD" {
-                        route_r178(cx);
+                        route_r178(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -178,15 +178,15 @@ fn dispatch(cx) {
                 }
                 if path == "/user/emails" {
                     if m == "GET" || m == "HEAD" {
-                        route_r188(cx);
+                        route_r188(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r189(cx);
+                        route_r189(&cx);
                         return;
                     }
                     if m == "DELETE" {
-                        route_r190(cx);
+                        route_r190(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST, DELETE");
@@ -196,7 +196,7 @@ fn dispatch(cx) {
             13 => {
                 if path == "/user/starred" {
                     if m == "GET" || m == "HEAD" {
-                        route_r28(cx);
+                        route_r28(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -204,7 +204,7 @@ fn dispatch(cx) {
                 }
                 if path == "/markdown/raw" {
                     if m == "POST" {
-                        route_r89(cx);
+                        route_r89(&cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -212,7 +212,7 @@ fn dispatch(cx) {
                 }
                 if path == "/repositories" {
                     if m == "GET" || m == "HEAD" {
-                        route_r127(cx);
+                        route_r127(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -220,7 +220,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/users" {
                     if m == "GET" || m == "HEAD" {
-                        route_r180(cx);
+                        route_r180(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -230,11 +230,11 @@ fn dispatch(cx) {
             14 => {
                 if path == "/notifications" {
                     if m == "GET" || m == "HEAD" {
-                        route_r18(cx);
+                        route_r18(&cx);
                         return;
                     }
                     if m == "PUT" {
-                        route_r20(cx);
+                        route_r20(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -242,7 +242,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/issues" {
                     if m == "GET" || m == "HEAD" {
-                        route_r179(cx);
+                        route_r179(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -252,11 +252,11 @@ fn dispatch(cx) {
             15 => {
                 if path == "/authorizations" {
                     if m == "GET" || m == "HEAD" {
-                        route_r1(cx);
+                        route_r1(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r3(cx);
+                        route_r3(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -264,7 +264,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user/followers" {
                     if m == "GET" || m == "HEAD" {
-                        route_r192(cx);
+                        route_r192(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -272,7 +272,7 @@ fn dispatch(cx) {
                 }
                 if path == "/user/following" {
                     if m == "GET" || m == "HEAD" {
-                        route_r194(cx);
+                        route_r194(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -282,7 +282,7 @@ fn dispatch(cx) {
             19 => {
                 if path == "/user/subscriptions" {
                     if m == "GET" || m == "HEAD" {
-                        route_r34(cx);
+                        route_r34(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -292,7 +292,7 @@ fn dispatch(cx) {
             20 => {
                 if path == "/gitignore/templates" {
                     if m == "GET" || m == "HEAD" {
-                        route_r86(cx);
+                        route_r86(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -300,7 +300,7 @@ fn dispatch(cx) {
                 }
                 if path == "/search/repositories" {
                     if m == "GET" || m == "HEAD" {
-                        route_r177(cx);
+                        route_r177(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -317,11 +317,11 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "authorizations", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r1(cx);
+                        route_r1(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r3(cx);
+                        route_r3(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -332,11 +332,11 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r2(cx, s2);
+                                route_r2(&cx, s2);
                                 return;
                             }
                             if m == "DELETE" {
-                                route_r4(cx, s2);
+                                route_r4(&cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -354,7 +354,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "tokens", plain) {
                                 if e3 == path.len {
                                     if m == "DELETE" {
-                                        route_r6(cx, s2);
+                                        route_r6(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "DELETE");
@@ -365,11 +365,11 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r5(cx, s2, s4);
+                                                route_r5(&cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r7(cx, s2, s4);
+                                                route_r7(&cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -385,7 +385,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "events", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r8(cx);
+                        route_r8(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -401,11 +401,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r130(cx, s2, s3);
+                                        route_r130(&cx, s2, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        route_r137(cx, s2, s3);
+                                        route_r137(&cx, s2, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -416,7 +416,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "events", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r9(cx, s2, s3);
+                                                route_r9(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -426,11 +426,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "notifications", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r19(cx, s2, s3);
+                                                route_r19(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r21(cx, s2, s3);
+                                                route_r21(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -440,7 +440,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "stargazers", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r26(cx, s2, s3);
+                                                route_r26(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -450,7 +450,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "subscribers", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r32(cx, s2, s3);
+                                                route_r32(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -460,15 +460,15 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "subscription", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r35(cx, s2, s3);
+                                                route_r35(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r36(cx, s2, s3);
+                                                route_r36(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r37(cx, s2, s3);
+                                                route_r37(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -481,7 +481,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "blobs", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        route_r51(cx, s2, s3);
+                                                        route_r51(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -492,7 +492,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r50(cx, s2, s3, s6);
+                                                                route_r50(&cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -504,7 +504,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "commits", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        route_r53(cx, s2, s3);
+                                                        route_r53(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -515,7 +515,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r52(cx, s2, s3, s6);
+                                                                route_r52(&cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -527,11 +527,11 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "refs", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r54(cx, s2, s3);
+                                                        route_r54(&cx, s2, s3);
                                                         return;
                                                     }
                                                     if m == "POST" {
-                                                        route_r55(cx, s2, s3);
+                                                        route_r55(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -541,7 +541,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "tags", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        route_r57(cx, s2, s3);
+                                                        route_r57(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -552,7 +552,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r56(cx, s2, s3, s6);
+                                                                route_r56(&cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -564,7 +564,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "trees", plain) {
                                                 if e5 == path.len {
                                                     if m == "POST" {
-                                                        route_r59(cx, s2, s3);
+                                                        route_r59(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "POST");
@@ -575,7 +575,7 @@ fn dispatch(cx) {
                                                     if s6.len > 0 {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r58(cx, s2, s3, s6);
+                                                                route_r58(&cx, s2, s3, s6);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -589,11 +589,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "issues", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r63(cx, s2, s3);
+                                                route_r63(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r65(cx, s2, s3);
+                                                route_r65(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -604,7 +604,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r64(cx, s2, s3, s5);
+                                                        route_r64(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -615,11 +615,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "comments", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r68(cx, s2, s3, s5);
+                                                                route_r68(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "POST" {
-                                                                route_r69(cx, s2, s3, s5);
+                                                                route_r69(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -629,7 +629,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "events", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r70(cx, s2, s3, s5);
+                                                                route_r70(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -639,19 +639,19 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "labels", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r75(cx, s2, s3, s5);
+                                                                route_r75(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "POST" {
-                                                                route_r76(cx, s2, s3, s5);
+                                                                route_r76(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "PUT" {
-                                                                route_r78(cx, s2, s3, s5);
+                                                                route_r78(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "DELETE" {
-                                                                route_r79(cx, s2, s3, s5);
+                                                                route_r79(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, POST, PUT, DELETE");
@@ -662,7 +662,7 @@ fn dispatch(cx) {
                                                             if s7.len > 0 {
                                                                 if e7 == path.len {
                                                                     if m == "DELETE" {
-                                                                        route_r77(cx, s2, s3, s5, s7);
+                                                                        route_r77(&cx, s2, s3, s5, s7);
                                                                         return;
                                                                     }
                                                                     rest::no_method(cx, "DELETE");
@@ -678,7 +678,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "assignees", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r66(cx, s2, s3);
+                                                route_r66(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -689,7 +689,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r67(cx, s2, s3, s5);
+                                                        route_r67(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -701,11 +701,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "labels", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r71(cx, s2, s3);
+                                                route_r71(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r73(cx, s2, s3);
+                                                route_r73(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -716,11 +716,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r72(cx, s2, s3, s5);
+                                                        route_r72(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r74(cx, s2, s3, s5);
+                                                        route_r74(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -732,11 +732,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "milestones", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r81(cx, s2, s3);
+                                                route_r81(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r83(cx, s2, s3);
+                                                route_r83(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -747,11 +747,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r82(cx, s2, s3, s5);
+                                                        route_r82(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r84(cx, s2, s3, s5);
+                                                        route_r84(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -762,7 +762,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "labels", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r80(cx, s2, s3, s5);
+                                                                route_r80(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -776,11 +776,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "pulls", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r115(cx, s2, s3);
+                                                route_r115(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r117(cx, s2, s3);
+                                                route_r117(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -791,7 +791,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r116(cx, s2, s3, s5);
+                                                        route_r116(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -802,7 +802,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "commits", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r118(cx, s2, s3, s5);
+                                                                route_r118(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -812,7 +812,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "files", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r119(cx, s2, s3, s5);
+                                                                route_r119(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -822,11 +822,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "merge", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r120(cx, s2, s3, s5);
+                                                                route_r120(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "PUT" {
-                                                                route_r121(cx, s2, s3, s5);
+                                                                route_r121(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -836,11 +836,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "comments", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r122(cx, s2, s3, s5);
+                                                                route_r122(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "PUT" {
-                                                                route_r123(cx, s2, s3, s5);
+                                                                route_r123(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -854,7 +854,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "contributors", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r131(cx, s2, s3);
+                                                route_r131(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -864,7 +864,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "languages", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r132(cx, s2, s3);
+                                                route_r132(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -874,7 +874,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "teams", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r133(cx, s2, s3);
+                                                route_r133(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -884,7 +884,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "tags", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r134(cx, s2, s3);
+                                                route_r134(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -894,7 +894,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "branches", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r135(cx, s2, s3);
+                                                route_r135(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -905,7 +905,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r136(cx, s2, s3, s5);
+                                                        route_r136(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -917,7 +917,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "collaborators", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r138(cx, s2, s3);
+                                                route_r138(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -928,15 +928,15 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r139(cx, s2, s3, s5);
+                                                        route_r139(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "PUT" {
-                                                        route_r140(cx, s2, s3, s5);
+                                                        route_r140(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r141(cx, s2, s3, s5);
+                                                        route_r141(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -948,7 +948,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "comments", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r142(cx, s2, s3);
+                                                route_r142(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -959,11 +959,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r145(cx, s2, s3, s5);
+                                                        route_r145(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r146(cx, s2, s3, s5);
+                                                        route_r146(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -975,7 +975,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "commits", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r147(cx, s2, s3);
+                                                route_r147(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -986,7 +986,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r148(cx, s2, s3, s5);
+                                                        route_r148(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -997,11 +997,11 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "comments", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r143(cx, s2, s3, s5);
+                                                                route_r143(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             if m == "POST" {
-                                                                route_r144(cx, s2, s3, s5);
+                                                                route_r144(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1015,7 +1015,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "readme", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r149(cx, s2, s3);
+                                                route_r149(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1025,11 +1025,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "keys", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r150(cx, s2, s3);
+                                                route_r150(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r152(cx, s2, s3);
+                                                route_r152(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1040,11 +1040,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r151(cx, s2, s3, s5);
+                                                        route_r151(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r153(cx, s2, s3, s5);
+                                                        route_r153(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1056,7 +1056,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "downloads", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r154(cx, s2, s3);
+                                                route_r154(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1067,11 +1067,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r155(cx, s2, s3, s5);
+                                                        route_r155(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r156(cx, s2, s3, s5);
+                                                        route_r156(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1083,11 +1083,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "forks", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r157(cx, s2, s3);
+                                                route_r157(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r158(cx, s2, s3);
+                                                route_r158(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1097,11 +1097,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "hooks", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r159(cx, s2, s3);
+                                                route_r159(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r161(cx, s2, s3);
+                                                route_r161(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1112,11 +1112,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r160(cx, s2, s3, s5);
+                                                        route_r160(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r163(cx, s2, s3, s5);
+                                                        route_r163(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1127,7 +1127,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "tests", plain) {
                                                         if e6 == path.len {
                                                             if m == "POST" {
-                                                                route_r162(cx, s2, s3, s5);
+                                                                route_r162(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "POST");
@@ -1141,7 +1141,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "merges", plain) {
                                         if e4 == path.len {
                                             if m == "POST" {
-                                                route_r164(cx, s2, s3);
+                                                route_r164(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "POST");
@@ -1151,11 +1151,11 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "releases", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r165(cx, s2, s3);
+                                                route_r165(&cx, s2, s3);
                                                 return;
                                             }
                                             if m == "POST" {
-                                                route_r167(cx, s2, s3);
+                                                route_r167(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1166,11 +1166,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r166(cx, s2, s3, s5);
+                                                        route_r166(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r168(cx, s2, s3, s5);
+                                                        route_r168(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1181,7 +1181,7 @@ fn dispatch(cx) {
                                                     if rest::segment_is(s6, "assets", plain) {
                                                         if e6 == path.len {
                                                             if m == "GET" || m == "HEAD" {
-                                                                route_r169(cx, s2, s3, s5);
+                                                                route_r169(&cx, s2, s3, s5);
                                                                 return;
                                                             }
                                                             rest::no_method(cx, "GET, HEAD");
@@ -1198,7 +1198,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "contributors", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r170(cx, s2, s3);
+                                                        route_r170(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1208,7 +1208,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "commit_activity", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r171(cx, s2, s3);
+                                                        route_r171(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1218,7 +1218,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "code_frequency", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r172(cx, s2, s3);
+                                                        route_r172(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1228,7 +1228,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "participation", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r173(cx, s2, s3);
+                                                        route_r173(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1238,7 +1238,7 @@ fn dispatch(cx) {
                                             if rest::segment_is(s5, "punch_card", plain) {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r174(cx, s2, s3);
+                                                        route_r174(&cx, s2, s3);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1253,11 +1253,11 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r175(cx, s2, s3, s5);
+                                                        route_r175(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     if m == "POST" {
-                                                        route_r176(cx, s2, s3, s5);
+                                                        route_r176(&cx, s2, s3, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1284,7 +1284,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "events", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r10(cx, s2, s3);
+                                                route_r10(&cx, s2, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1303,7 +1303,7 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r94(cx, s2);
+                                route_r94(&cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1314,7 +1314,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "events", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r11(cx, s2);
+                                        route_r11(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1324,7 +1324,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "issues", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r62(cx, s2);
+                                        route_r62(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1334,7 +1334,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "members", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r95(cx, s2);
+                                        route_r95(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1345,11 +1345,11 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r96(cx, s2, s4);
+                                                route_r96(&cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r97(cx, s2, s4);
+                                                route_r97(&cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1361,7 +1361,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "public_members", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r98(cx, s2);
+                                        route_r98(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1372,15 +1372,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r99(cx, s2, s4);
+                                                route_r99(&cx, s2, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r100(cx, s2, s4);
+                                                route_r100(&cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r101(cx, s2, s4);
+                                                route_r101(&cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1392,11 +1392,11 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "teams", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r102(cx, s2);
+                                        route_r102(&cx, s2);
                                         return;
                                     }
                                     if m == "POST" {
-                                        route_r104(cx, s2);
+                                        route_r104(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1406,11 +1406,11 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "repos", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r126(cx, s2);
+                                        route_r126(&cx, s2);
                                         return;
                                     }
                                     if m == "POST" {
-                                        route_r129(cx, s2);
+                                        route_r129(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1424,7 +1424,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "users", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r187(cx);
+                        route_r187(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -1435,7 +1435,7 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r185(cx, s2);
+                                route_r185(&cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1446,7 +1446,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "received_events", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r12(cx, s2);
+                                        route_r12(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1457,7 +1457,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "public", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r13(cx, s2);
+                                                route_r13(&cx, s2);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1469,7 +1469,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "events", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r14(cx, s2);
+                                        route_r14(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1480,7 +1480,7 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "public", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r15(cx, s2);
+                                                route_r15(&cx, s2);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1493,7 +1493,7 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r16(cx, s2, s5);
+                                                        route_r16(&cx, s2, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD");
@@ -1507,7 +1507,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "starred", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r27(cx, s2);
+                                        route_r27(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1517,7 +1517,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "subscriptions", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r33(cx, s2);
+                                        route_r33(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1527,7 +1527,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "gists", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r41(cx, s2);
+                                        route_r41(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1537,7 +1537,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "orgs", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r92(cx, s2);
+                                        route_r92(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1547,7 +1547,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "repos", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r125(cx, s2);
+                                        route_r125(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1557,7 +1557,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "followers", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r191(cx, s2);
+                                        route_r191(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1567,7 +1567,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "following", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r193(cx, s2);
+                                        route_r193(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1578,7 +1578,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r196(cx, s2, s4);
+                                                route_r196(&cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -1590,7 +1590,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "keys", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r199(cx, s2);
+                                        route_r199(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1604,7 +1604,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "feeds", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r17(cx);
+                        route_r17(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -1614,11 +1614,11 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "notifications", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r18(cx);
+                        route_r18(&cx);
                         return;
                     }
                     if m == "PUT" {
-                        route_r20(cx);
+                        route_r20(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -1632,7 +1632,7 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r22(cx, s3);
+                                        route_r22(&cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1643,15 +1643,15 @@ fn dispatch(cx) {
                                     if rest::segment_is(s4, "subscription", plain) {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r23(cx, s3);
+                                                route_r23(&cx, s3);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r24(cx, s3);
+                                                route_r24(&cx, s3);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r25(cx, s3);
+                                                route_r25(&cx, s3);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1667,7 +1667,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "user", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r186(cx);
+                        route_r186(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -1678,7 +1678,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "starred", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r28(cx);
+                                route_r28(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1692,15 +1692,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r29(cx, s3, s4);
+                                                route_r29(&cx, s3, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r30(cx, s3, s4);
+                                                route_r30(&cx, s3, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r31(cx, s3, s4);
+                                                route_r31(&cx, s3, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1714,7 +1714,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "subscriptions", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r34(cx);
+                                route_r34(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1728,15 +1728,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r38(cx, s3, s4);
+                                                route_r38(&cx, s3, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r39(cx, s3, s4);
+                                                route_r39(&cx, s3, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r40(cx, s3, s4);
+                                                route_r40(&cx, s3, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1750,7 +1750,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "issues", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r61(cx);
+                                route_r61(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1760,7 +1760,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "orgs", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r93(cx);
+                                route_r93(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1770,7 +1770,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "teams", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r114(cx);
+                                route_r114(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1780,11 +1780,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "repos", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r124(cx);
+                                route_r124(&cx);
                                 return;
                             }
                             if m == "POST" {
-                                route_r128(cx);
+                                route_r128(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1794,15 +1794,15 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "emails", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r188(cx);
+                                route_r188(&cx);
                                 return;
                             }
                             if m == "POST" {
-                                route_r189(cx);
+                                route_r189(&cx);
                                 return;
                             }
                             if m == "DELETE" {
-                                route_r190(cx);
+                                route_r190(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST, DELETE");
@@ -1812,7 +1812,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "followers", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r192(cx);
+                                route_r192(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1822,7 +1822,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "following", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r194(cx);
+                                route_r194(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1833,15 +1833,15 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r195(cx, s3);
+                                        route_r195(&cx, s3);
                                         return;
                                     }
                                     if m == "PUT" {
-                                        route_r197(cx, s3);
+                                        route_r197(&cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        route_r198(cx, s3);
+                                        route_r198(&cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -1853,11 +1853,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "keys", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r200(cx);
+                                route_r200(&cx);
                                 return;
                             }
                             if m == "POST" {
-                                route_r202(cx);
+                                route_r202(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -1868,11 +1868,11 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r201(cx, s3);
+                                        route_r201(&cx, s3);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        route_r203(cx, s3);
+                                        route_r203(&cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1886,11 +1886,11 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "gists", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r42(cx);
+                        route_r42(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_r44(cx);
+                        route_r44(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -1901,11 +1901,11 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r43(cx, s2);
+                                route_r43(&cx, s2);
                                 return;
                             }
                             if m == "DELETE" {
-                                route_r49(cx, s2);
+                                route_r49(&cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -1916,15 +1916,15 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "star", plain) {
                                 if e3 == path.len {
                                     if m == "PUT" {
-                                        route_r45(cx, s2);
+                                        route_r45(&cx, s2);
                                         return;
                                     }
                                     if m == "DELETE" {
-                                        route_r46(cx, s2);
+                                        route_r46(&cx, s2);
                                         return;
                                     }
                                     if m == "GET" || m == "HEAD" {
-                                        route_r47(cx, s2);
+                                        route_r47(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "PUT, DELETE, GET, HEAD");
@@ -1934,7 +1934,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "forks", plain) {
                                 if e3 == path.len {
                                     if m == "POST" {
-                                        route_r48(cx, s2);
+                                        route_r48(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "POST");
@@ -1948,7 +1948,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "issues", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r60(cx);
+                        route_r60(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -1958,7 +1958,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "emojis", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r85(cx);
+                        route_r85(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -1971,7 +1971,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "templates", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r86(cx);
+                                route_r86(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -1982,7 +1982,7 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r87(cx, s3);
+                                        route_r87(&cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -1996,7 +1996,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "markdown", plain) {
                 if e1 == path.len {
                     if m == "POST" {
-                        route_r88(cx);
+                        route_r88(&cx);
                         return;
                     }
                     rest::no_method(cx, "POST");
@@ -2007,7 +2007,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "raw", plain) {
                         if e2 == path.len {
                             if m == "POST" {
-                                route_r89(cx);
+                                route_r89(&cx);
                                 return;
                             }
                             rest::no_method(cx, "POST");
@@ -2019,7 +2019,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "meta", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r90(cx);
+                        route_r90(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2029,7 +2029,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "rate_limit", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r91(cx);
+                        route_r91(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2042,11 +2042,11 @@ fn dispatch(cx) {
                     if s2.len > 0 {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r103(cx, s2);
+                                route_r103(&cx, s2);
                                 return;
                             }
                             if m == "DELETE" {
-                                route_r105(cx, s2);
+                                route_r105(&cx, s2);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, DELETE");
@@ -2057,7 +2057,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "members", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r106(cx, s2);
+                                        route_r106(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2068,15 +2068,15 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r107(cx, s2, s4);
+                                                route_r107(&cx, s2, s4);
                                                 return;
                                             }
                                             if m == "PUT" {
-                                                route_r108(cx, s2, s4);
+                                                route_r108(&cx, s2, s4);
                                                 return;
                                             }
                                             if m == "DELETE" {
-                                                route_r109(cx, s2, s4);
+                                                route_r109(&cx, s2, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2088,7 +2088,7 @@ fn dispatch(cx) {
                             if rest::segment_is(s3, "repos", plain) {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_r110(cx, s2);
+                                        route_r110(&cx, s2);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");
@@ -2102,15 +2102,15 @@ fn dispatch(cx) {
                                             if s5.len > 0 {
                                                 if e5 == path.len {
                                                     if m == "GET" || m == "HEAD" {
-                                                        route_r111(cx, s2, s4, s5);
+                                                        route_r111(&cx, s2, s4, s5);
                                                         return;
                                                     }
                                                     if m == "PUT" {
-                                                        route_r112(cx, s2, s4, s5);
+                                                        route_r112(&cx, s2, s4, s5);
                                                         return;
                                                     }
                                                     if m == "DELETE" {
-                                                        route_r113(cx, s2, s4, s5);
+                                                        route_r113(&cx, s2, s4, s5);
                                                         return;
                                                     }
                                                     rest::no_method(cx, "GET, HEAD, PUT, DELETE");
@@ -2128,7 +2128,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "repositories", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_r127(cx);
+                        route_r127(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -2141,7 +2141,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "repositories", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r177(cx);
+                                route_r177(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2151,7 +2151,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "code", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r178(cx);
+                                route_r178(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2161,7 +2161,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "issues", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r179(cx);
+                                route_r179(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2171,7 +2171,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "users", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_r180(cx);
+                                route_r180(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -2201,7 +2201,7 @@ fn dispatch(cx) {
                                                             if s7.len > 0 {
                                                                 if e7 == path.len {
                                                                     if m == "GET" || m == "HEAD" {
-                                                                        route_r181(cx, s4, s5, s6, s7);
+                                                                        route_r181(&cx, s4, s5, s6, s7);
                                                                         return;
                                                                     }
                                                                     rest::no_method(cx, "GET, HEAD");
@@ -2227,7 +2227,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r182(cx, s4);
+                                                route_r182(&cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -2247,7 +2247,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r183(cx, s4);
+                                                route_r183(&cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");
@@ -2262,7 +2262,7 @@ fn dispatch(cx) {
                                     if s4.len > 0 {
                                         if e4 == path.len {
                                             if m == "GET" || m == "HEAD" {
-                                                route_r184(cx, s4);
+                                                route_r184(&cx, s4);
                                                 return;
                                             }
                                             rest::no_method(cx, "GET, HEAD");

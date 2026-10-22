@@ -177,7 +177,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
-                        route_health(cx);
+                        route_health(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -187,11 +187,11 @@ fn dispatch(cx) {
             12 => {
                 if path == "/v1/projects" {
                     if m == "GET" || m == "HEAD" {
-                        route_list_projects(cx);
+                        route_list_projects(&cx);
                         return;
                     }
                     if m == "POST" {
-                        route_create_project(cx);
+                        route_create_project(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, POST");
@@ -208,7 +208,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "health", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_health(cx);
+                        route_health(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -221,11 +221,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "projects", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_list_projects(cx);
+                                route_list_projects(&cx);
                                 return;
                             }
                             if m == "POST" {
-                                route_create_project(cx);
+                                route_create_project(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, POST");
@@ -236,7 +236,7 @@ fn dispatch(cx) {
                             if s3.len > 0 {
                                 if e3 == path.len {
                                     if m == "GET" || m == "HEAD" {
-                                        route_get_project(cx, s3);
+                                        route_get_project(&cx, s3);
                                         return;
                                     }
                                     rest::no_method(cx, "GET, HEAD");

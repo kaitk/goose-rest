@@ -343,7 +343,7 @@ fn dispatch(cx) {
             1 => {
                 if path == "/" {
                     if m == "GET" || m == "HEAD" {
-                        route_page(cx);
+                        route_page(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -353,7 +353,7 @@ fn dispatch(cx) {
             7 => {
                 if path == "/health" {
                     if m == "GET" || m == "HEAD" {
-                        route_health(cx);
+                        route_health(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -363,7 +363,7 @@ fn dispatch(cx) {
             10 => {
                 if path == "/v1/status" {
                     if m == "GET" || m == "HEAD" {
-                        route_get_status(cx);
+                        route_get_status(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -373,11 +373,11 @@ fn dispatch(cx) {
             12 => {
                 if path == "/v1/settings" {
                     if m == "GET" || m == "HEAD" {
-                        route_get_settings(cx);
+                        route_get_settings(&cx);
                         return;
                     }
                     if m == "PUT" {
-                        route_put_settings(cx);
+                        route_put_settings(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD, PUT");
@@ -385,7 +385,7 @@ fn dispatch(cx) {
                 }
                 if path == "/v1/firmware" {
                     if m == "PUT" {
-                        route_put_firmware(cx);
+                        route_put_firmware(&cx);
                         return;
                     }
                     rest::no_method(cx, "PUT");
@@ -402,7 +402,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_page(cx);
+                        route_page(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -412,7 +412,7 @@ fn dispatch(cx) {
             if rest::segment_is(s1, "health", plain) {
                 if e1 == path.len {
                     if m == "GET" || m == "HEAD" {
-                        route_health(cx);
+                        route_health(&cx);
                         return;
                     }
                     rest::no_method(cx, "GET, HEAD");
@@ -425,7 +425,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "status", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_get_status(cx);
+                                route_get_status(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD");
@@ -435,11 +435,11 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "settings", plain) {
                         if e2 == path.len {
                             if m == "GET" || m == "HEAD" {
-                                route_get_settings(cx);
+                                route_get_settings(&cx);
                                 return;
                             }
                             if m == "PUT" {
-                                route_put_settings(cx);
+                                route_put_settings(&cx);
                                 return;
                             }
                             rest::no_method(cx, "GET, HEAD, PUT");
@@ -449,7 +449,7 @@ fn dispatch(cx) {
                     if rest::segment_is(s2, "firmware", plain) {
                         if e2 == path.len {
                             if m == "PUT" {
-                                route_put_firmware(cx);
+                                route_put_firmware(&cx);
                                 return;
                             }
                             rest::no_method(cx, "PUT");
