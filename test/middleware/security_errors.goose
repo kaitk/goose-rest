@@ -1,18 +1,18 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import security_common;
 
 fn main() {
-    let cfg = rest::prepare_security_headers(rest::security_api());
+    let cfg = plod::prepare_security_headers(plod::security_api());
     let out = answer(expect::request("GET", "/")) { cx =>
-        rest::security_headers(cx, cfg) { rest::route(cx) { rest::fail(cx, 403, "forbidden"); }; };
+        plod::security_headers(cx, cfg) { plod::route(cx) { plod::fail(cx, 403, "forbidden"); }; };
     };
     expect::same(out, str("HTTP/1.1 403 Forbidden\r\n", API_FIELDS,
                  "Content-Type: application/json\r\nContent-Length: 21\r\n\r\n{\"error\":\"forbidden\"}"));
     let missing = answer(expect::request("GET", "/missing")) { cx =>
-        rest::security_headers(cx, cfg) { rest::routes(cx) { cx => rest::get(cx, "/") { rest::text(cx, 200, "ok"); }; }; };
+        plod::security_headers(cx, cfg) { plod::routes(cx) { cx => plod::get(cx, "/") { plod::text(cx, 200, "ok"); }; }; };
     };
     expect::same(missing, str("HTTP/1.1 404 Not Found\r\n", API_FIELDS,
                  "Content-Type: application/json\r\nContent-Length: 21\r\n\r\n{\"error\":\"not_found\"}"));

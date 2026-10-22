@@ -1,8 +1,8 @@
 # dusty-routes
 
-`dusty-routes` serves goose-http's REST tiers A to D, and goose-rest's tiers F, R, and
+`dusty-routes` serves goose-http's REST tiers A to D, and Plod's tiers F, R, and
 M (`bench/rest/tiers/`), on dusty, with a route per path on dusty's router, for
-goose-rest's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
+Plod's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
 [bench/README.md](../../README.md)). It starts from goose-http's `bench/rest/dusty` (the catch-all `dusty` entry):
 its records, its handlers, its multipart reader, and its pins, dusty `ae164fa`, zio
 0.19.1, and Zig 0.16.0. The Zig project is `rest_dusty_routes`; the binary keeps the
@@ -115,7 +115,7 @@ The JSON writing, the records, and the CSV and multipart readers are the same.
 
 ## Differences from what the checkers and the other servers expect
 
-goose-http's `check.py` passes on tiers A to D, and goose-rest's `bench/rest/tiers/check.py`
+goose-http's `check.py` passes on tiers A to D, and Plod's `bench/rest/tiers/check.py`
 on F, R, and M. None of their requests reaches the differences below. They come from
 dusty acting before a handler runs, from dusty's readers and its `Cors`, or from tier M's
 stack being global. None can be matched through a dusty hook without a catch-all route.
@@ -158,7 +158,7 @@ every run:
 | `TIER=d`, check d | ok | ok |
 | `TIER=d`, check c | ok | not run |
 
-goose-rest's `bench/rest/tiers/check.py PORT TIER DATADIR` passed for `TIER=f`, `TIER=r`
+Plod's `bench/rest/tiers/check.py PORT TIER DATADIR` passed for `TIER=f`, `TIER=r`
 (all 203 routes and the two 404s), and `TIER=m`.
 
 A 3 s wrk 4.2.0 run of each script counted no socket error, and no status but those

@@ -13,7 +13,7 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 let PROJECTS = 2;
 
@@ -46,35 +46,35 @@ struct St {
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::get(cx, "/v1/projects/:id/tasks.csv") { export_tasks(cx, project(cx)); };
-        rest::get(cx, "/v1/projects/:id/files/*name") { download(cx, project(cx)); };
-        rest::get(cx, "/v1/projects/:id/progress") { progress(cx, project(cx)); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::get(cx, "/v1/projects/:id/tasks.csv") { export_tasks(cx, project(cx)); };
+        plod::get(cx, "/v1/projects/:id/files/*name") { download(cx, project(cx)); };
+        plod::get(cx, "/v1/projects/:id/progress") { progress(cx, project(cx)); };
     };
 }
 
 fn project(cx) -> i64 {
-    let id = rest::param_int(cx, "id");
-    guard id >= 1 && id <= PROJECTS else { rest::fail(cx, 404, "project_not_found"); }
+    let id = plod::param_int(cx, "id");
+    guard id >= 1 && id <= PROJECTS else { plod::fail(cx, 404, "project_not_found"); }
     return id;
 }
 
 // GET /v1/projects/:id/tasks.csv: the header now, and the rows as the
 // client takes them.
 fn export_tasks(cx, project: i64) {
-    rest::begin(cx, 200, "text/csv; charset=utf-8", -1, Use.Export { project: project });
-    rest::send(cx, "id,title,assignee\n");
+    plod::begin(cx, 200, "text/csv; charset=utf-8", -1, Use.Export { project: project });
+    plod::send(cx, "id,title,assignee\n");
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 fn resume(u: Use.Export, cx) {
     guard cx.kind == http::MORE else { return; }   // CLOSED: the state holds nothing to release
     var piece: u8[>..] = [];
     cx.state.next = tasks_csv(piece, cx.app.tasks, u.project, cx.state.next, ROWS_PER_PIECE);
-    rest::send(cx, piece);
-    if cx.state.next < 0 { rest::end(cx); }
+    plod::send(cx, piece);
+    if cx.state.next < 0 { plod::end(cx); }
 }
 
 // Appends to out up to n of project's tasks from tasks[from], as CSV rows,
@@ -97,21 +97,21 @@ fn tasks_csv(out: u8[>..]&, tasks: const Task[:], project: i64, from: i64, n: i6
 // matching If-None-Match, 416, and 404 file_not_found.
 fn download(cx, project: i64) {
     var path: u8[>..] = [];
-    guard http::file_path(str(cx.app.files, "/", project), rest::param(cx, "name"), path) else {
-        rest::fail(cx, 400, "bad_path");
+    guard http::file_path(str(cx.app.files, "/", project), plod::param(cx, "name"), path) else {
+        plod::fail(cx, 400, "bad_path");
     }
-    rest::file(cx, path, cx.state.file, Use.Download);
+    plod::file(cx, path, cx.state.file, Use.Download);
 }
 
-fn resume(u: Use.Download, cx) { rest::send_file(cx, cx.state.file); }
+fn resume(u: Use.Download, cx) { plod::send_file(cx, cx.state.file); }
 
 // GET /v1/projects/:id/progress?n=N: the project's task count as Server-Sent
 // Events, PROGRESS_MS apart; N of them, or without N until the client goes.
 fn progress(cx, project: i64) {
-    let n, given = rest::query_int(cx, "n");
-    guard !given || n > 0 else { rest::fail(cx, 400, "invalid_n"); }
+    let n, given = plod::query_int(cx, "n");
+    guard !given || n > 0 else { plod::fail(cx, 400, "invalid_n"); }
     cx.state.left = if given { n } else { -1 };
-    rest::begin(cx, 200, "text/event-stream", -1, Use.Progress { project: project });
+    plod::begin(cx, 200, "text/event-stream", -1, Use.Progress { project: project });
     progress_event(cx, project);
 }
 
@@ -124,9 +124,9 @@ fn resume(u: Use.Progress, cx) {
 // last.
 fn progress_event(cx, project: i64) {
     cx.state.events++;
-    rest::send(cx, str("id: ", cx.state.events, "\ndata: {\"tasks\":", count(cx.app.tasks, project), "}\n\n"));
+    plod::send(cx, str("id: ", cx.state.events, "\ndata: {\"tasks\":", count(cx.app.tasks, project), "}\n\n"));
     if cx.state.left > 0 { cx.state.left--; }
-    if cx.state.left == 0 { rest::end(cx); } else { rest::pause(cx, PROGRESS_MS); }
+    if cx.state.left == 0 { plod::end(cx); } else { plod::pause(cx, PROGRESS_MS); }
 }
 
 fn count(tasks: const Task[:], project: i64) -> i64 {
@@ -145,9 +145,9 @@ thread_fn worker(cfg: http::Config, files: u8[..200]) {
     tasks.push(Task { id: 2001, project: 2, title: "Name it", assignee: "grace" });
     tasks.push(Task { id: 2002, project: 2, title: "Ship it", assignee: "ada" });
     var app = App { tasks: tasks, files: files };
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let e = plod::serve(cfg, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

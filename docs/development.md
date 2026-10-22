@@ -1,6 +1,6 @@
 # Development
 
-This guide sets up a machine to build, test, and benchmark goose-rest. goose-rest is
+This guide sets up a machine to build, test, and benchmark Plod. Plod is
 Goose with no C of its own. It runs on goose-http, whose shim is the only C in a program,
 so it builds and runs wherever goose-http does: Linux, macOS, and Windows. Most of the
 setup is goose-http's, and this guide links to
@@ -14,18 +14,18 @@ platform.
 ## Layout
 
 ```text
-rest.goose        the package's entry, namespace rest
+plod.goose        the package's entry, namespace plod
 runtime.goose     Cx, serve, route, fail, json, text, otherwise, and the error shape
 extract.goose     the extractors: parameters, headers, cookies, take, once
 sse.goose         Server-Sent Events over begin, send, and pause
 cookies.goose     outgoing cookies through goose-http's cookie writer
 middleware.goose  CORS, bearer, timed, and scope
 waiting.goose     lanes of jobs: ask one, run its jobs, and resume with its reply
-compression.goose rest::compressed, a module rest doesn't import (goose-compress)
-websocket.goose   rest::ws_upgrade and ws_read, a module rest doesn't import (goose-hash)
-tls.goose         rest::serve over HTTPS, a module rest doesn't import (goose-tls)
+compression.goose plod::compressed, a module plod doesn't import (goose-compress)
+websocket.goose   plod::ws_upgrade and ws_read, a module plod doesn't import (goose-hash)
+tls.goose         plod::serve over HTTPS, a module plod doesn't import (goose-tls)
 check.goose       what generated code calls: code points, string formats, numbers
-gen/              goose-rest gen, the generator (gen/main.goose)
+gen/              plod gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
 examples/         JSON APIs with and without a schema, waiting on a thread, compressed
                   answers, a WebSocket, and a device
@@ -59,7 +59,7 @@ and use it by hand:
 GOOSE=$(scripts/goose.sh)
 ```
 
-goose-rest needs no `.build` sidecar to exclude `build/`, as goose-http's `http.build`
+Plod needs no `.build` sidecar to exclude `build/`, as goose-http's `http.build`
 does: its package has no C and no `extern fn`, and the suite passes with the release
 unpacked there (2026-10-15).
 
@@ -155,11 +155,11 @@ python3 test/run_tests.py cors --bless # rewrite test/expected/cors.out from its
 once, and `-v` prints the checks that passed too. The runner takes `GOOSE` and
 `GOOSE_COMMIT` as the scripts do, and `goose build` takes `GOOSE_CC`.
 
-A test's root declares the package as `import rest from "../../";`, and `test/` itself as
+A test's root declares the package as `import plod from "../../";`, and `test/` itself as
 `import expect from "../";`, which reaches `test/expect.goose` and, as
 `import expect.gen.api_gen;`, the generated modules under `test/gen/`. A root imports a
 module of the package by name once it declares the package: `test/generator/` imports
-`gen/gen.goose` as `import rest.gen.gen;`. Goose traps met while writing the generator
+`gen/gen.goose` as `import plod.gen.gen;`. Goose traps met while writing the generator
 and its tests are in [known issues](known-issues.md#goose).
 
 ### macOS
@@ -210,7 +210,7 @@ before committing from it
 
 ### Run the TypeScript helper's tests
 
-`ts/` holds the TypeScript helper and its tests, and goose-rest doesn't install a
+`ts/` holds the TypeScript helper and its tests, and Plod doesn't install a
 JavaScript toolchain for them. `scripts/test.sh` runs `TSC`, or `tsc` on `PATH`, on
 `ts/tsconfig.json`, which also covers the tutorial's `.mts` files, then runs
 `ts/test/*.mts` and `docs/tutorial/05-schema/api.mts` with `JS`: `node`, or `bun` where

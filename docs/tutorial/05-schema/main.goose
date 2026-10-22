@@ -1,13 +1,13 @@
 // docs/tutorial/05-schema.md: an API from api.json, whose router and types
-// goose-rest gen writes into api_gen.goose, with the handlers in app.goose,
+// plod gen writes into api_gen.goose, with the handlers in app.goose,
 // and a hand-written route before it.
 //
-//   build/goose-rest gen docs/tutorial/05-schema/api.json -o docs/tutorial/05-schema/api_gen.goose
+//   build/plod gen docs/tutorial/05-schema/api.json -o docs/tutorial/05-schema/api_gen.goose
 //   goose build -o build/projects docs/tutorial/05-schema/main.goose
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import .api_gen;
 import .app;
 
@@ -17,11 +17,11 @@ let UPLOAD_LIMIT: i64 = 2 * 1024 * 1024;
 
 struct Upload { name: const u8[:], bytes: i64 }
 
-fn format(out: u8[>..]&, u: const Upload&) { rest::format_fields(out, u); }
+fn format(out: u8[>..]&, u: const Upload&) { plod::format_fields(out, u); }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::put(cx, "/uploads/:name") { upload(cx); };
+    plod::routes(cx) { cx =>
+        plod::put(cx, "/uploads/:name") { upload(cx); };
         api::dispatch(cx);
     };
 }
@@ -29,15 +29,15 @@ fn handle(cx) {
 // An upload of any bytes, which a schema can't describe: its bodies are JSON.
 fn upload(cx) {
     app::security_token(cx);
-    let data = rest::body(cx, UPLOAD_LIMIT);
-    rest::json(cx, 200, Upload { name: rest::param(cx, "name"), bytes: data.len });
+    let data = plod::body(cx, UPLOAD_LIMIT);
+    plod::json(cx, 200, Upload { name: plod::param(cx, "name"), bytes: data.len });
 }
 
 thread_fn worker(cfg: http::Config) {
     var projects: api::Project[>..] = [];
     var app = app::App { projects: projects, token: "secret" };
-    let e = rest::serve(cfg, app) { cx =>
-        rest::timed(cx) { handle(cx); };
+    let e = plod::serve(cfg, app) { cx =>
+        plod::timed(cx) { handle(cx); };
     };
     if e.code != 0 { http::report(e); }
 }

@@ -1,24 +1,24 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import security_common;
 
 fn main() {
-    let defaults = rest::security_html();
+    let defaults = plod::security_html();
     var options = defaults;
     options.frame_options = "";
     options.content_security_policy = "frame-ancestors https://partner.example";
     options.resource_policy = "cross-origin";
     options.hsts = false;
-    let site = rest::prepare_security_headers(defaults);
-    let embed = rest::prepare_security_headers(options);
+    let site = plod::prepare_security_headers(defaults);
+    let embed = plod::prepare_security_headers(options);
     for path in ["/", "/embed"] {
         let out = answer(expect::request("GET", path, "Origin: https://a.example\r\n")) { cx =>
-            rest::security_headers(cx, if starts_with(cx.req.target, "/embed") { embed } else { site }) {
-                rest::timed(cx, false) {
-                    rest::cors(cx, CORS) {
-                        rest::routes(cx) { cx => rest::text(cx, 200, "ok"); };
+            plod::security_headers(cx, if starts_with(cx.req.target, "/embed") { embed } else { site }) {
+                plod::timed(cx, false) {
+                    plod::cors(cx, CORS) {
+                        plod::routes(cx) { cx => plod::text(cx, 200, "ok"); };
                     };
                 };
             };

@@ -5,35 +5,35 @@ namespace app;
 
 import std;
 import http;
-import rest;
+import plod;
 
 // Fails 401 without a session cookie, and returns the session's user.
 fn security_session(cx) -> i64 {
     let v, found = http::cookie_of(cx.req, "session");
-    guard found && v.len > 0 else { rest::fail(cx, 401, "unauthenticated"); }
+    guard found && v.len > 0 else { plod::fail(cx, 401, "unauthenticated"); }
     return 1;
 }
 
-fn health(cx) { rest::text(cx, 200, "health"); }
-fn login(cx) { rest::text(cx, 200, "login"); }
-fn logout(cx,s) { rest::text(cx, 200, "logout"); }
-fn refresh(cx) { rest::text(cx, 200, "refresh"); }
-fn get_session(cx,s) { rest::text(cx, 200, "get_session"); }
-fn get_me(cx,s) { rest::text(cx, 200, "get_me"); }
-fn update_me(cx,s) { rest::text(cx, 200, "update_me"); }
-fn get_settings(cx,s) { rest::text(cx, 200, "get_settings"); }
-fn put_settings(cx,s) { rest::text(cx, 200, "put_settings"); }
-fn get_user(cx,s, id) { rest::text(cx, 200, str("get_user ", id)); }
-fn get_avatar(cx,s, id) { rest::text(cx, 200, str("get_avatar ", id)); }
-fn put_avatar(cx,s, id) { rest::text(cx, 200, str("put_avatar ", id)); }
-fn list_orgs(cx,s) { rest::text(cx, 200, "list_orgs"); }
-fn create_org(cx,s) { rest::text(cx, 200, "create_org"); }
-fn get_org(cx,s, org) { rest::text(cx, 200, str("get_org ", org)); }
-fn update_org(cx,s, org) { rest::text(cx, 200, str("update_org ", org)); }
-fn delete_org(cx,s, org) { rest::text(cx, 200, str("delete_org ", org)); }
-fn list_org_members(cx,s, org) { rest::text(cx, 200, str("list_org_members ", org)); }
-fn add_org_member(cx,s, org) { rest::text(cx, 200, str("add_org_member ", org)); }
-fn remove_org_member(cx,s, org, user) { rest::text(cx, 200, str("remove_org_member ", org, " ", user)); }
+fn health(cx) { plod::text(cx, 200, "health"); }
+fn login(cx) { plod::text(cx, 200, "login"); }
+fn logout(cx,s) { plod::text(cx, 200, "logout"); }
+fn refresh(cx) { plod::text(cx, 200, "refresh"); }
+fn get_session(cx,s) { plod::text(cx, 200, "get_session"); }
+fn get_me(cx,s) { plod::text(cx, 200, "get_me"); }
+fn update_me(cx,s) { plod::text(cx, 200, "update_me"); }
+fn get_settings(cx,s) { plod::text(cx, 200, "get_settings"); }
+fn put_settings(cx,s) { plod::text(cx, 200, "put_settings"); }
+fn get_user(cx,s, id) { plod::text(cx, 200, str("get_user ", id)); }
+fn get_avatar(cx,s, id) { plod::text(cx, 200, str("get_avatar ", id)); }
+fn put_avatar(cx,s, id) { plod::text(cx, 200, str("put_avatar ", id)); }
+fn list_orgs(cx,s) { plod::text(cx, 200, "list_orgs"); }
+fn create_org(cx,s) { plod::text(cx, 200, "create_org"); }
+fn get_org(cx,s, org) { plod::text(cx, 200, str("get_org ", org)); }
+fn update_org(cx,s, org) { plod::text(cx, 200, str("update_org ", org)); }
+fn delete_org(cx,s, org) { plod::text(cx, 200, str("delete_org ", org)); }
+fn list_org_members(cx,s, org) { plod::text(cx, 200, str("list_org_members ", org)); }
+fn add_org_member(cx,s, org) { plod::text(cx, 200, str("add_org_member ", org)); }
+fn remove_org_member(cx,s, org, user) { plod::text(cx, 200, str("remove_org_member ", org, " ", user)); }
 // Names each parameter given, so that a request without any answers as the
 // if chain does.
 fn list_projects(cx,s, q) {
@@ -42,50 +42,50 @@ fn list_projects(cx,s, q) {
     if q.has_page { format(t, " page=", q.page); }
     if q.has_archived { format(t, " archived=", q.archived); }
     if q.has_q { format(t, " q=", q.q); }
-    rest::text(cx, 200, t);
+    plod::text(cx, 200, t);
 }
-fn create_project(cx,s, body) { rest::text(cx, 201, str("create_project ", body.name)); }
-fn get_project(cx,s, id) { rest::text(cx, 200, str("get_project ", id)); }
-fn update_project(cx,s, id) { rest::text(cx, 200, str("update_project ", id)); }
-fn delete_project(cx,s, id) { rest::text(cx, 200, str("delete_project ", id)); }
-fn archive_project(cx,s, id) { rest::text(cx, 200, str("archive_project ", id)); }
-fn restore_project(cx,s, id) { rest::text(cx, 200, str("restore_project ", id)); }
-fn list_project_members(cx,s, id) { rest::text(cx, 200, str("list_project_members ", id)); }
-fn add_project_member(cx,s, id) { rest::text(cx, 200, str("add_project_member ", id)); }
-fn remove_project_member(cx,s, id, user) { rest::text(cx, 200, str("remove_project_member ", id, " ", user)); }
-fn list_tasks(cx,s) { rest::text(cx, 200, "list_tasks"); }
-fn create_task(cx,s) { rest::text(cx, 200, "create_task"); }
-fn get_task(cx,s, id) { rest::text(cx, 200, str("get_task ", id)); }
-fn update_task(cx,s, id) { rest::text(cx, 200, str("update_task ", id)); }
-fn delete_task(cx,s, id) { rest::text(cx, 200, str("delete_task ", id)); }
-fn assign_task(cx,s, id) { rest::text(cx, 200, str("assign_task ", id)); }
-fn list_comments(cx,s, id) { rest::text(cx, 200, str("list_comments ", id)); }
-fn add_comment(cx,s, id) { rest::text(cx, 200, str("add_comment ", id)); }
-fn update_comment(cx,s, id, comment) { rest::text(cx, 200, str("update_comment ", id, " ", comment)); }
-fn list_files(cx,s) { rest::text(cx, 200, "list_files"); }
-fn upload_file(cx,s) { rest::text(cx, 200, "upload_file"); }
-fn get_file(cx,s, id) { rest::text(cx, 200, str("get_file ", id)); }
-fn delete_file(cx,s, id) { rest::text(cx, 200, str("delete_file ", id)); }
-fn get_file_content(cx,s, id) { rest::text(cx, 200, str("get_file_content ", id)); }
-fn put_file_content(cx,s, id) { rest::text(cx, 200, str("put_file_content ", id)); }
-fn list_webhooks(cx,s) { rest::text(cx, 200, "list_webhooks"); }
-fn create_webhook(cx,s) { rest::text(cx, 200, "create_webhook"); }
-fn get_webhook(cx,s, id) { rest::text(cx, 200, str("get_webhook ", id)); }
-fn update_webhook(cx,s, id) { rest::text(cx, 200, str("update_webhook ", id)); }
-fn delete_webhook(cx,s, id) { rest::text(cx, 200, str("delete_webhook ", id)); }
-fn list_deliveries(cx,s, id) { rest::text(cx, 200, str("list_deliveries ", id)); }
-fn time_report(cx,s) { rest::text(cx, 200, "time_report"); }
-fn user_time_report(cx,s, user) { rest::text(cx, 200, str("user_time_report ", user)); }
-fn budget_report(cx,s) { rest::text(cx, 200, "budget_report"); }
+fn create_project(cx,s, body) { plod::text(cx, 201, str("create_project ", body.name)); }
+fn get_project(cx,s, id) { plod::text(cx, 200, str("get_project ", id)); }
+fn update_project(cx,s, id) { plod::text(cx, 200, str("update_project ", id)); }
+fn delete_project(cx,s, id) { plod::text(cx, 200, str("delete_project ", id)); }
+fn archive_project(cx,s, id) { plod::text(cx, 200, str("archive_project ", id)); }
+fn restore_project(cx,s, id) { plod::text(cx, 200, str("restore_project ", id)); }
+fn list_project_members(cx,s, id) { plod::text(cx, 200, str("list_project_members ", id)); }
+fn add_project_member(cx,s, id) { plod::text(cx, 200, str("add_project_member ", id)); }
+fn remove_project_member(cx,s, id, user) { plod::text(cx, 200, str("remove_project_member ", id, " ", user)); }
+fn list_tasks(cx,s) { plod::text(cx, 200, "list_tasks"); }
+fn create_task(cx,s) { plod::text(cx, 200, "create_task"); }
+fn get_task(cx,s, id) { plod::text(cx, 200, str("get_task ", id)); }
+fn update_task(cx,s, id) { plod::text(cx, 200, str("update_task ", id)); }
+fn delete_task(cx,s, id) { plod::text(cx, 200, str("delete_task ", id)); }
+fn assign_task(cx,s, id) { plod::text(cx, 200, str("assign_task ", id)); }
+fn list_comments(cx,s, id) { plod::text(cx, 200, str("list_comments ", id)); }
+fn add_comment(cx,s, id) { plod::text(cx, 200, str("add_comment ", id)); }
+fn update_comment(cx,s, id, comment) { plod::text(cx, 200, str("update_comment ", id, " ", comment)); }
+fn list_files(cx,s) { plod::text(cx, 200, "list_files"); }
+fn upload_file(cx,s) { plod::text(cx, 200, "upload_file"); }
+fn get_file(cx,s, id) { plod::text(cx, 200, str("get_file ", id)); }
+fn delete_file(cx,s, id) { plod::text(cx, 200, str("delete_file ", id)); }
+fn get_file_content(cx,s, id) { plod::text(cx, 200, str("get_file_content ", id)); }
+fn put_file_content(cx,s, id) { plod::text(cx, 200, str("put_file_content ", id)); }
+fn list_webhooks(cx,s) { plod::text(cx, 200, "list_webhooks"); }
+fn create_webhook(cx,s) { plod::text(cx, 200, "create_webhook"); }
+fn get_webhook(cx,s, id) { plod::text(cx, 200, str("get_webhook ", id)); }
+fn update_webhook(cx,s, id) { plod::text(cx, 200, str("update_webhook ", id)); }
+fn delete_webhook(cx,s, id) { plod::text(cx, 200, str("delete_webhook ", id)); }
+fn list_deliveries(cx,s, id) { plod::text(cx, 200, str("list_deliveries ", id)); }
+fn time_report(cx,s) { plod::text(cx, 200, "time_report"); }
+fn user_time_report(cx,s, user) { plod::text(cx, 200, str("user_time_report ", user)); }
+fn budget_report(cx,s) { plod::text(cx, 200, "budget_report"); }
 fn list_exports(cx,s, q) {
     var t: u8[>..] = [];
     format(t, "list_exports ", q.x_trace);
     if q.has_theme { format(t, " theme=", q.theme); }
     if q.has_x_limit { format(t, " limit=", q.x_limit); }
-    rest::text(cx, 200, t);
+    plod::text(cx, 200, t);
 }
-fn create_export(cx,s, q) { rest::text(cx, 200, "create_export"); }
-fn get_export(cx,s, id) { rest::text(cx, 200, str("get_export ", id)); }
-fn delete_export(cx,s, id) { rest::text(cx, 200, str("delete_export ", id)); }
-fn cancel_export(cx,s, id) { rest::text(cx, 200, str("cancel_export ", id)); }
-fn download_export(cx,s, id) { rest::text(cx, 200, str("download_export ", id)); }
+fn create_export(cx,s, q) { plod::text(cx, 200, "create_export"); }
+fn get_export(cx,s, id) { plod::text(cx, 200, str("get_export ", id)); }
+fn delete_export(cx,s, id) { plod::text(cx, 200, str("delete_export ", id)); }
+fn cancel_export(cx,s, id) { plod::text(cx, 200, str("cancel_export ", id)); }
+fn download_export(cx,s, id) { plod::text(cx, 200, str("download_export ", id)); }

@@ -1,10 +1,10 @@
-// What the tests of goose-rest gen share: documents to give it, and the
+// What the tests of plod gen share: documents to give it, and the
 // error it must give, or the code it must write. The code it writes is
 // tested by test/generated/ and by scripts/test.sh's golden files.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
-import rest.gen.gen;
+import plod from "../../";
+import plod.gen.gen;
 
 // A document whose components.schemas is schemas.
 fn doc(schemas: const u8[:]) -> u8[>..] {

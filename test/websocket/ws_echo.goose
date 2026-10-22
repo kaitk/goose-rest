@@ -1,13 +1,13 @@
-// rest::ws_upgrade and rest::ws_read under serve_one: a text message echoed,
+// plod::ws_upgrade and plod::ws_read under serve_one: a text message echoed,
 // a message in two fragments joined, a ping answered, and the client's
 // Close answered, after which the route gets CLOSED and the gather pool has
 // its bytes back; then a subprotocol named in the 101, and the refusals in
-// goose-rest's error shape, a protocol that isn't a field value's among them.
+// Plod's error shape, a protocol that isn't a field value's among them.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import rest from "../../";
-import rest.websocket;
+import plod from "../../";
+import plod.websocket;
 import expect from "../";
 
 enum Use { None, Echo }
@@ -17,26 +17,26 @@ struct St { use: Use = Use.None, ws: http::WebSocket = http::WebSocket { .. } }
 struct App { log: u8[>..]& }
 
 fn handle(cx) {
-    if rest::resumed(cx) {
-        rest::on_reply(cx) { resume(cx.state.use, cx); };
+    if plod::resumed(cx) {
+        plod::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
-        rest::routes(cx) { cx =>
-            rest::get(cx, "/ws") { rest::ws_upgrade(cx, cx.state.ws, Use.Echo); };
-            rest::get(cx, "/chat") {
+        plod::routes(cx) { cx =>
+            plod::get(cx, "/ws") { plod::ws_upgrade(cx, cx.state.ws, Use.Echo); };
+            plod::get(cx, "/chat") {
                 let offered, _ = http::field_of(cx.req, "sec-websocket-protocol");
-                rest::ws_upgrade(cx, cx.state.ws, Use.Echo, if find(offered, "chat") >= 0 { "chat" } else { "" });
+                plod::ws_upgrade(cx, cx.state.ws, Use.Echo, if find(offered, "chat") >= 0 { "chat" } else { "" });
             };
             // A protocol that isn't a field value: 400, as http::ws_upgrade answers it.
-            rest::get(cx, "/bad") { rest::ws_upgrade(cx, cx.state.ws, Use.Echo, "chat\r\nX: y"); };
+            plod::get(cx, "/bad") { plod::ws_upgrade(cx, cx.state.ws, Use.Echo, "chat\r\nX: y"); };
         };
     }
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 fn resume(u: Use.Echo, cx) {
     if cx.kind == http::CLOSED { cx.app.log.append("[CLOSED]"); }
-    rest::ws_read(cx, cx.state.ws) { op, data =>
+    plod::ws_read(cx, cx.state.ws) { op, data =>
         format(cx.app.log, "[", op, " ", data, "]");
         http::ws_send(cx.out, op, data);
     };
@@ -58,7 +58,7 @@ fn served(text: const u8[:], budget: i64 = http::GATHER_BUDGET) -> u8[>..] {
     var log: u8[>..] = [];
     var app = App { log: log };
     http::gather_budget(budget);
-    let out = rest::serve_one(text, app, St { .. }) { cx =>
+    let out = plod::serve_one(text, app, St { .. }) { cx =>
         handle(cx);
     };
     if log.len > 0 { print("  log: ", log); }

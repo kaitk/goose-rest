@@ -6,26 +6,26 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/hello/:name") { hello(cx, rest::param(cx, "name")); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/hello/:name") { hello(cx, plod::param(cx, "name")); };
     };
 }
 
 fn hello(cx, name: const u8[:]) {
-    rest::text(cx, 200, greeting(cx, name));
+    plod::text(cx, 200, greeting(cx, name));
 }
 
 fn greeting(cx, name: const u8[:]) -> u8[>..] {
     // Answers 400, and leaves every caller up to the route around hello.
-    guard name.len <= 20 else { rest::fail(cx, 400, "name_too_long"); }
+    guard name.len <= 20 else { plod::fail(cx, 400, "name_too_long"); }
     return str("hello, ", name);
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx => handle(cx) };
+    let e = plod::serve(cfg) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

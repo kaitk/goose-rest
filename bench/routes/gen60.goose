@@ -1,6 +1,6 @@
-// The generated router's server: routes60.goose's 60 routes through the router goose-rest
+// The generated router's server: routes60.goose's 60 routes through the router Plod
 // gen writes from test/gen/routes.json, each answering "ok" as routes60's do,
-// on the same loop, through rest::serve_epoll as a program serves it. It also
+// on the same loop, through plod::serve_epoll as a program serves it. It also
 // does what routes60 doesn't: it calls the session check and parses each
 // integer parameter. bench/routes.sh builds it from build/routes/gen/, beside
 // the generated routes_gen.goose.
@@ -9,7 +9,7 @@
 import std;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import .routes_gen;
 import .app;
 
@@ -18,7 +18,7 @@ struct App { unused: bool = false }
 
 thread_fn worker(cfg: http::Config) {
     var app = App { .. };
-    let e = rest::serve_epoll(cfg, app) { cx => api::dispatch(cx) };
+    let e = plod::serve_epoll(cfg, app) { cx => api::dispatch(cx) };
     guard e.code != 0 else { return; }
     http::report(e);
     exit(1);

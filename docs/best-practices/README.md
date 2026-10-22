@@ -6,8 +6,8 @@ each piece of code goes, what it's called, and how the pieces call each other. W
 that, every reader has to work out again how this particular application was put
 together.
 
-It's an opinionated guide to building an application with goose-rest, the way its
-authors build their own. Nothing in goose-rest enforces it, and an application built
+It's an opinionated guide to building an application with Plod, the way its
+authors build their own. Nothing in Plod enforces it, and an application built
 another way works just as well; it only gives up a shape that others already know.
 
 An application laid out this way has a few main parts. *Domains* are folders, one for

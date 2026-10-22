@@ -1,4 +1,4 @@
-"""Checks a server's answers on goose-rest's own tiers before its
+"""Checks a server's answers on Plod's own tiers before its
 load runs, as goose-http's bench/rest/check.py does for tiers A to D.
 
     python3 bench/rest/tiers/check.py PORT TIER [DATADIR]    (TIER: f, r, or m)
@@ -15,7 +15,7 @@ Tier M, tier A behind a middleware stack: every answer, errors included,
 carries Server-Timing: app;dur=<ms>; one with Origin: https://app.example
 carries Access-Control-Allow-Origin for it; a request without a bearer token
 is 401; a preflight is 2xx without one, as the Fetch standard accepts any ok status
-(goose-rest and dusty answer 204, tower-http, actix-cors, and ntex-cors 200). DATADIR is goose-http's datasets,
+(Plod and dusty answer 204, tower-http, actix-cors, and ntex-cors 200). DATADIR is goose-http's datasets,
 for an item to compare.
 
 Exits non-zero with a message on the first failure.

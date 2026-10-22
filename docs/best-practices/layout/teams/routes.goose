@@ -3,12 +3,12 @@ namespace teams;
 
 import std;
 import http;
-import rest;
+import plod;
 import common.members.structs;
 import teams.structs;
 
 fn routes(cx, member: members::Member) {
-    rest::get(cx, "") { list(cx, member); };
+    plod::get(cx, "") { list(cx, member); };
 }
 
 fn list(cx, member: members::Member) {
@@ -16,5 +16,5 @@ fn list(cx, member: members::Member) {
     for t in cx.app.teams {
         if t.organization == member.organization { mine.push(t); }
     }
-    rest::json(cx, 200, mine);
+    plod::json(cx, 200, mine);
 }

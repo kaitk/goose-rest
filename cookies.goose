@@ -1,8 +1,8 @@
-namespace rest;
+namespace plod;
 
 import http from "github.com/kaitk/goose-http@v0.5.4";
 
-// Between http::start and http::finish, or rest::begin and its first send.
+// Between http::start and http::finish, or plod::begin and its first send.
 // Validation and serialization are goose-http's; false writes nothing.
 fn set_cookie(cx, c: http::Cookie) -> bool { http::set_cookie(cx.out, c) }
 

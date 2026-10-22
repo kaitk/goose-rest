@@ -16,7 +16,7 @@ req POST /v1/projects -H "$auth" -H "$json" -H 'Transfer-Encoding: chunked' -d "
 req GET '/v1/projects?q=go'
 req GET /v1/projects/2
 # A logo within its route's 4 MB, and past it; a project body past its 1 MB,
-# which rest::body refuses, under the server's 4 MB.
+# which plod::body refuses, under the server's 4 MB.
 printf '%3000000s' '' >"$out/logo"
 printf '%5000000s' '' >"$out/huge-logo"
 printf '{"name": "big"%2000000s}' '' >"$out/big-project.json"

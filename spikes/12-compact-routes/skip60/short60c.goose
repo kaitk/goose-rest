@@ -1,5 +1,5 @@
-// short60 with /v1/reports behind rest::cors, inside rest::routes, where
-// cors runs its block in rest::scoped. /v1/reports comes first, as hand60c
+// short60 with /v1/reports behind plod::cors, inside plod::routes, where
+// cors runs its block in plod::scoped. /v1/reports comes first, as hand60c
 // has it.
 // Built from a copy two levels below the package's root, which
 // ../benchskip.sh makes.
@@ -7,27 +7,27 @@
 //   short60c http [port]   (WORKERS 1)
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import compact from "../../spikes/12-compact-routes";
 
 fn ok(cx) { http::respond(cx.out, 200, "text/plain", "ok"); }
 
-let CORS = rest::Cors { origins: "https://a.example", .. };
+let CORS = plod::Cors { origins: "https://a.example", .. };
 
 // Fails 400 for a request that names a tenant other than acme; the
 // benchmark's requests name none.
 inline fn tenant_checked<F>(cx) {
-    let id, has = rest::header(cx, "X-Tenant");
-    guard !has || id == "acme" else { rest::fail(cx, 400, "unknown_tenant"); }
+    let id, has = plod::header(cx, "X-Tenant");
+    guard !has || id == "acme" else { plod::fail(cx, 400, "unknown_tenant"); }
     F();
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { ok(cx); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { ok(cx); };
         if compact::scope(cx, "/v1") {
             if compact::scope(cx, "/reports") {
-                rest::cors(cx, CORS) { reports(cx); };
+                plod::cors(cx, CORS) { reports(cx); };
             } else {
                 v1(cx);
             }
@@ -37,107 +37,107 @@ fn handle(cx) {
 
 fn v1(cx) {
     if compact::scope(cx,"/auth") {
-        rest::post(cx, "/login") { ok(cx); };
-        rest::post(cx, "/logout") { ok(cx); };
-        rest::post(cx, "/refresh") { ok(cx); };
-        rest::get(cx, "/session") { ok(cx); };
+        plod::post(cx, "/login") { ok(cx); };
+        plod::post(cx, "/logout") { ok(cx); };
+        plod::post(cx, "/refresh") { ok(cx); };
+        plod::get(cx, "/session") { ok(cx); };
     } else if compact::scope(cx,"/users") {
-        rest::get(cx, "/me") { ok(cx); };
-        rest::patch(cx, "/me") { ok(cx); };
-        rest::get(cx, "/me/settings") { ok(cx); };
-        rest::put(cx, "/me/settings") { ok(cx); };
-        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::get(cx, "/:id/avatar") { rest::param_int(cx, "id"); ok(cx); };
-        rest::put(cx, "/:id/avatar") { rest::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "/me") { ok(cx); };
+        plod::patch(cx, "/me") { ok(cx); };
+        plod::get(cx, "/me/settings") { ok(cx); };
+        plod::put(cx, "/me/settings") { ok(cx); };
+        plod::get(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "/:id/avatar") { plod::param_int(cx, "id"); ok(cx); };
+        plod::put(cx, "/:id/avatar") { plod::param_int(cx, "id"); ok(cx); };
     } else if compact::scope(cx,"/orgs") {
-        rest::get(cx, "") { ok(cx); };
-        rest::post(cx, "") { ok(cx); };
-        rest::get(cx, "/:org") { rest::param(cx, "org"); ok(cx); };
-        rest::patch(cx, "/:org") { rest::param(cx, "org"); ok(cx); };
-        rest::delete(cx, "/:org") { rest::param(cx, "org"); ok(cx); };
-        rest::get(cx, "/:org/members") { rest::param(cx, "org"); ok(cx); };
-        rest::post(cx, "/:org/members") { rest::param(cx, "org"); ok(cx); };
-        rest::delete(cx, "/:org/members/:user") {
-            rest::param(cx, "org");
-            rest::param_int(cx, "user");
+        plod::get(cx, "") { ok(cx); };
+        plod::post(cx, "") { ok(cx); };
+        plod::get(cx, "/:org") { plod::param(cx, "org"); ok(cx); };
+        plod::patch(cx, "/:org") { plod::param(cx, "org"); ok(cx); };
+        plod::delete(cx, "/:org") { plod::param(cx, "org"); ok(cx); };
+        plod::get(cx, "/:org/members") { plod::param(cx, "org"); ok(cx); };
+        plod::post(cx, "/:org/members") { plod::param(cx, "org"); ok(cx); };
+        plod::delete(cx, "/:org/members/:user") {
+            plod::param(cx, "org");
+            plod::param_int(cx, "user");
             ok(cx);
         };
     } else if compact::scope(cx,"/projects") {
-        rest::get(cx, "") {
-            rest::query_int(cx, "page");
-            rest::query_bool(cx, "archived");
-            rest::query(cx, "q");
+        plod::get(cx, "") {
+            plod::query_int(cx, "page");
+            plod::query_bool(cx, "archived");
+            plod::query(cx, "q");
             ok(cx);
         };
-        rest::post(cx, "") { ok(cx); };
-        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::patch(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::post(cx, "/:id/archive") { rest::param_int(cx, "id"); ok(cx); };
-        rest::post(cx, "/:id/restore") { rest::param_int(cx, "id"); ok(cx); };
-        rest::get(cx, "/:id/members") { rest::param_int(cx, "id"); ok(cx); };
-        rest::post(cx, "/:id/members") { rest::param_int(cx, "id"); ok(cx); };
-        rest::delete(cx, "/:id/members/:user") {
-            rest::param_int(cx, "id");
-            rest::param_int(cx, "user");
+        plod::post(cx, "") { ok(cx); };
+        plod::get(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::patch(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::delete(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::post(cx, "/:id/archive") { plod::param_int(cx, "id"); ok(cx); };
+        plod::post(cx, "/:id/restore") { plod::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "/:id/members") { plod::param_int(cx, "id"); ok(cx); };
+        plod::post(cx, "/:id/members") { plod::param_int(cx, "id"); ok(cx); };
+        plod::delete(cx, "/:id/members/:user") {
+            plod::param_int(cx, "id");
+            plod::param_int(cx, "user");
             ok(cx);
         };
     } else if compact::scope(cx,"/tasks") {
-        rest::get(cx, "") { ok(cx); };
-        rest::post(cx, "") { ok(cx); };
-        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::patch(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::post(cx, "/:id/assign") { rest::param_int(cx, "id"); ok(cx); };
-        rest::get(cx, "/:id/comments") { rest::param_int(cx, "id"); ok(cx); };
-        rest::post(cx, "/:id/comments") { rest::param_int(cx, "id"); ok(cx); };
-        rest::patch(cx, "/:id/comments/:comment") {
-            rest::param_int(cx, "id");
-            rest::param(cx, "comment");
+        plod::get(cx, "") { ok(cx); };
+        plod::post(cx, "") { ok(cx); };
+        plod::get(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::patch(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::delete(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::post(cx, "/:id/assign") { plod::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "/:id/comments") { plod::param_int(cx, "id"); ok(cx); };
+        plod::post(cx, "/:id/comments") { plod::param_int(cx, "id"); ok(cx); };
+        plod::patch(cx, "/:id/comments/:comment") {
+            plod::param_int(cx, "id");
+            plod::param(cx, "comment");
             ok(cx);
         };
     } else if compact::scope(cx,"/files") {
-        rest::get(cx, "") { ok(cx); };
-        rest::post(cx, "") { ok(cx); };
-        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::get(cx, "/:id/content") { rest::param_int(cx, "id"); ok(cx); };
-        rest::put(cx, "/:id/content") { rest::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "") { ok(cx); };
+        plod::post(cx, "") { ok(cx); };
+        plod::get(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::delete(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "/:id/content") { plod::param_int(cx, "id"); ok(cx); };
+        plod::put(cx, "/:id/content") { plod::param_int(cx, "id"); ok(cx); };
     } else if compact::scope(cx,"/webhooks") {
-        rest::get(cx, "") { ok(cx); };
-        rest::post(cx, "") { ok(cx); };
-        rest::get(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::patch(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::delete(cx, "/:id") { rest::param_int(cx, "id"); ok(cx); };
-        rest::get(cx, "/:id/deliveries") { rest::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "") { ok(cx); };
+        plod::post(cx, "") { ok(cx); };
+        plod::get(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::patch(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::delete(cx, "/:id") { plod::param_int(cx, "id"); ok(cx); };
+        plod::get(cx, "/:id/deliveries") { plod::param_int(cx, "id"); ok(cx); };
     } else if compact::scope(cx,"/reports") {
         tenant_checked(cx) {
-            rest::get(cx, "/time") { ok(cx); };
-            rest::get(cx, "/time/:user") { rest::param_int(cx, "user"); ok(cx); };
-            rest::get(cx, "/budget") { ok(cx); };
-            rest::get(cx, "/exports") { ok(cx); };
-            rest::post(cx, "/exports") { ok(cx); };
-            rest::get(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
-            rest::delete(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
-            rest::post(cx, "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); };
-            rest::get(cx, "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); };
+            plod::get(cx, "/time") { ok(cx); };
+            plod::get(cx, "/time/:user") { plod::param_int(cx, "user"); ok(cx); };
+            plod::get(cx, "/budget") { ok(cx); };
+            plod::get(cx, "/exports") { ok(cx); };
+            plod::post(cx, "/exports") { ok(cx); };
+            plod::get(cx, "/exports/:id") { plod::param_int(cx, "id"); ok(cx); };
+            plod::delete(cx, "/exports/:id") { plod::param_int(cx, "id"); ok(cx); };
+            plod::post(cx, "/exports/:id/cancel") { plod::param_int(cx, "id"); ok(cx); };
+            plod::get(cx, "/exports/:id/download") { plod::param_int(cx, "id"); ok(cx); };
         };
     }
 }
 fn reports(cx) {
-    rest::get(cx, "/time") { ok(cx); };
-    rest::get(cx, "/time/:user") { rest::param_int(cx, "user"); ok(cx); };
-    rest::get(cx, "/budget") { ok(cx); };
-    rest::get(cx, "/exports") { ok(cx); };
-    rest::post(cx, "/exports") { ok(cx); };
-    rest::get(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
-    rest::delete(cx, "/exports/:id") { rest::param_int(cx, "id"); ok(cx); };
-    rest::post(cx, "/exports/:id/cancel") { rest::param_int(cx, "id"); ok(cx); };
-    rest::get(cx, "/exports/:id/download") { rest::param_int(cx, "id"); ok(cx); };
+    plod::get(cx, "/time") { ok(cx); };
+    plod::get(cx, "/time/:user") { plod::param_int(cx, "user"); ok(cx); };
+    plod::get(cx, "/budget") { ok(cx); };
+    plod::get(cx, "/exports") { ok(cx); };
+    plod::post(cx, "/exports") { ok(cx); };
+    plod::get(cx, "/exports/:id") { plod::param_int(cx, "id"); ok(cx); };
+    plod::delete(cx, "/exports/:id") { plod::param_int(cx, "id"); ok(cx); };
+    plod::post(cx, "/exports/:id/cancel") { plod::param_int(cx, "id"); ok(cx); };
+    plod::get(cx, "/exports/:id/download") { plod::param_int(cx, "id"); ok(cx); };
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve_epoll(cfg) { cx => handle(cx) };
+    let e = plod::serve_epoll(cfg) { cx => handle(cx) };
     guard e.code != 0 else { return; }
     http::report(e);
     exit(1);

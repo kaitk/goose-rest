@@ -1,8 +1,8 @@
-// The projects' routes, through rest::serve_one: the request's bytes in, the
+// The projects' routes, through plod::serve_one: the request's bytes in, the
 // response's bytes out, with no socket or thread.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../../../";
+import plod from "../../../../../";
 import app from "../../";
 import expect from "../";
 
@@ -10,9 +10,9 @@ fn main() {
     // The worker state main.goose's worker builds, with an empty lane: these
     // routes don't ask the writer.
     var projects: projects::Project[>..] = [];
-    var a = App { projects: projects, writer: rest::Lane<Writes, Use> { lane: http::Lane { .. }, mark: Use.Write } };
+    var a = App { projects: projects, writer: plod::Lane<Writes, Use> { lane: http::Lane { .. }, mark: Use.Write } };
     fn answer(text: const u8[:]) -> u8[>..] {
-        let out = rest::serve_one(text, a, St { .. }) { cx => handle(cx); };
+        let out = plod::serve_one(text, a, St { .. }) { cx => handle(cx); };
         return expect::shown(out);
     }
 

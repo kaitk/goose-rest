@@ -1,8 +1,8 @@
 // The middleware's fields on an answer at a body's END, through
-// rest::serve_one: a body whole with its head, and one in pieces.
+// plod::serve_one: a body whole with its head, and one in pieces.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -10,10 +10,10 @@ import common;
 fn upload(which: const u8[:], n: i64) -> u8[>..] {
     var text = str("POST /up HTTP/1.1\r\nHost: x\r\nOrigin: https://a.example\r\nContent-Length: ", n, "\r\n\r\n");
     for i in n { text.push('a'); }
-    var app = rest::NoState { .. };
+    var app = plod::NoState { .. };
     let to = Lane { lane: http::Lane { .. }, mark: Use.Report };
-    return rest::serve_one(text, app, St { .. }) { cx =>
-        if rest::resumed(cx) { resume(cx.state.use, cx); } else { later_route(cx, "upload", which, to); }
+    return plod::serve_one(text, app, St { .. }) { cx =>
+        if plod::resumed(cx) { resume(cx.state.use, cx); } else { later_route(cx, "upload", which, to); }
     };
 }
 

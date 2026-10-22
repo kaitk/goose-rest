@@ -43,7 +43,7 @@ Each operation calls a handler in the `app` namespace, named after its `operatio
 snake_case: `listProjects` calls `app::list_projects`. A handler's arguments come in this
 order:
 
-1. `cx`, whose `cx.app` is the worker state passed to `rest::serve`.
+1. `cx`, whose `cx.app` is the worker state passed to `plod::serve`.
 2. The security check's result, when the operation specifies a scheme.
 3. Typed path parameters in template order: an `integer` becomes an `i64`.
 4. A `<OperationId>Params` struct holding the query, header, and cookie parameters.
@@ -52,20 +52,20 @@ order:
 So the handlers in [`app.goose`](05-schema/app.goose) are:
 
 ```rust
-fn health(cx) { rest::text(cx, 200, "ok"); }
+fn health(cx) { plod::text(cx, 200, "ok"); }
 
 fn list_projects(cx, q: api::ListProjectsParams) {
-    rest::json(cx, 200, Listing { app: cx.app, q: if q.has_q { q.q } else { "" }, limit: if q.has_limit { q.limit } else { 20 } });
+    plod::json(cx, 200, Listing { app: cx.app, q: if q.has_q { q.q } else { "" }, limit: if q.has_limit { q.limit } else { 20 } });
 }
 
 fn create_project(cx, user: const u8[:], body: const api::ProjectCreate&) {
     let p .= cx.app.projects.push(api::Project { id: cx.app.projects.len + 1, name: body.name, owner: user });
-    rest::json(cx, 201, p);
+    plod::json(cx, 201, p);
 }
 
 fn get_project(cx, id: i64) {
-    guard id <= cx.app.projects.len else { rest::fail(cx, 404, "project_not_found"); }
-    rest::json(cx, 200, cx.app.projects[id - 1]);
+    guard id <= cx.app.projects.len else { plod::fail(cx, 404, "project_not_found"); }
+    plod::json(cx, 200, cx.app.projects[id - 1]);
 }
 ```
 
@@ -89,7 +89,7 @@ bearer token and returns the user it belongs to:
 
 ```rust
 fn security_token(cx) -> const u8[:] {
-    guard rest::bearer_token(cx) == cx.app.token else { rest::invalid_token(cx); }
+    guard plod::bearer_token(cx) == cx.app.token else { plod::invalid_token(cx); }
     return "ada";
 }
 ```
@@ -102,16 +102,16 @@ drift apart unnoticed. Delete `get_project`, and the build fails:
 ```text
 api_gen.goose:283: error: unknown function: app::get_project
         app::get_project(cx, id);
-  in fn rest::route<F = {block at api_gen.goose:280:21}>(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from api_gen.goose:280
-  in fn api::route_get_project(rest::Cx<rest::NoState, app::App, http::Router>&, const u8[:]) instantiated from api_gen.goose:237
-  in fn api::dispatch(rest::Cx<rest::NoState, app::App, http::Router>&) instantiated from main.goose:25
+  in fn plod::route<F = {block at api_gen.goose:280:21}>(plod::Cx<plod::NoState, app::App, http::Router>&) instantiated from api_gen.goose:280
+  in fn api::route_get_project(plod::Cx<plod::NoState, app::App, http::Router>&, const u8[:]) instantiated from api_gen.goose:237
+  in fn api::dispatch(plod::Cx<plod::NoState, app::App, http::Router>&) instantiated from main.goose:25
   ...
 ```
 
 Declare its `id` as a string instead, and the build fails with
 `argument 2: cannot pass i64 as const u8[:]`. Read the chain from the top: the line in
 `api_gen.goose` is the call in that operation's generated code. The
-chain continues for 16 more frames through `rest::routes`, `rest::serve`, and goose-http's event loop,
+chain continues for 16 more frames through `plod::routes`, `plod::serve`, and goose-http's event loop,
 because Goose lists every generic function between the error and `main`
 ([Goose findings](../goose-findings.md#an-error-inside-a-generic-function-lists-every-frame-up-to-main)).
 
@@ -131,13 +131,13 @@ gives a literal path priority over a matching template
 
 `dispatch` answers every request it gets, with 404 for a path the schema doesn't
 have. Put routes the schema can't describe, such as those with non-JSON bodies,
-before it in the same `rest::routes` block. From
+before it in the same `plod::routes` block. From
 [`05-schema/main.goose`](05-schema/main.goose):
 
 ```rust
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::put(cx, "/uploads/:name") { upload(cx); };
+    plod::routes(cx) { cx =>
+        plod::put(cx, "/uploads/:name") { upload(cx); };
         api::dispatch(cx);
     };
 }
@@ -145,12 +145,12 @@ fn handle(cx) {
 // An upload of any bytes, which a schema can't describe: its bodies are JSON.
 fn upload(cx) {
     app::security_token(cx);
-    let data = rest::body(cx, UPLOAD_LIMIT);
-    rest::json(cx, 200, Upload { name: rest::param(cx, "name"), bytes: data.len });
+    let data = plod::body(cx, UPLOAD_LIMIT);
+    plod::json(cx, 200, Upload { name: plod::param(cx, "name"), bytes: data.len });
 }
 ```
 
-`rest::put` and its kin add the methods of routes with matching paths to the router's
+`plod::put` and its kin add the methods of routes with matching paths to the router's
 `Allow` list, and `dispatch` answers with them: `GET /uploads/logo.png` gets 405 with
 `Allow: PUT`, and `OPTIONS` gets 204 with the same header, just as with a single router.
 When hand-written routes and the schema share a path, `Allow` lists the hand-written
@@ -158,7 +158,7 @@ routes' methods first, then the schema's. A hand-written route wins over a schem
 operation with the same method, because it comes first.
 
 The hand-written route calls `app::security_token` itself, the same check the generated
-routes make. [Large bodies](10-large-bodies.md) covers how `rest::body` gathers a body
+routes make. [Large bodies](10-large-bodies.md) covers how `plod::body` gathers a body
 larger than the read buffer, and the limits that apply.
 
 ---

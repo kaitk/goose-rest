@@ -1,18 +1,18 @@
 # 9. Testing without sockets
 
 A test of a route's answers needs no port, no threads, and no client: it gives the route
-a request and checks the response, in milliseconds. goose-rest runs one request this
+a request and checks the response, in milliseconds. Plod runs one request this
 way, through the same code the server runs.
 
 ## One request, in process
 
-`rest::serve_one(text, app) { cx => ... }` takes the bytes of one request, answers it
-through the block as `rest::serve` would, and returns the response bytes. Nor does the test
+`plod::serve_one(text, app) { cx => ... }` takes the bytes of one request, answers it
+through the block as `plod::serve` would, and returns the response bytes. Nor does the test
 need goose-http's types, and it runs in-process through TinyCC with `goose test.goose`. From [`05-schema/test.goose`](05-schema/test.goose):
 
 ```rust
     fn answer(text: const u8[:]) -> u8[>..] {
-        return rest::serve_one(text, state) { cx => api::dispatch(cx) };
+        return plod::serve_one(text, state) { cx => api::dispatch(cx) };
     }
     let auth = "Authorization: Bearer secret\r\n";
     expect(body_of(answer(post("", "{\"name\": \"goose\"}"))), "{\"error\":\"unauthenticated\"}");
@@ -22,14 +22,14 @@ need goose-http's types, and it runs in-process through TinyCC with `goose test.
 The answer is the complete response, so a test can compare the status line and headers
 too. It has no `Date` or `Server` header. `serve_one` behaves like the server:
 
-- The block runs inside `rest::route`, so it can call `rest::fail`.
+- The block runs inside `plod::route`, so it can call `plod::fail`.
 - A body that doesn't fit alongside its head in the 8 KB read buffer arrives in pieces.
-  `rest::body` gathers it, then the block runs again with the whole body. A test with
+  `plod::body` gathers it, then the block runs again with the whole body. A test with
   a large body therefore covers the rule from [Large bodies](10-large-bodies.md): code
-  before a route's first `rest::body` runs twice.
+  before a route's first `plod::body` runs twice.
 - goose-http's limits apply. A rejected request, such as one with a body over
   `max_body`, gets goose-http's rejection response. A block that writes no answer gets
-  500. The full call is `rest::serve_one(text, app, fresh, cfg)`: `app` is the worker
+  500. The full call is `plod::serve_one(text, app, fresh, cfg)`: `app` is the worker
   state, `fresh` is the request state, and the optional `cfg` changes the limits.
   Leave out `fresh` when there's no request state, and both when there's neither.
 - An HTTP/1.1 request without `Host` is given `Host: localhost`, so a test request can

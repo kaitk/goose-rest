@@ -3,7 +3,7 @@
 // package, `import app from "../../";`, as a test can't import main.goose.
 import std;
 import http;
-import rest;
+import plod;
 import projects.routes;
 import entries.routes;
 
@@ -22,15 +22,15 @@ struct Writer { entries: entries::Entry[>..]& }
 
 // The projects stand in for a database in the worker's memory; the entries
 // are the writer lane's, which the routes ask by mail.
-struct App { projects: projects::Project[>..]&, writer: rest::Lane<Writes, Use> }
+struct App { projects: projects::Project[>..]&, writer: plod::Lane<Writes, Use> }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::scope(cx, "/projects") { projects::routes(cx); };
-        rest::scope(cx, "/entries") { entries::routes(cx); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::scope(cx, "/projects") { projects::routes(cx); };
+        plod::scope(cx, "/entries") { entries::routes(cx); };
     };
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
-fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Write, cx) { resume(plod::job<Writes>(cx), cx); }

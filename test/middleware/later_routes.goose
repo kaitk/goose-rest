@@ -1,28 +1,28 @@
-// later.goose's cases with the middleware inside rest::routes: a rest::get
-// or rest::post behind rest::cors, rest::timed, or both, that asks another
+// later.goose's cases with the middleware inside plod::routes: a plod::get
+// or plod::post behind plod::cors, plod::timed, or both, that asks another
 // thread and answers its reply at WAKE, or 504 at TIMEOUT, and one that
 // gathers its body first.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
 fn later_routes(cx, what: const u8[:], which: const u8[:], to: const Lane&) {
-    rest::routes(cx) { cx =>
+    plod::routes(cx) { cx =>
         fn inner() {
-            rest::get(cx, "/report") { rest::ask(cx, to, Reports.Report); };
-            rest::post(cx, "/report") {
-                rest::body(cx);
-                rest::ask(cx, to, Reports.Report);
+            plod::get(cx, "/report") { plod::ask(cx, to, Reports.Report); };
+            plod::post(cx, "/report") {
+                plod::body(cx);
+                plod::ask(cx, to, Reports.Report);
             };
         }
         if which == "cors" {
-            rest::cors(cx, CORS) { inner(); };
+            plod::cors(cx, CORS) { inner(); };
         } else if which == "timed" {
-            rest::timed(cx, false) { inner(); };
+            plod::timed(cx, false) { inner(); };
         } else {
-            rest::timed(cx, false) { rest::cors(cx, CORS) { inner(); }; };
+            plod::timed(cx, false) { plod::cors(cx, CORS) { inner(); }; };
         }
     };
 }
@@ -36,7 +36,7 @@ fn answered_later(text: const u8[:], which: const u8[:], timeout: bool = false,
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
     // A lane of the test's own box, and no thread: the test takes the job.
-    let to = rest::lane_of<Reports>(box, Use.Report);
+    let to = plod::lane_of<Reports>(box, Use.Report);
     let reply = reported(to);
     let req, status = http::parse(text);
     if status != 200 { print("parse: ", status, "\n", text); assert(false); }
@@ -45,12 +45,12 @@ fn answered_later(text: const u8[:], which: const u8[:], timeout: bool = false,
     var out: u8[>..] = [];
     var keep = true;
     var stream = http::Stream { .. };
-    var st = rest::Slot<St> { state: St { .. } };
-    var app = rest::NoState { .. };
+    var st = plod::Slot<St> { state: St { .. } };
+    var app = plod::NoState { .. };
     let first = http::Reply { buf: out, common: "Server: t\r\n", keep_alive: keep, minor: 1, head: false,
                               stream: stream };
     fn send(kind: u8, data: const u8[:]) {
-        rest::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, first)
+        plod::deliver(http::Event { kind: kind, req: req, data: data, whole: whole, trailers: "" }, st, app, first)
             { cx => later_routes(cx, what, which, to); };
     }
     send(http::REQUEST, if whole { body } else { "" });
@@ -66,10 +66,10 @@ fn answered_later(text: const u8[:], which: const u8[:], timeout: bool = false,
     let none = http::Request { .. };
     let later = http::Reply { buf: out, common: "Server: t2\r\n", keep_alive: keep, minor: 1, head: false,
                               stream: stream };
-    rest::deliver(http::Event { kind: if timeout { http::TIMEOUT } else { http::WAKE }, req: none,
+    plod::deliver(http::Event { kind: if timeout { http::TIMEOUT } else { http::WAKE }, req: none,
                                 data: if timeout { "" } else { reply.data }, whole: false, trailers: "" },
                   st, app, later) { cx =>
-        if rest::resumed(cx) { resume(cx.state.use, cx); } else { later_routes(cx, what, which, to); }
+        if plod::resumed(cx) { resume(cx.state.use, cx); } else { later_routes(cx, what, which, to); }
     };
     assert(st.ex.mode == 0 && st.ex.run.cap == 0 && http::gather_promised == 0);
     return out;

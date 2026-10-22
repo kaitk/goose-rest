@@ -11,8 +11,8 @@ covers how goose-http reads a body this way.
 
 ## A body read in pieces
 
-`rest::body_in_pieces(cx, limit, u)` takes the body in pieces, up to `limit` bytes. Like
-`rest::ask`, it keeps what the route waits on in the request's state: `u`, a variant
+`plod::body_in_pieces(cx, limit, u)` takes the body in pieces, up to `limit` bytes. Like
+`plod::ask`, it keeps what the route waits on in the request's state: `u`, a variant
 of the program's `Use` enum, in `cx.state.use`. The route returns without an answer.
 From
 [`14-bodies-in-pieces`](14-bodies-in-pieces/main.goose):
@@ -23,16 +23,16 @@ From
 fn attach(cx, project: i64) {
     let id = cx.app.next;
     // Returns at once, reading nothing; the pieces come to resume(Use.Attachment).
-    rest::body_in_pieces(cx, limit_of(project), Use.Attachment { project: project, id: id });
+    plod::body_in_pieces(cx, limit_of(project), Use.Attachment { project: project, id: id });
     // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
 ```
 
-`rest::body_in_pieces` doesn't read the body itself. It accepts or refuses the body and
+`plod::body_in_pieces` doesn't read the body itself. It accepts or refuses the body and
 sets where its pieces go. A `Content-Length` over the limit gets 413, which leaves the
-route at the call. The code before and after the call runs once: unlike `rest::body`, it
+route at the call. The code before and after the call runs once: unlike `plod::body`, it
 leaves the route only if it refuses the body. No piece arrives before the route returns,
 even if the body came with its head. After the call, the route can still set the state
 it needs for the pieces, such as `part_path` here.
@@ -41,14 +41,14 @@ it needs for the pieces, such as `part_path` here.
 <summary>The routes, which check the project first</summary>
 
 ```rust
-        rest::post(cx, "/v1/projects/:id/attachments") { attach(cx, project(cx)); };
-        rest::post(cx, "/v1/projects/:id/attachments/form") { attach_form(cx, project(cx)); };
+        plod::post(cx, "/v1/projects/:id/attachments") { attach(cx, project(cx)); };
+        plod::post(cx, "/v1/projects/:id/attachments/form") { attach_form(cx, project(cx)); };
 ```
 
 ```rust
 fn project(cx) -> i64 {
-    let id = rest::param_int(cx, "id");
-    guard id >= 1 && id <= PROJECTS else { rest::fail(cx, 404, "project_not_found"); }
+    let id = plod::param_int(cx, "id");
+    guard id >= 1 && id <= PROJECTS else { plod::fail(cx, 404, "project_not_found"); }
     return id;
 }
 
@@ -58,7 +58,7 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 </details>
 
 The handler is then called again for each piece of the body, through the same
-`rest::resumed` block and `rest::on_reply` as a lane's reply
+`plod::resumed` block and `plod::on_reply` as a lane's reply
 ([page 11](11-waiting.md#asking-a-lane-and-resuming)), and goes to the variant's case
 function. `cx.kind` says which event it is: `http::BODY` with a piece in `cx.body`,
 `http::END` once the whole body has arrived, or `http::CLOSED`:
@@ -68,7 +68,7 @@ sequenceDiagram
     participant C as Client
     participant W as Worker
     C->>W: POST /v1/projects/1/attachments, the head
-    Note over W: attach: rest::body_in_pieces,<br/>then returns without an answer
+    Note over W: attach: plod::body_in_pieces,<br/>then returns without an answer
     loop each piece as it arrives
         C->>W: a piece of the body
         Note over W: resume(Use.Attachment):<br/>BODY, append it to the .part file
@@ -81,7 +81,7 @@ sequenceDiagram
 fn resume(u: Use.Attachment, cx) {
     if cx.kind == http::BODY {
         store(cx, cx.body);
-        guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
+        guard cx.state.stored else { plod::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
         keep(cx, u.project, u.id, "");
     } else if cx.kind == http::CLOSED {
@@ -128,7 +128,7 @@ POST /v1/projects/1/attachments 201 {"project":1,"id":2,"size":2000000}    2 MB,
 POST /v1/projects/9/attachments 404 {"error":"project_not_found"}         not read
 ```
 
-The project is checked before `rest::body_in_pieces`, so an attachment to one that doesn't
+The project is checked before `plod::body_in_pieces`, so an attachment to one that doesn't
 exist gets its 404 before any of the body is read.
 
 ## Limits, and ending early
@@ -142,9 +142,9 @@ let LARGE_LIMIT: i64 = 1 << 30;
 let SMALL_LIMIT: i64 = 64 * 1024;
 ```
 
-A body whose `Content-Length` is over the limit fails at `rest::body_in_pieces` with
-413, before the client sends it. A chunked body has no declared length, so goose-rest
-counts its bytes as they arrive. If it passes the limit, goose-rest answers 413 and
+A body whose `Content-Length` is over the limit fails at `plod::body_in_pieces` with
+413, before the client sends it. A chunked body has no declared length, so Plod
+counts its bytes as they arrive. If it passes the limit, Plod answers 413 and
 closes the connection. `http::Config`'s `max_body` still caps every route, so `main`
 raises it to the largest limit, as
 [page 10](10-large-bodies.md#body-limits-and-the-gather-budget) explains:
@@ -181,7 +181,7 @@ parts. goose-http's `http::each_part` reads a multipart form a piece at a time, 
 starts it, or answers 415 for a body of another type:
 
 ```rust
-    guard http::start_multipart(cx.req, cx.state.form) else { rest::fail(cx, 415, "unsupported_media_type"); }
+    guard http::start_multipart(cx.req, cx.state.form) else { plod::fail(cx, 415, "unsupported_media_type"); }
 ```
 
 Each piece then goes through `each_part`, which calls its block with each part's head,
@@ -207,13 +207,13 @@ fn resume(u: Use.Form, cx) {
                 End => { cx.state.part = NO_PART; },
             }
         };
-        guard ok else { rest::fail(cx, 400, "invalid_multipart"); }
-        guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
+        guard ok else { plod::fail(cx, 400, "invalid_multipart"); }
+        guard cx.state.stored else { plod::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
         // The body has all come; a form cut short lacks its closing boundary.
         guard http::multipart_done(cx.state.form) else {
             delete_file(cx.state.part_path);
-            rest::fail(cx, 400, "invalid_multipart");
+            plod::fail(cx, 400, "invalid_multipart");
         }
         keep(cx, u.project, u.id, cx.state.note);
     } else if cx.kind == http::CLOSED {
@@ -234,9 +234,9 @@ whichever route it's on
 
 ## Middleware on later calls
 
-This program uses no middleware. In one that wraps `handle` in `rest::cors` and
-`rest::timed`, as [page 7](07-middleware.md)'s does, they run when the request comes,
-and not around `resume`. A route that calls `rest::body_in_pieces` returns before its answer,
+This program uses no middleware. In one that wraps `handle` in `plod::cors` and
+`plod::timed`, as [page 7](07-middleware.md)'s does, they run when the request comes,
+and not around `resume`. A route that calls `plod::body_in_pieces` returns before its answer,
 so each middleware keeps what it decided with the exchange: the allowed origin's fields,
 and the time the request came. The answer `resume` writes at the `END` gets the same
 CORS fields and a `Server-Timing` measured from the request, as does a 413 for a body

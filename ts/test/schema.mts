@@ -4,7 +4,7 @@ import { api, json } from "../api.mts";
 
 const doc = api({
   "openapi": "3.1.0",
-  "info": { "title": "goose-rest's schema example", "version": "1" },
+  "info": { "title": "Plod's schema example", "version": "1" },
   "paths": {
     "/health": { "get": { "operationId": "health" } },
     "/v1/projects": {

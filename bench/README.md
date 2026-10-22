@@ -1,6 +1,6 @@
 # Benchmark
 
-Build and run goose-rest's benchmark servers, configure the workloads, and keep their
+Build and run Plod's benchmark servers, configure the workloads, and keep their
 results. The [benchmark summary](../docs/benchmarks.md) owns the current comparisons and
 the tiers. Most of the harness is goose-http's, which this directory wraps:
 [its bench/README.md](https://github.com/kaitk/goose-http/blob/main/bench/README.md)
@@ -17,7 +17,7 @@ bench/stack.sh         # instructions per request of a JSON body and the middlew
 ```
 
 `bench/rest.sh` and `bench/stack.sh` use goose-http's benchmark scripts and datasets.
-They clone goose-http at the pin `rest.goose` imports into `build/goose-http-<ref>/` on
+They clone goose-http at the pin `plod.goose` imports into `build/goose-http-<ref>/` on
 first use (`scripts/goose-http.sh`), or use the checkout `GOOSE_HTTP` names.
 `bench/all.sh` also tests and benchmarks goose-http itself, so it needs `GOOSE_HTTP`
 to name a checkout on its `main` ([below](#an-unattended-session)).
@@ -31,7 +31,7 @@ scripts work around.
 The REST servers live under `rest/`:
 
 - `goose-rest/`: goose-http's REST tier server at goose-http's pin, served through
-  goose-rest: `main.goose` holds its routes, extractors, middleware, error shapes, and
+  Plod: `main.goose` holds its routes, extractors, middleware, error shapes, and
   threads, and imports the rest from goose-http's `bench/rest/goose/app.goose` as
   `http.bench.rest.goose.app`: the records, their loaders and JSON, and tier D's work
   on a body. Both Goose servers do the same work outside the framework, and load, hand
@@ -45,7 +45,7 @@ The REST servers live under `rest/`:
   built twice: `rest-aegon` with HttpArena's entry's buffers, and `rest-aegon-small`
   with the entry's buffers for a low memlock limit. Linux only; its `NOTES.md` lists
   what the build needs.
-- `tiers/`: goose-rest's own tiers F, R, and M, with their checker, loads, and summary.
+- `tiers/`: Plod's own tiers F, R, and M, with their checker, loads, and summary.
 
 Each framework serves through its own router, extractors or body readers, and JSON,
 built in release mode in its fastest documented configuration; each entry's `NOTES.md`
@@ -90,7 +90,7 @@ desktop (2026-10-19).
 
 It stops only when nothing can be measured: a tool missing, or no compiler. Anything
 else is a warning it records and goes on past: a checkout with local changes or off
-`origin/main`, goose-http's code apart from the tag `rest.goose` pins, a machine that
+`origin/main`, goose-http's code apart from the tag `plod.goose` pins, a machine that
 won't go idle, failing tests, or no root or `perf` for the counts. A step that fails is
 recorded, and the steps after it run unless they need its output. The terminal gets a
 line when each step starts, with the last session's time for it, and when it ends, a
@@ -118,7 +118,7 @@ Docker Desktop's VM exposes no hardware counters, so `perf` can't run there eith
 a container gives req/s but no instruction counts. These macOS counts vary by less than
 1.5% between rounds.
 
-A full `bench/routes.sh` run takes about 5 minutes. To check a change to goose-rest's
+A full `bench/routes.sh` run takes about 5 minutes. To check a change to Plod's
 request path quickly, run only its servers, once, at a tenth of the requests, in about
 20 s, and then do a full run for the numbers you record:
 

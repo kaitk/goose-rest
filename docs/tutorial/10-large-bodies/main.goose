@@ -10,7 +10,7 @@ import std;
 import os;
 import csv;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 // The most bytes an import takes: past the 8 KB read buffer, and below the
 // server's 1 MB, so the route's limit is the one that applies.
@@ -24,56 +24,56 @@ struct App { tasks: Task[>..]& }
 
 struct Imported { project: i64, imported: i64 }
 
-fn format(out: u8[>..]&, i: const Imported&) { rest::format_fields(out, i); }
+fn format(out: u8[>..]&, i: const Imported&) { plod::format_fields(out, i); }
 
 struct Count { project: i64, tasks: i64 }
 
-fn format(out: u8[>..]&, c: const Count&) { rest::format_fields(out, c); }
+fn format(out: u8[>..]&, c: const Count&) { plod::format_fields(out, c); }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::post(cx, "/v1/projects/:id/tasks/import") { import_tasks(cx, project(cx)); };
-        rest::get(cx, "/v1/projects/:id/tasks") { count_tasks(cx, project(cx)); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::post(cx, "/v1/projects/:id/tasks/import") { import_tasks(cx, project(cx)); };
+        plod::get(cx, "/v1/projects/:id/tasks") { count_tasks(cx, project(cx)); };
     };
 }
 
 fn project(cx) -> i64 {
-    let id = rest::param_int(cx, "id");
-    guard id >= 1 && id <= PROJECTS else { rest::fail(cx, 404, "project_not_found"); }
+    let id = plod::param_int(cx, "id");
+    guard id >= 1 && id <= PROJECTS else { plod::fail(cx, 404, "project_not_found"); }
     return id;
 }
 
 fn count_tasks(cx, project: i64) {
     var n = 0;
     for t in cx.app.tasks { if t.project == project { n++; } }
-    rest::json(cx, 200, Count { project: project, tasks: n });
+    plod::json(cx, 200, Count { project: project, tasks: n });
 }
 
 // Each record is title,assignee. The whole body is checked before any task
 // is added, so a bad record adds none.
 fn import_tasks(cx, project: i64) {
-    let kind, has_kind = rest::header(cx, "Content-Type");
-    guard has_kind && starts_with(kind, "text/csv") else { rest::fail(cx, 415, "unsupported_media_type"); }
+    let kind, has_kind = plod::header(cx, "Content-Type");
+    guard has_kind && starts_with(kind, "text/csv") else { plod::fail(cx, 415, "unsupported_media_type"); }
     // Leaves the route until the body is whole; the lines above then run again.
-    let text = rest::body(cx, IMPORT_LIMIT);
+    let text = plod::body(cx, IMPORT_LIMIT);
     var good = true;
     let ok = csv::each_record(text) { f =>
         if f.len != 2 || f[0].len < 1 || f[0].len > 128 || f[1].len > 32 { good = false; }
     };
-    guard ok && good else { rest::fail(cx, 400, "invalid_csv"); }
+    guard ok && good else { plod::fail(cx, 400, "invalid_csv"); }
     var n = 0;
     csv::each_record(text) { f =>
         cx.app.tasks.push(Task { project: project, title: f[0], assignee: f[1] });
         n++;
     };
-    rest::json(cx, 201, Imported { project: project, imported: n });
+    plod::json(cx, 201, Imported { project: project, imported: n });
 }
 
 thread_fn worker(cfg: http::Config) {
     var tasks: Task[>..] = [];
     var app = App { tasks: tasks };
-    let e = rest::serve(cfg, app) { cx => handle(cx) };
+    let e = plod::serve(cfg, app) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

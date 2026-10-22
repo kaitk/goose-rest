@@ -1,7 +1,7 @@
 # rest-ntex
 
-ntex serving goose-http's REST tiers A to D and goose-rest's tiers F, R, and M
-(`bench/rest/tiers`), for goose-rest's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
+ntex serving goose-http's REST tiers A to D and Plod's tiers F, R, and M
+(`bench/rest/tiers`), for Plod's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
 [bench/README.md](../../README.md)). Each route is registered on ntex's `App`, scopes,
 and resources, reads its input with ntex's extractors, and answers its errors through
 ntex's error domain. The records, the serde types, both JSON ways, and tier D's readers

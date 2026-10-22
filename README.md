@@ -1,10 +1,13 @@
-# goose-rest
+# Plod
 
-A REST framework for [Goose](https://github.com/aardappel/goose), built on
+*Takes its time, not yours.*
+
+Plod is a REST framework for [Goose](https://github.com/aardappel/goose), built on
 [goose-http](https://github.com/kaitk/goose-http). It follows Actix's model, adapted to
 Goose, with no overhead over a hand-written router wherever the language allows.
 An optional generator writes types, JSON readers and writers, and a router from an
-OpenAPI document.
+OpenAPI document. Its mascot is Ari, a banana slug, and the name is a joke that the
+[benchmarks](#benchmarks) explain.
 
 The API is still taking shape. The tutorial and examples use the intended API, but
 names and details may change between tags. Work is also underway to reduce the
@@ -16,12 +19,12 @@ remaining overhead over goose-http.
 [Architecture](docs/architecture.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)
 
-*Note: goose-rest is a working name, and the repository may be renamed before a stable
-release.*
+*Note: Plod was named goose-rest before `v0.4.0`, and its repository keeps that name
+until it moves to `kaitk/plod`.*
 
 ## Status
 
-goose-rest builds wherever goose-http does: Linux, macOS, and Windows. Its examples also
+Plod builds wherever goose-http does: Linux, macOS, and Windows. Its examples also
 pass their tests on arm64 Linux.
 
 🟢 works · 🟡 partial · ⚪ not yet · 🔴 out of scope
@@ -31,19 +34,19 @@ pass their tests on arm64 Linux.
 | 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#1-context-and-routes)). |
 | 🟢 | Scopes | Prefixes, each with its own middleware. |
 | 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#3-extractors)). |
-| 🟢 | Forms | URL-encoded form fields through `rest::form`, `rest::form_int`, and `rest::form_bool`, and multipart fields and files of a gathered body through `rest::part`, `rest::part_int`, `rest::part_bool`, and `rest::file_part` ([reference](docs/reference.md#3-extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
+| 🟢 | Forms | URL-encoded form fields through `plod::form`, `plod::form_int`, and `plod::form_bool`, and multipart fields and files of a gathered body through `plod::part`, `plod::part_int`, `plod::part_bool`, and `plod::file_part` ([reference](docs/reference.md#3-extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
 | 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
 | 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
 | 🟢 | Errors | JSON with an error code, a customizable format and media type, and an RFC 9457 preset ([reference](docs/reference.md#5-errors)). |
 | 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/11-waiting.md)). A lane of several threads takes each job on its least busy thread ([best practices](docs/best-practices/lanes.md#66-lanes-of-several-threads)). |
-| 🟢 | Testing | `rest::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#6-testing)). |
+| 🟢 | Testing | `plod::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#6-testing)). |
 | 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
-| 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#4-later-calls)). |
-| 🟢 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, `rest::begin` sends a response in pieces as the client takes them, and `rest::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#4-later-calls)). |
-| 🟢 | WebSocket | `rest::ws_upgrade` and `rest::ws_read`, in an optional module, over goose-http's RFC 6455 frames; `rest::upgrade` hands any other upgraded protocol's bytes to the route ([reference](docs/reference.md#43-websocket)). |
-| 🟢 | HTTPS | `rest::serve` and `rest::serve_epoll` with goose-http's TLS 1.3 listeners, serving h2 or HTTP/1.1 by ALPN on one port, and a context chosen per connection at its ClientHello, as for ACME's TLS-ALPN-01, in an optional module ([reference](docs/reference.md#13-https)). |
-| 🟢 | HTTP client | goose-http's `http.client`: blocking HTTP/1.1 and HTTPS requests from a lane, with a JSON body from `rest::format_fields` ([its API](https://github.com/kaitk/goose-http/blob/main/docs/api.md#an-http-client)). |
+| 🟢 | Bodies in pieces | `plod::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `plod::body` gathers it whole ([reference](docs/reference.md#4-later-calls)). |
+| 🟢 | Static files, streaming | `plod::file` serves a file with ranges and conditional requests, `plod::begin` sends a response in pieces as the client takes them, and `plod::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#4-later-calls)). |
+| 🟢 | WebSocket | `plod::ws_upgrade` and `plod::ws_read`, in an optional module, over goose-http's RFC 6455 frames; `plod::upgrade` hands any other upgraded protocol's bytes to the route ([reference](docs/reference.md#43-websocket)). |
+| 🟢 | HTTPS | `plod::serve` and `plod::serve_epoll` with goose-http's TLS 1.3 listeners, serving h2 or HTTP/1.1 by ALPN on one port, and a context chosen per connection at its ClientHello, as for ACME's TLS-ALPN-01, in an optional module ([reference](docs/reference.md#13-https)). |
+| 🟢 | HTTP client | goose-http's `http.client`: blocking HTTP/1.1 and HTTPS requests from a lane, with a JSON body from `plod::format_fields` ([its API](https://github.com/kaitk/goose-http/blob/main/docs/api.md#an-http-client)). |
 
 ### Middleware
 
@@ -54,7 +57,7 @@ pass their tests on arm64 Linux.
 | 🟢 | Server-Timing and access log | Combined middleware, or timing alone. |
 | 🟢 | Your own | Any `inline fn` that takes a block ([reference](docs/reference.md#2-middleware)). |
 | ⚪ | JWT | No built-in verifier; use your own with the bearer middleware. |
-| ⚪ | Sessions | No session store yet; read cookies with `rest::cookie`. |
+| ⚪ | Sessions | No session store yet; read cookies with `plod::cookie`. |
 | 🟢 | Compression | gzip, deflate, and zstd according to `Accept-Encoding`, in an optional module, for answers written whole and responses sent in pieces; files go as they are ([reference](docs/reference.md#21-compression)). |
 | ⚪ | Rate limiting | No limiter yet; goose-http's per-connection limits and timeouts apply. |
 | 🟢 | Default headers | Security headers with HTML and API presets, prepared at setup and selected per request ([reference](docs/reference.md#22-security-headers)). |
@@ -74,16 +77,16 @@ Save this as `hello.goose`:
 
 ```rust
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "github.com/kaitk/goose-rest@v0.3.4";
+import plod from "github.com/kaitk/goose-rest@v0.4.0";
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/hello/:name") { rest::text(cx, 200, str("Hello, ", rest::param(cx, "name"))); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/hello/:name") { plod::text(cx, 200, str("Hello, ", plod::param(cx, "name"))); };
     };
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx => handle(cx) };
+    let e = plod::serve(cfg) { cx => handle(cx) };
     http::report(e);
 }
 
@@ -116,9 +119,9 @@ programs to start from, each built and tested with HTTP requests:
 |---|---|
 | [`plain/`](examples/plain/main.goose) | Without a schema: routes, scopes, extractors, a JSON or form body, middleware, and a 4 MB upload alongside the 1 MB default |
 | [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
-| [`compress/`](examples/compress/main.goose) | Answers compressed according to `Accept-Encoding`, with the optional `rest.compression` module: goose-http's defaults, an export compressed as it's sent in pieces, and a scope with its own compression levels and no zstd |
-| [`upgrade/`](examples/upgrade/main.goose) | An upgraded connection with `rest::upgrade`: a 101, then the client's bytes echoed back until the server closes the connection, or the client closes it first |
-| [`websocket/`](examples/websocket/main.goose) | A WebSocket echo with the optional `rest.websocket` module: `rest::ws_upgrade` at the request, and each message back through `rest::ws_read` |
+| [`compress/`](examples/compress/main.goose) | Answers compressed according to `Accept-Encoding`, with the optional `plod.compression` module: goose-http's defaults, an export compressed as it's sent in pieces, and a scope with its own compression levels and no zstd |
+| [`upgrade/`](examples/upgrade/main.goose) | An upgraded connection with `plod::upgrade`: a 101, then the client's bytes echoed back until the server closes the connection, or the client closes it first |
+| [`websocket/`](examples/websocket/main.goose) | A WebSocket echo with the optional `plod.websocket` module: `plod::ws_upgrade` at the request, and each message back through `plod::ws_read` |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 
 ## Concepts
@@ -131,8 +134,8 @@ flowchart LR
 ```
 
 - **Routes are code.** Goose has no function values to store in a table, so a route is a
-  call that matches a method and a path and runs its block, `rest::get(cx, "/p") { ... }`,
-  a scope is a block that owns a prefix, `rest::scope(cx, "/v1") { ... }`, and a
+  call that matches a method and a path and runs its block, `plod::get(cx, "/p") { ... }`,
+  a scope is a block that owns a prefix, `plod::scope(cx, "/v1") { ... }`, and a
   generated router uses a `match`. Unmatched requests receive 404, 405, or an
   `OPTIONS` response
   ([routes](docs/reference.md#1-context-and-routes)).
@@ -156,11 +159,13 @@ flowchart LR
   ([goose-http](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#a-crash-ends-the-process)).
 
 For differences from Actix and the reasons behind them, see the
-[architecture](docs/architecture.md#actix-and-where-goose-rest-differs).
+[architecture](docs/architecture.md#actix-and-where-plod-differs).
 
 ## Benchmarks
 
-goose-rest `v0.2.1`, on goose-http `v0.4.3` and Goose master `f114b5a`, on a Ryzen 7
+*Slow by name only.*
+
+Measured as goose-rest `v0.2.1`, Plod's name before `v0.4.0`, on goose-http `v0.4.3` and Goose master `f114b5a`, on a Ryzen 7
 5800X3D (WSL2), 4 workers per server. [All results, the method, and the losses](docs/benchmarks.md).
 
 Every framework serves the same REST APIs through its own router, extractors, and
@@ -184,7 +189,7 @@ middleware.
 | [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,124 req/s (98%) | [fails](docs/benchmarks.md#failed-checks) | **1,230** | 1,198 | 1,201 | 1,168 |
 | [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **123 MB**, uploads beside forms | 644 MB, C templates | 781 MB, uploads beside forms | 328 MB, C templates | 384 MB, C templates | 584 MB, C templates |
 
-*Note: percentages, such as (98%), are goose-rest's share of goose-http's rate with no
+*Note: percentages, such as (98%), are Plod's share of goose-http's rate with no
 framework.* Goose ran on 2026-10-20, Aegon on 2026-10-19, and dusty, ntex, actix-web,
 and Axum on 2026-10-18, on the same machine. "Fails" marks a cell whose checks the framework
 fails, which isn't measured.

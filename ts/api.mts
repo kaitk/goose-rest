@@ -1,4 +1,4 @@
-// Types for the OpenAPI 3.1 subset that goose-rest gen accepts
+// Types for the OpenAPI 3.1 subset that plod gen accepts
 // (docs/generator.md), and api(), which checks a document against them while
 // it's written. A contract file passes the document to api(), and running it
 // with node or bun prints api.json:

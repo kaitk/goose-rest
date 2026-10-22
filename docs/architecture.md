@@ -1,13 +1,13 @@
 # Architecture
 
-goose-rest is a REST framework for Goose on `goose-http`. It follows Actix's model,
+Plod is a REST framework for Goose on `goose-http`. It follows Actix's model,
 changed where Goose differs, and costs nothing over a hand-written `http::router` if
 chain wherever the language allows. Routing, extractors, middleware, errors, worker
 state, and JSON are the framework. A generator that writes types, readers, writers, and
 a router from an OpenAPI document is an optional layer on top; a program without a
 schema uses all of the rest.
 
-This page explains how goose-rest works and why. The [tutorial](tutorial/README.md)
+This page explains how Plod works and why. The [tutorial](tutorial/README.md)
 builds a program step by step, the [reference](reference.md) lists every call, and the
 [generator reference](generator.md) says what the generator reads and writes. The dated
 decisions and the alternatives they rejected are in [Decisions](decisions.md).
@@ -21,18 +21,18 @@ spec.
   can't be stored, returned, or put in data, and there are no runtime function
   pointers (§7.6). Actix's `App::new().route("/x", web::get().to(h))` is a data
   structure of boxed handlers and can't exist. The application is code: routes are
-  `rest::get` calls and their kin in `rest::routes`, or a generated `match`.
+  `plod::get` calls and their kin in `plod::routes`, or a generated `match`.
 - **Middleware is a block.** A trailing block is inlined, and a `return` in it returns
-  from the enclosing handler (§7.6, §7.9). `rest::cors(cx, rest::Cors { .. }) { ... }`
+  from the enclosing handler (§7.6, §7.9). `plod::cors(cx, plod::Cors { .. }) { ... }`
   can answer a preflight and not run the block, with no boxing, no dynamic dispatch,
   and no layer stack. This is cheaper than Actix's `Transform` and Tower's `Layer`, and
   is the framework's main idea.
 - **Extractors by overload.** Generics are monomorphized and re-checked per
-  instantiation (§7.7), so `rest::take<T>(cx)` calls `from_request(cx, v: const T?)`
+  instantiation (§7.7), so `plod::take<T>(cx)` calls `from_request(cx, v: const T?)`
   and overloading chooses by `T`, as Actix's `FromRequest` trait does.
 - **Half a derive.** Goose has no macros, and its one compile-time expansion, `const
   for` (spec §6), names a struct's fields without their types. So
-  `rest::format_fields` writes any struct's fields as JSON, as serde's derived
+  `plod::format_fields` writes any struct's fields as JSON, as serde's derived
   `Serialize` does, but a reader, a renamed key, or a left-out field still comes from
   code written by hand or from the generator
   ([decisions](decisions.md#a-json-writer-from-a-structs-fields)).
@@ -43,38 +43,38 @@ spec.
   with what it needs in the job, which the reply carries back
   ([Waiting on a lane](#waiting-on-a-lane)).
 
-## Actix, and where goose-rest differs
+## Actix, and where Plod differs
 
-| Actix | goose-rest | Why |
+| Actix | Plod | Why |
 |---|---|---|
-| `HttpServer::new(\|\| App::new())` builds an `App` per worker thread | Each worker's `thread_fn` builds its own state and calls `rest::serve` | The same model. Goose enforces it: workers share nothing. |
+| `HttpServer::new(\|\| App::new())` builds an `App` per worker thread | Each worker's `thread_fn` builds its own state and calls `plod::serve` | The same model. Goose enforces it: workers share nothing. |
 | `web::Data<T>`, `app_data` | `App`, a struct of references to the worker's locals, in `cx.app` | A struct holds at most one resizable, as its last field (§3.4); references avoid that limit. |
-| `App::route`, `web::scope`, `web::resource`, guards | `rest::get` and its kin inside `rest::routes`, with `rest::scope(cx, prefix) { ... }`; guards are `if` conditions | No handler table. |
-| `FromRequest` extractors as handler arguments | `let v = rest::take<T>(cx);`, or `rest::param_int(cx, "id")` | `T` is explicit; Goose can't infer it from the result. |
+| `App::route`, `web::scope`, `web::resource`, guards | `plod::get` and its kin inside `plod::routes`, with `plod::scope(cx, prefix) { ... }`; guards are `if` conditions | No handler table. |
+| `FromRequest` extractors as handler arguments | `let v = plod::take<T>(cx);`, or `plod::param_int(cx, "id")` | `T` is explicit; Goose can't infer it from the result. |
 | Middleware: `wrap`, `from_fn`, `Transform` | Blocks around the dispatch or a route, inlined into it | No boxing and no call per layer. |
-| `ResponseError`, `Result<impl Responder, E>`, `?` | `rest::fail(cx, status, code)` returns from the route, `rest::routes`' or `rest::route`'s, from any depth | `return ... from` replaces threading a `Result` up. |
-| `Responder`, `web::Json<T>` | `rest::json(cx, status, v)`, which calls `format(out, v)` | The `format` hook is Goose's one type-directed lookup (§3.7, §11.1). |
+| `ResponseError`, `Result<impl Responder, E>`, `?` | `plod::fail(cx, status, code)` returns from the route, `plod::routes`' or `plod::route`'s, from any depth | `return ... from` replaces threading a `Result` up. |
+| `Responder`, `web::Json<T>` | `plod::json(cx, status, v)`, which calls `format(out, v)` | The `format` hook is Goose's one type-directed lookup (§3.7, §11.1). |
 | serde's `Serialize` and `Deserialize` | `format` and a reader per type, written by hand or generated | No derive. |
 | `async fn` handlers awaiting a database | A handler that asks another thread, and a case function that resumes it | No async. |
 
 ## A request's path
 
-Each worker's thread builds its own state and calls `rest::serve`, which puts that
+Each worker's thread builds its own state and calls `plod::serve`, which puts that
 state in `cx.app`, starts the request state `cx.state` fresh for each request, and
 calls the program's handler with one context, `cx`. Over HTTPS, with the optional
-module `rest.tls`, goose-http's loop decrypts the bytes before they reach `serve`, so
+module `plod.tls`, goose-http's loop decrypts the bytes before they reach `serve`, so
 the path below is the same. The handler is plain code:
 
 ```rust
 fn handle(cx) {
-    rest::timed(cx) {
-        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            rest::routes(cx) { cx =>
-                rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-                rest::scope(cx, "/v1") {
+    plod::timed(cx) {
+        plod::cors(cx, plod::Cors { origins: "https://app.example", .. }) {
+            plod::routes(cx) { cx =>
+                plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+                plod::scope(cx, "/v1") {
                     let s = security_session(cx);
-                    rest::get(cx, "/projects/:id") { get_project(cx, s, rest::param_int(cx, "id")); };
-                    rest::post(cx, "/projects") { create_project(cx, s, rest::take<ProjectCreate>(cx)); };
+                    plod::get(cx, "/projects/:id") { get_project(cx, s, plod::param_int(cx, "id")); };
+                    plod::post(cx, "/projects") { create_project(cx, s, plod::take<ProjectCreate>(cx)); };
                 };
             };
         };
@@ -82,33 +82,33 @@ fn handle(cx) {
 }
 ```
 
-`rest::routes` opens the request's one route. A `rest::get` that matches marks the
+`plod::routes` opens the request's one route. A `plod::get` that matches marks the
 request taken and runs its block, which returns as any block does: the routes and
 scopes after it see the mark and don't match, and the code after it runs, a
 middleware's work after its block included. The mark is goose-http's `Router.bad`,
-which otherwise marks a path the router refuses; goose-rest tells the two apart by
-whether the path is routable. `rest::scope` narrows the router to a prefix for its
+which otherwise marks a path the router refuses; Plod tells the two apart by
+whether the path is routable. `plod::scope` narrows the router to a prefix for its
 block, and takes the request, so the scope owns the paths under it. When no route
 answered, `routes` answers 404, 405, and OPTIONS across scopes from the routes it
 passed, and 501 for an unknown method; a scope answers so itself, inside the
 middleware around it. The status is goose-http's `http::unrouted`, the verdict its
-`otherwise` writes, and goose-rest writes it in the program's error shape, as the
+`otherwise` writes, and Plod writes it in the program's error shape, as the
 generated router does for the paths it doesn't match. An extractor runs only where the
 handler calls it, and `goose-http` keeps header lines as bytes until one is asked for,
-so a route parses only what it reads. A body taken as a schema type, with `rest::take`
+so a route parses only what it reads. A body taken as a schema type, with `plod::take`
 or by the generated router, arrives parsed and validated; a malformed one gets 400 and
 its field errors, in one error shape for every route, before the code that uses it
-runs. A route that reads `rest::body` gets the bytes and parses them itself.
+runs. A route that reads `plod::body` gets the bytes and parses them itself.
 
-`rest::fail` leaves through `return ... from` the route, so a helper several calls
+`plod::fail` leaves through `return ... from` the route, so a helper several calls
 down can answer 404 without passing an error back up. A call to `fail` outside a route
-doesn't compile. Outside `rest::routes`, `rest::route` opens a route; inside, it joins
+doesn't compile. Outside `plod::routes`, `plod::route` opens a route; inside, it joins
 the one there. The first answer wins: a failure after the handler began a response
 leaves that response, and if the response is still open, goose-http closes the
 connection, so the client sees it cut short rather than an error inside it.
 
 A check that must run, such as a session lookup, fails the route. Work that can wait,
-such as loading a profile, is a lazy extractor: `rest::once` runs it on first call and
+such as loading a profile, is a lazy extractor: `plod::once` runs it on first call and
 keeps the result in `cx.state` for the request. The request state is fixed-size,
 kept in a pool slot, and reset per request ([State](tutorial/08-state.md)).
 
@@ -127,20 +127,20 @@ one function holding every route would. Three rules keep the calls few:
 
 - **One route per request.** A function that fails returns from the innermost route,
   so a route nested in a route keeps both out of line. Middleware opens no route of
-  its own outside `rest::routes`. Inside, `rest::scoped`'s route stays inlined with
+  its own outside `plod::routes`. Inside, `plod::scoped`'s route stays inlined with
   the request's (`test/inline_route.goose`).
 - **Functions that fail stay small.** A function that fails and stays a call keeps its
-  route, everything around it, and the handler out of line. goose-rest's extractors
+  route, everything around it, and the handler out of line. Plod's extractors
   fail in a few statements and do their work in leaves that return whether it
   succeeded.
 - **Block-taking functions are `inline fn`.** Given a block of routes, a plain function
   passes the inliner's size limit at once and stays a call, although it's called once.
 
 Middleware that adds fields to answers, such as `timed`, `cors`, `security_headers`,
-and `compressed`, works on either side of `rest::routes`. Inside, it runs its block in
-`rest::scoped`, a route of its own that answers a failure, a 404, and a 405 there, so
+and `compressed`, works on either side of `plod::routes`. Inside, it runs its block in
+`plod::scoped`, a route of its own that answers a failure, a 404, and a 405 there, so
 those answers get its fields too. Middleware that can fail, such as `bearer`, goes
-inside `rest::routes`. The [reference](reference.md#2-middleware) says which answers
+inside `plod::routes`. The [reference](reference.md#2-middleware) says which answers
 get which fields.
 
 Security policies are prepared once in worker setup. The handler selects one
@@ -166,7 +166,7 @@ other connections queue. CPU-bound work, including a query on embedded SQLite, r
 the route. When the workers already use every core, a lane adds no throughput for it;
 it helps only work long enough to hold up the worker's other connections, which a lane
 lets the operating system interleave with it. A route sends the lane one job naming the
-whole use case with `rest::ask`, and the lane does it start to end with blocking calls,
+whole use case with `plod::ask`, and the lane does it start to end with blocking calls,
 in one transaction. The route waits once, with one time limit and one place where a
 full box refuses work, and the job can be tested as a plain call. A route waits more
 than once only for what one lane can't do: a second lane in turn.
@@ -183,48 +183,48 @@ enum Reports { Totals { project: i64 } }   // the reports lane's jobs
 enum Use { None, Report }                  // a mark for each lane, and None
 struct St { use: Use = Use.None }
 
-rest::ask(cx, cx.app.reports, Reports.Totals { project: id });         // the route
-fn run(u: Reports.Totals, r: Reader&, a) { rest::reply_value(a, t); }  // on the lane
-fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
-fn resume(u: Reports.Totals, cx) { rest::json(cx, 200, rest::answer<Totals>(cx)); }
+plod::ask(cx, cx.app.reports, Reports.Totals { project: id });         // the route
+fn run(u: Reports.Totals, r: Reader&, a) { plod::reply_value(a, t); }  // on the lane
+fn resume(u: Use.Report, cx) { resume(plod::job<Reports>(cx), cx); }
+fn resume(u: Reports.Totals, cx) { plod::json(cx, 200, plod::answer<Totals>(cx)); }
 
-rest::serve(cfg, app, St { .. }) { cx =>
-    if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
+plod::serve(cfg, app, St { .. }) { cx =>
+    if plod::resumed(cx) { plod::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 };
 ```
 
-`rest::ask` takes only the variants of its lane's enum, so a job sent to another lane
-doesn't compile. A `rest::fail` in a `run` replies a refusal, which `rest::on_reply`
+`plod::ask` takes only the variants of its lane's enum, so a job sent to another lane
+doesn't compile. A `plod::fail` in a `run` replies a refusal, which `plod::on_reply`
 answers with the same status and code before any `resume` runs, as a `throw` crosses
 an `await`. The job crosses as a `to_bytes` image, with no JSON between threads, and
 the lane's box carries bytes in fixed-size slots, as goose-http's
 [mail between threads](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#mail-between-threads)
 explains. A reply longer than a slot comes in pieces. The lane marks the pieces of a
-`rest::reply_value`, and the worker collects them in a run of goose-http's gather
-pool, as it gathers bodies, up to the reply limit `rest::ask` promised from the same
-budget, and calls the `resume` once with the whole reply. `rest::reply`'s pieces go unmarked,
-and `rest::relay` sends each on as a chunk as it comes. Either way the job, behind its
+`plod::reply_value`, and the worker collects them in a run of goose-http's gather
+pool, as it gathers bodies, up to the reply limit `plod::ask` promised from the same
+budget, and calls the `resume` once with the whole reply. `plod::reply`'s pieces go unmarked,
+and `plod::relay` sends each on as a chunk as it comes. Either way the job, behind its
 4-byte length, must fit the first piece, which the `resume` and `relay` read it from:
-`rest::ask` checks it against the reply's slot size before it sends the job, and fails
+`plod::ask` checks it against the reply's slot size before it sends the job, and fails
 the route with 500 `job_too_large` otherwise. The lane's enum is fixed-mode, so every
 job takes the size of the largest variant.
-`rest::still_wanted` tells the lane whether the route still waits, so it can skip the
+`plod::still_wanted` tells the lane whether the route still waits, so it can skip the
 work of a client that has gone. The mark is the only byte a waiting route keeps in its
 state, and a route that never waits keeps nothing on the connection. The tutorial
 builds this from [work that waits](tutorial/11-waiting.md) to
 [limits](tutorial/13-limits.md), and
 [decisions](decisions.md#one-enum-of-jobs-per-lane) has the shapes it rejected.
 
-The lane is goose-http's `http::Lane`, in a `rest::Lane` with its enum and mark: N
-boxes, one per thread, and the threads' ids, which `rest::lane_open` opens and spawns
+The lane is goose-http's `http::Lane`, in a `plod::Lane` with its enum and mark: N
+boxes, one per thread, and the threads' ids, which `plod::lane_open` opens and spawns
 through `http::lane_open` from an `http::LaneConfig` and the program's `thread_fn`, as
-`http::run` spawns the workers. Each thread gets a `rest::Jobs<U>`, which holds no data:
+`http::run` spawns the workers. Each thread gets a `plod::Jobs<U>`, which holds no data:
 the thread's parameter names `U`, `thread_spawn` checks it against the lane's, and
-`rest::lane` takes the jobs' type from it, so a thread opened for another lane's jobs
-doesn't compile. `rest::ask` sends through
+`plod::lane` takes the jobs' type from it, so a thread opened for another lane's jobs
+doesn't compile. `plod::ask` sends through
 `http::lane_send`, which puts the job in the box holding the fewest jobs, and in the
 next in turn while each is full, so the route gets 503 only when every box is full.
-`main` stops each lane with `rest::lane_stop`, which calls `http::lane_stop`, once the workers have returned: a flag in
+`main` stops each lane with `plod::lane_stop`, which calls `http::lane_stop`, once the workers have returned: a flag in
 each box, which a full box can't refuse, and each thread's `http::lane` loop returns
 once its box is stopped and empty, so the jobs queued before the stop are still done
 ([goose-http's lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes)).
@@ -236,37 +236,37 @@ service manager, such as systemd, Docker, or Kubernetes, restarts it
 ## Bodies and responses in pieces
 
 Every call after a request's first goes through the same case functions, not only a
-reply. A route that reads its body in pieces (`rest::body_in_pieces`), sends its
-response in pieces (`rest::begin`, `rest::file`), pauses before a response begins
-(`rest::pause(cx, ms, u)`), or takes an upgraded connection
-(`rest::upgrade`) gives a variant of the program's `Use`, beside the lanes' marks,
-which carries what the route needs at each call. `rest::serve` then
+reply. A route that reads its body in pieces (`plod::body_in_pieces`), sends its
+response in pieces (`plod::begin`, `plod::file`), pauses before a response begins
+(`plod::pause(cx, ms, u)`), or takes an upgraded connection
+(`plod::upgrade`) gives a variant of the program's `Use`, beside the lanes' marks,
+which carries what the route needs at each call. `plod::serve` then
 calls the handler again for each event of the exchange, with `cx.kind` saying which:
 `BODY`, `END`, `MORE`, `TIMEOUT`, or `CLOSED`. `CLOSED` comes once to a route that ended early, so
 that its case function releases what the state holds. A route can pause before its
-response begins, or after `rest::begin`, with `rest::pause`, and gets `TIMEOUT` when
+response begins, or after `plod::begin`, with `plod::pause`, and gets `TIMEOUT` when
 the time has passed. When goose-http has no timer free, it gives `TIMEOUT` at once,
-tagged `http::NO_ROOM`, and goose-rest answers 503 with `Retry-After` before
-`rest::begin`, as for `rest::ask`, or ends an open response after it; the exchange keeps
-a mode bit for a pause before `rest::begin`. One case function per variant
+tagged `http::NO_ROOM`, and Plod answers 503 with `Retry-After` before
+`plod::begin`, as for `plod::ask`, or ends an open response after it; the exchange keeps
+a mode bit for a pause before `plod::begin`. One case function per variant
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#4-later-calls) has each call and event.
 
-Each call goes to the variant that is in `cx.state.use` at the time, and goose-rest
-keeps no other. An upgraded connection that waits on `rest::ask` therefore gets the
+Each call goes to the variant that is in `cx.state.use` at the time, and Plod
+keeps no other. An upgraded connection that waits on `plod::ask` therefore gets the
 client's bytes in the `resume` of the lane's mark, which also gets the `TIMEOUT`, since
 a 504 can't follow the 101, and which sets the upgrade's variant back when the wait
 ends. Only the `WAKE` carries a job to dispatch on, so that `resume` tells the events
-apart by `cx.kind`. An exchange has one wait, so a second `rest::ask` during it fails.
+apart by `cx.kind`. An exchange has one wait, so a second `plod::ask` during it fails.
 
-A body gathered for `rest::body`, a reply `rest::ask` waits for, and what a route's
+A body gathered for `plod::body`, a reply `plod::ask` waits for, and what a route's
 middleware keeps for a later answer are each an `http::Gather`, a run of goose-http's
 gather pool and the bytes promised it, under the budget a program sets with
 `http::gather_budget` in `main`, before `http::run`
 ([goose-http's parts](https://github.com/kaitk/goose-http/blob/main/docs/api.md#parts)).
 Each is promised its most at admission, so what the budget can't hold is refused there,
-with 503, and never partway: a body at `rest::body`, with its `Content-Length` or its
-route's limit; a reply at `rest::ask`, before its job is sent, with the ask's limit;
+with 503, and never partway: a body at `plod::body`, with its `Content-Length` or its
+route's limit; a reply at `plod::ask`, before its job is sent, with the ask's limit;
 and the middleware's fields at the request. The exchange keeps the body's run, or the
 fields', in its slot; a reply's is in a table of the worker's, which the exchange finds
 by index, so that the slot goose-http copies for each request doesn't grow for routes
@@ -280,8 +280,8 @@ later call still gets the CORS fields, security policy, and `Server-Timing`. A f
 being sent lives in the program's state, so a program that serves no files keeps no
 bytes for one.
 
-A WebSocket is an upgrade whose bytes `rest::ws_read` reads as frames, in the optional
-module `rest.websocket`. Its `http::WebSocket` lives in the program's state too, and a
+A WebSocket is an upgrade whose bytes `plod::ws_read` reads as frames, in the optional
+module `plod.websocket`. Its `http::WebSocket` lives in the program's state too, and a
 message not yet whole in the gather pool, promised its most at the upgrade and refused
 there with 503, as a body is.
 
@@ -314,7 +314,7 @@ A construct outside the supported subset is a generator error that names it, nev
 silently dropped. The generated code is plain Goose, can be read and debugged like any other
 file, and is never edited.
 
-Without a schema, the routes in `rest::routes` are the API. Each `rest::get` scans the
+Without a schema, the routes in `plod::routes` are the API. Each `plod::get` scans the
 path again from its start, so a long chain costs more per request than a generated router
 ([tier R](benchmarks.md#tier-r)).
 
@@ -322,8 +322,8 @@ path again from its start, so a long chain costs more per request than a generat
 
 - **Routes are code.** A program can't build its routes or its middleware at run time,
   and can't list them, so an OpenAPI document can't yet be written from the routes.
-- **Extractor types are explicit.** `rest::take<T>(cx)` names `T`, and a program
-  declares its readers in `rest`'s namespace, `fn rest::from_request(...)`, because a
+- **Extractor types are explicit.** `plod::take<T>(cx)` names `T`, and a program
+  declares its readers in `plod`'s namespace, `fn plod::from_request(...)`, because a
   generic body looks names up where it's defined.
 - **No derive.** Without the generator, each type's reader and `format` are written by
   hand. A type with no `format` overload renders as a Goose value, not JSON, and still
@@ -338,11 +338,11 @@ path again from its start, so a long chain costs more per request than a generat
   after an `await`. What it needs then travels in the job, which the reply carries
   back. Replies come through fixed-size mail slots, and a larger one in pieces.
 - **A catch-all hides the cases.** A `run` or `resume` overload that takes a whole
-  enum wins every call, and the compiler says nothing; `rest::lane` catches a `run`
+  enum wins every call, and the compiler says nothing; `plod::lane` catches a `run`
   that doesn't reply, at run time.
 - **The first answer wins.** Once a response has begun, a failure can't replace it; an
   open response is cut short instead.
-- **Compression copies.** `rest::compressed` writes each answer inside it to a local
+- **Compression copies.** `plod::compressed` writes each answer inside it to a local
   buffer and copies it once into the response.
 - **The generator's subset.** It refuses what it can't read yet, such as `pattern` and
   recursive schemas ([The subset](generator.md#4-the-subset)).

@@ -1,16 +1,16 @@
-// A JSON API from a schema: api.json describes it, goose-rest gen writes
+// A JSON API from a schema: api.json describes it, plod gen writes
 // api_gen.goose from it (types, readers, writers, extractors, and dispatch),
 // and app.goose holds the handlers. One worker, since workers share nothing
 // and the projects live in the worker.
 //
-//   build/goose-rest gen examples/schema/api.json -o examples/schema/api_gen.goose
+//   build/plod gen examples/schema/api.json -o examples/schema/api_gen.goose
 //   goose build -o build/examples/schema examples/schema/main.goose
 //   build/examples/schema 8080
 //   curl -s 'localhost:8080/v1/projects?limit=10'
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import .api_gen;
 import .app;
 
@@ -18,9 +18,9 @@ thread_fn worker(cfg: http::Config) {
     var projects: api::Project[>..] = [];
     var live: bool[>..] = [];
     var app = app::App { projects: projects, live: live, token: "secret" };
-    let e = rest::serve(cfg, app) { cx =>
-        rest::timed(cx) {
-            rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { api::dispatch(cx); };
+    let e = plod::serve(cfg, app) { cx =>
+        plod::timed(cx) {
+            plod::cors(cx, plod::Cors { origins: "https://app.example", .. }) { api::dispatch(cx); };
         };
     };
     if e.code != 0 { http::report(e); }

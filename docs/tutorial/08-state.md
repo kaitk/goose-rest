@@ -16,7 +16,7 @@ Which place suits which data is in Best practices'
 
 ## Worker state
 
-The worker's `thread_fn` owns its state in local variables. `rest::serve(cfg, app)`
+The worker's `thread_fn` owns its state in local variables. `plod::serve(cfg, app)`
 gives each request `cx.app`, a reference to a struct of references to those
 variables. It plays the part of Actix's `web::Data`, without the `Arc`. From
 [`05-schema`](05-schema/main.goose):
@@ -29,7 +29,7 @@ struct App { projects: api::Project[>..]&, token: const u8[:] }
 thread_fn worker(cfg: http::Config) {
     var projects: api::Project[>..] = [];
     var app = app::App { projects: projects, token: "secret" };
-    let e = rest::serve(cfg, app) { cx =>
+    let e = plod::serve(cfg, app) { cx =>
 ```
 
 Each worker has its own `projects`, so a project created on one worker isn't there on
@@ -52,38 +52,38 @@ an identifier, `format: ascii` sizes it at one byte per code point
 
 ## Request state
 
-`rest::serve(cfg, app, fresh)` gives each request `cx.state`, a fresh copy of `fresh`.
+`plod::serve(cfg, app, fresh)` gives each request `cx.state`, a fresh copy of `fresh`.
 The state's type decides the error shape ([Answers and errors](03-errors.md#errors)).
-A `rest::Once<T>` field computes a value on its first use within the request. From
+A `plod::Once<T>` field computes a value on its first use within the request. From
 [`08-state`](08-state/main.goose):
 
 ```rust
 struct User { name: u8[..64] }
 
 // The request state, which starts from St { .. } for each request.
-struct St { user: rest::Once<User> }
+struct St { user: plod::Once<User> }
 
 // The worker state, which lasts as long as the worker.
 struct App { lookups: i64 }
 
-type Cx = rest::Cx<St, App, http::Router>;
+type Cx = plod::Cx<St, App, http::Router>;
 
 // The request's user, looked up on the first call in a request.
 fn user(cx: Cx&) -> User& {
-    return rest::once(cx.state.user) { lookup(cx) };
+    return plod::once(cx.state.user) { lookup(cx) };
 }
 ```
 
 ```rust
-        rest::get(cx, "/me") {
-            guard user(cx).name != "mallory" else { rest::fail(cx, 403, "forbidden"); }
-            rest::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
+        plod::get(cx, "/me") {
+            guard user(cx).name != "mallory" else { plod::fail(cx, 403, "forbidden"); }
+            plod::text(cx, 200, str(user(cx).name, ", lookups so far: ", cx.app.lookups));
         };
 ```
 
 The alias names the route's context type: `St` is the request state, `App` is the
-worker state, and `http::Router` is the router that `rest::routes` supplies. Outside
-that block, the context has `rest::NoRouter`, so it can't be passed to `user`. A generic
+worker state, and `http::Router` is the router that `plod::routes` supplies. Outside
+that block, the context has `plod::NoRouter`, so it can't be passed to `user`. A generic
 helper can leave its context parameter untyped, as the other examples do.
 
 The route calls `user` twice, and `lookup` runs once:
@@ -96,7 +96,7 @@ GET /me 200 grace, lookups so far: 2
 ## Lane data
 
 A database connection, or other data that every worker uses and changes, belongs to a
-lane, a thread of its own or several. Workers send it jobs by mail. A route uses `rest::ask` and
+lane, a thread of its own or several. Workers send it jobs by mail. A route uses `plod::ask` and
 resumes when the reply arrives: [Work that waits](11-waiting.md).
 
 ---

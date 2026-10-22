@@ -1,7 +1,7 @@
 # rest-axum
 
-axum serving goose-http's REST tiers A to D and goose-rest's tiers F, R, and M
-(`bench/rest/tiers`), for goose-rest's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
+axum serving goose-http's REST tiers A to D and Plod's tiers F, R, and M
+(`bench/rest/tiers`), for Plod's REST benchmark ([docs/benchmarks.md](../../../docs/benchmarks.md),
 [bench/README.md](../../README.md)). Each route is registered on axum's `Router`,
 reads its input with axum's extractors, and answers its errors through axum's hooks. The
 records, the serde types, both JSON ways, and tier D's readers come from

@@ -5,7 +5,7 @@ the output stays within the generator's [subset](../generator.md#4-the-subset).
 
 ## TypeScript
 
-goose-rest provides [`ts/api.mts`](../../ts/api.mts), with TypeScript types for only
+Plod provides [`ts/api.mts`](../../ts/api.mts), with TypeScript types for only
 that subset. Pass the document to `api()`, and `tsc` rejects unsupported keywords
 and structures while you write it. TypeScript also lets you use comments and shared
 constants, which JSON lacks. [`05-schema/api.mts`](05-schema/api.mts) produces the same
@@ -86,7 +86,7 @@ struct Project {
 
 This writes `{"type": "string", "format": "ascii", "maxLength": 7}` (checked with
 schemars 1.2.3). Neither tool enforces the format: pydantic still accepts `"é"` for
-`color`, so only goose-rest refuses it.
+`color`, so only Plod refuses it.
 
 ---
 

@@ -1,8 +1,9 @@
 # Decisions
 
-This page records goose-rest's design decisions for contributors and agents: each one dated,
+This page records Plod's design decisions for contributors and agents: each one dated,
 with its reason and what was rejected, and the spike results, the Elysia study, and the
-later uses behind them. How goose-rest works as it is now is in
+later uses behind them. Entries before 2026-10-22 call it goose-rest, its name until
+`v0.4.0`, and its namespace `rest`. How Plod works as it is now is in
 [Architecture](architecture.md). A change that contradicts a decision here updates it in
 the same change; a decision that replaces an earlier one says so, and both stay.
 
@@ -24,6 +25,38 @@ framework is to become Plod, for both sides of HTTP. A program makes its request
 goose-rest adds no wrapper: the client needs nothing of goose-rest's, and goose-acme
 uses the same one. Rejected: a module `rest.client`, drafted the same day, which used
 nothing of goose-rest's and would have left goose-acme with its own copy.
+
+## The name
+
+The framework is Plod (2026-10-22), from `v0.4.0`. It enters HttpArena under this
+name, and the joke is a framework named for slowness that ranks near the top: a
+rival's result then reads as "N% slower than Plod". The name is one syllable, reads well
+in code (`plod::get`), and in British slang "PC Plod" is a slow, dim policeman. A check
+on 2026-10-22 found no web framework, HTTP, or server project named Plod on crates.io,
+npm, PyPI, or GitHub. This carries out the plan in [Scope](#scope); it replaces no
+entry.
+
+- Programs write `plod`: `import plod from "github.com/kaitk/goose-rest@<ref>";`,
+  `namespace plod;` in the package, `plod::get`, and the modules `plod.compression`,
+  `plod.websocket`, and `plod.tls`. The generator is `plod gen` and writes `plod::`.
+  Error codes, JSON shapes, and HTTP behaviour don't change.
+- The repository stays `kaitk/goose-rest` until GitHub renames it to `kaitk/plod`;
+  `scripts/rename-repo-url.sh` then moves every URL in one commit. Renaming the
+  repository first would have broken every tagged import before a Plod tag existed.
+- The first Plod release is `v0.4.0`, a minor version, because every program changes
+  its imports and namespace.
+- The brand: the slogan "Takes its time, not yours.", the benchmark line "Slow by name
+  only.", and the mascot Ari, a banana slug (*Ariolimax*), drawn with all four
+  tentacles. Slogans hold no figures, so they never go stale; numbers stay in the
+  benchmark tables with how they were measured. The logo is a PNG in `docs/assets/`
+  until a low-poly SVG replaces it.
+- Results measured before the rename keep the name goose-rest, and so does the
+  benchmark server, `bench/rest/goose-rest/` (`rest-goose-rest`), so runs compare by
+  one name across the rename. Rejected: renaming the server, which would split its
+  history in `bench/results/`.
+- Rejected names: Tardy (a Zig framework on a runtime of that name, with the same
+  joke), Tardigrade, Saunter, Slowpoke, Slowloris, and others already taken by a
+  project or a mark. Trudge was the second choice, and Glacial is the reserve.
 
 ## The language
 

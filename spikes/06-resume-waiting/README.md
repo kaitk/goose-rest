@@ -126,6 +126,6 @@ Pieces need two things from the sender:
 A response of known length can use `http::begin(out, 200, length)` instead of chunked,
 with the length in the first piece.
 
-Recommended for task 009: `rest::ask` takes pieces, with the slot size in the job and
+Recommended for task 009: `plod::ask` takes pieces, with the slot size in the job and
 the chunked response written by the framework, so a reply of any size works. A program
 whose replies all fit raises `Config.mail_size` and never sees a second piece.

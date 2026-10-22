@@ -5,7 +5,7 @@ namespace app;
 
 import std;
 import http;
-import rest;
+import plod;
 
 fn answer(cx, n: i64, values: const u8[:][:]) {
     var b: u8[>..] = [];
@@ -14,7 +14,7 @@ fn answer(cx, n: i64, values: const u8[:][:]) {
         b.push(' ');
         b.append(v);
     }
-    rest::text(cx, 200, b);
+    plod::text(cx, 200, b);
 }
 
 fn r1(cx) { answer(cx, 1, []); }
@@ -227,177 +227,177 @@ fn chain(cx) {
     if http::on(r, "GET", "/authorizations") {
         r1(cx);
     } else if http::on(r, "GET", "/authorizations/:id") {
-        r2(cx, rest::param(cx, r, "id"));
+        r2(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/authorizations") {
         r3(cx);
     } else if http::on(r, "DELETE", "/authorizations/:id") {
-        r4(cx, rest::param(cx, r, "id"));
+        r4(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/applications/:client_id/tokens/:access_token") {
-        r5(cx, rest::param(cx, r, "client_id"), rest::param(cx, r, "access_token"));
+        r5(cx, plod::param(cx, r, "client_id"), plod::param(cx, r, "access_token"));
     } else if http::on(r, "DELETE", "/applications/:client_id/tokens") {
-        r6(cx, rest::param(cx, r, "client_id"));
+        r6(cx, plod::param(cx, r, "client_id"));
     } else if http::on(r, "DELETE", "/applications/:client_id/tokens/:access_token") {
-        r7(cx, rest::param(cx, r, "client_id"), rest::param(cx, r, "access_token"));
+        r7(cx, plod::param(cx, r, "client_id"), plod::param(cx, r, "access_token"));
     } else if http::on(r, "GET", "/events") {
         r8(cx);
     } else if http::on(r, "GET", "/repos/:owner/:repo/events") {
-        r9(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r9(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/networks/:owner/:repo/events") {
-        r10(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r10(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/orgs/:org/events") {
-        r11(cx, rest::param(cx, r, "org"));
+        r11(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/users/:user/received_events") {
-        r12(cx, rest::param(cx, r, "user"));
+        r12(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/users/:user/received_events/public") {
-        r13(cx, rest::param(cx, r, "user"));
+        r13(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/users/:user/events") {
-        r14(cx, rest::param(cx, r, "user"));
+        r14(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/users/:user/events/public") {
-        r15(cx, rest::param(cx, r, "user"));
+        r15(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/users/:user/events/orgs/:org") {
-        r16(cx, rest::param(cx, r, "user"), rest::param(cx, r, "org"));
+        r16(cx, plod::param(cx, r, "user"), plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/feeds") {
         r17(cx);
     } else if http::on(r, "GET", "/notifications") {
         r18(cx);
     } else if http::on(r, "GET", "/repos/:owner/:repo/notifications") {
-        r19(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r19(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "PUT", "/notifications") {
         r20(cx);
     } else if http::on(r, "PUT", "/repos/:owner/:repo/notifications") {
-        r21(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r21(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/notifications/threads/:id") {
-        r22(cx, rest::param(cx, r, "id"));
+        r22(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/notifications/threads/:id/subscription") {
-        r23(cx, rest::param(cx, r, "id"));
+        r23(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "PUT", "/notifications/threads/:id/subscription") {
-        r24(cx, rest::param(cx, r, "id"));
+        r24(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "DELETE", "/notifications/threads/:id/subscription") {
-        r25(cx, rest::param(cx, r, "id"));
+        r25(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/stargazers") {
-        r26(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r26(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/users/:user/starred") {
-        r27(cx, rest::param(cx, r, "user"));
+        r27(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user/starred") {
         r28(cx);
     } else if http::on(r, "GET", "/user/starred/:owner/:repo") {
-        r29(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r29(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "PUT", "/user/starred/:owner/:repo") {
-        r30(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r30(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/user/starred/:owner/:repo") {
-        r31(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r31(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/subscribers") {
-        r32(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r32(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/users/:user/subscriptions") {
-        r33(cx, rest::param(cx, r, "user"));
+        r33(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user/subscriptions") {
         r34(cx);
     } else if http::on(r, "GET", "/repos/:owner/:repo/subscription") {
-        r35(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r35(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "PUT", "/repos/:owner/:repo/subscription") {
-        r36(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r36(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/subscription") {
-        r37(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r37(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/user/subscriptions/:owner/:repo") {
-        r38(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r38(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "PUT", "/user/subscriptions/:owner/:repo") {
-        r39(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r39(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/user/subscriptions/:owner/:repo") {
-        r40(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r40(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/users/:user/gists") {
-        r41(cx, rest::param(cx, r, "user"));
+        r41(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/gists") {
         r42(cx);
     } else if http::on(r, "GET", "/gists/:id") {
-        r43(cx, rest::param(cx, r, "id"));
+        r43(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/gists") {
         r44(cx);
     } else if http::on(r, "PUT", "/gists/:id/star") {
-        r45(cx, rest::param(cx, r, "id"));
+        r45(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "DELETE", "/gists/:id/star") {
-        r46(cx, rest::param(cx, r, "id"));
+        r46(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/gists/:id/star") {
-        r47(cx, rest::param(cx, r, "id"));
+        r47(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/gists/:id/forks") {
-        r48(cx, rest::param(cx, r, "id"));
+        r48(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "DELETE", "/gists/:id") {
-        r49(cx, rest::param(cx, r, "id"));
+        r49(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/git/blobs/:sha") {
-        r50(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r50(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/git/blobs") {
-        r51(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r51(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/git/commits/:sha") {
-        r52(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r52(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/git/commits") {
-        r53(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r53(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/git/refs") {
-        r54(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r54(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/git/refs") {
-        r55(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r55(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/git/tags/:sha") {
-        r56(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r56(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/git/tags") {
-        r57(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r57(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/git/trees/:sha") {
-        r58(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r58(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/git/trees") {
-        r59(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r59(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/issues") {
         r60(cx);
     } else if http::on(r, "GET", "/user/issues") {
         r61(cx);
     } else if http::on(r, "GET", "/orgs/:org/issues") {
-        r62(cx, rest::param(cx, r, "org"));
+        r62(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/issues") {
-        r63(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r63(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/issues/:number") {
-        r64(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r64(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/issues") {
-        r65(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r65(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/assignees") {
-        r66(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r66(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/assignees/:assignee") {
-        r67(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "assignee"));
+        r67(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "assignee"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/issues/:number/comments") {
-        r68(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r68(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/issues/:number/comments") {
-        r69(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r69(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/issues/:number/events") {
-        r70(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r70(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/labels") {
-        r71(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r71(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/labels/:name") {
-        r72(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "name"));
+        r72(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "name"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/labels") {
-        r73(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r73(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/labels/:name") {
-        r74(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "name"));
+        r74(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "name"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/issues/:number/labels") {
-        r75(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r75(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/issues/:number/labels") {
-        r76(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r76(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/issues/:number/labels/:name") {
-        r77(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"), rest::param(cx, r, "name"));
+        r77(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"), plod::param(cx, r, "name"));
     } else if http::on(r, "PUT", "/repos/:owner/:repo/issues/:number/labels") {
-        r78(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r78(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/issues/:number/labels") {
-        r79(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r79(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/milestones/:number/labels") {
-        r80(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r80(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/milestones") {
-        r81(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r81(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/milestones/:number") {
-        r82(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r82(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/milestones") {
-        r83(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r83(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/milestones/:number") {
-        r84(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r84(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/emojis") {
         r85(cx);
     } else if http::on(r, "GET", "/gitignore/templates") {
         r86(cx);
     } else if http::on(r, "GET", "/gitignore/templates/:name") {
-        r87(cx, rest::param(cx, r, "name"));
+        r87(cx, plod::param(cx, r, "name"));
     } else if http::on(r, "POST", "/markdown") {
         r88(cx);
     } else if http::on(r, "POST", "/markdown/raw") {
@@ -407,175 +407,175 @@ fn chain(cx) {
     } else if http::on(r, "GET", "/rate_limit") {
         r91(cx);
     } else if http::on(r, "GET", "/users/:user/orgs") {
-        r92(cx, rest::param(cx, r, "user"));
+        r92(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user/orgs") {
         r93(cx);
     } else if http::on(r, "GET", "/orgs/:org") {
-        r94(cx, rest::param(cx, r, "org"));
+        r94(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/orgs/:org/members") {
-        r95(cx, rest::param(cx, r, "org"));
+        r95(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/orgs/:org/members/:user") {
-        r96(cx, rest::param(cx, r, "org"), rest::param(cx, r, "user"));
+        r96(cx, plod::param(cx, r, "org"), plod::param(cx, r, "user"));
     } else if http::on(r, "DELETE", "/orgs/:org/members/:user") {
-        r97(cx, rest::param(cx, r, "org"), rest::param(cx, r, "user"));
+        r97(cx, plod::param(cx, r, "org"), plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/orgs/:org/public_members") {
-        r98(cx, rest::param(cx, r, "org"));
+        r98(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/orgs/:org/public_members/:user") {
-        r99(cx, rest::param(cx, r, "org"), rest::param(cx, r, "user"));
+        r99(cx, plod::param(cx, r, "org"), plod::param(cx, r, "user"));
     } else if http::on(r, "PUT", "/orgs/:org/public_members/:user") {
-        r100(cx, rest::param(cx, r, "org"), rest::param(cx, r, "user"));
+        r100(cx, plod::param(cx, r, "org"), plod::param(cx, r, "user"));
     } else if http::on(r, "DELETE", "/orgs/:org/public_members/:user") {
-        r101(cx, rest::param(cx, r, "org"), rest::param(cx, r, "user"));
+        r101(cx, plod::param(cx, r, "org"), plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/orgs/:org/teams") {
-        r102(cx, rest::param(cx, r, "org"));
+        r102(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/teams/:id") {
-        r103(cx, rest::param(cx, r, "id"));
+        r103(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/orgs/:org/teams") {
-        r104(cx, rest::param(cx, r, "org"));
+        r104(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "DELETE", "/teams/:id") {
-        r105(cx, rest::param(cx, r, "id"));
+        r105(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/teams/:id/members") {
-        r106(cx, rest::param(cx, r, "id"));
+        r106(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/teams/:id/members/:user") {
-        r107(cx, rest::param(cx, r, "id"), rest::param(cx, r, "user"));
+        r107(cx, plod::param(cx, r, "id"), plod::param(cx, r, "user"));
     } else if http::on(r, "PUT", "/teams/:id/members/:user") {
-        r108(cx, rest::param(cx, r, "id"), rest::param(cx, r, "user"));
+        r108(cx, plod::param(cx, r, "id"), plod::param(cx, r, "user"));
     } else if http::on(r, "DELETE", "/teams/:id/members/:user") {
-        r109(cx, rest::param(cx, r, "id"), rest::param(cx, r, "user"));
+        r109(cx, plod::param(cx, r, "id"), plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/teams/:id/repos") {
-        r110(cx, rest::param(cx, r, "id"));
+        r110(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/teams/:id/repos/:owner/:repo") {
-        r111(cx, rest::param(cx, r, "id"), rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r111(cx, plod::param(cx, r, "id"), plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "PUT", "/teams/:id/repos/:owner/:repo") {
-        r112(cx, rest::param(cx, r, "id"), rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r112(cx, plod::param(cx, r, "id"), plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/teams/:id/repos/:owner/:repo") {
-        r113(cx, rest::param(cx, r, "id"), rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r113(cx, plod::param(cx, r, "id"), plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/user/teams") {
         r114(cx);
     } else if http::on(r, "GET", "/repos/:owner/:repo/pulls") {
-        r115(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r115(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/pulls/:number") {
-        r116(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r116(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/pulls") {
-        r117(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r117(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/pulls/:number/commits") {
-        r118(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r118(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/pulls/:number/files") {
-        r119(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r119(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/pulls/:number/merge") {
-        r120(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r120(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "PUT", "/repos/:owner/:repo/pulls/:number/merge") {
-        r121(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r121(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/pulls/:number/comments") {
-        r122(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r122(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "PUT", "/repos/:owner/:repo/pulls/:number/comments") {
-        r123(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "number"));
+        r123(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "number"));
     } else if http::on(r, "GET", "/user/repos") {
         r124(cx);
     } else if http::on(r, "GET", "/users/:user/repos") {
-        r125(cx, rest::param(cx, r, "user"));
+        r125(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/orgs/:org/repos") {
-        r126(cx, rest::param(cx, r, "org"));
+        r126(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/repositories") {
         r127(cx);
     } else if http::on(r, "POST", "/user/repos") {
         r128(cx);
     } else if http::on(r, "POST", "/orgs/:org/repos") {
-        r129(cx, rest::param(cx, r, "org"));
+        r129(cx, plod::param(cx, r, "org"));
     } else if http::on(r, "GET", "/repos/:owner/:repo") {
-        r130(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r130(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/contributors") {
-        r131(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r131(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/languages") {
-        r132(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r132(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/teams") {
-        r133(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r133(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/tags") {
-        r134(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r134(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/branches") {
-        r135(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r135(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/branches/:branch") {
-        r136(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "branch"));
+        r136(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "branch"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo") {
-        r137(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r137(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/collaborators") {
-        r138(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r138(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/collaborators/:user") {
-        r139(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "user"));
+        r139(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "user"));
     } else if http::on(r, "PUT", "/repos/:owner/:repo/collaborators/:user") {
-        r140(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "user"));
+        r140(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "user"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/collaborators/:user") {
-        r141(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "user"));
+        r141(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/comments") {
-        r142(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r142(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/commits/:sha/comments") {
-        r143(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r143(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/commits/:sha/comments") {
-        r144(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r144(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/comments/:id") {
-        r145(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r145(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/comments/:id") {
-        r146(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r146(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/commits") {
-        r147(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r147(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/commits/:sha") {
-        r148(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "sha"));
+        r148(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "sha"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/readme") {
-        r149(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r149(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/keys") {
-        r150(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r150(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/keys/:id") {
-        r151(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r151(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/keys") {
-        r152(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r152(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/keys/:id") {
-        r153(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r153(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/downloads") {
-        r154(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r154(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/downloads/:id") {
-        r155(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r155(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/downloads/:id") {
-        r156(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r156(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/forks") {
-        r157(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r157(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/forks") {
-        r158(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r158(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/hooks") {
-        r159(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r159(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/hooks/:id") {
-        r160(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r160(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/hooks") {
-        r161(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r161(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/hooks/:id/tests") {
-        r162(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r162(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/hooks/:id") {
-        r163(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r163(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/merges") {
-        r164(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r164(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/releases") {
-        r165(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r165(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/releases/:id") {
-        r166(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r166(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/releases") {
-        r167(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r167(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "DELETE", "/repos/:owner/:repo/releases/:id") {
-        r168(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r168(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/releases/:id/assets") {
-        r169(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "id"));
+        r169(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "id"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/stats/contributors") {
-        r170(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r170(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/stats/commit_activity") {
-        r171(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r171(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/stats/code_frequency") {
-        r172(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r172(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/stats/participation") {
-        r173(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r173(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/stats/punch_card") {
-        r174(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"));
+        r174(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"));
     } else if http::on(r, "GET", "/repos/:owner/:repo/statuses/:ref") {
-        r175(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "ref"));
+        r175(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "ref"));
     } else if http::on(r, "POST", "/repos/:owner/:repo/statuses/:ref") {
-        r176(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repo"), rest::param(cx, r, "ref"));
+        r176(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repo"), plod::param(cx, r, "ref"));
     } else if http::on(r, "GET", "/search/repositories") {
         r177(cx);
     } else if http::on(r, "GET", "/search/code") {
@@ -585,15 +585,15 @@ fn chain(cx) {
     } else if http::on(r, "GET", "/search/users") {
         r180(cx);
     } else if http::on(r, "GET", "/legacy/issues/search/:owner/:repository/:state/:keyword") {
-        r181(cx, rest::param(cx, r, "owner"), rest::param(cx, r, "repository"), rest::param(cx, r, "state"), rest::param(cx, r, "keyword"));
+        r181(cx, plod::param(cx, r, "owner"), plod::param(cx, r, "repository"), plod::param(cx, r, "state"), plod::param(cx, r, "keyword"));
     } else if http::on(r, "GET", "/legacy/repos/search/:keyword") {
-        r182(cx, rest::param(cx, r, "keyword"));
+        r182(cx, plod::param(cx, r, "keyword"));
     } else if http::on(r, "GET", "/legacy/user/search/:keyword") {
-        r183(cx, rest::param(cx, r, "keyword"));
+        r183(cx, plod::param(cx, r, "keyword"));
     } else if http::on(r, "GET", "/legacy/user/email/:email") {
-        r184(cx, rest::param(cx, r, "email"));
+        r184(cx, plod::param(cx, r, "email"));
     } else if http::on(r, "GET", "/users/:user") {
-        r185(cx, rest::param(cx, r, "user"));
+        r185(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user") {
         r186(cx);
     } else if http::on(r, "GET", "/users") {
@@ -605,32 +605,32 @@ fn chain(cx) {
     } else if http::on(r, "DELETE", "/user/emails") {
         r190(cx);
     } else if http::on(r, "GET", "/users/:user/followers") {
-        r191(cx, rest::param(cx, r, "user"));
+        r191(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user/followers") {
         r192(cx);
     } else if http::on(r, "GET", "/users/:user/following") {
-        r193(cx, rest::param(cx, r, "user"));
+        r193(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user/following") {
         r194(cx);
     } else if http::on(r, "GET", "/user/following/:user") {
-        r195(cx, rest::param(cx, r, "user"));
+        r195(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/users/:user/following/:target_user") {
-        r196(cx, rest::param(cx, r, "user"), rest::param(cx, r, "target_user"));
+        r196(cx, plod::param(cx, r, "user"), plod::param(cx, r, "target_user"));
     } else if http::on(r, "PUT", "/user/following/:user") {
-        r197(cx, rest::param(cx, r, "user"));
+        r197(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "DELETE", "/user/following/:user") {
-        r198(cx, rest::param(cx, r, "user"));
+        r198(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/users/:user/keys") {
-        r199(cx, rest::param(cx, r, "user"));
+        r199(cx, plod::param(cx, r, "user"));
     } else if http::on(r, "GET", "/user/keys") {
         r200(cx);
     } else if http::on(r, "GET", "/user/keys/:id") {
-        r201(cx, rest::param(cx, r, "id"));
+        r201(cx, plod::param(cx, r, "id"));
     } else if http::on(r, "POST", "/user/keys") {
         r202(cx);
     } else if http::on(r, "DELETE", "/user/keys/:id") {
-        r203(cx, rest::param(cx, r, "id"));
+        r203(cx, plod::param(cx, r, "id"));
     } else {
-        rest::otherwise(cx, r);
+        plod::otherwise(cx, r);
     }
 }

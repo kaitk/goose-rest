@@ -4,10 +4,10 @@
 # (bench/README.md), the first of:
 #
 #   GOOSE_HTTP   already set: the checkout as given
-#   (unset)      a clone of kaitk/goose-http at the pin rest.goose imports,
+#   (unset)      a clone of kaitk/goose-http at the pin plod.goose imports,
 #                which the first use makes in build/goose-http-<ref>/
 
-goose_http_ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/rest.goose" | head -1)
+goose_http_ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/plod.goose" | head -1)
 if [ -z "${GOOSE_HTTP:-}" ]; then
     GOOSE_HTTP=$root/build/goose-http-$goose_http_ref
     if [ ! -d "$GOOSE_HTTP/.git" ]; then

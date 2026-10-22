@@ -2,8 +2,8 @@
 
 Checks task 056.01's shorter routes (`tasks/056-aegon-ideas/01-compact-routes.md`)
 against today's form, without changing the package. Today a program writes
-`if rest::on(cx, "GET", "/p") { rest::route(cx) { ... }; } else { rest::otherwise(cx); }`.
-The shorter form is `rest::get(cx, "/p") { ... };`, and `rest::routes` answers 404, 405,
+`if plod::on(cx, "GET", "/p") { plod::route(cx) { ... }; } else { plod::otherwise(cx); }`.
+The shorter form is `plod::get(cx, "/p") { ... };`, and `plod::routes` answers 404, 405,
 501, and OPTIONS itself.
 
 The bar for adopting it: one form that works everywhere, scopes behind middleware
@@ -20,13 +20,13 @@ spread of the runs (2026-10-20).
   Every call that reads the router has an overload for `Routed`.
 - In both, `routes` answers after its block only when the response is still empty,
   nothing waits (`stream.waiting`), and the exchange expects no later call
-  (`ex.mode & rest::LATER`), the same test that serve's `settle_kept` makes. So code
+  (`ex.mode & plod::LATER`), the same test that serve's `settle_kept` makes. So code
   that answers and returns normally doesn't get a second answer: today's
-  `if rest::on(...)` routes, a scope's own `rest::otherwise`, and middleware that
+  `if plod::on(...)` routes, a scope's own `plod::otherwise`, and middleware that
   answers early.
 
 `main.goose` answers each request with today's form, A, and B, and compares the whole
-answers. `chain.goose` holds four routes and a scope behind `rest::bearer` in the three
+answers. `chain.goose` holds four routes and a scope behind `plod::bearer` in the three
 forms, for their C. The 60-route servers are `bench/routes/hand60.goose` (today's form),
 `short60.goose` (A), and `short60b.goose` (B), each with `/v1/reports` behind a
 middleware that can fail. `bench/routes.sh` at commit `0fda9a2` builds and runs them.
@@ -51,7 +51,7 @@ Under the first bar, neither design is adopted. Both designs give one form that 
 cost instructions beyond the runs' spread on the 60-route chain. A costs +42 to +164
 per request (+0.2 to +0.9%). B costs +26 to +83 in a scope behind its route (+0.1 to
 +0.4%), and B changes the signatures of every call that reads the router. The first
-version of this spike kept today's `rest::route` per route and had no added cost, but
+version of this spike kept today's `plod::route` per route and had no added cost, but
 in a scope behind middleware it needed today's form. That made two forms, and the wrong
 one there goes out of line without a word.
 
@@ -66,7 +66,7 @@ All 30 requests get the same bytes from the three forms: routes that match, a fa
 three calls down, 404, 405 with `Allow`, OPTIONS, 501, 400 for a dot-segment, a guard, a
 body of 100,000 bytes gathered over two calls, and an answer a lane gives at a later
 WAKE (`/slow`, and `/old/slow` in today's form inside the shorter one). The short form
-inside scopes includes `/reports`, behind `rest::bearer`, and `/team`, behind a stack of
+inside scopes includes `/reports`, behind `plod::bearer`, and `/team`, behind a stack of
 the program's own: 200, bearer's 401, 404, and 405. Those come from both A and B.
 
 ```text
@@ -80,8 +80,8 @@ POST /reports/daily HTTP/1.1 -> HTTP/1.1 405 Method Not Allowed
 A guard is an `if` around the routes it guards, `if admin(cx) { get(cx, "/admin") { ... }; }`,
 in both designs. It's checked before the path, so a failed guard hides the route from
 the 405's `Allow`. Today's form answers that way too when the guard comes first,
-`admin(cx) && rest::on(...)`, as `main.goose` writes it. With
-`rest::on(...) && admin(cx)`, a `POST /admin` from a non-admin gets 405, not 404.
+`admin(cx) && plod::on(...)`, as `main.goose` writes it. With
+`plod::on(...) && admin(cx)`, a `POST /admin` from a non-admin gets 405, not 404.
 
 ### Instruction counts
 
@@ -249,7 +249,7 @@ worktree that Windows Git created, and WSL's Git can't read it.
 In the 60-route C, no route of any form stays out of line. Each form keeps the same
 chain of calls: `routes`, `route`, `attempt`, and the scope function `v1`, with the
 extractors as leaves (`param_int` and `param`). The spike's `routes` in A and its
-`route` in B hold `rest::routes`'s and `rest::route`'s bodies rather than calling them,
+`route` in B hold `plod::routes`'s and `plod::route`'s bodies rather than calling them,
 so each chain is as deep as it would be adopted. The first version of this spike kept
 `GET /projects` and one `DELETE` out of line, each with a discriminant check after the
 call.
@@ -257,9 +257,9 @@ call.
 The inliner's size limit for a function called once isn't what keeps the chain. A Goose
 build of `1e31b6d` with no such limit inlines `v1` into `attempt`, but `routes`, `route`,
 and `attempt` stay calls in both forms. `attempt` stays a function because extractors
-left as calls return from it: `rest::param_int` (33 calls) and `rest::param` (7) are
+left as calls return from it: `plod::param_int` (33 calls) and `plod::param` (7) are
 too large to inline at that many call sites, and Goose inlines no function with two
-results, such as `rest::query_int`. `route` and `routes` then stay calls, because each
+results, such as `plod::query_int`. `route` and `routes` then stay calls, because each
 hands the next a block that reads its locals. With the limit removed, the extractors
 `inline fn`, and the query readers unable to fail, both forms compile to one `handle`
 function. That costs more than the chain in `/v1`: +126 to +172 instructions per
@@ -288,20 +288,20 @@ guard, `narrowed` for the scope, and `otherwise`.
 Design A needs one workaround. Its `get` ran the block and returned in one arm, and
 Goose inlines a function called in such an arm only below half the usual size
 ([findings](../../docs/goose-findings.md#a-block-that-ends-in-a-return-keeps-its-calls-out-of-line)).
-`rest::param_int` in the block then stayed a call. A function that fails and stays a
+`plod::param_int` in the block then stayed a call. A function that fails and stays a
 call keeps its route and everything around the route out of line, so all of `chain.goose`'s
 short form stayed out of line. `on` now runs the block and returns in separate arms.
 
 ### What B costs in signatures
 
-- `rest::route`'s block takes the context, `rest::route(cx) { cx => ... }`, in every
+- `plod::route`'s block takes the context, `plod::route(cx) { cx => ... }`, in every
   program. So does a stack's: a program's own middleware that opens the route passes it
   on, `F(cx)`.
-- `rest::on`, `rest::scope`, `rest::param`, `rest::param_int`, the other path
-  extractors, and `rest::otherwise` each gain an overload for the marked type.
+- `plod::on`, `plod::scope`, `plod::param`, `plod::param_int`, the other path
+  extractors, and `plod::otherwise` each gain an overload for the marked type.
   Generated dispatch reaches them through those overloads.
 - A helper typed through an alias needs a second alias for a route's context,
-  `rest::Cx<St, App, rest::Routed>`.
+  `plod::Cx<St, App, plod::Routed>`.
 - Code inside a route's block that names the outer `cx` still compiles, and a `get`
   there opens a second route, out of line. That's the hazard B was meant to remove.
 
@@ -309,29 +309,29 @@ short form stayed out of line. `on` now runs the block and returns in separate a
 
 Adopted with block scopes only, on 2026-10-21
 ([decisions](../../docs/decisions.md#the-api)): the package has no `bool`
-`rest::scope` now. The spike's programs that still use one, in today's form and in
+`plod::scope` now. The spike's programs that still use one, in today's form and in
 `if` chains, call `compact::scope`, the same function kept in `compact.goose`.
 `chain.goose` builds only against the package at `0fda9a2`, where its counts come
 from.
 
-Design A's `rest::get` leaves through `return from routes`, which skips the work of
-any middleware between it and `rest::routes`, and a failure inside a scope's
+Design A's `plod::get` leaves through `return from routes`, which skips the work of
+any middleware between it and `plod::routes`, and a failure inside a scope's
 middleware is answered outside it (task 056.01's snags 1 and 2; `after_block.goose`
 shows both on design A). Skip-based routing keeps A's syntax and drops the
 long-distance return:
 
-- A matched `rest::get` and its kin mark the request taken and return as any block
-  does. The mark is goose-http's `Router.bad`, which `http::on` and `rest::scope`
+- A matched `plod::get` and its kin mark the request taken and return as any block
+  does. The mark is goose-http's `Router.bad`, which `http::on` and `plod::scope`
   check first, so the routes and scopes after it don't match. No field or type is
-  added. `rest::routes` doesn't give its default answer when a route that matched
+  added. `plod::routes` doesn't give its default answer when a route that matched
   chose to answer nothing.
-- `rest::scoped(cx) { ... };`, inside `rest::routes`, runs its block as a route of its
-  own, gives `rest::routes`' default answer when the block left the request
-  unanswered, and takes the request. Outside `rest::routes` it only runs the block.
-  `rest::cors`, `rest::timed`, `rest::security_headers`, and `rest::compressed` run
+- `plod::scoped(cx) { ... };`, inside `plod::routes`, runs its block as a route of its
+  own, gives `plod::routes`' default answer when the block left the request
+  unanswered, and takes the request. Outside `plod::routes` it only runs the block.
+  `plod::cors`, `plod::timed`, `plod::security_headers`, and `plod::compressed` run
   their block in it, so each keeps one name and works in both places, and a
   program's middleware can build on it.
-- `rest::scope(cx, "/p") { ... };`, a block form beside today's `bool` one, owns its
+- `plod::scope(cx, "/p") { ... };`, a block form beside today's `bool` one, owns its
   prefix: it gives the default answer when its block answered nothing, and takes the
   request (snag 3).
 - The generated `dispatch` answers nothing when a route before it took the request.
@@ -339,17 +339,17 @@ long-distance return:
 `skip.goose` answers 30 requests, and `after_block.goose`'s four cases now answer as
 today's form does. Checked:
 
-- Each of goose-rest's four middleware in a scope: 200, a failure, 404, and 405, with
+- Each of Plod's four middleware in a scope: 200, a failure, 404, and 405, with
   the middleware's fields, and `compressed`'s 405 with the scope's `Allow`.
 - `test/middleware/later_routes.goose`: `later.goose`'s cases with the middleware
-  inside `rest::routes`. The fields are kept for an answer at WAKE and at TIMEOUT,
+  inside `plod::routes`. The fields are kept for an answer at WAKE and at TIMEOUT,
   and for a body gathered first.
-- `test/router/beside_dispatch_short.goose`: `rest::put` and `rest::post` before
+- `test/router/beside_dispatch_short.goose`: `plod::put` and `plod::post` before
   `api::dispatch`, with the same answers as `beside_dispatch.goose`.
 - A program's untyped middleware that works after its block runs that work. Without
-  `rest::scoped`, it sees status 0 for a 404 in its scope, which `rest::routes`
+  `plod::scoped`, it sees status 0 for a 404 in its scope, which `plod::routes`
   answers after it, and a failure unwinds past it. Its fields miss a failure's answer
-  too, as in today's form when the middleware holds no `rest::route`.
+  too, as in today's form when the middleware holds no `plod::route`.
 - The routes after a scope don't match once a route in it, or its middleware, took
   the request. After a `bool` scope that matched nothing, they still match the
   narrowed path (snag 3). A block scope gives 404 there.
@@ -372,11 +372,11 @@ every form answers every case with the same bytes, then counts. Three stacks:
 
 - **plain**: the spike's `hand60` and `short60`, `/v1/reports` behind a check that
   can fail.
-- **m**: tier M's stack. `rest::timed` and `rest::cors` are outside `rest::routes`,
-  and `rest::bearer` is around `/v1`. Requests have an `Origin` and a token.
-- **c**: `/v1/reports` behind `rest::cors` rather than the check. In today's form,
-  cors goes outside a `rest::route` of the scope's own. In skip-based routing it's
-  inside `rest::routes`, in `rest::scoped`. `/v1/reports` comes first in `/v1` in
+- **m**: tier M's stack. `plod::timed` and `plod::cors` are outside `plod::routes`,
+  and `plod::bearer` is around `/v1`. Requests have an `Origin` and a token.
+- **c**: `/v1/reports` behind `plod::cors` rather than the check. In today's form,
+  cors goes outside a `plod::route` of the scope's own. In skip-based routing it's
+  inside `plod::routes`, in `plod::scoped`. `/v1/reports` comes first in `/v1` in
   every form, as today's form must have it. Requests have an `Origin`. The failure
   is `GET /v1/reports/time/abc`, a 400.
 
@@ -406,7 +406,7 @@ on stack c: there it answers a failure, a 404, and a 405 without cors's fields. 
 block form's numbers from this run are replaced below: they predate the mark's check
 inline in the block scope.
 
-- **Middleware outside `rest::routes` costs nothing.** On stack m, A costs 20 to 30
+- **Middleware outside `plod::routes` costs nothing.** On stack m, A costs 20 to 30
   fewer instructions than today's form on every case but the first, and skip-based
   routing in `if` chains costs 56 to 63 more. The first case's +118 to +173 is the
   request's one route, which today's form doesn't open for `/health`.
@@ -416,7 +416,7 @@ inline in the block scope.
   `cors { route { ... } }`.
 
 The block form, adopted, after the mark's check moved inline into the block scope and
-`rest::get` (`acae7d3`), against today's form and `if` chains in the same run:
+`plod::get` (`acae7d3`), against today's form and `if` chains in the same run:
 
 | Case | Today | Skip, `if` | Block scopes |
 |---|---|---|---|
@@ -446,15 +446,15 @@ are within 3.2% of today's form in every case, above and below.
   and the 404 outside every scope pay the request's one route, +105 to +133, and the
   query case +149.
 - **A scope behind cors costs +229 to +257**, against today's
-  `cors { route { ... } }`, likely the route `rest::scoped` opens inside the
+  `cors { route { ... } }`, likely the route `plod::scoped` opens inside the
   request's, and `v1`'s other scopes, each checking the mark after `/v1/reports` took
   the request; not measured apart.
 
 ### 1,111 routes
 
 `benchroutes.sh` with `CORS=1 FORMS="hand skip block" TODAY=<a worktree of f7ca662>`:
-`genroutes.sh`'s 1,111 routes with the second area, `/patient`, behind `rest::cors`,
-outside its `rest::route` in today's form and inside `rest::routes` in the others.
+`genroutes.sh`'s 1,111 routes with the second area, `/patient`, behind `plod::cors`,
+outside its `plod::route` in today's form and inside `plod::routes` in the others.
 Every request has an `Origin`. The middle case is in `/patient`. The three forms give
 the same bytes for each case, and for each with a tenant the check refuses.
 

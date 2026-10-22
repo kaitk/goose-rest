@@ -1,9 +1,9 @@
-// rest::format_fields, a JSON object from a struct's fields: each field type
+// plod::format_fields, a JSON object from a struct's fields: each field type
 // it writes, a nested struct through its own format overload, and an enum
 // through the program's.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 
 enum Status { Active, Archived }
 
@@ -13,11 +13,11 @@ fn format(out: u8[>..]&, s: Status) {
 
 struct Owner { name: u8[], admin: bool }
 
-fn format(out: u8[>..]&, o: const Owner&) { rest::format_fields(out, o); }
+fn format(out: u8[>..]&, o: const Owner&) { plod::format_fields(out, o); }
 
 struct Nothing { }
 
-fn format(out: u8[>..]&, n: const Nothing&) { rest::format_fields(out, n); }
+fn format(out: u8[>..]&, n: const Nothing&) { plod::format_fields(out, n); }
 
 struct Project {
     id: i64,
@@ -47,6 +47,6 @@ fn main() {
                       tags: ["a", "b"], nums: [], owners: [Owner { name: "x", admin: true }],
                       empty: Nothing { }, present: seven };
     var out: u8[>..] = [];
-    rest::format_fields(out, p);
+    plod::format_fields(out, p);
     print(out);
 }

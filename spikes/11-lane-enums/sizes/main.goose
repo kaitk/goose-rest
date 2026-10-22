@@ -5,7 +5,7 @@
 // layout (spec C.2), from bytes_of a one-element array.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 // Spike 10's states: docs/best-practices/lanes/app.goose's steps, the one
 // Use with the sign-in's text, and the same without it.
@@ -71,11 +71,11 @@ fn size(v) -> i64 {
     return bytes_of(one).len;
 }
 
-// A connection's bytes for request state S: S, goose-rest's Slot, and
+// A connection's bytes for request state S: S, Plod's Slot, and
 // goose-http's Exchange and RingConn.
 fn row<S>(name: const u8[:], fresh: S) {
-    let slot = rest::Slot<S> { state: fresh };
-    let ex = size(default<http::Exchange<rest::Slot<S>>>());
+    let slot = plod::Slot<S> { state: fresh };
+    let ex = size(default<http::Exchange<plod::Slot<S>>>());
     let ring = ex + size(default<RingFields>());
     print(name, ": state ", size(fresh), ", Slot ", size(slot), ", Exchange ", ex, ", RingConn ", ring,
           "; ", ring, " KB per 1,000 connections");
@@ -85,12 +85,12 @@ fn row<S>(name: const u8[:], fresh: S) {
 // and what the reply carries back before the answer, the job's image and
 // its two-byte length.
 fn mail<U>(name: const u8[:]) {
-    print(name, ": Ask image ", to_bytes([rest::Ask<U> { job: default<U>() }]).len,
-          " bytes, echo ", 2 + rest::value_bytes(default<U>()).len, " bytes");
+    print(name, ": Ask image ", to_bytes([plod::Ask<U> { job: default<U>() }]).len,
+          " bytes, echo ", 2 + plod::value_bytes(default<U>()).len, " bytes");
 }
 
 fn main() {
-    row("tier M (NoState)", rest::NoState { .. });
+    row("tier M (NoState)", plod::NoState { .. });
     row("tiers C and D (Heavy)", Heavy { .. });
     row("lanes, Waiting", WaitingSt { .. });
     row("spike 10, Use with the sign-in's text", Use10St { .. });

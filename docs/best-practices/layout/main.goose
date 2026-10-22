@@ -10,7 +10,7 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import .app;
 
 let TEAMS = [
@@ -21,7 +21,7 @@ let TEAMS = [
 thread_fn worker(cfg: http::Config) {
     var projects: projects::Project[>..] = [];
     var app = App { projects: projects, teams: TEAMS };
-    let e = rest::serve(cfg, app) { cx => handle(cx) };
+    let e = plod::serve(cfg, app) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

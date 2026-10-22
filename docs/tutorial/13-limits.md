@@ -19,17 +19,17 @@ let WAIT_MS: i64 = 200;
     // Two slots, the fewest a box has: two jobs waiting behind the one the
     // database works on fill it.
     let app = App {
-        db: rest::lane_open<DbJob>(http::LaneConfig { slots: 2, .. }, Use.Db, database),
+        db: plod::lane_open<DbJob>(http::LaneConfig { slots: 2, .. }, Use.Db, database),
 ```
 
 ## 504 for a late reply
 
-The last argument to `rest::ask` is the time limit, which defaults to 5 seconds. When
+The last argument to `plod::ask` is the time limit, which defaults to 5 seconds. When
 the time is up, the route answers 504 `timeout` and the worker drops the reply
 when it arrives:
 
 ```rust
-        rest::ask(cx, cx.app.db, job, WAIT_MS);
+        plod::ask(cx, cx.app.db, job, WAIT_MS);
 ```
 
 ```text
@@ -42,7 +42,7 @@ no route is waiting for its reply.
 ## 503 for a full box
 
 While the database runs one job, the next ones wait in its box. If the box is
-full, the job isn't sent: `rest::ask` answers 503 `unavailable` at once,
+full, the job isn't sent: `plod::ask` answers 503 `unavailable` at once,
 rather than queue work the database won't reach in time:
 
 ```text
@@ -55,7 +55,7 @@ GET /v1/projects/1/summary 503 {"error":"unavailable"}
 Size a box for the jobs a lane can finish within the routes' time limit: more slots
 only queue work whose clients get 504 before it starts. For more work at once, give the
 lane several threads, `http::LaneConfig { threads: 2, .. }`, each with its own box.
-`rest::ask` then sends each job to the least busy thread, with 503 only when every
+`plod::ask` then sends each job to the least busy thread, with 503 only when every
 thread's box is full
 ([Lanes of several threads](../best-practices/lanes.md#66-lanes-of-several-threads)).
 
@@ -66,22 +66,22 @@ it's refused first ([How many jobs a box holds](../best-practices/lanes.md#62-ho
 ## A client that has gone
 
 A client can stop waiting while its job is queued or running: its connection closes,
-or its wait times out. `rest::still_wanted(a)` says whether the route is still waiting,
+or its wait times out. `plod::still_wanted(a)` says whether the route is still waiting,
 so the lane skips a job nobody waits for. A `run` that returns without a reply is
-fine then: no route waits for it. `rest::reply_value` returns false once the route has
+fine then: no route waits for it. `plod::reply_value` returns false once the route has
 gone:
 
 ```rust
 // On the database lane: a job whose client has gone isn't run.
 fn run(u: DbJob.Summary, c: db::Conn&, gone: Gone&, a) {
-    guard rest::still_wanted(a) else {
+    guard plod::still_wanted(a) else {
         gone.skipped++;
         return;
     }
     if u.ms > 0 { sleep_ms(u.ms); }
     let ts = db::fetch_all<db::Task>(c, "SELECT * FROM tasks WHERE project = $1 ORDER BY id", [u.project]);
     // False once the client has gone, as after its 504.
-    if !rest::reply_value(a, Summary { project: u.project, tasks: ts.len }) { gone.dropped++; }
+    if !plod::reply_value(a, Summary { project: u.project, tasks: ts.len }) { gone.dropped++; }
 }
 ```
 
@@ -92,7 +92,7 @@ that answered 504 was dropped:
 GET /v1/gone 200 {"skipped":2,"dropped":1}
 ```
 
-`rest::still_wanted` is a snapshot: the client can stop waiting before the reply is sent.
+`plod::still_wanted` is a snapshot: the client can stop waiting before the reply is sent.
 A long job checks it between steps as well as before starting.
 
 ## A slow client
@@ -147,7 +147,7 @@ The job that starts the report replies with its state, and its `resume` answers 
 ```rust
 // The report has started: 202, and where to ask about it.
 fn resume(u: ReportJob.Start, cx) {
-    let r = rest::answer<Report>(cx);
+    let r = plod::answer<Report>(cx);
     var body: u8[>..] = [];
     format(body, r);
     http::start(cx.out, 202);
@@ -168,24 +168,24 @@ GET /v1/reports/1 200 {"id":1,"project":1,"state":"done","tasks":5}
 From [`main.goose`](13-limits/main.goose):
 
 ```rust
-    rest::post(cx, "/projects/:id/reports") {
-        rest::ask(cx, cx.app.reports, ReportJob.Start { project: rest::param_int(cx, "id") });
+    plod::post(cx, "/projects/:id/reports") {
+        plod::ask(cx, cx.app.reports, ReportJob.Start { project: plod::param_int(cx, "id") });
     };
-    rest::get(cx, "/reports/:id") {
-        rest::ask(cx, cx.app.reports, ReportJob.Status { id: rest::param_int(cx, "id") });
+    plod::get(cx, "/reports/:id") {
+        plod::ask(cx, cx.app.reports, ReportJob.Status { id: plod::param_int(cx, "id") });
     };
 ```
 
 ```rust
 fn run(u: ReportJob.Status, all: Report[>..]&, a) {
-    guard u.id >= 1 && u.id <= all.len else { rest::fail(a, 404, "report_not_found"); }
-    rest::reply_value(a, all[u.id - 1]);
+    guard u.id >= 1 && u.id <= all.len else { plod::fail(a, 404, "report_not_found"); }
+    plod::reply_value(a, all[u.id - 1]);
 }
 ```
 
 The thread waits for mail at most a step's time while a report runs, answers what came,
-and then takes a step. `rest::lane` waits with no time limit, so this thread writes its
-own loop, with `rest::lane_job` for each message, which ends as `rest::lane`'s does:
+and then takes a step. `plod::lane` waits with no time limit, so this thread writes its
+own loop, with `plod::lane_job` for each message, which ends as `plod::lane`'s does:
 once `http::mail_stopped` finds the lane stopped by `main` and its box empty. `main`
 opens and stops it as any lane:
 
@@ -193,8 +193,8 @@ opens and stops it as any lane:
 // The reports' thread: it takes a step of the report running between its
 // messages, so that it replies to a client's question while a report runs.
 // Its wait has a time limit while a report runs, so it writes the loop that
-// rest::lane is, until the lane is stopped and its box empty.
-thread_fn reports(box: http::Box, jobs: rest::Jobs<ReportJob>) {
+// plod::lane is, until the lane is stopped and its box empty.
+thread_fn reports(box: http::Box, jobs: plod::Jobs<ReportJob>) {
     var c = db::open(DELAY_MS);
     var all: Report[>..] = [];
     while !http::mail_stopped(box) {
@@ -202,7 +202,7 @@ thread_fn reports(box: http::Box, jobs: rest::Jobs<ReportJob>) {
         for r in all { if r.left > 0 { busy = true; } }
         http::mail_wait(box, if busy { STEP_MS } else { 1000 });
         http::mail_take(box) { key, tag, bytes =>
-            rest::lane_job(jobs, bytes) { u, a => run(u, all, a); };
+            plod::lane_job(jobs, bytes) { u, a => run(u, all, a); };
         };
         for &r in all {
             if r.left > 0 {

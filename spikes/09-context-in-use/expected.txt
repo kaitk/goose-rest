@@ -6,6 +6,6 @@
 -- asks the database, resumes, 1 wake: HTTP/1.1 200 OK gander has 6 tasks
 -- scope with its own middleware: HTTP/1.1 202 Accepted reindexing; audits 1
 -- the same, refused: HTTP/1.1 403 Forbidden {"error":"admin_only"}
--- rest::once across check and handler: HTTP/1.1 200 OK ada sees 2 projects; lookups 7
+-- plod::once across check and handler: HTTP/1.1 200 OK ada sees 2 projects; lookups 7
 -- generated DELETE: HTTP/1.1 204 No Content 
 audits 1, lookups 8

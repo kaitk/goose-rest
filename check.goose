@@ -1,6 +1,6 @@
 // Checks the generated JSON readers call: a string's length in code points,
 // and the string formats the generator supports.
-namespace rest;
+namespace plod;
 
 import std;
 

@@ -3,10 +3,10 @@ namespace settings;
 
 import std;
 import http;
-import rest;
+import plod;
 import common.users.structs;
 import settings.structs;
 
 fn routes(cx, user: users::User) {
-    rest::get(cx, "") { rest::json(cx, 200, Settings { user: user.id, time_zone: "Europe/Tallinn" }); };
+    plod::get(cx, "") { plod::json(cx, 200, Settings { user: user.id, time_zone: "Europe/Tallinn" }); };
 }

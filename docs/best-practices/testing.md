@@ -33,12 +33,12 @@ it imports ([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose))
 ```rust
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../../../";
+import plod from "../../../../../";
 import app from "../../";
 import expect from "../";
 ```
 
-Being a root file, a test declares goose-http and goose-rest itself, at the same
+Being a root file, a test declares goose-http and Plod itself, at the same
 releases as `main.goose`. `expect` is `test/expect.goose`: the helpers every test
 shares, in one module rather than a copy in each test.
 
@@ -83,17 +83,17 @@ ending in the future: Error.InFuture
 This is where each case of the domain's logic is tested, in microseconds, which leaves
 a route's test only what the route adds.
 
-## 8.4 Routes are tested through `rest::serve_one`
+## 8.4 Routes are tested through `plod::serve_one`
 
-`rest::serve_one` takes one request's bytes and returns the response's, through the
-same code `rest::serve` runs, with no socket or thread
+`plod::serve_one` takes one request's bytes and returns the response's, through the
+same code `plod::serve` runs, with no socket or thread
 ([Testing without sockets](../tutorial/09-testing.md)). The test builds the worker state
 as `main.goose`'s worker does, and gives each request to the program's `handle`:
 
 ```rust
-    var a = App { projects: projects, writer: rest::Lane<Writes, Use> { lane: http::Lane { .. }, mark: Use.Write } };
+    var a = App { projects: projects, writer: plod::Lane<Writes, Use> { lane: http::Lane { .. }, mark: Use.Write } };
     fn answer(text: const u8[:]) -> u8[>..] {
-        let out = rest::serve_one(text, a, St { .. }) { cx => handle(cx); };
+        let out = plod::serve_one(text, a, St { .. }) { cx => handle(cx); };
         return expect::shown(out);
     }
 
@@ -117,9 +117,9 @@ the same way: give `serve_one` a request without a token, and the answer is the 
 ## 8.5 A route that asks a lane is given its replies
 
 The test plays the lane. It gives the worker state a lane of one box of its own,
-`rest::lane_of<Writes>(box, Use.Write)`, with no thread, and nothing takes from that
+`plod::lane_of<Writes>(box, Use.Write)`, with no thread, and nothing takes from that
 box but the test, so nothing waits. It reads the job the route sent with
-`rest::lane_job`, as the lane's thread does, given a `rest::Jobs<Writes>` of its own,
+`plod::lane_job`, as the lane's thread does, given a `plod::Jobs<Writes>` of its own,
 which says the lane's enum. From
 [`testing/test/entries/entry_routes.goose`](testing/test/entries/entry_routes.goose):
 
@@ -127,22 +127,22 @@ which says the lane's enum. From
     // The job the route sends, read as the lane reads it.
     answer(expect::request("POST", "/entries", FORM));
     http::mail_take(box) { key, tag, bytes =>
-        rest::lane_job(rest::Jobs<Writes> { .. }, bytes) { u, a => print("the job: ", u); };
+        plod::lane_job(plod::Jobs<Writes> { .. }, bytes) { u, a => print("the job: ", u); };
     };
 ```
 
-`rest::play` runs a job through the writer's own `run`, on a `Writer` of the test's,
-and returns its reply, which goes to `serve_one` as a `rest::Wake`, and the `resume`
+`plod::play` runs a job through the writer's own `run`, on a `Writer` of the test's,
+and returns its reply, which goes to `serve_one` as a `plod::Wake`, and the `resume`
 answers it. A refusal fails the route as the lane's would. A `Wake` with
 `timeout: true` stands for a lane that didn't reply in time, and two jobs left in the
 box's two slots leave the next route a full box:
 
 ```rust
     let future = entries::CreateInput { project: 1, started: 1767250800, stopped: 4102444800 };
-    let late = rest::play(a.writer, Writes.EntryCreate { input: future }) { u, a => run(u, w, a); };
-    print("refused: ", answer(expect::request("POST", "/entries", FORM), [rest::wake(late)]));
+    let late = plod::play(a.writer, Writes.EntryCreate { input: future }) { u, a => run(u, w, a); };
+    print("refused: ", answer(expect::request("POST", "/entries", FORM), [plod::wake(late)]));
     empty_box();
-    print("no reply in time: ", answer(expect::request("POST", "/entries", FORM), [rest::Wake { timeout: true }]));
+    print("no reply in time: ", answer(expect::request("POST", "/entries", FORM), [plod::Wake { timeout: true }]));
 ```
 
 ```text
@@ -154,7 +154,7 @@ no reply in time: 504 {"error":"timeout"}
 full box: 503 {"error":"unavailable"}
 ```
 
-The job's `run` is played with `rest::play`, and the rule it calls is a plain function,
+The job's `run` is played with `plod::play`, and the rule it calls is a plain function,
 tested on its own. So a route that waits is covered without any timing: the job it
 sends, and its answer to a reply, to a refusal, to none in time, and to a full box.
 
@@ -208,7 +208,7 @@ route has stopped waiting, is a scenario too ([Testing the application](../tutor
 ## 8.8 The application keeps its own runner
 
 Keep a `test/run_tests.py` in the application rather than install a shared one, as
-Goose and goose-rest each keep their own.
+Goose and Plod each keep their own.
 [`testing/test/run_tests.py`](testing/test/run_tests.py) is about 140 lines of Python to
 copy. It finds the tests and scenarios, runs the small
 tests through the compiler's TinyCC and the fixtures through `goose --check`, serves

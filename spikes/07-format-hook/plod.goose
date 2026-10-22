@@ -1,10 +1,10 @@
-namespace rest;
+namespace plod;
 
 import std;
 
 struct Cx { status: i32, body: u8[>..] }
 
-// rest's own format overload: the error body. It doesn't hide the
+// plod's own format overload: the error body. It doesn't hide the
 // application's overloads from json.
 struct Failure { code: u8[..32] }
 

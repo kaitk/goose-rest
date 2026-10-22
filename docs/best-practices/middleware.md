@@ -3,7 +3,7 @@
 An application's middleware lives in `middleware.goose`, and its stacks, one per
 audience, in `stacks.goose`. Every scope runs behind one stack.
 [Middleware and scopes](../tutorial/07-middleware.md) explains how middleware and stacks
-work and where each kind sits relative to `rest::routes`.
+work and where each kind sits relative to `plod::routes`.
 
 The code on this page is from [`middleware/`](middleware/).
 
@@ -17,12 +17,12 @@ resulting state. From [`middleware/middleware.goose`](middleware/middleware.goos
 // Runs F with the user the bearer token names, or fails with 401.
 inline fn authenticate<F>(cx) {
     // The token, or 401 for a request that has none.
-    rest::bearer(cx) { token =>
+    plod::bearer(cx) { token =>
         var user: i64 = 0;
         for s in SESSIONS {
             if s.token == token { user = s.user; }
         }
-        guard user != 0 else { rest::invalid_token(cx); }
+        guard user != 0 else { plod::invalid_token(cx); }
         // F is the block the caller gave: the next middleware, or the route.
         F(users::User { id: user });
     };
@@ -42,9 +42,9 @@ From [`middleware/middleware.goose`](middleware/middleware.goose):
 // header names, or fails with 403 not_a_member. A scope's prefix can't hold
 // a parameter yet, so the organization's id comes from a header.
 inline fn resolve_organization<F>(cx, user: users::User) {
-    let value, has = rest::header(cx, "X-Organization");
-    rest::require(cx, "X-Organization", has);
-    let organization = rest::int_of(cx, value, "X-Organization");
+    let value, has = plod::header(cx, "X-Organization");
+    plod::require(cx, "X-Organization", has);
+    let organization = plod::int_of(cx, value, "X-Organization");
     var member = false;
     for s in SESSIONS {
         if s.user == user.id && s.organization == organization { member = true; }
@@ -94,7 +94,7 @@ inline fn member_routes<F>(cx) {
 ```
 
 Who may call a route decides what runs before it, so the audience is what tells two
-stacks apart. A stack wraps routes as `rest::routes` does, and `_routes` says so where
+stacks apart. A stack wraps routes as `plod::routes` does, and `_routes` says so where
 it's called. Never name a stack `api` or another word that fits every route: it says
 nothing about who calls them, and `api` is also the generated file's namespace
 ([Run it](../generator.md#1-run-it)).
@@ -102,12 +102,12 @@ nothing about who calls them, and `api` is also the generated file's namespace
 A parameter in a scope's prefix, such as `/organizations/:id`, isn't supported yet, so
 the member routes can't take the organization from their path. Until it is, the program
 scopes them under `/organization`, and `resolve_organization` reads the organization's
-id from the `X-Organization` header with `rest::header`.
+id from the `X-Organization` header with `plod::header`.
 
 ## 5.4 Every scope behind one stack
 
 Each scope's routes, public ones included, run behind exactly one stack, inside the
-request's one route, which `rest::routes` opens: a fail from any depth inside, a stack's
+request's one route, which `plod::routes` opens: a fail from any depth inside, a stack's
 401 or a rule's 422, is answered there. `public_routes` runs nothing yet, and names the
 audience all the same. `dispatch.goose` names each scope's stack, as
 [All routing in one file](layout.md#26-all-routing-in-one-file) shows:
@@ -118,13 +118,13 @@ Each route's audience is then named where its scope is, and a scope without a st
 stands out in review.
 
 Middleware that every answer gets, such as `timed` and `cors`, goes once around
-`rest::routes`, not in each stack, so that the 404s of `rest::routes` get it too.
+`plod::routes`, not in each stack, so that the 404s of `plod::routes` get it too.
 From [`middleware/main.goose`](middleware/main.goose):
 
 ```rust
-    rest::timed(cx) {
-        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            rest::routes(cx) { cx =>
+    plod::timed(cx) {
+        plod::cors(cx, plod::Cors { origins: "https://app.example", .. }) {
+            plod::routes(cx) { cx =>
 ```
 
 ## 5.5 Where middleware and stacks live

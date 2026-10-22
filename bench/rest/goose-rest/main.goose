@@ -1,8 +1,8 @@
-// goose-http's REST benchmark server on goose-rest: the same routes,
+// goose-http's REST benchmark server on Plod: the same routes,
 // records, and JSON as goose-http's bench/rest/goose at the pin, served through
-// rest::serve, rest::routes for tiers A, F, and M and an http::router chain for
-// the others, rest's extractors, its bearer
-// middleware, and rest::fail with each tier's error shape (error_body below).
+// plod::serve, plod::routes for tiers A, F, and M and an http::router chain for
+// the others, plod's extractors, its bearer
+// middleware, and plod::fail with each tier's error shape (error_body below).
 // It loads the generator's dataset files (goose-http's bench/rest/gen.goose)
 // at startup. Tier A is HttpArena's production-stack application layer:
 //
@@ -56,7 +56,7 @@ import std;
 import os;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import http.bench.rest.goose.app;
 // app.goose's templates use the store, which app.goose can't import itself
 // when a package imports it (docs/goose-findings.md).
@@ -137,7 +137,7 @@ fn now_ms() -> i64 { time_ns() / 1000000 }
 
 // The person the session cookie names, or -1.
 fn person_of(cx) -> i64 {
-    let v, has = rest::cookie(cx, SESSION_COOKIE);
+    let v, has = plod::cookie(cx, SESSION_COOKIE);
     guard has && v.len > 65 && v[64] == '.' else { return -1; }
     let token = v[..64];
     let k = lower_bound(by_token) { compare(people[it].token, token) < 0 };
@@ -149,7 +149,7 @@ fn person_of(cx) -> i64 {
 // the code named by the status, for the rest.
 struct Snow { unused: bool = false }
 
-fn rest::error_body(body: u8[>..]&, st: const Snow&, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
+fn plod::error_body(body: u8[>..]&, st: const Snow&, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
     let message = if code == "no_such_call" { "No such call." }
                   else if code == "cross_origin" { "Cross-origin request refused." }
                   else if code == "invalid_input" { "Invalid input." }
@@ -164,22 +164,22 @@ fn rest::error_body(body: u8[>..]&, st: const Snow&, status: i32, code: const u8
     format(body, "{\"error\":{\"code\":\"", name, "\",\"key\":\"", code, "\"}}");
 }
 
-fn invalid(cx) { rest::fail(cx, 400, "invalid_input"); }
+fn invalid(cx) { plod::fail(cx, 400, "invalid_input"); }
 
 // GET .../entries: the entries of userId, or of the caller, that overlap
 // [from, to), newest first, as listEntries selects them.
 fn list_entries(cx, p: Person, m: Member, buf: u8[>..]&) {
-    let fs, has_from = rest::query(cx, "from");
+    let fs, has_from = plod::query(cx, "from");
     let from, from_ok = parse_iso(fs);
-    let ts, has_to = rest::query(cx, "to");
+    let ts, has_to = plod::query(cx, "to");
     let to, to_ok = parse_iso(ts);
     guard has_from && from_ok && has_to && to_ok && to > from && to - from <= 93 * DAY else { invalid(cx); }
     var who = person_index(p.id);
-    let uid, has_user = rest::query(cx, "userId");
+    let uid, has_user = plod::query(cx, "userId");
     if has_user {
         guard is_uuid7(uid) else { invalid(cx); }
         if uid != p.id {
-            guard is_admin(m) else { rest::fail(cx, 403, "entries_forbidden"); }
+            guard is_admin(m) else { plod::fail(cx, 403, "entries_forbidden"); }
             who = person_index(uid);
         }
     }
@@ -199,11 +199,11 @@ fn list_entries(cx, p: Person, m: Member, buf: u8[>..]&) {
         }
     }
     buf.push(']');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 fn list_projects(cx, p: Person, m: Member, buf: u8[>..]&) {
-    let v, has = rest::query(cx, "includeArchived");
+    let v, has = plod::query(cx, "includeArchived");
     guard !has || v == "true" || v == "false" else { invalid(cx); }
     let archived = has && v == "true";
     let o = orgs[m.org];
@@ -218,7 +218,7 @@ fn list_projects(cx, p: Person, m: Member, buf: u8[>..]&) {
         }
     }
     buf.push(']');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // Whether body is one JSON value.
@@ -238,8 +238,8 @@ fn description_of(r: json::Reader&, scratch: u8[>..]&) -> const u8[:], bool {
 
 fn patch_entry(cx, id: const u8[:], p: Person, m: Member, buf: u8[>..]&) {
     guard is_uuid7(id) else { invalid(cx); }
-    let body = rest::body(cx);
-    guard is_json(body) else { rest::fail(cx, 400, "not_json"); }
+    let body = plod::body(cx);
+    guard is_json(body) else { plod::fail(cx, 400, "not_json"); }
     var scratch: u8[>..] = [];
     var r = json::reader(body);
     var description: u8[>..] = [];
@@ -257,17 +257,17 @@ fn patch_entry(cx, id: const u8[:], p: Person, m: Member, buf: u8[>..]&) {
     }
     guard ok && json::finish(r) else { invalid(cx); }
     let i = entry_index(id);
-    guard i >= 0 && entries[i].org == m.org else { rest::fail(cx, 404, "entry_not_found"); }
-    guard people[entries[i].user].id == p.id || is_admin(m) else { rest::fail(cx, 403, "entry_forbidden"); }
+    guard i >= 0 && entries[i].org == m.org else { plod::fail(cx, 404, "entry_not_found"); }
+    guard people[entries[i].user].id == p.id || is_admin(m) else { plod::fail(cx, 403, "entry_forbidden"); }
     if has { snow_entry_as(buf, i, description); } else { snow_entry(buf, i); }
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // POST .../timer/start: the new entry, started now, and the timer it
 // stopped, the caller's running one, or null.
 fn start_timer(cx, u: i64, m: Member, buf: u8[>..]&) {
-    let body = rest::body(cx);
-    guard is_json(body) else { rest::fail(cx, 400, "not_json"); }
+    let body = plod::body(cx);
+    guard is_json(body) else { plod::fail(cx, 400, "not_json"); }
     var scratch: u8[>..] = [];
     var r = json::reader(body);
     var id: u8[..36] = "";
@@ -298,10 +298,10 @@ fn start_timer(cx, u: i64, m: Member, buf: u8[>..]&) {
     let p = people[u];
     if project.len > 0 {
         let j = project_index(project, m.org);
-        guard j >= 0 && sees(p, m, projects[j]) else { rest::fail(cx, 404, "project_not_found"); }
-        guard projects[j].archived < 0 else { rest::fail(cx, 409, "project_archived"); }
+        guard j >= 0 && sees(p, m, projects[j]) else { plod::fail(cx, 404, "project_not_found"); }
+        guard projects[j].archived < 0 else { plod::fail(cx, 409, "project_archived"); }
     }
-    guard entry_index(id) < 0 else { rest::fail(cx, 409, "entry_id_taken"); }
+    guard entry_index(id) < 0 else { plod::fail(cx, 409, "entry_id_taken"); }
     let now = now_ms();
     buf.append("{\"started\":{\"id\":");
     http::json_string(buf, id);
@@ -320,15 +320,15 @@ fn start_timer(cx, u: i64, m: Member, buf: u8[>..]&) {
     buf.append(",\"stoppedAt\":null},\"stopped\":");
     if p.running >= 0 { snow_stopped(buf, p.running, now); } else { buf.append("null"); }
     buf.push('}');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // POST /timer/stop: the caller's running entry, stopped now. An id the
 // dataset doesn't have is taken for a timer started with it, as timer start
 // answered it: a uuidv7 made in the last day.
 fn stop_timer(cx, u: i64, buf: u8[>..]&) {
-    let body = rest::body(cx);
-    guard is_json(body) else { rest::fail(cx, 400, "not_json"); }
+    let body = plod::body(cx);
+    guard is_json(body) else { plod::fail(cx, 400, "not_json"); }
     var scratch: u8[>..] = [];
     var r = json::reader(body);
     var id: u8[..36] = "";
@@ -349,7 +349,7 @@ fn stop_timer(cx, u: i64, buf: u8[>..]&) {
     } else {
         let started = uuid_ms(id);
         guard started > now - DAY && started <= now + MINUTE && entry_index(id) < 0
-            else { rest::fail(cx, 404, "timer_not_running"); }
+            else { plod::fail(cx, 404, "timer_not_running"); }
         buf.append("{\"id\":");
         http::json_string(buf, id);
         buf.append(",\"organizationId\":");
@@ -362,27 +362,27 @@ fn stop_timer(cx, u: i64, buf: u8[>..]&) {
         iso_or_null(buf, min(max(now, started + 1), started + DAY));
         buf.push('}');
     }
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // The caller, whom the session cookie names, or 401.
 fn signed_in(cx) -> i64 {
     let u = person_of(cx);
-    guard u >= 0 else { rest::fail(cx, 401, "sign_in_required"); }
+    guard u >= 0 else { plod::fail(cx, 401, "sign_in_required"); }
     return u;
 }
 
 // The caller's membership of the organization the path names, or 403.
 fn member(cx, r: const http::Router&, p: Person) -> Member {
-    let k = membership(p, rest::param(cx, r, "org"));
-    guard k >= 0 else { rest::fail(cx, 403, "not_organization_member"); }
+    let k = membership(p, plod::param(cx, r, "org"));
+    guard k >= 0 else { plod::fail(cx, 403, "not_organization_member"); }
     return p.orgs[k];
 }
 
 // A write's guard: Origin must be the app's, as snowtime's CSRF check has it.
 fn same_origin(cx) {
-    let origin, has = rest::header(cx, "origin");
-    guard has && origin == APP_URL else { rest::fail(cx, 403, "cross_origin"); }
+    let origin, has = plod::header(cx, "origin");
+    guard has && origin == APP_URL else { plod::fail(cx, 403, "cross_origin"); }
 }
 
 // Tier B's routes, each checking in snowtime's order: a write from another
@@ -396,14 +396,14 @@ fn snow(cx, buf: u8[>..]&) {
         if u < 0 { buf.append("null"); }
         else if template { http::store_append(tpl.session, session_at[u], session_at[u + 1], buf); }
         else { session_open(buf, people[u]); }
-        rest::json_bytes(cx, 200, buf);
+        plod::json_bytes(cx, 200, buf);
     } else if http::on(r, "GET", "/api/v1/timer") {
         let u = signed_in(cx);
         let p = people[u];
         if template { http::store_append(tpl.timer, timer_at[u], timer_at[u + 1], buf); }
         else if p.running >= 0 { timer_full(buf, entries[p.running]); }
         else { buf.append("null"); }
-        rest::json_bytes(cx, 200, buf);
+        plod::json_bytes(cx, 200, buf);
     } else if http::on(r, "POST", "/api/v1/timer/stop") {
         same_origin(cx);
         stop_timer(cx, signed_in(cx), buf);
@@ -416,13 +416,13 @@ fn snow(cx, buf: u8[>..]&) {
     } else if http::on(r, "PATCH", "/api/v1/organizations/:org/entries/:id") {
         same_origin(cx);
         let p = people[signed_in(cx)];
-        patch_entry(cx, rest::param(cx, r, "id"), p, member(cx, r, p), buf);
+        patch_entry(cx, plod::param(cx, r, "id"), p, member(cx, r, p), buf);
     } else if http::on(r, "POST", "/api/v1/organizations/:org/timer/start") {
         same_origin(cx);
         let u = signed_in(cx);
         start_timer(cx, u, member(cx, r, people[u]), buf);
     } else {
-        rest::fail(cx, 404, "no_such_call");
+        plod::fail(cx, 404, "no_such_call");
     }
 }
 
@@ -440,13 +440,13 @@ enum Use {
 // Tiers C and D's per-request state: what a tier D route waits on, and the
 // spool it reads into (app.goose's spools), or -1. Its error_body writes
 // {"error", "status"}, with the code each status has in the clinic's API,
-// whatever code goose-rest or a route gave.
+// whatever code Plod or a route gave.
 struct Heavy {
     use: Use = Use.None,
     spool: i64 = -1,
 }
 
-fn rest::error_body(body: u8[>..]&, st: const Heavy&, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
+fn plod::error_body(body: u8[>..]&, st: const Heavy&, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
     let name = if status == 400 { "bad_request" } else if status == 401 { "unauthorized" }
                else if status == 404 { "not_found" } else if status == 405 { "method_not_allowed" }
                else if status == 413 { "payload_too_large" } else if status == 415 { "unsupported_media_type" }
@@ -454,7 +454,7 @@ fn rest::error_body(body: u8[>..]&, st: const Heavy&, status: i32, code: const u
     format(body, "{\"error\":\"", name, "\",\"status\":", status, "}");
 }
 
-fn bad_request(cx) { rest::fail(cx, 400, "bad_request"); }
+fn bad_request(cx) { plod::fail(cx, 400, "bad_request"); }
 
 // A byte that is neither base64url nor '.', and '.', for find_any, which
 // scans 16 bytes at a time: a byte loop over tier C's 560-byte tokens took
@@ -483,10 +483,10 @@ fn jwt_shaped(t: const u8[:]) -> bool {
     return b > 0 && b + 1 < rest.len && find_any(rest[b + 1..], DOT) < 0;
 }
 
-// rest::bearer, with a token shaped as a JWT, which isn't verified.
+// plod::bearer, with a token shaped as a JWT, which isn't verified.
 inline fn authed<F>(cx) {
-    rest::bearer(cx) { token =>
-        guard jwt_shaped(token) else { rest::invalid_token(cx); }
+    plod::bearer(cx) { token =>
+        guard jwt_shaped(token) else { plod::invalid_token(cx); }
         F();
     };
 }
@@ -494,9 +494,9 @@ inline fn authed<F>(cx) {
 // A start and an end day, end after start and at most 31 days on, and the
 // staff of a list of their ids as bits, or 400.
 fn range_of(cx) -> i64, i64, i64 {
-    let s, has_start = rest::query(cx, "start");
-    let e, has_end = rest::query(cx, "end");
-    let list, has_staff = rest::query(cx, "staff");
+    let s, has_start = plod::query(cx, "start");
+    let e, has_end = plod::query(cx, "end");
+    let list, has_staff = plod::query(cx, "staff");
     guard has_start && has_end && has_staff else { bad_request(cx); }
     let start, start_ok = parse_day(s);
     let end, end_ok = parse_day(e);
@@ -527,7 +527,7 @@ fn list_bookings(cx, buf: u8[>..]&) {
     buf.append("],\"count\":");
     format(buf, n);
     buf.push('}');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 fn list_shifts(cx, buf: u8[>..]&) {
@@ -546,7 +546,7 @@ fn list_shifts(cx, buf: u8[>..]&) {
     buf.append("],\"count\":");
     format(buf, n);
     buf.push('}');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // The encounter, and the notes of every visit of its case, oldest first.
@@ -564,14 +564,14 @@ fn show_encounter(cx, i: i64, buf: u8[>..]&) {
         }
     }
     buf.append("]}");
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // The client's completed visits, newest first, up to limit, and how many
 // there are.
 fn client_history(cx, c: i64, buf: u8[>..]&) {
     var limit = 20;
-    let v, has = rest::query(cx, "limit");
+    let v, has = plod::query(cx, "limit");
     if has {
         let n, ok = parse_int(v);
         guard ok && n >= 1 && n <= 50 else { bad_request(cx); }
@@ -587,13 +587,13 @@ fn client_history(cx, c: i64, buf: u8[>..]&) {
     buf.append("],\"total\":");
     format(buf, cl.count);
     buf.push('}');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // GET /schedule/version: the schedule's version, the minutes since
 // version_epoch, and when it changed to it.
 fn schedule_version(cx, buf: u8[>..]&) {
-    let since, has = rest::query(cx, "since");
+    let since, has = plod::query(cx, "since");
     let n, ok = parse_int(since);
     guard has && ok && n >= 0 else { bad_request(cx); }
     let version = (now_ms() - version_epoch) / MINUTE;
@@ -602,13 +602,13 @@ fn schedule_version(cx, buf: u8[>..]&) {
     buf.append(",\"changedAt\":");
     iso_or_null(buf, version_epoch + version * MINUTE);
     buf.push('}');
-    rest::json_bytes(cx, 200, buf);
+    plod::json_bytes(cx, 200, buf);
 }
 
 // The record of the path's id among n, or 404.
 fn record_of(cx, r: const http::Router&, n: i64) -> i64 {
-    let i = index_of(rest::param(cx, r, "id"), n);
-    guard i >= 0 else { rest::fail(cx, 404, "not_found"); }
+    let i = index_of(plod::param(cx, r, "id"), n);
+    guard i >= 0 else { plod::fail(cx, 404, "not_found"); }
     return i;
 }
 
@@ -631,7 +631,7 @@ fn heavy(cx, buf: u8[>..]&, writes: bool) {
         authed(cx) {
             let c = record_of(cx, r, clients.len);
             if template { http::store_append(tpl.client, client_at[c], client_at[c + 1], buf); } else { client_full(buf, c); }
-            rest::json_bytes(cx, 200, buf);
+            plod::json_bytes(cx, 200, buf);
         };
     } else if writes && http::on(r, "POST", "/api/v3/imports") {
         authed(cx) { import_csv(cx); };
@@ -642,16 +642,16 @@ fn heavy(cx, buf: u8[>..]&, writes: bool) {
     } else if writes && http::on(r, "POST", "/api/v3/forms") {
         authed(cx) { form(cx, buf); };
     } else {
-        rest::fail(cx, 404, "not_found");
+        plod::fail(cx, 404, "not_found");
     }
 }
 
 // Tier D, writes with large bodies, under /api/v3, served beside tier C's
 // reads for the mixed run. Each answer is computed from the body alone
 // (app.goose), and the data doesn't change. The CSV and the multipart body
-// are read in pieces as they arrive, through rest::body_in_pieces, as
+// are read in pieces as they arrive, through plod::body_in_pieces, as
 // goose-http's server reads them; the batch and the form, of at most 1 MB
-// and 64 KB, are gathered whole by rest::body.
+// and 64 KB, are gathered whole by plod::body.
 
 let IMPORT_LIMIT: i64 = 16 * 1024 * 1024;
 let BATCH_LIMIT: i64 = 1024 * 1024;
@@ -659,14 +659,14 @@ let FORM_LIMIT: i64 = 64 * 1024;
 
 // Leaves the route with 415 unless the request's body is of type t.
 fn typed(cx, t: const u8[:]) {
-    guard http::has_type(cx.req, t) else { rest::fail(cx, 415, "unsupported_media_type"); }
+    guard http::has_type(cx.req, t) else { plod::fail(cx, 415, "unsupported_media_type"); }
 }
 
 // A write's answer, from the status and JSON app.goose's answers give: 0 for
 // a body that isn't one.
 fn answer(cx, status: i32, buf: const u8[:]) {
     guard status != 0 else { bad_request(cx); }
-    rest::json_bytes(cx, status, buf);
+    plod::json_bytes(cx, status, buf);
 }
 
 fn release(cx) {
@@ -682,11 +682,11 @@ fn release(cx) {
 // pieces go to resume(Use.Import).
 fn import_csv(cx) {
     typed(cx, "text/csv");
-    rest::body_in_pieces(cx, IMPORT_LIMIT, Use.Import);
+    plod::body_in_pieces(cx, IMPORT_LIMIT, Use.Import);
     cx.state.spool = spools.alloc_index(Spool { .. });
 }
 
-// The spool is released before the route answers, as rest::fail leaves at
+// The spool is released before the route answers, as plod::fail leaves at
 // once.
 fn resume(u: Use.Import, cx) {
     if cx.kind == http::BODY {
@@ -703,10 +703,10 @@ fn resume(u: Use.Import, cx) {
 
 // POST /attachments: the text fields, and the file's size and Adler-32. Its
 // pieces go to resume(Use.Attachment). A route that fails after
-// rest::body_in_pieces gets CLOSED, which releases the spool.
+// plod::body_in_pieces gets CLOSED, which releases the spool.
 fn attach(cx) {
     typed(cx, "multipart/form-data");
-    rest::body_in_pieces(cx, IMPORT_LIMIT, Use.Attachment);
+    plod::body_in_pieces(cx, IMPORT_LIMIT, Use.Attachment);
     cx.state.spool = spools.alloc_index(Spool { .. });
     guard http::start_multipart(cx.req, spools[cx.state.spool].parts) else { bad_request(cx); }
 }
@@ -726,65 +726,65 @@ fn resume(u: Use.Attachment, cx) {
     }
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 // POST /bookings/batch: each booking's new id, or 422 with the field errors.
 fn batch(cx, buf: u8[>..]&) {
     typed(cx, "application/json");
-    let status = bookings_batch(rest::body(cx, BATCH_LIMIT), buf);
+    let status = bookings_batch(plod::body(cx, BATCH_LIMIT), buf);
     answer(cx, status, buf);
 }
 
 // POST /forms: the form's fields, decoded, in order.
 fn form(cx, buf: u8[>..]&) {
     typed(cx, "application/x-www-form-urlencoded");
-    let status = form_answer(rest::body(cx, FORM_LIMIT), buf);
+    let status = form_answer(plod::body(cx, FORM_LIMIT), buf);
     answer(cx, status, buf);
 }
 
-// Tier A's routes, in goose-rest's own error shape, inside rest::routes.
+// Tier A's routes, in Plod's own error shape, inside plod::routes.
 fn arena(cx, buf: u8[>..]&) {
-    rest::get(cx, "/api/items/:id") {
-        let i = index_of(rest::param(cx, "id"), item_count());
-        guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
+    plod::get(cx, "/api/items/:id") {
+        let i = index_of(plod::param(cx, "id"), item_count());
+        guard i >= 0 else { plod::fail(cx, 404, "item_not_found"); }
         if template { http::store_append(tpl.item, item_at[i], item_at[i + 1], buf); } else { item_open(buf, items[i]); }
         served(buf);
-        rest::json_bytes(cx, 200, buf);
+        plod::json_bytes(cx, 200, buf);
     };
-    rest::get(cx, "/api/me") {
-        let id, has = rest::header(cx, "x-user-id");
+    plod::get(cx, "/api/me") {
+        let id, has = plod::header(cx, "x-user-id");
         let i = if has { index_of(id, user_count()) } else { -1 };
-        guard i >= 0 else { rest::fail(cx, 401, "unknown_user"); }
+        guard i >= 0 else { plod::fail(cx, 401, "unknown_user"); }
         if template { http::store_append(tpl.user, user_at[i], user_at[i + 1], buf); } else { user_open(buf, users[i]); }
         served(buf);
-        rest::json_bytes(cx, 200, buf);
+        plod::json_bytes(cx, 200, buf);
     };
-    rest::post(cx, "/api/items/:id") {
-        let i = index_of(rest::param(cx, "id"), item_count());
-        guard i >= 0 else { rest::fail(cx, 404, "item_not_found"); }
-        guard valid_write(rest::body(cx)) else { rest::fail(cx, 422, "invalid_item"); }
-        rest::empty(cx, 204);
+    plod::post(cx, "/api/items/:id") {
+        let i = index_of(plod::param(cx, "id"), item_count());
+        guard i >= 0 else { plod::fail(cx, 404, "item_not_found"); }
+        guard valid_write(plod::body(cx)) else { plod::fail(cx, 422, "invalid_item"); }
+        plod::empty(cx, 204);
     };
 }
 
 // Tier F, the bun-http-framework-benchmark's three routes (bench/rest/tiers).
 fn micro(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/") { rest::text(cx, 200, "Hi"); };
-        rest::get(cx, "/id/:id") {
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/") { plod::text(cx, 200, "Hi"); };
+        plod::get(cx, "/id/:id") {
             var b: u8[>..] = [];
-            b.append(rest::param(cx, "id"));
+            b.append(plod::param(cx, "id"));
             b.push(' ');
-            let name, has = rest::query(cx, "name");
+            let name, has = plod::query(cx, "name");
             b.append(name);
             http::start(cx.out, 200);
             http::field(cx.out, "x-powered-by", "benchmark");
             http::finish(cx.out, "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ", b);
         };
-        rest::post(cx, "/json") {
+        plod::post(cx, "/json") {
             var out: u8[>..] = [];
-            guard echo(rest::body(cx), out) else { rest::fail(cx, 400, "invalid_body"); }
-            rest::json_bytes(cx, 200, out);
+            guard echo(plod::body(cx), out) else { plod::fail(cx, 400, "invalid_body"); }
+            plod::json_bytes(cx, 200, out);
         };
     };
 }
@@ -868,28 +868,28 @@ fn mw_origin() -> const u8[:] { "https://app.example" }
 fn tier_a(cx, stack: bool) {
     var buf: u8[>..] = [];
     if stack {
-        rest::timed(cx, false) {
-            rest::cors(cx, rest::Cors { origins: mw_origin(), .. }) {
-                rest::routes(cx) { cx => rest::bearer(cx) { token => arena(cx, buf); }; };
+        plod::timed(cx, false) {
+            plod::cors(cx, plod::Cors { origins: mw_origin(), .. }) {
+                plod::routes(cx) { cx => plod::bearer(cx) { token => arena(cx, buf); }; };
             };
         };
     } else {
-        rest::routes(cx) { cx => arena(cx, buf); };
+        plod::routes(cx) { cx => arena(cx, buf); };
     }
 }
 
 fn tier_b(cx) {
     var buf: u8[>..] = [];
-    rest::route(cx) { snow(cx, buf); };
+    plod::route(cx) { snow(cx, buf); };
 }
 
 fn tier_c(cx, writes: bool) {
-    if rest::resumed(cx) {
-        rest::on_reply(cx) { resume(cx.state.use, cx); };
+    if plod::resumed(cx) {
+        plod::on_reply(cx) { resume(cx.state.use, cx); };
         return;
     }
     var buf: u8[>..] = [];
-    rest::route(cx) { heavy(cx, buf, writes); };
+    plod::route(cx) { heavy(cx, buf, writes); };
 }
 
 fn tier_f(cx) { micro(cx); }
@@ -897,52 +897,52 @@ fn tier_f(cx) { micro(cx); }
 // Tier R through the if chain, in one route, or the generator's router,
 // which opens a route for each.
 fn tier_r(cx, generated: bool) {
-    if generated { api::dispatch(cx); } else { rest::route(cx) { app::chain(cx); }; }
+    if generated { api::dispatch(cx); } else { plod::route(cx) { app::chain(cx); }; }
 }
 
 thread_fn worker_f(cfg: http::Config, epoll: bool, bare: bool) {
     take_set();
     if bare && epoll { stopped(http::serve_epoll(cfg) { req, body, out => micro_bare(req, body, out) }); }
     else if bare { stopped(http::serve(cfg) { req, body, out => micro_bare(req, body, out) }); }
-    else if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_f(cx) }); }
-    else { stopped(rest::serve(cfg) { cx => tier_f(cx) }); }
+    else if epoll { stopped(plod::serve_epoll(cfg) { cx => tier_f(cx) }); }
+    else { stopped(plod::serve(cfg) { cx => tier_f(cx) }); }
 }
 
 thread_fn worker_r(cfg: http::Config, epoll: bool, generated: bool) {
     take_set();
-    if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_r(cx, generated) }); }
-    else { stopped(rest::serve(cfg) { cx => tier_r(cx, generated) }); }
+    if epoll { stopped(plod::serve_epoll(cfg) { cx => tier_r(cx, generated) }); }
+    else { stopped(plod::serve(cfg) { cx => tier_r(cx, generated) }); }
 }
 
 thread_fn worker_a(cfg: http::Config, epoll: bool, stack: bool, security: bool) {
     take_set();
     if security && !stack {
-        let prepared = rest::prepare_security_headers(rest::security_api());
+        let prepared = plod::prepare_security_headers(plod::security_api());
         if epoll {
-            stopped(rest::serve_epoll(cfg) { cx =>
-                rest::security_headers(cx, prepared) { tier_a(cx, false); };
+            stopped(plod::serve_epoll(cfg) { cx =>
+                plod::security_headers(cx, prepared) { tier_a(cx, false); };
             });
         } else {
-            stopped(rest::serve(cfg) { cx =>
-                rest::security_headers(cx, prepared) { tier_a(cx, false); };
+            stopped(plod::serve(cfg) { cx =>
+                plod::security_headers(cx, prepared) { tier_a(cx, false); };
             });
         }
-    } else if epoll { stopped(rest::serve_epoll(cfg) { cx => tier_a(cx, stack) }); }
-    else { stopped(rest::serve(cfg) { cx => tier_a(cx, stack) }); }
+    } else if epoll { stopped(plod::serve_epoll(cfg) { cx => tier_a(cx, stack) }); }
+    else { stopped(plod::serve(cfg) { cx => tier_a(cx, stack) }); }
 }
 
 thread_fn worker_b(cfg: http::Config, epoll: bool) {
     take_set();
-    var none = rest::NoState { .. };
-    if epoll { stopped(rest::serve_epoll(cfg, none, Snow { .. }) { cx => tier_b(cx) }); }
-    else { stopped(rest::serve(cfg, none, Snow { .. }) { cx => tier_b(cx) }); }
+    var none = plod::NoState { .. };
+    if epoll { stopped(plod::serve_epoll(cfg, none, Snow { .. }) { cx => tier_b(cx) }); }
+    else { stopped(plod::serve(cfg, none, Snow { .. }) { cx => tier_b(cx) }); }
 }
 
 thread_fn worker_c(cfg: http::Config, epoll: bool, writes: bool) {
     take_set();
-    var none = rest::NoState { .. };
-    if epoll { stopped(rest::serve_epoll(cfg, none, Heavy { .. }) { cx => tier_c(cx, writes) }); }
-    else { stopped(rest::serve(cfg, none, Heavy { .. }) { cx => tier_c(cx, writes) }); }
+    var none = plod::NoState { .. };
+    if epoll { stopped(plod::serve_epoll(cfg, none, Heavy { .. }) { cx => tier_c(cx, writes) }); }
+    else { stopped(plod::serve(cfg, none, Heavy { .. }) { cx => tier_c(cx, writes) }); }
 }
 
 fn stopped(e: http::Error) {

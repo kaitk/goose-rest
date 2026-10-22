@@ -1,10 +1,10 @@
-// goose-rest: a REST framework on goose-http (docs/architecture.md). A
+// Plod: a REST framework on goose-http (docs/architecture.md). A
 // program declares both packages in its root file, goose-http at the
 // reference this file imports it at, a release tag or a commit:
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
-//   import rest from "github.com/kaitk/goose-rest@<commit>";
-namespace rest;
+//   import plod from "github.com/kaitk/goose-rest@<commit>";
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";

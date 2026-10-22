@@ -11,7 +11,7 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 // The most bytes of an attachment: project 1's plan takes up to 1 GB, which
 // no worker could hold whole, and project 2's up to 64 KB.
@@ -58,16 +58,16 @@ fn format(out: u8[>..]&, a: const Attached&) {
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::post(cx, "/v1/projects/:id/attachments") { attach(cx, project(cx)); };
-        rest::post(cx, "/v1/projects/:id/attachments/form") { attach_form(cx, project(cx)); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::post(cx, "/v1/projects/:id/attachments") { attach(cx, project(cx)); };
+        plod::post(cx, "/v1/projects/:id/attachments/form") { attach_form(cx, project(cx)); };
     };
 }
 
 fn project(cx) -> i64 {
-    let id = rest::param_int(cx, "id");
-    guard id >= 1 && id <= PROJECTS else { rest::fail(cx, 404, "project_not_found"); }
+    let id = plod::param_int(cx, "id");
+    guard id >= 1 && id <= PROJECTS else { plod::fail(cx, 404, "project_not_found"); }
     return id;
 }
 
@@ -78,18 +78,18 @@ fn limit_of(project: i64) -> i64 { if project == 1 { LARGE_LIMIT } else { SMALL_
 fn attach(cx, project: i64) {
     let id = cx.app.next;
     // Returns at once, reading nothing; the pieces come to resume(Use.Attachment).
-    rest::body_in_pieces(cx, limit_of(project), Use.Attachment { project: project, id: id });
+    plod::body_in_pieces(cx, limit_of(project), Use.Attachment { project: project, id: id });
     // Accepted: take the id, and name the file the pieces go to.
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 fn resume(u: Use.Attachment, cx) {
     if cx.kind == http::BODY {
         store(cx, cx.body);
-        guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
+        guard cx.state.stored else { plod::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
         keep(cx, u.project, u.id, "");
     } else if cx.kind == http::CLOSED {
@@ -111,19 +111,19 @@ fn keep(cx, project: i64, id: i64, note: const u8[:]) {
     if cx.state.size == 0 { write_file(cx.state.part_path, ""); }
     guard rename_file(cx.state.part_path, path) else {
         delete_file(cx.state.part_path);
-        rest::fail(cx, 500, "not_stored");
+        plod::fail(cx, 500, "not_stored");
     }
-    rest::json(cx, 201, Attached { project: project, id: id, size: cx.state.size, note: note });
+    plod::json(cx, 201, Attached { project: project, id: id, size: cx.state.size, note: note });
 }
 
 // POST /v1/projects/:id/attachments/form: a multipart form of a note and a
 // file, the file written a piece at a time as attach writes one.
 fn attach_form(cx, project: i64) {
     // Reads the Content-Type's boundary into the parser kept in the state.
-    guard http::start_multipart(cx.req, cx.state.form) else { rest::fail(cx, 415, "unsupported_media_type"); }
+    guard http::start_multipart(cx.req, cx.state.form) else { plod::fail(cx, 415, "unsupported_media_type"); }
     // Then as attach does: the pieces come later, to resume(Use.Form).
     let id = cx.app.next;
-    rest::body_in_pieces(cx, limit_of(project), Use.Form { project: project, id: id });
+    plod::body_in_pieces(cx, limit_of(project), Use.Form { project: project, id: id });
     cx.app.next++;
     cx.state.part_path = str(cx.app.dir, "/", project, "-", id, ".part");
 }
@@ -146,13 +146,13 @@ fn resume(u: Use.Form, cx) {
                 End => { cx.state.part = NO_PART; },
             }
         };
-        guard ok else { rest::fail(cx, 400, "invalid_multipart"); }
-        guard cx.state.stored else { rest::fail(cx, 500, "not_stored"); }
+        guard ok else { plod::fail(cx, 400, "invalid_multipart"); }
+        guard cx.state.stored else { plod::fail(cx, 500, "not_stored"); }
     } else if cx.kind == http::END {
         // The body has all come; a form cut short lacks its closing boundary.
         guard http::multipart_done(cx.state.form) else {
             delete_file(cx.state.part_path);
-            rest::fail(cx, 400, "invalid_multipart");
+            plod::fail(cx, 400, "invalid_multipart");
         }
         keep(cx, u.project, u.id, cx.state.note);
     } else if cx.kind == http::CLOSED {
@@ -169,9 +169,9 @@ fn form_part(cx, fields: const u8[:]) {
 
 thread_fn worker(cfg: http::Config, dir: u8[..200]) {
     var app = App { dir: dir };
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let e = plod::serve(cfg, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

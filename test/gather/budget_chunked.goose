@@ -3,7 +3,7 @@
 // before any piece, and one it can is never refused later.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 

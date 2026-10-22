@@ -3,17 +3,17 @@
 // type than the one it names.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 
 struct Session { user: i64 = 0 }
 struct Other { n: i64 = 0 }
 
-type Cx = rest::Cx<Session, rest::NoState, rest::NoRouter>;
+type Cx = plod::Cx<Session, plod::NoState, plod::NoRouter>;
 
-fn show(cx: Cx&) { rest::text(cx, 200, str(cx.state.user)); }
+fn show(cx: Cx&) { plod::text(cx, 200, str(cx.state.user)); }
 
 fn main() {
-    var app = rest::NoState { .. };
-    let out = rest::serve_one("GET / HTTP/1.1\r\n\r\n", app, Other { .. }) { cx => show(cx); };
+    var app = plod::NoState { .. };
+    let out = plod::serve_one("GET / HTTP/1.1\r\n\r\n", app, Other { .. }) { cx => show(cx); };
     print(out);
 }

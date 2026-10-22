@@ -1,7 +1,7 @@
 # 4. JSON bodies
 
 A client creates a project by sending it as JSON, and the route needs it as a struct,
-checked against the API's rules before any of it is used. `rest::take<T>` reads the body
+checked against the API's rules before any of it is used. `plod::take<T>` reads the body
 into a `T`, through a reader you write by hand or one the generator writes from a
 schema.
 
@@ -12,11 +12,11 @@ A larger body is gathered when the route asks for it: [Large bodies](10-large-bo
 
 ## A reader written by hand
 
-`rest::take<T>(cx)` is goose-rest's type-based extractor, like Actix's
-`web::Json<T>`. It calls the `rest::from_request(cx, v: const T?)` overload that you or
+`plod::take<T>(cx)` is Plod's type-based extractor, like Actix's
+`web::Json<T>`. It calls the `plod::from_request(cx, v: const T?)` overload that you or
 the generator declare for `T`. `v` is always null; only its type matters.
 
-For a hand-written body reader, the overload passes the reader to `rest::json_body`,
+For a hand-written body reader, the overload passes the reader to `plod::json_body`,
 which answers 415 unless the request says `application/json`, or 400
 `invalid_body` if the reader rejects the body. The reader collects the members as
 slices, checks them, and builds the struct at the end: a struct that holds a string
@@ -34,22 +34,22 @@ fn read_create(r: json::Reader&, scratch: u8[>..]&) -> ProjectCreate {
         else { json::fail(r, "unknown member"); }
     };
     if !has_name { json::fail(r, "name: required"); }
-    let n = rest::code_points(name);
+    let n = plod::code_points(name);
     if has_name && (n < 1 || n > 64) { json::fail(r, "name: length"); }
     if r.error.len > 0 { return ProjectCreate { name: "" }; }
     return ProjectCreate { name: name };
 }
 
-fn rest::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
-    rest::json_body(cx) { r, scratch => read_create(r, scratch) }
+fn plod::from_request(cx, v: const ProjectCreate?) -> ProjectCreate {
+    plod::json_body(cx) { r, scratch => read_create(r, scratch) }
 }
 ```
 
 ```rust
-        rest::post(cx, "/projects") {
-            let body = rest::take<ProjectCreate>(cx);
+        plod::post(cx, "/projects") {
+            let body = plod::take<ProjectCreate>(cx);
             let p .= cx.app.projects.push(Project { id: cx.app.projects.len + 1, name: body.name });
-            rest::json(cx, 201, p);
+            plod::json(cx, 201, p);
         };
 ```
 
@@ -87,8 +87,8 @@ routes. From [`04-json/types`](04-json/types/api.json):
 Generate `api_gen.goose` beside it, and import it from the root as `.api_gen`:
 
 ```sh
-goose build -o build/goose-rest gen/main.goose        # once, from this repository
-build/goose-rest gen docs/tutorial/04-json/types/api.json -o docs/tutorial/04-json/types/api_gen.goose
+goose build -o build/plod gen/main.goose        # once, from this repository
+build/plod gen docs/tutorial/04-json/types/api.json -o docs/tutorial/04-json/types/api_gen.goose
 ```
 
 The generated namespace is `api`. `Project` becomes a struct with a `has_color` flag
@@ -108,12 +108,12 @@ struct Project {
 Hand-written routes can use the generated types directly:
 
 ```rust
-        rest::post(cx, "/projects") {
-            let body = rest::take<api::ProjectCreate>(cx);
+        plod::post(cx, "/projects") {
+            let body = plod::take<api::ProjectCreate>(cx);
             let p .= cx.app.projects.push(api::Project {
                 id: cx.app.projects.len + 1, name: body.name, has_color: body.has_color, color: body.color,
             });
-            rest::json(cx, 201, p);
+            plod::json(cx, 201, p);
         };
 ```
 
@@ -162,7 +162,7 @@ Note these limits before you use it:
 - A value that isn't ASCII is refused: a name with an accent, or an emoji, gets 400
   `<field>: format`.
 - A client's own validator won't catch it first. `format` is an open keyword in JSON
-  Schema, and tools that don't know `ascii` ignore it, so only goose-rest refuses the
+  Schema, and tools that don't know `ascii` ignore it, so only Plod refuses the
   value.
 
 It suits codes, identifiers, and tokens, not text that people type, such as a name or a

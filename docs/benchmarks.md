@@ -1,8 +1,12 @@
 # Benchmarks
 
-Where goose-rest stands now, one section per workload. Each section holds the latest
+Where Plod stands now, one section per workload. Each section holds the latest
 accepted run and is replaced, not appended to, when a newer one supersedes it. The
 scripts, the servers, and where raw output goes: [bench/README.md](../bench/README.md).
+
+Plod was named goose-rest before `v0.4.0`. A result keeps the name it was measured
+under, and so does the benchmark server, `bench/rest/goose-rest/` (`rest-goose-rest`),
+so that runs before and after the rename compare by the same name.
 
 ## How these are measured
 
@@ -83,7 +87,7 @@ share:
   (tier D): CSVs and multipart files up to 8 MB. "Reads beside uploads" sends tier C's
   reads at a fixed 1,700 a second while uploads run.
 
-Tiers F, R, and M are goose-rest's own, in `bench/rest/tiers/`, run at saturation only.
+Tiers F, R, and M are Plod's own, in `bench/rest/tiers/`, run at saturation only.
 
 <a id="tier-f"></a>
 **F, per-request framework cost.** The three tests of the bun-http-framework-benchmark,
@@ -258,7 +262,7 @@ From the runs in this file:
   with forms at 6.7-6.9 K/s against 7.7-7.8 K/s. On a Ryzen 7 PRO 6850U with
   goose-http's gather pool (2026-10-22), 5.6% behind on epoll and 7.3% on io_uring,
   and 19 MB more on epoll. goose-rest's tier server reads each form whole with
-  `rest::body`, where goose-http's reads it in pieces (task 058).
+  `plod::body`, where goose-http's reads it in pieces (task 058).
 - **Reads beside uploads on io_uring**: p99 6.33-8.67 ms, as on goose-http's io_uring
   loop, against dusty-routes's 0.65-3.20 ms, ntex's 1.83-4.83 ms, and goose-rest's own
   0.40-1.28 ms on epoll.

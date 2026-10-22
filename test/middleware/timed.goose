@@ -1,13 +1,13 @@
-// rest::timed: the Server-Timing field, its value padded to a fixed width,
+// plod::timed: the Server-Timing field, its value padded to a fixed width,
 // and nothing added when nothing was written.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
 fn main() {
-    let out = answer(expect::request("GET", "/")) { cx => rest::timed(cx, false) { rest::text(cx, 200, "ok"); }; };
+    let out = answer(expect::request("GET", "/")) { cx => plod::timed(cx, false) { plod::text(cx, 200, "ok"); }; };
     let head = "HTTP/1.1 200 OK\r\nServer-Timing: app;dur=";
     expect::same(out[..head.len], head);
     let rest_at = find(out, "\r\nContent-Type");
@@ -21,6 +21,6 @@ fn main() {
     for c, i in dur { assert(i == dot || c >= '0' && c <= '9'); }
     expect::same(out[rest_at + 2..], OK);
     // Nothing written, nothing added.
-    expect::same(answer(expect::request("GET", "/")) { cx => rest::timed(cx, false) {}; }, "");
-    print("rest::timed: ok");
+    expect::same(answer(expect::request("GET", "/")) { cx => plod::timed(cx, false) {}; }, "");
+    print("plod::timed: ok");
 }

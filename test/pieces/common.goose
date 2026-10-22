@@ -1,9 +1,9 @@
 // What the tests of bodies read in pieces and responses sent in pieces
 // share: the routes' waits and the case functions that resume them, which
-// log what they saw, through rest::serve_one.
+// log what they saw, through plod::serve_one.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 
 enum Use { None, Upload, Export { rows: i64 }, Echo, Download }
@@ -22,7 +22,7 @@ fn post(start: const u8[:], n: i64, length: i64 = -1) -> u8[>..] {
     return text;
 }
 
-fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 // A piece that starts with "fail" fails the route, and one that starts with
 // "stop" answers it.
@@ -30,11 +30,11 @@ fn resume(w: Use.Upload, cx) {
     if cx.kind == http::BODY {
         format(cx.app.log, "B", cx.body.len, " ");
         cx.state.size += cx.body.len;
-        if starts_with(cx.body, "fail") { rest::fail(cx, 422, "refused"); }
-        if starts_with(cx.body, "stop") { rest::text(cx, 200, "stopped"); }
+        if starts_with(cx.body, "fail") { plod::fail(cx, 422, "refused"); }
+        if starts_with(cx.body, "stop") { plod::text(cx, 200, "stopped"); }
     } else if cx.kind == http::END {
         cx.app.log.append("E ");
-        rest::text(cx, 201, str(cx.state.size));
+        plod::text(cx, 201, str(cx.state.size));
     } else if cx.kind == http::CLOSED {
         cx.app.log.append("C ");
     }
@@ -45,9 +45,9 @@ fn resume(w: Use.Export, cx) {
     if cx.kind == http::MORE {
         cx.state.size++;
         format(cx.app.log, "M", cx.state.size, " ");
-        if w.rows == 99 && cx.state.size == 2 { rest::fail(cx, 500, "broken"); }
-        rest::send(cx, str("row", cx.state.size, "\n"));
-        if cx.state.size == w.rows { rest::end(cx); }
+        if w.rows == 99 && cx.state.size == 2 { plod::fail(cx, 500, "broken"); }
+        plod::send(cx, str("row", cx.state.size, "\n"));
+        if cx.state.size == w.rows { plod::end(cx); }
     } else if cx.kind == http::CLOSED {
         cx.app.log.append("C ");
     }
@@ -57,10 +57,10 @@ fn resume(w: Use.Export, cx) {
 fn resume(w: Use.Echo, cx) {
     if cx.kind == http::BODY {
         format(cx.app.log, "B", cx.body.len, " ");
-        rest::send(cx, cx.body[..min(cx.body.len, 4)]);
+        plod::send(cx, cx.body[..min(cx.body.len, 4)]);
     } else if cx.kind == http::END {
         cx.app.log.append("E ");
-        rest::end(cx);
+        plod::end(cx);
     } else if cx.kind == http::CLOSED {
         cx.app.log.append("C ");
     }
@@ -68,20 +68,20 @@ fn resume(w: Use.Echo, cx) {
 
 fn resume(w: Use.Download, cx) {
     format(cx.app.log, if cx.kind == http::MORE { "M " } else if cx.kind == http::CLOSED { "C " } else { "? " });
-    rest::send_file(cx, cx.state.file);
+    plod::send_file(cx, cx.state.file);
 }
 
 // Receives with limit; "both" reads the body whole first, and "after" after.
 fn upload(text: const u8[:], limit: i64 = 1 << 20, both: const u8[:] = "") -> u8[>..], u8[>..] {
     var log: u8[>..] = [];
     var app = App { log: log };
-    let out = rest::serve_one(text, app, St { .. }, http::Config { max_body: 4 << 20, .. }) { cx =>
-        if rest::resumed(cx) {
+    let out = plod::serve_one(text, app, St { .. }, http::Config { max_body: 4 << 20, .. }) { cx =>
+        if plod::resumed(cx) {
             resume(cx.state.use, cx);
         } else {
-            if both == "first" { rest::body(cx); }
-            rest::body_in_pieces(cx, limit, Use.Upload);
-            if both == "after" { rest::body(cx); }
+            if both == "first" { plod::body(cx); }
+            plod::body_in_pieces(cx, limit, Use.Upload);
+            if both == "after" { plod::body(cx); }
         }
     };
     return out, log;
@@ -91,11 +91,11 @@ fn upload(text: const u8[:], limit: i64 = 1 << 20, both: const u8[:] = "") -> u8
 fn rows_of(text: const u8[:], rows: i64, length: i64 = -1) -> u8[>..], u8[>..] {
     var log: u8[>..] = [];
     var app = App { log: log };
-    let out = rest::serve_one(text, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
+    let out = plod::serve_one(text, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
             resume(cx.state.use, cx);
         } else {
-            rest::begin(cx, 200, "text/csv", length, Use.Export { rows: rows });
+            plod::begin(cx, 200, "text/csv", length, Use.Export { rows: rows });
         }
     };
     return out, log;

@@ -2,14 +2,14 @@
 // An overload that takes the lane's whole enum, untyped or typed, is an
 // exact match, so it still takes every job, and the cases never run;
 // nothing in the language flags it. A lane's loop can still notice a run
-// that returned without replying, as the package's rest::lane does. See
+// that returned without replying, as the package's plod::lane does. See
 // ../README.md.
 import std;
 
 enum Writes { Create { project: i64 }, Close { id: i64 } }
 struct Writer { rows: i64 }
 
-// What a lane's run gets, as the package's rest::Asked: the job, and
+// What a lane's run gets, as the package's plod::Asked: the job, and
 // whether run replied.
 struct Took<U> { job: U, replied: bool = false }
 

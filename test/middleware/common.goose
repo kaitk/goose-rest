@@ -3,7 +3,7 @@
 // WAKE, at TIMEOUT, or at a body's END.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 
 // Calls H with a context for text, a whole request, and returns what it
@@ -14,11 +14,11 @@ fn answer<H>(text: const u8[:]) -> u8[>..] {
     var out: u8[>..] = [];
     var keep = true;
     var st = http::Stream { .. };
-    var state = rest::NoState { .. };
+    var state = plod::NoState { .. };
     var scratch: u8[>..] = [];
-    var app = rest::NoState { .. };
-    var none = rest::NoRouter { .. };
-    var cx = rest::Cx<rest::NoState, rest::NoState, rest::NoRouter> { req: req, body: text[req.len..],
+    var app = plod::NoState { .. };
+    var none = plod::NoRouter { .. };
+    var cx = plod::Cx<plod::NoState, plod::NoState, plod::NoRouter> { req: req, body: text[req.len..],
                                        out: http::Reply { buf: out, common: "", keep_alive: keep, minor: 1,
                                        head: req.method == "HEAD", stream: st }, state: state, app: app,
                                        scratch: scratch, router: none };
@@ -35,48 +35,48 @@ enum Use { None, Report, Upload }
 
 struct St { use: Use = Use.None, size: i64 = 0 }
 
-type Lane = rest::Lane<Reports, Use>;
+type Lane = plod::Lane<Reports, Use>;
 
-let CORS = rest::Cors { origins: "https://a.example", expose: "X-Total", .. };
+let CORS = plod::Cors { origins: "https://a.example", expose: "X-Total", .. };
 
 let ALLOWED = "Access-Control-Allow-Origin: https://a.example\r\nAccess-Control-Expose-Headers: X-Total\r\nVary: Origin\r\n";
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
-fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
+fn resume(u: Use.Report, cx) { resume(plod::job<Reports>(cx), cx); }
 
-fn resume(u: Reports.Report, cx) { rest::text(cx, 200, str("got ", rest::answer<i64>(cx))); }
+fn resume(u: Reports.Report, cx) { plod::text(cx, 200, str("got ", plod::answer<i64>(cx))); }
 
 // The lane's reply to the report, 42.
-fn reported(to: const Lane&) -> rest::Played {
-    return rest::play(to, Reports.Report) { u, a => rest::reply_value(a, 42); };
+fn reported(to: const Lane&) -> plod::Played {
+    return plod::play(to, Reports.Report) { u, a => plod::reply_value(a, 42); };
 }
 
 fn resume(u: Use.Upload, cx) {
     if cx.kind == http::BODY { cx.state.size += cx.body.len; }
-    else if cx.kind == http::END { rest::text(cx, 201, str(cx.state.size)); }
+    else if cx.kind == http::END { plod::text(cx, 201, str(cx.state.size)); }
 }
 
 // The route of what, behind the middleware of which: "cors", "timed", or
 // both, timed outside. "ask" asks to, "upload" reads its body in pieces, and
-// "gathered" asks once rest::body has the body whole.
+// "gathered" asks once plod::body has the body whole.
 fn later_route(cx, what: const u8[:], which: const u8[:], to: const Lane&) {
     fn inner() {
-        rest::route(cx) {
+        plod::route(cx) {
             if what == "upload" {
-                rest::body_in_pieces(cx, 1 << 20, Use.Upload);
+                plod::body_in_pieces(cx, 1 << 20, Use.Upload);
             } else {
-                if what == "gathered" { rest::body(cx); }
-                rest::ask(cx, to, Reports.Report);
+                if what == "gathered" { plod::body(cx); }
+                plod::ask(cx, to, Reports.Report);
             }
         };
     }
     if which == "cors" {
-        rest::cors(cx, CORS) { inner(); };
+        plod::cors(cx, CORS) { inner(); };
     } else if which == "timed" {
-        rest::timed(cx, false) { inner(); };
+        plod::timed(cx, false) { inner(); };
     } else {
-        rest::timed(cx, false) { rest::cors(cx, CORS) { inner(); }; };
+        plod::timed(cx, false) { plod::cors(cx, CORS) { inner(); }; };
     }
 }
 

@@ -1,9 +1,9 @@
 // One worker's gather budget across exchanges: a body that doesn't fit
-// beside another, a route on rest::body_in_pieces beside a full budget, and
+// beside another, a route on plod::body_in_pieces beside a full budget, and
 // a body that fits once another has finished.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -27,7 +27,7 @@ fn main() {
     expect::same(second_out, UNAVAILABLE, "beside another");
     assert(second.keep && http::gather_promised == one);
 
-    // A route on rest::body_in_pieces beside the full budget reads its body.
+    // A route on plod::body_in_pieces beside the full budget reads its body.
     var pieces = Conn { req: req };
     var pieces_out: u8[>..] = [];
     send(pieces, pieces_out, http::REQUEST, "", -1);

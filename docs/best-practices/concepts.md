@@ -64,7 +64,7 @@ NestJS follows Spring's model, with modules, controllers, and providers, so the 
 column applies to it too. Go gives each request a goroutine that may block, so it needs
 no `resume`. A lane there is a fixed set of goroutines reading from one buffered
 channel, and the channel is the box. In Akka, a lane is a dispatcher. A Sidekiq
-or Celery job is a background task kept in a store until it runs; a goose-rest
+or Celery job is a background task kept in a store until it runs; a Plod
 background task lives in its lane's memory, and is lost if the server stops.
 
 </details>

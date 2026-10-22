@@ -1,9 +1,9 @@
 # 03: `return ... from` a library wrapper
 
-Checks the design's `rest::fail`. In namespace `rest`, `route<F>(cx)` calls its block,
+Checks the design's `plod::fail`. In namespace `plod`, `route<F>(cx)` calls its block,
 and `fail(cx, status, code)` does `return Failure { ... } from route`. The application,
 in namespace `app`, calls `fail` two and three calls below the handler that `route`'s
-block calls. `rest::serve` then writes the error that `route` returns.
+block calls. `plod::serve` then writes the error that `route` returns.
 
 Goose: commit `f114b5a`, the pin, with the same output as on release `v2026.2` (`3ee3871`), `v2026.1` (`ac759c3`), `bc3c1f1` and `a6249a4`.
 
@@ -32,7 +32,7 @@ one that nothing calls: it is checked anyway, outside any `route`.
 
 A long-distance return can carry a slice only of static data. `Failure { status, code:
 const u8[:] }` compiles while every `code` is a literal. A code taken from the request,
-`rest::fail(cx, 400, cx.path)`, is refused, as the design's `rest::invalid(r, key,
+`plod::fail(cx, 400, cx.path)`, is refused, as the design's `plod::invalid(r, key,
 ...)` would be. A bare slice is refused too, as the minimal program shows:
 
 ```rust

@@ -1,11 +1,11 @@
-// The answers rest::compressed leaves alone: no coding taken, HEAD, a short
+// The answers plod::compressed leaves alone: no coding taken, HEAD, a short
 // body, an error, a type not worth compressing, a coding already, and no
 // body.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 import common;
 

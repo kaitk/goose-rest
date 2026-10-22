@@ -23,12 +23,12 @@ A query that takes microseconds, such as one on an embedded SQLite database, can
 the route. From [`11-waiting`](11-waiting/app.goose):
 
 ```rust
-    rest::get(cx, "/in-place/projects/:id") {
+    plod::get(cx, "/in-place/projects/:id") {
         // Blocks the worker, and every connection it holds, for the query.
-        let id = rest::param_int(cx, "id");
+        let id = plod::param_int(cx, "id");
         let p, found = db::fetch_one<db::Project>(cx.app.conn, "SELECT * FROM projects WHERE id = $1", [id]);
-        guard found else { rest::fail(cx, 404, "project_not_found"); }
-        rest::json(cx, 200, project_of(p));
+        guard found else { plod::fail(cx, 404, "project_not_found"); }
+        plod::json(cx, 200, project_of(p));
 ```
 
 While this query waits, every other connection on the worker waits too: 20 ms here for
@@ -51,7 +51,7 @@ sequenceDiagram
     participant S as Lane (a thread)
     participant D as Database
     C->>W: PUT /v1/projects/1/tasks/3/assignee
-    Note over W: the route checks the request,<br/>then rest::ask(DbJob.Assign)
+    Note over W: the route checks the request,<br/>then plod::ask(DbJob.Assign)
     W->>S: the job, by mail
     Note over S: blocking calls, as long<br/>as the statements take
     S->>D: begin
@@ -61,7 +61,7 @@ sequenceDiagram
     W->>C2: 200 ok
     S->>D: update the task
     S->>D: commit
-    S->>W: the job back, and rest::reply_value's answer
+    S->>W: the job back, and plod::reply_value's answer
     Note over W: resume(DbJob.Assign)
     W->>C: 200 {"task":3,"assignee":2}
 ```
@@ -103,25 +103,25 @@ fn run(u: DbJob.Assign, c: db::Conn&, a) {
 
     // The project exists.
     let p, found = db::fetch_one<db::Project>(c, "SELECT * FROM projects WHERE id = $1", [u.project]);
-    guard found else { db::rollback(c); rest::fail(a, 404, "project_not_found"); }
+    guard found else { db::rollback(c); plod::fail(a, 404, "project_not_found"); }
 
     // The user asking is one of its members, and so is the assignee.
     let m, member = db::fetch_one<db::Member>(c, "SELECT * FROM members WHERE project = $1 AND user = $2", [u.project, u.user]);
-    guard member else { db::rollback(c); rest::fail(a, 403, "not_a_member"); }
+    guard member else { db::rollback(c); plod::fail(a, 403, "not_a_member"); }
     let n, assignable = db::fetch_one<db::Member>(c, "SELECT * FROM members WHERE project = $1 AND user = $2", [u.project, u.assignee]);
-    guard assignable else { db::rollback(c); rest::fail(a, 409, "assignee_not_a_member"); }
+    guard assignable else { db::rollback(c); plod::fail(a, 409, "assignee_not_a_member"); }
 
     // The task is in the project: the update changes one row, or none.
     let rows = db::execute(c, "UPDATE tasks SET assignee = $1 WHERE id = $2 AND project = $3", [u.assignee, u.task, u.project]);
-    guard rows == 1 else { db::rollback(c); rest::fail(a, 404, "task_not_found"); }
+    guard rows == 1 else { db::rollback(c); plod::fail(a, 404, "task_not_found"); }
 
     db::commit(c);
-    rest::reply_value(a, Assigned { task: u.task, assignee: u.assignee });
+    plod::reply_value(a, Assigned { task: u.task, assignee: u.assignee });
 }
 ```
 
-`a` is where the reply goes. `rest::reply_value(a, v)` replies `v`, a flat value, which
-goes between threads as bytes. `rest::fail(a, status, code)` fails the
+`a` is where the reply goes. `plod::reply_value(a, v)` replies `v`, a flat value, which
+goes between threads as bytes. `plod::fail(a, status, code)` fails the
 route that asked, with that status and code, as it does in a route: the error crosses
 the lane, as a `throw` crosses an `await`. A `run` that does neither gets the route
 500 `no_reply`.
@@ -129,60 +129,60 @@ the lane, as a `throw` crosses an `await`. A `run` that does neither gets the ro
 <details>
 <summary>The lane's thread, and how <code>main</code> starts it</summary>
 
-The thread hands each job in its box to its `run` case function with `rest::lane`,
+The thread hands each job in its box to its `run` case function with `plod::lane`,
 which sleeps until mail comes, and returns once `main` stops the lane and every job
 queued before is done. From [`database.goose`](11-waiting/database.goose):
 
 ```rust
-thread_fn database(box: http::Box, jobs: rest::Jobs<DbJob>, delay_ms: i64) {
+thread_fn database(box: http::Box, jobs: plod::Jobs<DbJob>, delay_ms: i64) {
     var c = db::open(delay_ms);
-    rest::lane(box, jobs) { u, a => run(u, c, a); };
+    plod::lane(box, jobs) { u, a => run(u, c, a); };
 }
 ```
 
-`jobs` says which enum the thread runs, and `rest::lane` takes the job's type from it.
+`jobs` says which enum the thread runs, and `plod::lane` takes the job's type from it.
 `run(u, c, a)` dispatches on the job's variant, as a `match` would, and the compiler
 checks that every variant of `DbJob` has its `run`. `main` opens the lane with
-`rest::lane_open`, naming its jobs' enum and its *mark*, `Use.Db`, below. It starts the
-thread with a box of 64 slots of 256 bytes and passes it its `rest::Jobs<DbJob>` and
+`plod::lane_open`, naming its jobs' enum and its *mark*, `Use.Db`, below. It starts the
+thread with a box of 64 slots of 256 bytes and passes it its `plod::Jobs<DbJob>` and
 `DELAY_MS`; a thread whose `jobs` names another enum doesn't compile. It gives the
-worker the lane, and stops it with `rest::lane_stop` once the worker returns, which
+worker the lane, and stops it with `plod::lane_stop` once the worker returns, which
 waits for the thread. Waiting is off until `Config.mail_slots` and `max_waiting` are
 set ([goose-http's lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes)).
 From [`main.goose`](11-waiting/main.goose):
 
 ```rust
-    let lane = rest::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, DELAY_MS, database);
+    let lane = plod::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, DELAY_MS, database);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, lane, worker);
-    rest::lane_stop(lane);
+    plod::lane_stop(lane);
 ```
 
 </details>
 
 ## Asking a lane, and resuming
 
-The route reads and checks the request, then calls `rest::ask` once, passing the lane
+The route reads and checks the request, then calls `plod::ask` once, passing the lane
 and the job. From [`app.goose`](11-waiting/app.goose), which holds the routes apart
 from `main` so that a test can import them:
 
 ```rust
-    rest::put(cx, "/projects/:id/tasks/:task/assignee") {
-        let user, has_user = rest::header(cx, "X-User");
-        rest::require(cx, "X-User", has_user);
-        let assignee, has_assignee = rest::query_int(cx, "user");
-        rest::require(cx, "user", has_assignee);
+    plod::put(cx, "/projects/:id/tasks/:task/assignee") {
+        let user, has_user = plod::header(cx, "X-User");
+        plod::require(cx, "X-User", has_user);
+        let assignee, has_assignee = plod::query_int(cx, "user");
+        plod::require(cx, "user", has_assignee);
         // Returns at once; the reply comes to resume(u: DbJob.Assign, cx).
-        rest::ask(cx, cx.app.db, DbJob.Assign {
-            project: rest::param_int(cx, "id"), task: rest::param_int(cx, "task"),
-            user: rest::int_of(cx, user, "X-User"), assignee: assignee,
+        plod::ask(cx, cx.app.db, DbJob.Assign {
+            project: plod::param_int(cx, "id"), task: plod::param_int(cx, "task"),
+            user: plod::int_of(cx, user, "X-User"), assignee: assignee,
         });
 ```
 
-`cx.app.db` is a `rest::Lane<DbJob, Use>`, so `rest::ask` takes only a `DbJob`: a job
+`cx.app.db` is a `plod::Lane<DbJob, Use>`, so `plod::ask` takes only a `DbJob`: a job
 sent to the wrong lane doesn't compile.
 
-Goose has no `async` and can't store a closure to call later. Instead, `rest::ask`
+Goose has no `async` and can't store a closure to call later. Instead, `plod::ask`
 keeps the lane's mark in the request state: a variant of the program's `Use` enum,
 which says what the route waits on, `None` for nothing:
 
@@ -193,15 +193,15 @@ enum Use { None, Db }
 struct St { use: Use = Use.None }
 ```
 
-When the reply arrives, the handler runs again. `rest::resumed` is true for every call
-after the request's first, so the handler calls `rest::on_reply`, which dispatches to
+When the reply arrives, the handler runs again. `plod::resumed` is true for every call
+after the request's first, so the handler calls `plod::on_reply`, which dispatches to
 the `resume` case function for the variant in `cx.state.use`. The compiler checks that
 every variant has one:
 
 ```rust
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let e = plod::serve(cfg, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -209,23 +209,23 @@ every variant has one:
 ```
 
 The lane's reply carries its job back in front of the answer. The mark's `resume`
-reads it with `rest::job` and dispatches again, to the `resume` for that job, which
-reads the answer with `rest::answer`. A reply that refuses the job never reaches it:
-`rest::on_reply` has already failed the route with the job's status and code:
+reads it with `plod::job` and dispatches again, to the `resume` for that job, which
+reads the answer with `plod::answer`. A reply that refuses the job never reaches it:
+`plod::on_reply` has already failed the route with the job's status and code:
 
 ```rust
 // The database's reply carries its job back: resume again on it.
-fn resume(u: Use.Db, cx) { resume(rest::job<DbJob>(cx), cx); }
+fn resume(u: Use.Db, cx) { resume(plod::job<DbJob>(cx), cx); }
 ```
 
 ```rust
-fn resume(u: DbJob.Assign, cx) { rest::json(cx, 200, rest::answer<Assigned>(cx)); }
+fn resume(u: DbJob.Assign, cx) { plod::json(cx, 200, plod::answer<Assigned>(cx)); }
 ```
 
 `u` holds the job as the route sent it, so what the route needs when it resumes travels
 with the job, and the request state keeps only the mark. A job and its answer longer
 than one message of the worker's box, 256 bytes by default, come in pieces, which the
-worker collects before the `resume` runs, within the reply limit `rest::ask` takes, 64
+worker collects before the `resume` runs, within the reply limit `plod::ask` takes, 64
 KB by default, which it promises from the gather budget of
 [page 10](10-large-bodies.md#body-limits-and-the-gather-budget). A reply that is
 sent on as it comes is [a reply in pieces](12-two-lanes.md#a-reply-in-pieces).
@@ -249,12 +249,12 @@ reasons:
   waits without tying a connection to a request.
 - Each route waits once: one job, one time limit, and one place where a full box
   refuses work ([Limits](13-limits.md)).
-- A use case is tested on its own, without a request or threads: `rest::play` runs a
+- A use case is tested on its own, without a request or threads: `plod::play` runs a
   job through the lane's `run`, as [`test.goose`](11-waiting/test.goose) does
   ([Testing the application](16-testing.md) covers the routes too):
 
 ```rust
-    expect(rest::play(app.db, DbJob.Assign { project: 1, task: 3, user: 1, assignee: 2 }) { u, a => run(u, c, a); },
+    expect(plod::play(app.db, DbJob.Assign { project: 1, task: 3, user: 1, assignee: 2 }) { u, a => run(u, c, a); },
            "answered");
     assert(assignee(c, 3) == 2);
 ```

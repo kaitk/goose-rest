@@ -3,13 +3,13 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 // The request state. This program keeps nothing in it: its type picks
 // the error shape.
 struct St { unused: bool = false }
 
-fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:],
+fn plod::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:],
                     detail: const u8[:], at: i64) {
     body.append("{\"error\":{\"code\":");
     http::json_string(body, code);
@@ -23,18 +23,18 @@ fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/projects/:id") {
-            let id = rest::param_int(cx, "id");
-            guard id == 1 else { rest::fail(cx, 404, "project_not_found"); }
-            rest::text(cx, 200, "goose");
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/projects/:id") {
+            let id = plod::param_int(cx, "id");
+            guard id == 1 else { plod::fail(cx, 404, "project_not_found"); }
+            plod::text(cx, 200, "goose");
         };
     };
 }
 
 thread_fn worker(cfg: http::Config) {
-    var none = rest::NoState { .. };
-    let e = rest::serve(cfg, none, St { .. }) { cx => handle(cx) };
+    var none = plod::NoState { .. };
+    let e = plod::serve(cfg, none, St { .. }) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

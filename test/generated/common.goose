@@ -1,11 +1,11 @@
-// What the tests of the readers and writers goose-rest gen wrote from
+// What the tests of the readers and writers plod gen wrote from
 // test/gen/api.json share: a round trip of valid JSON, and the error of
 // invalid JSON. scripts/test.sh checks that test/gen/api_gen.goose is what
 // the generator writes now.
 import std;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import expect.gen.api_gen;
 

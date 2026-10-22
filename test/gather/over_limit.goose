@@ -2,7 +2,7 @@
 // head, and a chunked one once it passes, which closes the connection.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 

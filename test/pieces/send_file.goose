@@ -1,8 +1,8 @@
-// rest::file: a file whole in pieces of 64 KB, a range, a 304 for its ETag,
+// plod::file: a file whole in pieces of 64 KB, a range, a 304 for its ETag,
 // HEAD, and no file. Writes test_pieces.tmp in the working directory.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -10,11 +10,11 @@ import common;
 fn download(path: const u8[:], fields: const u8[:] = "", method: const u8[:] = "GET") -> u8[>..], u8[>..] {
     var log: u8[>..] = [];
     var app = App { log: log };
-    let out = rest::serve_one(str(method, " /f HTTP/1.1\r\n", fields, "\r\n"), app, St { .. }) { cx =>
-        if rest::resumed(cx) {
+    let out = plod::serve_one(str(method, " /f HTTP/1.1\r\n", fields, "\r\n"), app, St { .. }) { cx =>
+        if plod::resumed(cx) {
             resume(cx.state.use, cx);
         } else {
-            rest::file(cx, path, cx.state.file, Use.Download);
+            plod::file(cx, path, cx.state.file, Use.Download);
         }
     };
     return out, log;
@@ -46,5 +46,5 @@ fn main() {
     let missing, l5 = download("no-such-file.tmp");
     expect::same(expect::body_of(missing), "{\"error\":\"file_not_found\"}", "no file");
     assert(delete_file(path));
-    print("rest::file: ok");
+    print("plod::file: ok");
 }

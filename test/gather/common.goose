@@ -1,9 +1,9 @@
-// What the tests of bodies gathered for rest::body share: one exchange of a
+// What the tests of bodies gathered for plod::body share: one exchange of a
 // worker, event by event as serve gives them, in the worker's gather pool
 // and under its budget, and a route that reads its body whole or in pieces.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 
 let UNAVAILABLE = "HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\nContent-Type: application/json\r\nContent-Length: 23\r\n\r\n{\"error\":\"unavailable\"}";
@@ -24,24 +24,24 @@ enum Use { None, Pieces }
 
 struct St { use: Use = Use.None, size: i64 = 0 }
 
-fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 fn resume(w: Use.Pieces, cx) {
     if cx.kind == http::BODY { cx.state.size += cx.body.len; }
-    else if cx.kind == http::END { rest::text(cx, 201, str(cx.state.size)); }
+    else if cx.kind == http::END { plod::text(cx, 201, str(cx.state.size)); }
 }
 
 // The route: the body of at most limit bytes, answered with its length and
 // its last byte, or for a negative limit, the body in pieces, answered with
 // its length.
 fn route(cx, limit: i64) {
-    if rest::resumed(cx) {
+    if plod::resumed(cx) {
         resume(cx.state.use, cx);
     } else if limit < 0 {
-        rest::body_in_pieces(cx, 1 << 20, Use.Pieces);
+        plod::body_in_pieces(cx, 1 << 20, Use.Pieces);
     } else {
-        let data = rest::body(cx, limit);
-        rest::text(cx, 200, str(data.len, " ", data[data.len - 1..]));
+        let data = plod::body(cx, limit);
+        plod::text(cx, 200, str(data.len, " ", data[data.len - 1..]));
     }
 }
 
@@ -50,15 +50,15 @@ fn route(cx, limit: i64) {
 // with its head.
 struct Conn {
     req: http::Request,
-    st: rest::Slot<St> = rest::Slot<St> { state: St { .. } },
+    st: plod::Slot<St> = plod::Slot<St> { state: St { .. } },
     keep: bool = true,
     stream: http::Stream = http::Stream { .. },
 }
 
 fn send(c: Conn&, out: u8[>..]&, kind: u8, data: const u8[:], limit: i64) {
-    var app = rest::NoState { .. };
+    var app = plod::NoState { .. };
     let reply = http::Reply { buf: out, common: "", keep_alive: c.keep, minor: 1, head: false, stream: c.stream };
-    rest::deliver(http::Event { kind: kind, req: c.req, data: data, whole: false, trailers: "" }, c.st, app, reply)
+    plod::deliver(http::Event { kind: kind, req: c.req, data: data, whole: false, trailers: "" }, c.st, app, reply)
         { cx => route(cx, limit); };
     // The pool never promises past its budget, and a run never past its promise.
     assert(http::gather_promised <= http::gather_most && c.st.ex.run.cap <= c.st.ex.run.most);
@@ -89,7 +89,7 @@ fn gather(text: const u8[:], size: i64, limit: i64, caps: i64[>..]&, budget: i64
         at = end;
     }
     if out.len == 0 { send(c, out, http::END, "", limit); }
-    assert((c.st.ex.mode & rest::GATHERING) == 0 && c.st.ex.run.cap == 0 && http::gather_promised == 0);
+    assert((c.st.ex.mode & plod::GATHERING) == 0 && c.st.ex.run.cap == 0 && http::gather_promised == 0);
     http::gather_budget(http::GATHER_BUDGET);
     if !c.keep { out.append("\r\nclosed"); }
     return out;

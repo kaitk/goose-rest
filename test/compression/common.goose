@@ -1,12 +1,12 @@
-// What rest::compressed's tests share: a handler behind it with answers that
+// What plod::compressed's tests share: a handler behind it with answers that
 // compress and answers it leaves alone, and a response sent in pieces
 // inside it, with the case function that sends them. scripts/test-examples.sh
 // decompresses real answers of examples/compress.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 
 // A body that compresses: 2,000 bytes of a repeating record.
@@ -18,17 +18,17 @@ fn records() -> u8[>..] {
     return t;
 }
 
-// A handler behind rest::compressed, around the route: /big answers
+// A handler behind plod::compressed, around the route: /big answers
 // records(), /small a short body, /missing fails 404, /png a large image,
 // /done an answer that has a Content-Encoding, and /empty 204.
 fn handle(cx) {
-    rest::compressed(cx) { cx =>
-        rest::route(cx) {
+    plod::compressed(cx) { cx =>
+        plod::route(cx) {
             let path = http::path_of(cx.req.target);
             if path == "/big" {
-                rest::json_bytes(cx, 200, records());
+                plod::json_bytes(cx, 200, records());
             } else if path == "/small" {
-                rest::text(cx, 200, "ok");
+                plod::text(cx, 200, "ok");
             } else if path == "/png" {
                 http::respond(cx.out, 200, "image/png", records());
             } else if path == "/done" {
@@ -36,16 +36,16 @@ fn handle(cx) {
                 http::field(cx.out, "Content-Encoding", "gzip");
                 http::finish(cx.out, http::JSON, records());
             } else if path == "/empty" {
-                rest::empty(cx, 204);
+                plod::empty(cx, 204);
             } else {
-                rest::fail(cx, 404, "not_found");
+                plod::fail(cx, 404, "not_found");
             }
         };
     };
 }
 
 fn served(text: const u8[:]) -> u8[>..] {
-    return rest::serve_one(text) { cx => handle(cx) };
+    return plod::serve_one(text) { cx => handle(cx) };
 }
 
 let GZIP = "Accept-Encoding: gzip, br\r\n";
@@ -71,7 +71,7 @@ fn piece(n: i64) -> u8[>..] {
     return t;
 }
 
-fn resume(w: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(w: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 // A piece at each MORE, then the end after w.rows. At w.stop the case
 // function neither sends nor ends, so the connection closes, as for a client
@@ -81,29 +81,29 @@ fn resume(w: Use.Rows, cx) {
         cx.state.sent++;
         format(cx.app.calls, "M", cx.state.sent, " ");
         if cx.state.sent == w.stop { return; }
-        if w.fail && cx.state.sent == 2 { rest::fail(cx, 500, "broken"); }
-        rest::send(cx, piece(cx.state.sent));
-        if cx.state.sent == w.rows { rest::end(cx); }
+        if w.fail && cx.state.sent == 2 { plod::fail(cx, 500, "broken"); }
+        plod::send(cx, piece(cx.state.sent));
+        if cx.state.sent == w.rows { plod::end(cx); }
     } else if cx.kind == http::CLOSED {
         cx.app.calls.append("C ");
     }
 }
 
-fn resume(w: Use.Download, cx) { rest::send_file(cx, cx.state.file); }
+fn resume(w: Use.Download, cx) { plod::send_file(cx, cx.state.file); }
 
-// A response begun inside rest::compressed, with piece 0 at once and rows
+// A response begun inside plod::compressed, with piece 0 at once and rows
 // more at the MOREs, and what the case function saw.
 fn streamed(text: const u8[:], rows: i64, content_type: const u8[:] = "text/csv", length: i64 = -1,
             stop: i64 = 0, fail: bool = false) -> u8[>..], u8[>..] {
     var calls: u8[>..] = [];
     var app = App { calls: calls };
-    let out = rest::serve_one(text, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
+    let out = plod::serve_one(text, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
             resume(cx.state.use, cx);
         } else {
-            rest::compressed(cx) { cx =>
-                rest::begin(cx, 200, content_type, length, Use.Rows { rows: rows, stop: stop, fail: fail });
-                rest::send(cx, piece(0));
+            plod::compressed(cx) { cx =>
+                plod::begin(cx, 200, content_type, length, Use.Rows { rows: rows, stop: stop, fail: fail });
+                plod::send(cx, piece(0));
             };
         }
     };
@@ -117,9 +117,9 @@ fn chunk(body: u8[>..]&, data: const u8[:]) {
     body.append("\r\n");
 }
 
-// Whether every encoder rest::compressed and goose-http lent is back.
+// Whether every encoder plod::compressed and goose-http lent is back.
 fn all_released() -> bool {
-    for e in rest::coded { if e.z.slot >= 0 { return false; } }
+    for e in plod::coded { if e.z.slot >= 0 { return false; } }
     for b in http::deflaters_busy { if b { return false; } }
     for b in http::zstds_busy { if b { return false; } }
     return true;

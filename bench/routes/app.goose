@@ -4,7 +4,7 @@ namespace app;
 
 import std;
 import http;
-import rest;
+import plod;
 
 fn ok(cx) { http::respond(cx.out, 200, "text/plain", "ok"); }
 

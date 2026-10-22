@@ -1,19 +1,19 @@
-// rest::cors: a request without Origin, an allowed origin, an error inside,
+// plod::cors: a request without Origin, an allowed origin, an error inside,
 // a refused origin, a preflight, an OPTIONS that isn't one, and any origin
 // with credentials.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
 // A handler behind CORS: /missing fails 404 inside it.
 fn with_cors(text: const u8[:]) -> u8[>..] {
     return answer(text) { cx =>
-        rest::cors(cx, rest::Cors { origins: "https://a.example https://b.example", expose: "X-Total", .. }) {
-            rest::route(cx) {
-                guard http::path_of(cx.req.target) != "/missing" else { rest::fail(cx, 404, "not_found"); }
-                rest::text(cx, 200, "ok");
+        plod::cors(cx, plod::Cors { origins: "https://a.example https://b.example", expose: "X-Total", .. }) {
+            plod::route(cx) {
+                guard http::path_of(cx.req.target) != "/missing" else { plod::fail(cx, 404, "not_found"); }
+                plod::text(cx, 200, "ok");
             };
         };
     };
@@ -42,9 +42,9 @@ fn main() {
                  str("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: https://a.example\r\n",
                      "Access-Control-Expose-Headers: X-Total\r\nVary: Origin\r\n", OK));
     let any = answer(expect::request("GET", "/", "Origin: https://c.example\r\n")) { cx =>
-        rest::cors(cx, rest::Cors { origins: "*", credentials: true, .. }) { rest::text(cx, 200, "ok"); };
+        plod::cors(cx, plod::Cors { origins: "*", credentials: true, .. }) { plod::text(cx, 200, "ok"); };
     };
     expect::same(any, str("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: https://c.example\r\n",
                           "Access-Control-Allow-Credentials: true\r\nVary: Origin\r\n", OK));
-    print("rest::cors: ok");
+    print("plod::cors: ok");
 }

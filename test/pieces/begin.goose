@@ -1,8 +1,8 @@
-// rest::begin: a response sent in pieces, chunked and with a length, for
+// plod::begin: a response sent in pieces, chunked and with a length, for
 // HEAD, and cut short by a failure.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -23,5 +23,5 @@ fn main() {
     let cut, l4 = rows_of(get, 99);
     expect::same(expect::body_of(cut), "5\r\nrow1\n\r\n", "cut short");
     expect::same(l4, "M1 M2 C ", "cut short's calls");
-    print("rest::begin: ok");
+    print("plod::begin: ok");
 }

@@ -8,7 +8,7 @@ another. Both use the same jobs, `run`, and `resume` case functions as
 ## A reply in pieces
 
 A project's tasks, as JSON, can be longer than a message. The lane replies with
-`rest::reply`, which sends a reply longer than the worker's message size in pieces,
+`plod::reply`, which sends a reply longer than the worker's message size in pieces,
 the job in front of the first. From [`12-two-lanes`](12-two-lanes/main.goose), whose
 worker takes messages of 64 bytes, so that a project's tasks arrive in several pieces:
 
@@ -19,17 +19,17 @@ fn run(u: DbJob.Tasks, c: db::Conn&, a) {
 ```
 
 ```rust
-    rest::reply(a, out);
+    plod::reply(a, out);
 }
 ```
 
-The route's case function runs at the first piece. `rest::relay` starts a chunked
-response with what follows the job in it, and goose-rest sends each later piece as a
+The route's case function runs at the first piece. `plod::relay` starts a chunked
+response with what follows the job in it, and Plod sends each later piece as a
 chunk, waiting again until the last one arrives:
 
 ```rust
 // Called at the first piece, which starts a chunked response; the rest go on as chunks.
-fn resume(u: DbJob.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
+fn resume(u: DbJob.Tasks, cx) { plod::relay(cx, 200, "application/json"); }
 ```
 
 ```text
@@ -62,8 +62,8 @@ enum Use { None, Db, Mail }
 
 ```rust
     let app = App {
-        db: rest::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, database),
-        mailer: rest::lane_open<MailJob>(http::LaneConfig { .. }, Use.Mail, mailer),
+        db: plod::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, database),
+        mailer: plod::lane_open<MailJob>(http::LaneConfig { .. }, Use.Mail, mailer),
     };
 ```
 
@@ -73,26 +73,26 @@ enum Use { None, Db, Mail }
 From [`main.goose`](12-two-lanes/main.goose):
 
 ```rust
-        rest::get(cx, "/v1/projects/:id/tasks") {
-            rest::ask(cx, cx.app.db, DbJob.Tasks { project: rest::param_int(cx, "id") });
+        plod::get(cx, "/v1/projects/:id/tasks") {
+            plod::ask(cx, cx.app.db, DbJob.Tasks { project: plod::param_int(cx, "id") });
         };
-        rest::post(cx, "/v1/projects/:id/members") {
-            let user, has_user = rest::query_int(cx, "user");
-            rest::require(cx, "user", has_user);
-            rest::ask(cx, cx.app.db, DbJob.AddMember { project: rest::param_int(cx, "id"), user: user });
+        plod::post(cx, "/v1/projects/:id/members") {
+            let user, has_user = plod::query_int(cx, "user");
+            plod::require(cx, "user", has_user);
+            plod::ask(cx, cx.app.db, DbJob.AddMember { project: plod::param_int(cx, "id"), user: user });
         };
 ```
 
 ```rust
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
-fn resume(u: Use.Db, cx) { resume(rest::job<DbJob>(cx), cx); }
-fn resume(u: Use.Mail, cx) { resume(rest::job<MailJob>(cx), cx); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Db, cx) { resume(plod::job<DbJob>(cx), cx); }
+fn resume(u: Use.Mail, cx) { resume(plod::job<MailJob>(cx), cx); }
 ```
 
 </details>
 
 The database's `run` refuses a member already added, or a project that doesn't
-exist, with `rest::fail`, and replies the job alone otherwise. Its `resume` asks the
+exist, with `plod::fail`, and replies the job alone otherwise. Its `resume` asks the
 second lane, and waits again; the job came back with the reply, so it holds the
 project and the user:
 
@@ -100,13 +100,13 @@ project and the user:
 // The database added the member: ask the mailer next, and wait again. The
 // job came back with the reply, so its project and user are at hand.
 fn resume(u: DbJob.AddMember, cx) {
-    rest::ask(cx, cx.app.mailer, MailJob.Invite { project: u.project, user: u.user });
+    plod::ask(cx, cx.app.mailer, MailJob.Invite { project: u.project, user: u.user });
 }
 ```
 
 ```rust
 fn resume(u: MailJob.Invite, cx) {
-    rest::json(cx, 201, Invited { project: u.project, user: u.user, mail: rest::answer<i64>(cx) });
+    plod::json(cx, 201, Invited { project: u.project, user: u.user, mail: plod::answer<i64>(cx) });
 }
 ```
 
@@ -120,8 +120,8 @@ POST /v1/projects/9/members?user=3 404 {"error":"project_not_found"}
 
 | The route needs | Shape |
 |---|---|
-| One lane, a reply that fits a message | One job, `rest::reply_value`, and `rest::answer` ([Work that waits](11-waiting.md)) |
-| One lane, a longer reply | One job, `rest::reply` in pieces, and `rest::relay` |
+| One lane, a reply that fits a message | One job, `plod::reply_value`, and `plod::answer` ([Work that waits](11-waiting.md)) |
+| One lane, a longer reply | One job, `plod::reply` in pieces, and `plod::relay` |
 | Two lanes in turn | A job on each lane; the first job's `resume` asks the next lane |
 
 Each wait has its own time limit, and each ask can meet a full box, so a

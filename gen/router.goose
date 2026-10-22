@@ -41,13 +41,13 @@ fn int_checks(out: u8[>..]&, p: Param, x: const u8[:], present: const u8[:], ind
         let open = if present.len > 0 { "(" } else { "" };
         let close = if present.len > 0 { ")" } else { "" };
         format(out, ind, "if ", present, open, x, " < -2147483648 || ", x, " > 2147483647", close,
-               " { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
+               " { plod::fail_param(cx, \"", p.name, ": format\"); }\n");
     }
     if p.has_minimum {
-        format(out, ind, "if ", present, x, " < ", p.minimum, " { rest::fail_param(cx, \"", p.name, ": minimum\"); }\n");
+        format(out, ind, "if ", present, x, " < ", p.minimum, " { plod::fail_param(cx, \"", p.name, ": minimum\"); }\n");
     }
     if p.has_maximum {
-        format(out, ind, "if ", present, x, " > ", p.maximum, " { rest::fail_param(cx, \"", p.name, ": maximum\"); }\n");
+        format(out, ind, "if ", present, x, " > ", p.maximum, " { plod::fail_param(cx, \"", p.name, ": maximum\"); }\n");
     }
 }
 
@@ -62,34 +62,34 @@ fn emit_params(t: Tables&, o: Op) {
         format(t.out, "    ", q.local, ": ", if q.int { "i64" } else if q.boolean { "bool" } else { "const u8[:]" }, ",\n");
     }
     t.out.append("}\n");
-    format(t.out, "\n// ", o.handler, "'s parameters, for rest::take: 400 invalid_parameter for one that's\n");
+    format(t.out, "\n// ", o.handler, "'s parameters, for plod::take: 400 invalid_parameter for one that's\n");
     t.out.append("// missing or doesn't fit its schema.\n");
-    format(t.out, "fn rest::from_request(cx, v: const ", t.ns, "::", o.params_type, "?) -> ", t.ns, "::", o.params_type, " {\n");
+    format(t.out, "fn plod::from_request(cx, v: const ", t.ns, "::", o.params_type, "?) -> ", t.ns, "::", o.params_type, " {\n");
     for q in qs {
         let from = match q.at { P_QUERY => "query", P_HEADER => "header", _ => "cookie" };
         let raw = if q.int || q.boolean { "_s" } else { "" };
-        format(t.out, "    let ", q.local, raw, ", has_", q.local, " = rest::", from, "(cx, \"", q.name, "\");\n");
-        if q.required { format(t.out, "    rest::require(cx, \"", q.name, "\", has_", q.local, ");\n"); }
+        format(t.out, "    let ", q.local, raw, ", has_", q.local, " = plod::", from, "(cx, \"", q.name, "\");\n");
+        if q.required { format(t.out, "    plod::require(cx, \"", q.name, "\", has_", q.local, ");\n"); }
         if q.int || q.boolean {
-            format(t.out, "    let ", q.local, " = if has_", q.local, " { rest::", if q.int { "int_of" } else { "bool_of" },
+            format(t.out, "    let ", q.local, " = if has_", q.local, " { plod::", if q.int { "int_of" } else { "bool_of" },
                    "(cx, ", q.local, "_s, \"", q.name, "\") } else { ", if q.int { "0" } else { "false" }, " };\n");
         }
         let present: u8[>..] = if q.required { "" } else { str("has_", q.local, " && ") };
         if q.int { int_checks(t.out, q, q.local, present, "    "); }
         if q.min_len >= 0 || q.max_len >= 0 {
             format(t.out, "    if has_", q.local, " {\n");
-            format(t.out, "        let n_ = rest::code_points(", q.local, ");\n");
-            format(t.out, "        if n_ < 0 { rest::fail_param(cx, \"", q.name, ": not UTF-8\"); }\n");
+            format(t.out, "        let n_ = plod::code_points(", q.local, ");\n");
+            format(t.out, "        if n_ < 0 { plod::fail_param(cx, \"", q.name, ": not UTF-8\"); }\n");
             if q.min_len >= 0 {
-                format(t.out, "        if n_ < ", q.min_len, " { rest::fail_param(cx, \"", q.name, ": minLength\"); }\n");
+                format(t.out, "        if n_ < ", q.min_len, " { plod::fail_param(cx, \"", q.name, ": minLength\"); }\n");
             }
             if q.max_len >= 0 {
-                format(t.out, "        if n_ > ", q.max_len, " { rest::fail_param(cx, \"", q.name, ": maxLength\"); }\n");
+                format(t.out, "        if n_ > ", q.max_len, " { plod::fail_param(cx, \"", q.name, ": maxLength\"); }\n");
             }
             t.out.append("    }\n");
         }
         if q.ascii {
-            format(t.out, "    if ", present, "!rest::is_ascii(", q.local, ") { rest::fail_param(cx, \"", q.name, ": format\"); }\n");
+            format(t.out, "    if ", present, "!plod::is_ascii(", q.local, ") { plod::fail_param(cx, \"", q.name, ": format\"); }\n");
         }
     }
     format(t.out, "    return ", t.ns, "::", o.params_type, " {");
@@ -110,7 +110,7 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
         let o = t.ops[r.first_op + j];
         if o.method == "GET" { format(t.out, ind, "if m == \"GET\" || m == \"HEAD\" {\n"); }
         else { format(t.out, ind, "if m == \"", o.method, "\" {\n"); }
-        // By reference: an untyped parameter given rest::Cx itself copies
+        // By reference: an untyped parameter given plod::Cx itself copies
         // it, which gcc keeps at a call that stays one.
         format(t.out, ind, "    route_", o.handler, "(&cx");
         for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
@@ -122,10 +122,10 @@ fn emit_ops(t: Tables&, r: Route, level: i64) {
             emit_op(t, r, o);
         }
     }
-    format(t.out, ind, "rest::no_method(cx, \"", r.allow, "\");\n", ind, "return;\n");
+    format(t.out, ind, "plod::no_method(cx, \"", r.allow, "\");\n", ind, "return;\n");
 }
 
-// The function that answers o, an operation of r, inside rest::route, given
+// The function that answers o, an operation of r, inside plod::route, given
 // the path's segments that hold r's parameters. Each operation has its own
 // function, which dispatch calls from an arm that returns, so that Goose
 // keeps it out of line: inlined, every route's temporaries would add to
@@ -137,7 +137,7 @@ fn emit_op(t: Tables&, r: Route, o: Op) {
     for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
         if s.param { format(t.fns, ", s", i + 1, ": const u8[:]"); }
     }
-    t.fns.append(") {\n    rest::route(cx) {\n");
+    t.fns.append(") {\n    plod::route(cx) {\n");
     if o.scheme.len > 0 { format(t.fns, in2, "let s_ = ", t.handlers, "::", o.scheme, "(cx);\n"); }
     var k = 0;
     for s, i in t.segs[r.first_seg..r.first_seg + r.nsegs] {
@@ -145,18 +145,18 @@ fn emit_op(t: Tables&, r: Route, o: Op) {
         let p = t.params[o.first + k];
         k++;
         if !p.int {
-            format(t.fns, in2, "let ", p.local, " = rest::path_str(cx, s", i + 1, ", \"", p.name, "\");\n");
+            format(t.fns, in2, "let ", p.local, " = plod::path_str(cx, s", i + 1, ", \"", p.name, "\");\n");
             if p.ascii {
-                format(t.fns, in2, "if !rest::is_ascii(", p.local, ") { rest::fail_param(cx, \"", p.name, ": format\"); }\n");
+                format(t.fns, in2, "if !plod::is_ascii(", p.local, ") { plod::fail_param(cx, \"", p.name, ": format\"); }\n");
             }
             continue;
         }
-        format(t.fns, in2, "let ", p.local, " = rest::path_int(cx, s", i + 1, ", \"", p.name, "\");\n");
+        format(t.fns, in2, "let ", p.local, " = plod::path_int(cx, s", i + 1, ", \"", p.name, "\");\n");
         int_checks(t.fns, p, p.local, "", in2);
     }
-    if o.count_q > 0 { format(t.fns, in2, "let q_ = rest::take<", o.params_type, ">(cx);\n"); }
-    if o.body_limit > 0 { format(t.fns, in2, "rest::body(cx, ", size(o.body_limit), ");\n"); }
-    if o.body >= 0 { format(t.fns, in2, "let body_ = rest::take<", t.objs[o.body].name, ">(cx);\n"); }
+    if o.count_q > 0 { format(t.fns, in2, "let q_ = plod::take<", o.params_type, ">(cx);\n"); }
+    if o.body_limit > 0 { format(t.fns, in2, "plod::body(cx, ", size(o.body_limit), ");\n"); }
+    if o.body >= 0 { format(t.fns, in2, "let body_ = plod::take<", t.objs[o.body].name, ">(cx);\n"); }
     format(t.fns, in2, t.handlers, "::", o.handler, "(cx");
     if o.scheme.len > 0 { t.fns.append(", s_"); }
     for p in t.params[o.first..o.first + o.count] { format(t.fns, ", ", p.local); }
@@ -185,7 +185,7 @@ recursive fn emit_node(t: Tables&, idx: i64[>..<]&, lo: i64, hi: i64, d: i64, le
     }
     guard deeper else { return; }
     format(t.out, ind, "if e", d, " < path.len {\n");
-    format(t.out, ind, "    let s", d + 1, ", e", d + 1, " = rest::segment(path, e", d, ");\n");
+    format(t.out, ind, "    let s", d + 1, ", e", d + 1, " = plod::segment(path, e", d, ");\n");
     for k in lo..hi {
         let r = t.routes[idx[k]];
         if r.nsegs <= d || t.segs[r.first_seg + d].param { continue; }
@@ -201,7 +201,7 @@ recursive fn emit_node(t: Tables&, idx: i64[>..<]&, lo: i64, hi: i64, d: i64, le
             let q = t.routes[idx[j]];
             if q.nsegs > d && !t.segs[q.first_seg + d].param && t.segs[q.first_seg + d].text == lit { idx.push(idx[j]); }
         }
-        format(t.out, ind, "    if rest::segment_is(s", d + 1, ", \"", lit, "\", plain) {\n");
+        format(t.out, ind, "    if plod::segment_is(s", d + 1, ", \"", lit, "\", plain) {\n");
         emit_node(t, idx, mark, idx.len, d + 1, level + 2);
         format(t.out, ind, "    }\n");
         idx.resize(mark);
@@ -229,21 +229,21 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     var t = Tables { out: out, fns: fns, emitted: emitted, ns: ns, handlers: handlers, routes: routes, segs: segs,
                      ops: ops, params: params, objs: objs };
     for o in ops { if o.count_q > 0 { emit_params(t, o); } }
-    // goose-http's MAX_BODY and rest's BODY_LIMIT, a route's default.
+    // goose-http's MAX_BODY and plod's BODY_LIMIT, a route's default.
     var max_body: i64 = 1024 * 1024;
     for o in ops { max_body = max(max_body, o.body_limit); }
     out.append("\n// The longest body a route takes, for http::Config's max_body.\n");
     format(out, "let MAX_BODY: i64 = ", size(max_body), ";\n");
     format(out, "\n// Answers a request through the handler in ", handlers, " that its path and method\n");
-    out.append("// name, inside rest::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
-    out.append("// a path; and as rest::otherwise does for a path no route takes. Inside rest::routes,\n");
+    out.append("// name, inside plod::route; with 405 or OPTIONS' 204 and Allow for another method of\n");
+    out.append("// a path; and as plod::otherwise does for a path no route takes. Inside plod::routes,\n");
     out.append("// the Allow lists the methods of the program's routes tried before dispatch first,\n");
     out.append("// and dispatch answers nothing when one of them took the request.\n");
     out.append("fn dispatch(cx) {\n");
-    out.append("    guard rest::untaken(cx) else { return; }\n");
+    out.append("    guard plod::untaken(cx) else { return; }\n");
     out.append("    let path = http::path_of(cx.req.target);\n");
     out.append("    let m = cx.req.method;\n");
-    out.append("    guard http::known_method(m) && http::is_routable(path) else { rest::no_route(cx, m, path); return; }\n");
+    out.append("    guard http::known_method(m) && http::is_routable(path) else { plod::no_route(cx, m, path); return; }\n");
     out.append("    let plain = find(path, \"%\") < 0;\n");
     var lens: i64[>..] = [];
     for r in routes { if r.is_static && !lens.contains(r.template.len) { lens.push(r.template.len); } }
@@ -271,7 +271,7 @@ fn emit_router(out: u8[>..]&, ns: const u8[:], handlers: const u8[:], routes: co
     for i in routes.len { idx.push(i); }
     emit_node(t, idx, 0, routes.len, 0, 2);
     out.append("    }\n");
-    out.append("    rest::not_found(cx, m, path);\n");
+    out.append("    plod::not_found(cx, m, path);\n");
     out.append("}\n");
     out.append(fns);
 }

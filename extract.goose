@@ -1,8 +1,8 @@
 // Extractors: the typed parts of a request. Each one that finds a part
 // missing or malformed fails the enclosing route with 400
 // {"error":"invalid_parameter","detail":"<name>: <check>"}
-// (docs/reference.md, "Errors"), so every caller runs inside rest::route.
-namespace rest;
+// (docs/reference.md, "Errors"), so every caller runs inside plod::route.
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -13,7 +13,7 @@ import http from "github.com/kaitk/goose-http@v0.5.4";
 // in this namespace, since a generic body finds names only where it's
 // defined (spike 01):
 //
-//   fn rest::from_request(cx, v: const app::Session?) -> app::Session { ... }
+//   fn plod::from_request(cx, v: const app::Session?) -> app::Session { ... }
 //
 // v is always null: its type picks the overload, and the result is built
 // where the caller puts it, so T may hold u8[] fields.
@@ -86,12 +86,12 @@ fn require(cx, name: const u8[:], found: bool) {
     guard found else { fail_param(cx, str(name, ": required")); }
 }
 
-// The path parameter name of the route rest::on matched, decoded.
+// The path parameter name of the route plod::on matched, decoded.
 fn param<S, A>(cx: Cx<S, A, http::Router>&, name: const u8[:]) -> const u8[:] {
     return decoded(cx, http::param(cx.router, name), false, name);
 }
 
-// The path parameter name of the route rest::on matched, as an integer.
+// The path parameter name of the route plod::on matched, as an integer.
 fn param_int<S, A>(cx: Cx<S, A, http::Router>&, name: const u8[:]) -> i64 {
     return path_int(cx, http::param(cx.router, name), name);
 }
@@ -141,7 +141,7 @@ fn query_bool(cx, name: const u8[:]) -> bool, bool {
 
 // The field name of an application/x-www-form-urlencoded body, decoded with
 // '+' as a space, and whether the body has it; the first, if it repeats. The
-// key is compared as sent. The body is read with rest::body, so a route runs
+// key is compared as sent. The body is read with plod::body, so a route runs
 // twice up to its first form call when the body is gathered. 415 for a body
 // of another media type. cx is a reference, since the value can be a slice of
 // cx.body.
@@ -185,7 +185,7 @@ fn form_bool(cx, name: const u8[:]) -> bool, bool {
 
 // The text of the part name in a multipart/form-data body, as sent, and
 // whether the body has it; the first, if it repeats. The body is read with
-// rest::body, so a route runs twice up to its first part call when the body
+// plod::body, so a route runs twice up to its first part call when the body
 // is gathered. The value is a slice of the body. 415 for a body of another
 // media type or without a usable boundary, 400 for one that isn't multipart.
 // Uploads read as they arrive are goose-http's http::each_part.

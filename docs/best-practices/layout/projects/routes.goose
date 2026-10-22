@@ -4,15 +4,15 @@ namespace projects;
 
 import std;
 import http;
-import rest;
+import plod;
 import common.members.structs;
 import projects.structs;
 import projects.errors;
 import projects.rules;
 
 fn routes(cx, member: members::Member) {
-    rest::get(cx, "") { list(cx, member); };
-    rest::post(cx, "") { create(cx, member); };
+    plod::get(cx, "") { list(cx, member); };
+    plod::post(cx, "") { create(cx, member); };
 }
 
 fn list(cx, member: members::Member) {
@@ -20,14 +20,14 @@ fn list(cx, member: members::Member) {
     for p in cx.app.projects {
         if p.organization == member.organization { mine.push(p); }
     }
-    rest::json(cx, 200, mine);
+    plod::json(cx, 200, mine);
 }
 
 fn create(cx, member: members::Member) {
-    let name, has = rest::form(cx, "name");
-    rest::require(cx, "name", has);
+    let name, has = plod::form(cx, "name");
+    plod::require(cx, "name", has);
     let project, err = new_project(CreateInput { name: name }, member, cx.app.projects.len + 1);
     check(err, cx);
     cx.app.projects.push(project);
-    rest::json(cx, 201, project);
+    plod::json(cx, 201, project);
 }

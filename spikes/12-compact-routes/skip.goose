@@ -1,15 +1,15 @@
 // Skip-based routing, from the package on branch short-routes-skip: a
-// matched rest::get marks the router taken and returns as any block does.
+// matched plod::get marks the router taken and returns as any block does.
 // Each case prints its answer, or what the program's own middleware saw.
 // Run it from this folder with goose.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest.compression;
+import plod.compression;
 import .compact;
 
-let CORS = rest::Cors { origins: "https://a.example", .. };
+let CORS = plod::Cors { origins: "https://a.example", .. };
 
 var seen: u8[>..];
 
@@ -19,7 +19,7 @@ inline fn audited<F>(cx) {
     seen.append(str("audit ", cx.out.stream.status, ";"));
 }
 
-// A program's own middleware that adds a field, without rest::scoped and
+// A program's own middleware that adds a field, without plod::scoped and
 // with it.
 inline fn branded<F>(cx) {
     let common = cx.out.common;
@@ -31,51 +31,51 @@ inline fn branded<F>(cx) {
 inline fn branded_scoped<F>(cx) {
     let common = cx.out.common;
     cx.out.common = "X-Brand: acme\r\n";
-    rest::scoped(cx) { F(); };
+    plod::scoped(cx) { F(); };
     cx.out.common = common;
 }
 
 fn admin(cx) -> bool {
-    let v, has = rest::header(cx, "X-Admin");
+    let v, has = plod::header(cx, "X-Admin");
     return has;
 }
 
-fn handle(cx, sec: const rest::SecurityFields&) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::get(cx, "/silent") {};
-        if admin(cx) { rest::get(cx, "/admin") { rest::text(cx, 200, "admin"); }; }
+fn handle(cx, sec: const plod::SecurityFields&) {
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::get(cx, "/silent") {};
+        if admin(cx) { plod::get(cx, "/admin") { plod::text(cx, 200, "admin"); }; }
         if compact::scope(cx, "/c") {
-            rest::cors(cx, CORS) {
-                rest::get(cx, "/x/:id") { rest::text(cx, 200, str("cors ", rest::param_int(cx, "id"))); };
-                rest::post(cx, "/x/:id") { rest::text(cx, 201, "posted"); };
+            plod::cors(cx, CORS) {
+                plod::get(cx, "/x/:id") { plod::text(cx, 200, str("cors ", plod::param_int(cx, "id"))); };
+                plod::post(cx, "/x/:id") { plod::text(cx, 201, "posted"); };
             };
         } else if compact::scope(cx, "/s") {
-            rest::security_headers(cx, sec) { rest::get(cx, "/x") { rest::text(cx, 200, "secure"); }; };
+            plod::security_headers(cx, sec) { plod::get(cx, "/x") { plod::text(cx, 200, "secure"); }; };
         } else if compact::scope(cx, "/t") {
-            rest::timed(cx, false) { rest::get(cx, "/x") { rest::text(cx, 200, "timed"); }; };
+            plod::timed(cx, false) { plod::get(cx, "/x") { plod::text(cx, 200, "timed"); }; };
         } else if compact::scope(cx, "/z") {
-            rest::compressed(cx) { cx =>
-                rest::get(cx, "/x") { rest::text(cx, 200, str_repeat("zipped ", 200)); };
-                rest::delete(cx, "/x") { rest::text(cx, 200, "deleted"); };
+            plod::compressed(cx) { cx =>
+                plod::get(cx, "/x") { plod::text(cx, 200, str_repeat("zipped ", 200)); };
+                plod::delete(cx, "/x") { plod::text(cx, 200, "deleted"); };
             };
         } else if compact::scope(cx, "/a") {
-            audited(cx) { rest::get(cx, "/x") { rest::text(cx, 200, "audited"); }; };
+            audited(cx) { plod::get(cx, "/x") { plod::text(cx, 200, "audited"); }; };
         } else if compact::scope(cx, "/b") {
-            branded(cx) { rest::get(cx, "/x") { rest::fail(cx, 409, "conflict"); }; };
+            branded(cx) { plod::get(cx, "/x") { plod::fail(cx, 409, "conflict"); }; };
         } else if compact::scope(cx, "/bs") {
-            branded_scoped(cx) { rest::get(cx, "/x") { rest::fail(cx, 409, "conflict"); }; };
+            branded_scoped(cx) { plod::get(cx, "/x") { plod::fail(cx, 409, "conflict"); }; };
         } else if compact::scope(cx, "/p") {
-            rest::get(cx, "/y") { rest::text(cx, 200, "plain"); };
+            plod::get(cx, "/y") { plod::text(cx, 200, "plain"); };
         }
         // The block form owns its prefix.
-        rest::scope(cx, "/q") {
-            rest::get(cx, "/y") { rest::text(cx, 200, "block"); };
-            rest::scope(cx, "/r") { rest::post(cx, "/y") { rest::text(cx, 201, "nested"); }; };
+        plod::scope(cx, "/q") {
+            plod::get(cx, "/y") { plod::text(cx, 200, "block"); };
+            plod::scope(cx, "/r") { plod::post(cx, "/y") { plod::text(cx, 201, "nested"); }; };
         };
         // After the scopes, against the path a scope narrowed: taken
         // requests skip it.
-        rest::get(cx, "/x") { rest::text(cx, 200, "after the scopes"); };
+        plod::get(cx, "/x") { plod::text(cx, 200, "after the scopes"); };
         seen.append("end of block;");
     };
 }
@@ -96,7 +96,7 @@ fn shown(out: const u8[:]) -> u8[>..] {
 }
 
 fn main() {
-    let sec = rest::prepare_security_headers(rest::security_api());
+    let sec = plod::prepare_security_headers(plod::security_api());
     let origin = "Origin: https://a.example\r\n";
     let cases = [
         ["GET", "/health", ""], ["HEAD", "/health", ""], ["GET", "/silent", ""],
@@ -111,7 +111,7 @@ fn main() {
     ];
     for c in cases {
         seen.clear();
-        let out = rest::serve_one(str(c[0], " ", c[1], " HTTP/1.1\r\n", c[2], "\r\n")) { cx => handle(cx, sec) };
+        let out = plod::serve_one(str(c[0], " ", c[1], " HTTP/1.1\r\n", c[2], "\r\n")) { cx => handle(cx, sec) };
         let with: u8[>..] = if c[2].len > 0 { str(" (", c[2][..c[2].len - 2], ")") } else { "" };
         print(c[0], " ", c[1], with, " -> ", shown(out), "\r\n  seen: ", seen);
     }

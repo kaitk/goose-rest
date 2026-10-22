@@ -3,8 +3,8 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 import common;
 

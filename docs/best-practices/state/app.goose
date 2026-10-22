@@ -3,7 +3,7 @@
 // `import app from "../../";`, as a test can't import main.goose.
 import std;
 import http;
-import rest;
+import plod;
 
 struct Holiday { date: const u8[:], name: const u8[:] }
 
@@ -26,14 +26,14 @@ let HOLIDAYS = [
 struct App { lookups: i64 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::get(cx, "/holidays") {
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::get(cx, "/holidays") {
             // This worker's own count: each worker keeps one.
             cx.app.lookups++;
             // The global, compiled into the program, which every worker reads.
-            rest::json(cx, 200, HOLIDAYS);
+            plod::json(cx, 200, HOLIDAYS);
         };
-        rest::get(cx, "/lookups") { rest::text(cx, 200, str(cx.app.lookups)); };
+        plod::get(cx, "/lookups") { plod::text(cx, 200, str(cx.app.lookups)); };
     };
 }

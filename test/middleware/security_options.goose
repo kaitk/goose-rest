@@ -1,11 +1,11 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import security_common;
 
 fn main() {
-    var c = rest::security_html();
+    var c = plod::security_html();
     c.nosniff = false;
     c.frame_options = "SAMEORIGIN";
     c.xss_protection = false;
@@ -18,7 +18,7 @@ fn main() {
     c.cross_domain_policy = "master-only";
     c.dns_prefetch_control = false;
     c.no_cache = true;
-    let cfg = rest::prepare_security_headers(c);
+    let cfg = plod::prepare_security_headers(c);
     let out = secured(cfg);
     security_omitted(out, "X-Content-Type-Options");
     security_omitted(out, "X-XSS-Protection");
@@ -34,31 +34,31 @@ fn main() {
     security_header(out, "Expires", "0");
     for policy in ["no-referrer", "no-referrer-when-downgrade", "origin", "origin-when-cross-origin",
                    "same-origin", "strict-origin", "strict-origin-when-cross-origin", "unsafe-url"] {
-        var options = rest::security_html();
+        var options = plod::security_html();
         options.referrer_policy = policy;
-        let prepared = rest::prepare_security_headers(options);
+        let prepared = plod::prepare_security_headers(options);
         security_header(secured(prepared), "Referrer-Policy", policy);
     }
     for policy in ["same-origin", "same-origin-allow-popups", "unsafe-none", ""] {
-        var options = rest::security_html();
+        var options = plod::security_html();
         options.opener_policy = policy;
-        let prepared = rest::prepare_security_headers(options);
+        let prepared = plod::prepare_security_headers(options);
         let response = secured(prepared);
         if policy.len > 0 { security_header(response, "Cross-Origin-Opener-Policy", policy); }
         else { security_omitted(response, "Cross-Origin-Opener-Policy"); }
     }
     for policy in ["same-origin", "same-site", "cross-origin", ""] {
-        var options = rest::security_html();
+        var options = plod::security_html();
         options.resource_policy = policy;
-        let prepared = rest::prepare_security_headers(options);
+        let prepared = plod::prepare_security_headers(options);
         let response = secured(prepared);
         if policy.len > 0 { security_header(response, "Cross-Origin-Resource-Policy", policy); }
         else { security_omitted(response, "Cross-Origin-Resource-Policy"); }
     }
     for policy in ["require-corp", "credentialless", "unsafe-none", ""] {
-        var options = rest::security_html();
+        var options = plod::security_html();
         options.embedder_policy = policy;
-        let prepared = rest::prepare_security_headers(options);
+        let prepared = plod::prepare_security_headers(options);
         let response = secured(prepared);
         if policy.len > 0 { security_header(response, "Cross-Origin-Embedder-Policy", policy); }
         else { security_omitted(response, "Cross-Origin-Embedder-Policy"); }
@@ -69,7 +69,7 @@ fn main() {
     c.content_security_policy = "";
     c.permissions_policy = "";
     c.cross_domain_policy = "";
-    let omitted = rest::prepare_security_headers(c);
+    let omitted = plod::prepare_security_headers(c);
     let response = secured(omitted);
     security_omitted(response, "X-Frame-Options");
     security_omitted(response, "Referrer-Policy");
@@ -77,9 +77,9 @@ fn main() {
     security_omitted(response, "Content-Security-Policy-Report-Only");
     security_omitted(response, "Permissions-Policy");
     security_omitted(response, "X-Permitted-Cross-Domain-Policies");
-    var api = rest::security_api();
+    var api = plod::security_api();
     api.hsts = false;
-    let without_hsts = rest::prepare_security_headers(api);
+    let without_hsts = plod::prepare_security_headers(api);
     security_omitted(secured(without_hsts), "Strict-Transport-Security");
     print("security headers options and omissions: ok");
 }

@@ -1,18 +1,18 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 import common;
 
 fn main() {
-    var options = rest::security_api();
+    var options = plod::security_api();
     options.frame_options = "";
-    let cfg = rest::prepare_security_headers(options);
-    let out = rest::serve_one(expect::request("GET", "/big", GZIP)) { cx =>
-        rest::security_headers(cx, cfg) {
-            rest::compressed(cx) { cx => rest::json_bytes(cx, 200, records()); };
+    let cfg = plod::prepare_security_headers(options);
+    let out = plod::serve_one(expect::request("GET", "/big", GZIP)) { cx =>
+        plod::security_headers(cx, cfg) {
+            plod::compressed(cx) { cx => plod::json_bytes(cx, 200, records()); };
         };
     };
     assert(find(out, "X-Frame-Options:") < 0 && find(out, "X-XSS-Protection:") < 0);

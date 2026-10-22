@@ -1,7 +1,7 @@
 # 17. Embedded Linux
 
 A board that runs embedded Linux has megabytes of memory, not gigabytes, and its
-programs are built on another machine, with the board's cross compiler. goose-rest is
+programs are built on another machine, with the board's cross compiler. Plod is
 written in Goose with no C of its own, so its programs cross-build for
 embedded Linux boards the same way goose-http's do: with `goose build --cc`
 and the board's C cross compiler. goose-http's

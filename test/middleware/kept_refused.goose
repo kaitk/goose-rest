@@ -1,11 +1,11 @@
-// What rest::cors keeps for an answer at a later call is promised from the
+// What plod::cors keeps for an answer at a later call is promised from the
 // worker's gather budget: a route that reads its body in pieces behind it,
 // on a budget that can't hold the fields, gets 503 with them at its
 // request, and its case function CLOSED; on a budget that can, the answer
 // at the END has them.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 
 enum Use { None, Up }
@@ -14,13 +14,13 @@ struct St { use: Use = Use.None, size: i64 = 0 }
 
 struct App { log: u8[>..]& }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 fn resume(u: Use.Up, cx) {
     if cx.kind == http::BODY {
         cx.state.size += cx.body.len;
     } else if cx.kind == http::END {
-        rest::text(cx, 200, str(cx.state.size));
+        plod::text(cx, 200, str(cx.state.size));
     } else if cx.kind == http::CLOSED {
         cx.app.log.append("CLOSED");
     }
@@ -32,11 +32,11 @@ fn answer(budget: i64, log: u8[>..]&) -> u8[>..] {
     var app = App { log: log };
     let cfg = http::Config { max_head: 512, .. };
     http::gather_budget(budget);
-    let out = rest::serve_one(text, app, St { .. }, cfg) { cx =>
-        if rest::resumed(cx) {
+    let out = plod::serve_one(text, app, St { .. }, cfg) { cx =>
+        if plod::resumed(cx) {
             resume(cx.state.use, cx);
         } else {
-            rest::cors(cx, rest::Cors { origins: "https://a.example" }) { rest::body_in_pieces(cx, 1 << 20, Use.Up); };
+            plod::cors(cx, plod::Cors { origins: "https://a.example" }) { plod::body_in_pieces(cx, 1 << 20, Use.Up); };
         }
     };
     http::gather_budget(http::GATHER_BUDGET);

@@ -7,12 +7,12 @@
 // has the verdict.
 //
 // main plays goose-http's loop, as spikes 06 and 09 do, so that the output
-// is fixed: each request goes through rest::on_event, the code rest::serve
+// is fixed: each request goes through plod::on_event, the code plod::serve
 // runs, and each reply message addressed to it comes back as a WAKE. The
 // lanes are real threads, each with its box.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import .app;
 
 // Every lane's thread: the same loop, as every lane takes the same Use.
@@ -24,7 +24,7 @@ thread_fn lane(box: http::Box) {
 }
 
 fn serve_event(cx) {
-    if rest::resumed(cx) {
+    if plod::resumed(cx) {
         spike10::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
         handle(cx);
@@ -39,9 +39,9 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
     var out: u8[>..] = [];
     var keep = r.keep_alive;
     var stream = http::Stream { later: http::address(box, key), .. };
-    var st = rest::Slot<St> { state: St { .. } };
+    var st = plod::Slot<St> { state: St { .. } };
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: r.minor, head: false, stream: stream };
-    rest::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply)
+    plod::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply)
                    { cx => H(cx) };
     var wakes: u8[>..] = [];
     while stream.waiting {
@@ -51,7 +51,7 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
                 stream.waiting = false;
                 // The variant the route waits with, and whether the job failed.
                 format(wakes, "\n  wake: ", st.state.use, if tag == spike10::JOB_FAILED { ", job failed" } else { "" });
-                rest::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
+                plod::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
                                              tag: tag }, st, a, reply) { cx => H(cx) };
             }
         };

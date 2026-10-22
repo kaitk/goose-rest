@@ -10,7 +10,7 @@ audiences, laid out like this:
 
 ```text
 app/
-  main.goose            the lanes, the workers, and rest::serve
+  main.goose            the lanes, the workers, and plod::serve
   app.goose             App, St, Use, and each lane's jobs: what the tests import
   dispatch.goose        each audience's scope and stack, then each domain's routes
   stacks.goose          public_routes, user_routes, member_routes
@@ -166,21 +166,21 @@ each domain's scope and its `routes`. From [`layout/dispatch.goose`](layout/disp
 ```rust
 fn handle(cx) {
     // Middleware every answer gets, the 404s included, goes outside the routes.
-    rest::timed(cx) {
-        rest::routes(cx) { cx =>
+    plod::timed(cx) {
+        plod::routes(cx) { cx =>
             // A scope per audience, each behind its stack (stacks.goose).
-            public_routes(cx) { rest::get(cx, "/health") { rest::text(cx, 200, "ok"); }; };
-            rest::scope(cx, "/settings") {
+            public_routes(cx) { plod::get(cx, "/health") { plod::text(cx, 200, "ok"); }; };
+            plod::scope(cx, "/settings") {
                 // Authenticates, or answers 401; the block gets the user.
                 user_routes(cx) { user => settings::routes(cx, user); };
             };
-            rest::scope(cx, "/organization") {
+            plod::scope(cx, "/organization") {
                 // The user, then their membership of the organization the
                 // request names; the block gets the member. A stranger gets
                 // 401 for any path here, not 404.
                 member_routes(cx) { member =>
-                    rest::scope(cx, "/projects") { projects::routes(cx, member); };
-                    rest::scope(cx, "/teams") { teams::routes(cx, member); };
+                    plod::scope(cx, "/projects") { projects::routes(cx, member); };
+                    plod::scope(cx, "/teams") { teams::routes(cx, member); };
                 };
             };
         };
@@ -193,8 +193,8 @@ A domain's `routes` matches the rest of the path, after its scope. From
 
 ```rust
 fn routes(cx, member: members::Member) {
-    rest::get(cx, "") { list(cx, member); };
-    rest::post(cx, "") { create(cx, member); };
+    plod::get(cx, "") { list(cx, member); };
+    plod::post(cx, "") { create(cx, member); };
 }
 ```
 

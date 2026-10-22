@@ -1,4 +1,4 @@
-// docs/best-practices/errors.md: goose-rest's one error shape, a domain's
+// docs/best-practices/errors.md: Plod's one error shape, a domain's
 // errors in its errors.goose, and the errors several domains answer in
 // common/errors.goose.
 //
@@ -8,18 +8,18 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import projects.routes;
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::scope(cx, "/projects") { projects::routes(cx); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::scope(cx, "/projects") { projects::routes(cx); };
     };
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx => handle(cx) };
+    let e = plod::serve(cfg) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

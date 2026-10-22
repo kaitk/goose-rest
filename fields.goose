@@ -1,9 +1,9 @@
 // A JSON writer from a struct's fields, for a program's format overload:
 //
-//   fn format(out: u8[>..]&, p: const Project&) { rest::format_fields(out, p); }
+//   fn format(out: u8[>..]&, p: const Project&) { plod::format_fields(out, p); }
 //
 // docs/reference.md lists what each field type becomes.
-namespace rest;
+namespace plod;
 
 import std;
 import json;

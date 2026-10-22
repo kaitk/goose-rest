@@ -1,58 +1,58 @@
 // Answering a request's bytes without a socket, as serve answers them, for
 // tests that run in-process.
 
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 
 // What serve answers to text, one request's bytes, through H(cx) inside
-// rest::route: the status line, the fields, and the body, without Date or
+// plod::route: the status line, the fields, and the body, without Date or
 // Server. app is the worker state, fresh the request state, cfg the
 // limits goose-http applies. A body that doesn't
 // fit in cfg.max_head with its head comes in pieces of cfg.max_head bytes:
 // gathered as serve gathers it, within http::gather_budget's, so H runs
-// again once it's whole if it called rest::body, or passed on
-// to a route that called rest::body_in_pieces. A body shorter than its
+// again once it's whole if it called plod::body, or passed on
+// to a route that called plod::body_in_pieces. A body shorter than its
 // Content-Length is a client that hung up midway: its pieces come, then
 // http::CLOSED in place of http::END. A response sent in pieces
-// (rest::begin) is taken to its end, H called with http::MORE as for a
+// (plod::begin) is taken to its end, H called with http::MORE as for a
 // client that keeps up. The bytes after the head of a request that
-// rest::upgrade answered are what its client sends: they come as one
+// plod::upgrade answered are what its client sends: they come as one
 // http::BODY once the route doesn't wait, then http::CLOSED, as the client
 // closing. An HTTP/1.1 request
 // without Host is given "Host: localhost". A request goose-http refuses gets
 // its refusal, and H that doesn't answer 500, as from the server. A route
-// that waits (rest::ask) gets no reply here: see the serve_one below.
+// that waits (plod::ask) gets no reply here: see the serve_one below.
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S,
                       cfg: http::Config = http::Config { .. }) -> u8[>..] {
     return serve_one(text, app, fresh, [], cfg) { cx => H(cx) };
 }
 
 // What serve_one gives a route that waits, in place of the thread it asked:
-// data with tag, a reply as a lane sends it, which rest::play gives (wake),
-// or with timeout, the end of the wait, which rest::ask answers with 504,
-// and rest::pause's route gets as http::TIMEOUT. early makes that timeout
+// data with tag, a reply as a lane sends it, which plod::play gives (wake),
+// or with timeout, the end of the wait, which plod::ask answers with 504,
+// and plod::pause's route gets as http::TIMEOUT. early makes that timeout
 // goose-http's own, given at once with http::NO_ROOM when it has no timer:
-// rest::ask and a pause before a response begins then answer 503, and a
+// plod::ask and a pause before a response begins then answer 503, and a
 // pause after ends its response. sent
 // is what the client of an upgraded connection sends while the route waits,
 // which comes as one http::BODY before the reply or the timeout; on any other
 // connection, goose-http holds it back, and serve_one drops it.
 struct Wake { data: const u8[:] = "", tag: i32 = 0, timeout: bool = false, early: bool = false, sent: const u8[:] = "" }
 
-// What a lane replied to one job under rest::play: data, the reply's bytes,
+// What a lane replied to one job under plod::play: data, the reply's bytes,
 // with tag, REPLY_REFUSED for a refusal and REPLY_VALUE for a
-// rest::reply_value.
+// plod::reply_value.
 struct Played { tag: i32 = 0, data: u8[>..] = [] }
 
-// Runs job, a variant of lane's U as rest::ask takes it, through F(u, a), a
-// lane's block, as rest::lane runs it, with no thread or mail, and returns
-// what it replied: an answer, a refusal for a rest::fail, or 500 no_reply
-// for neither. rest::still_wanted is true.
+// Runs job, a variant of lane's U as plod::ask takes it, through F(u, a), a
+// lane's block, as plod::lane runs it, with no thread or mail, and returns
+// what it replied: an answer, a refusal for a plod::fail, or 500 no_reply
+// for neither. plod::still_wanted is true.
 //
-//   let p = rest::play(app.writer, Writes.EntryCreate { .. }) { u, a => run(u, w, a); };
-//   rest::serve_one(text, app, St { .. }, [rest::wake(p)]) { cx => ... };
+//   let p = plod::play(app.writer, Writes.EntryCreate { .. }) { u, a => run(u, w, a); };
+//   plod::serve_one(text, app, St { .. }, [plod::wake(p)]) { cx => ... };
 fn play<U, M, F>(lane: const Lane<U, M>&, job: U) -> Played {
     var p = Played { .. };
     var a = Asked<U> { job: job, played: p };
@@ -73,16 +73,16 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 // serve_one, with wakes for the waits of the route, one each, in order: H is
 // called again with each, as serve calls it with a reply that comes, in
 // pieces of cfg.mail_size bytes, a reply_value's collected whole within the
-// most its rest::ask promised from the gather budget, a refusal in one,
-// its code cut to fit as a lane cuts it, or with the timeout. rest::ask
+// most its plod::ask promised from the gather budget, a refusal in one,
+// its code cut to fit as a lane cuts it, or with the timeout. plod::ask
 // checks its job against cfg.mail_size. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
 // no wake left ends the exchange with what the route wrote so far, or 500
 // if nothing; one with a response open is a client that goes, and H gets
 // http::CLOSED.
 //
-//   let reply = rest::value_bytes(database::AssignReply { .. });
-//   let out = rest::serve_one(text, app, St { .. }, [rest::Wake { data: reply }]) { cx => handle(cx) };
+//   let reply = plod::value_bytes(database::AssignReply { .. });
+//   let out = plod::serve_one(text, app, St { .. }, [plod::Wake { data: reply }]) { cx => handle(cx) };
 fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:],
                       cfg: http::Config = http::Config { .. }) -> u8[>..] {
     var out: u8[>..] = [];
@@ -93,7 +93,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         return out;
     }
     if req.chunked {
-        print("rest::serve_one: a chunked body isn't decoded; give the request a Content-Length");
+        print("plod::serve_one: a chunked body isn't decoded; give the request a Content-Length");
         assert(false);
     }
     let body = full[req.len..min(full.len, req.len + req.body)];
@@ -101,7 +101,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
     let whole = !short && body.len <= cfg.max_head - req.len;
     var keep = req.keep_alive;
     // A box of cfg.mail_size bytes a message gives the exchange an address,
-    // as the loop's box does, so that rest::ask reads the size of a reply's
+    // as the loop's box does, so that plod::ask reads the size of a reply's
     // message from it. Nothing is sent to it.
     let box, err = http::mail_open(2, cfg.mail_size);
     var stream = http::Stream { later: if err.code == 0 { http::address(box, 1) } else { http::MailAddress { .. } } };
@@ -203,7 +203,7 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
     return out;
 }
 
-// ev handled as serve handles it, with H inside rest::route.
+// ev handled as serve handles it, with H inside plod::route.
 fn deliver<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply) {
     let mark = on_event(ev, st, app, out) { cx => route(cx) { H(cx); }; };
     if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, mark) { cx => route(cx) { H(cx); }; }; }

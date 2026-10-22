@@ -3,42 +3,42 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 // Runs F with the request's X-Tenant, or fails with 400 tenant_required.
 inline fn resolve_tenant<F>(cx) {
-    let id, has = rest::header(cx, "X-Tenant");
-    guard has else { rest::fail(cx, 400, "tenant_required"); }
+    let id, has = plod::header(cx, "X-Tenant");
+    guard has else { plod::fail(cx, 400, "tenant_required"); }
     F(id);
 }
 
 // The routes that need the token and a tenant: one level for a scope.
 inline fn member_routes<F>(cx) {
-    rest::bearer(cx) { token =>
-        guard token == "secret" else { rest::invalid_token(cx); }
+    plod::bearer(cx) { token =>
+        guard token == "secret" else { plod::invalid_token(cx); }
         resolve_tenant(cx) { tenant => F(tenant); };
     };
 }
 
 fn handle(cx) {
     // Around every route, so that every answer gets the timing and CORS fields.
-    rest::timed(cx) {
-        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
+    plod::timed(cx) {
+        plod::cors(cx, plod::Cors { origins: "https://app.example", .. }) {
             // The routes, with the middleware that can fail inside each scope.
-            rest::routes(cx) { cx =>
-                rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-                rest::scope(cx, "/v1") {
+            plod::routes(cx) { cx =>
+                plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+                plod::scope(cx, "/v1") {
                     // Every route under /v1 needs a tenant.
                     resolve_tenant(cx) { tenant => v1(cx, tenant); };
                 };
-                rest::scope(cx, "/admin") {
+                plod::scope(cx, "/admin") {
                     // Every route under /admin needs the token.
-                    rest::bearer(cx) { token =>
-                        guard token == "secret" else { rest::invalid_token(cx); }
+                    plod::bearer(cx) { token =>
+                        guard token == "secret" else { plod::invalid_token(cx); }
                         admin(cx);
                     };
                 };
-                rest::scope(cx, "/v2") {
+                plod::scope(cx, "/v2") {
                     // The token and a tenant, as the member_routes stack.
                     member_routes(cx) { tenant => v1(cx, tenant); };
                 };
@@ -48,15 +48,15 @@ fn handle(cx) {
 }
 
 fn v1(cx, tenant: const u8[:]) {
-    rest::get(cx, "/projects") { rest::text(cx, 200, str("the projects of ", tenant)); };
+    plod::get(cx, "/projects") { plod::text(cx, 200, str("the projects of ", tenant)); };
 }
 
 fn admin(cx) {
-    rest::post(cx, "/reindex") { rest::text(cx, 202, "reindexing"); };
+    plod::post(cx, "/reindex") { plod::text(cx, 202, "reindexing"); };
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx => handle(cx) };
+    let e = plod::serve(cfg) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

@@ -1,5 +1,5 @@
 // Waiting on another thread: a route asks a lane, such as a database's, with
-// rest::ask, and resumes when its reply comes. Each lane takes its own
+// plod::ask, and resumes when its reply comes. Each lane takes its own
 // fixed-mode enum of jobs, one variant per use case, and its threads run
 // them through the program's run case functions. Goose can't keep a
 // function to call later, so the request state keeps the lane's mark, a
@@ -10,25 +10,25 @@
 //   enum Use { None, Write }
 //   struct St { use: Use = Use.None }
 //
-//   rest::ask(cx, cx.app.writer, Writes.EntryCreate { .. });          // the route
-//   fn run(u: Writes.EntryCreate, w: Writer&, a) { rest::reply_value(a, e); }   // on the lane
-//   fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }
-//   fn resume(u: Writes.EntryCreate, cx) { rest::json(cx, 201, rest::answer<Entry>(cx)); }
+//   plod::ask(cx, cx.app.writer, Writes.EntryCreate { .. });          // the route
+//   fn run(u: Writes.EntryCreate, w: Writer&, a) { plod::reply_value(a, e); }   // on the lane
+//   fn resume(u: Use.Write, cx) { resume(plod::job<Writes>(cx), cx); }
+//   fn resume(u: Writes.EntryCreate, cx) { plod::json(cx, 201, plod::answer<Entry>(cx)); }
 //
-//   rest::serve(cfg, app, St { .. }) { cx =>
-//       if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
+//   plod::serve(cfg, app, St { .. }) { cx =>
+//       if plod::resumed(cx) { plod::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 //   };
 //
-// The job crosses in a rest::Ask, with the address the reply goes to and
+// The job crosses in a plod::Ask, with the address the reply goes to and
 // the size of a reply message, read with http::mail_slot_size. The lane's
-// thread replies with rest::reply_value, whose pieces the worker collects
-// whole before the resume runs, or rest::reply, in pieces of at most that
-// size, which rest::relay sends on as they come; before work worth
-// skipping, rest::still_wanted says whether the route still waits. A
-// rest::fail on the lane refuses the job, which fails the route with its
+// thread replies with plod::reply_value, whose pieces the worker collects
+// whole before the resume runs, or plod::reply, in pieces of at most that
+// size, which plod::relay sends on as they come; before work worth
+// skipping, plod::still_wanted says whether the route still waits. A
+// plod::fail on the lane refuses the job, which fails the route with its
 // status and code. A route that never asks keeps nothing on the connection
 // beyond its state.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -47,17 +47,17 @@ let REPLY_MORE: i32 = 0x40000000;
 // field: it types the jobs ask takes.
 struct Lane<U, M> { lane: http::Lane, mark: M }
 
-// What a lane's thread takes its jobs of U with: rest::lane_open passes it
-// to each thread, and rest::lane reads U from it. U is in no field: the
+// What a lane's thread takes its jobs of U with: plod::lane_open passes it
+// to each thread, and plod::lane reads U from it. U is in no field: the
 // thread's parameter names it, and thread_spawn checks it against the lane's,
 // so a thread that runs another lane's jobs doesn't compile.
 struct Jobs<U> { unused: bool = false }
 
 // Opens a lane of jobs of U, as http::lane_open opens one, of the thread_fn
 // W, given a where a is passed:
-// thread_fn W(box: http::Box, jobs: rest::Jobs<U>[, a: A]).
+// thread_fn W(box: http::Box, jobs: plod::Jobs<U>[, a: A]).
 //
-//   writer: rest::lane_open<Writes>(http::LaneConfig { slots: 64, .. }, Use.Write, writer),
+//   writer: plod::lane_open<Writes>(http::LaneConfig { slots: 64, .. }, Use.Write, writer),
 fn lane_open<U, M, W>(cfg: http::LaneConfig, mark: M) -> Lane<U, M> {
     return Lane<U, M> { lane: http::lane_open(cfg, Jobs<U> { .. }, W), mark: mark };
 }
@@ -78,7 +78,7 @@ fn lane_stop<U, M>(lane: const Lane<U, M>&) { http::lane_stop(lane.lane); }
 // A job as it crosses to the thread that runs it.
 struct Ask<U> { reply: http::MailAddress = http::MailAddress { .. }, piece: i64 = 0, job: U }
 
-// Whether the route waits on rest::ask now, as an upgraded connection's
+// Whether the route waits on plod::ask now, as an upgraded connection's
 // route can at a BODY, where a second ask would fail.
 fn is_waiting(cx) -> bool { cx.out.stream.waiting }
 
@@ -131,7 +131,7 @@ fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000, most: i64 = RE
 fn resumed(cx) -> bool { cx.kind != http::REQUEST }
 
 // What a lane's run gets as a: the job, where its reply goes, and whether
-// run replied. played, under rest::play, takes the reply in place of the
+// run replied. played, under plod::play, takes the reply in place of the
 // mail.
 struct Asked<U> {
     reply: http::MailAddress = http::MailAddress { .. },
@@ -143,14 +143,14 @@ struct Asked<U> {
 
 // A lane thread's loop over jobs of U, as http::lane's: F(u, a) for each,
 // with u the job, which run's case functions dispatch on, and a what
-// reply_value answers. A rest::fail in F refuses the job, which fails the
+// reply_value answers. A plod::fail in F refuses the job, which fails the
 // route with the same status and code, and an F that returns without either
 // refuses it with 500 no_reply, so that the route doesn't wait until its
 // time runs out.
 //
-//   thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
+//   thread_fn writer(box: http::Box, jobs: plod::Jobs<Writes>) {
 //       var w = Writer { .. };
-//       rest::lane(box, jobs) { u, a => run(u, w, a); };
+//       plod::lane(box, jobs) { u, a => run(u, w, a); };
 //   }
 inline fn lane<U, F>(box: http::Box, jobs: Jobs<U>) {
     http::lane(box) { tag, bytes => lane_job(jobs, bytes) { u, a => F(u, a); }; };
@@ -158,7 +158,7 @@ inline fn lane<U, F>(box: http::Box, jobs: Jobs<U>) {
 
 // One job of a lane's loop, from the bytes of its message: for a thread that
 // writes its own loop, as one doing timed work between jobs does, and for a
-// test that reads the job a route sent, with a rest::Jobs<U> of its own. A
+// test that reads the job a route sent, with a plod::Jobs<U> of its own. A
 // message that isn't an Ask<U> is dropped.
 inline fn lane_job<U, F>(jobs: Jobs<U>, bytes: const u8[:]) {
     var asked = default<Ask<U>>();
@@ -185,14 +185,14 @@ fn still_wanted<U>(a: const Asked<U>&) -> bool {
 }
 
 // Replies v, a flat value, to the route that asked a, after the job: what
-// rest::answer reads. Returns false when the route has gone, as reply does.
+// plod::answer reads. Returns false when the route has gone, as reply does.
 // Its pieces are marked REPLY_VALUE, and the worker collects them whole in
-// its gather pool, within the most rest::ask promised, before the resume
+// its gather pool, within the most plod::ask promised, before the resume
 // runs.
 fn reply_value<U>(a: Asked<U>&, v) -> bool { reply_tagged(a, value_bytes(v), REPLY_VALUE) }
 
 // Replies data to the route that asked a, after the job, in pieces of at
-// most the size a carries, which rest::relay sends on as they come. A piece
+// most the size a carries, which plod::relay sends on as they come. A piece
 // that finds the box full is sent again after a millisecond: the worker's
 // box is shared by all its waiting routes. Returns false when the worker's
 // box has closed, as when it stopped, when a piece is longer than its slots,
@@ -297,12 +297,12 @@ fn value_bytes(v) -> u8[>..] {
     return image;
 }
 
-// rest::route for a route's later calls: a reply that says its job was
+// plod::route for a route's later calls: a reply that says its job was
 // refused fails the route with the refusal's status and code before F, the
 // resume, runs. cx.state.use stays as the route left it, so a CLOSED after
 // an early answer reaches the variant that holds what to release.
 //
-//   rest::on_reply(cx) { resume(cx.state.use, cx); };
+//   plod::on_reply(cx) { resume(cx.state.use, cx); };
 inline fn on_reply<F>(cx) {
     route(cx) {
         if cx.refused {
@@ -319,7 +319,7 @@ inline fn on_reply<F>(cx) {
 // an upgraded connection's BODY during the wait, and with 502 bad_reply for
 // a reply that doesn't start with a job of U.
 //
-//   fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }
+//   fn resume(u: Use.Write, cx) { resume(plod::job<Writes>(cx), cx); }
 fn job<U>(cx) -> U {
     guard cx.kind == http::WAKE else { fail(cx, 500, "not_a_reply"); }
     let u, ok = echoed<U>(cx.reply);
@@ -336,7 +336,7 @@ fn echoed<U>(bytes: const u8[:]) -> U, bool {
 }
 
 // The flat value reply_value replied after the job, or 502 bad_reply for a
-// reply that isn't one, as one that rest::reply sent in pieces.
+// reply that isn't one, as one that plod::reply sent in pieces.
 fn answer<T>(cx) -> T {
     var v = default<T>();
     let n = echo_len(cx.reply);
@@ -354,7 +354,7 @@ fn echo_len(bytes: const u8[:]) -> i64 {
 
 // Answers status with the reply's bytes after the job as the body, of
 // content_type: whole when the reply came in one message, or else as a
-// chunked response, a chunk per piece, which rest::serve sends on as the
+// chunked response, a chunk per piece, which plod::serve sends on as the
 // pieces come. 502 bad_reply for a first piece that doesn't hold the job.
 fn relay(cx, status: i32, content_type: const u8[:]) {
     let n = echo_len(cx.reply);

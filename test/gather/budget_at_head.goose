@@ -1,8 +1,8 @@
-// The worker's gather budget, through rest::serve_one: a body with a length
+// The worker's gather budget, through plod::serve_one: a body with a length
 // past it refused at its head, in the route's first run, and one it holds.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -11,8 +11,8 @@ fn main() {
     let text = str(head(100000), letters(100000));
     var runs = 0;
     http::gather_budget(100000);
-    var app = rest::NoState { .. };
-    let out = rest::serve_one(text, app, St { .. }) { cx =>
+    var app = plod::NoState { .. };
+    let out = plod::serve_one(text, app, St { .. }) { cx =>
         runs++;
         route(cx, 1 << 20);
     };
@@ -20,7 +20,7 @@ fn main() {
     assert(runs == 1);
     // The run is the head and the body: a budget of both takes it.
     http::gather_budget(head(100000).len + 100000);
-    expect::same(expect::body_of(rest::serve_one(text, app, St { .. }) { cx =>
+    expect::same(expect::body_of(plod::serve_one(text, app, St { .. }) { cx =>
         route(cx, 1 << 20);
     }), "100000 d", "a length within the budget");
     http::gather_budget(http::GATHER_BUDGET);

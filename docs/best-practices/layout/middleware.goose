@@ -1,7 +1,7 @@
 // The program's middleware, each named for what it does.
 import std;
 import http;
-import rest;
+import plod;
 import common.errors;
 import common.users.structs;
 import common.members.structs;
@@ -17,12 +17,12 @@ let SESSIONS = [
 
 // Runs F with the user the bearer token names, or fails with 401.
 inline fn authenticate<F>(cx) {
-    rest::bearer(cx) { token =>
+    plod::bearer(cx) { token =>
         var user: i64 = 0;
         for s in SESSIONS {
             if s.token == token { user = s.user; }
         }
-        guard user != 0 else { rest::invalid_token(cx); }
+        guard user != 0 else { plod::invalid_token(cx); }
         F(users::User { id: user });
     };
 }
@@ -31,9 +31,9 @@ inline fn authenticate<F>(cx) {
 // header names, or fails with 403 not_a_member. A scope's prefix can't hold
 // a parameter yet, so the organization's id comes from a header.
 inline fn resolve_organization<F>(cx, user: users::User) {
-    let value, has = rest::header(cx, "X-Organization");
-    rest::require(cx, "X-Organization", has);
-    let organization = rest::int_of(cx, value, "X-Organization");
+    let value, has = plod::header(cx, "X-Organization");
+    plod::require(cx, "X-Organization", has);
+    let organization = plod::int_of(cx, value, "X-Organization");
     var member = false;
     for s in SESSIONS {
         if s.user == user.id && s.organization == organization { member = true; }

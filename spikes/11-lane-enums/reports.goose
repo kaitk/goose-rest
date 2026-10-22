@@ -2,7 +2,7 @@
 namespace reports;
 
 import std;
-import rest;
+import plod;
 import .entries;
 
 struct Totals { project: i64 = 0, entries: i64 = 0, seconds: i64 = 0 }
@@ -18,26 +18,26 @@ let ENTRIES = [
 ];
 
 fn routes(cx) {
-    if rest::on(cx, "GET", "/projects/:id") { project(cx); } else { rest::otherwise(cx); }
+    if plod::on(cx, "GET", "/projects/:id") { project(cx); } else { plod::otherwise(cx); }
 }
 
 fn project(cx) {
-    rest::ask(cx, cx.app.reports, Reports.ReportTotals { project: rest::param_int(cx, "id") });
+    plod::ask(cx, cx.app.reports, Reports.ReportTotals { project: plod::param_int(cx, "id") });
 }
 
 // On the reports lane: a project without entries is a 404 from here.
 fn ::run(u: Reports.ReportTotals, r: Reader&, a) {
     let t = reports::totals(r.entries, u.project);
-    if t.entries == 0 { rest::fail(a, 404, "no_such_project"); }
-    rest::reply_value(a, t);
+    if t.entries == 0 { plod::fail(a, 404, "no_such_project"); }
+    plod::reply_value(a, t);
 }
 
 // On the worker: the job came back with the reply, so its project is at
 // hand without the request state holding it.
 fn ::resume(u: Reports.ReportTotals, cx) {
-    let t = rest::answer<reports::Totals>(cx);
-    if t.project != u.project { rest::fail(cx, 502, "bad_reply"); }
-    rest::json(cx, 200, t);
+    let t = plod::answer<reports::Totals>(cx);
+    if t.project != u.project { plod::fail(cx, 502, "bad_reply"); }
+    plod::json(cx, 200, t);
 }
 
 fn totals(all: const entries::Entry[:], project: i64) -> Totals {

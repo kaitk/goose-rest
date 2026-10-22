@@ -2,7 +2,7 @@
 // database.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../../../";
+import plod from "../../../../../";
 import app from "../../";
 
 fn main() {

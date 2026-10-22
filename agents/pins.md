@@ -30,13 +30,13 @@ pinned commit rather than wait for the release (2026-10-19).
 
 ## The goose-http pin
 
-The import in `rest.goose` is the pin: a release tag, or a full commit hash for a fix
+The import in `plod.goose` is the pin: a release tag, or a full commit hash for a fix
 not yet released, since git can't fetch an abbreviated one. The same reference is in
 each of the package's files, in each root file under `test/`, `examples/`,
 `docs/tutorial/`, `docs/best-practices/`, `spikes/`, and `bench/`.
 `scripts/move-http-pin.sh` changes every one. `README.md`'s quick start and
 `docs/tutorial/01-running.md` name the latest release pair instead, goose-http at the
-tag that goose-rest's release imports, and move with a release (2026-10-19):
+tag that Plod's release imports, and move with a release (2026-10-19):
 
 ```sh
 scripts/move-http-pin.sh v0.3.1
@@ -44,7 +44,7 @@ scripts/move-http-pin.sh v0.3.1
 
 Move it in its own commit once `scripts/test.sh` passes, and update the goose-http
 reference each spike's README names. A root that declares goose-http at another commit
-than `rest.goose` gets a warning, and from another source an error, so a test can't
+than `plod.goose` gets a warning, and from another source an error, so a test can't
 point at a local goose-http checkout instead.
 
 ## The goose-compress pin

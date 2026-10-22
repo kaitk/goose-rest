@@ -1,7 +1,7 @@
 # rest-aegon
 
-Aegon serving goose-http's REST tiers A to D and goose-rest's tiers F, R, and M
-(`bench/rest/tiers`), for goose-rest's REST benchmark
+Aegon serving goose-http's REST tiers A to D and Plod's tiers F, R, and M
+(`bench/rest/tiers`), for Plod's REST benchmark
 ([docs/benchmarks.md](../../../docs/benchmarks.md), [bench/README.md](../../README.md)).
 Each route is registered on Aegon's `Router` or a route group, reads its input through
 Aegon's `Request`, and answers through its `Response`; the checks that the Rust servers
@@ -119,7 +119,7 @@ chunked import took 2.57 s, against 0.04 s with `Content-Length`.
 
 ## Differences from what the checkers and the other servers expect
 
-goose-http's `check.py` passes on tiers A to C, and goose-rest's
+goose-http's `check.py` passes on tiers A to C, and Plod's
 `bench/rest/tiers/check.py` on F, R, and M. None of their requests reaches the
 differences below.
 

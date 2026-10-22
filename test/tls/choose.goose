@@ -1,4 +1,4 @@
-// rest::serve and rest::serve_epoll with a chooser, each on a Unix socket in
+// plod::serve and plod::serve_epoll with a chooser, each on a Unix socket in
 // TMPDIR: a client sending acme.test in SNI and offering acme-tls/1 gets a
 // second context, with a certificate of its own, as ACME's TLS-ALPN-01 needs;
 // every other client keeps the server's context and its routes. The clients
@@ -7,8 +7,8 @@ import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
-import rest from "../../";
-import rest.tls;
+import plod from "../../";
+import plod.tls;
 
 struct Chooser { challenge: tls::Context }
 
@@ -19,23 +19,23 @@ fn http::tls_hello(c: Chooser&, conn: tls::Conn) {
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/") { rest::text(cx, 200, "served"); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/") { plod::text(cx, 200, "served"); };
     };
 }
 
 thread_fn ring_worker(cfg: http::Config, ctx: tls::Context, c: Chooser) {
     var server = http::tls_server(ctx, c);
-    var app = rest::NoState { .. };
-    let e = rest::serve(cfg, app, false, server) { cx => handle(cx); };
+    var app = plod::NoState { .. };
+    let e = plod::serve(cfg, app, false, server) { cx => handle(cx); };
     http::release(server);
     if e.code != 0 { http::report(e); }
 }
 
 thread_fn epoll_worker(cfg: http::Config, ctx: tls::Context, c: Chooser) {
     var server = http::tls_server(ctx, c);
-    var app = rest::NoState { .. };
-    let e = rest::serve_epoll(cfg, app, false, server) { cx => handle(cx); };
+    var app = plod::NoState { .. };
+    let e = plod::serve_epoll(cfg, app, false, server) { cx => handle(cx); };
     http::release(server);
     if e.code != 0 { http::report(e); }
 }

@@ -1,9 +1,9 @@
-// error: rest needs the package hash
-// A program that imports rest.websocket must declare goose-hash, for the
+// error: plod needs the package hash
+// A program that imports plod.websocket must declare goose-hash, for the
 // handshake's SHA-1, in its root file.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
-import rest.websocket;
+import plod from "../../";
+import plod.websocket;
 
 fn main() {}

@@ -1,8 +1,8 @@
 # Known issues
 
 Environment traps and incidents met while building, testing, and benchmarking
-goose-rest, grouped by platform. A date records when an incident happened. Setup steps
-are in [development](development.md). goose-rest runs goose-http's loops and many of
+Plod, grouped by platform. A date records when an incident happened. Setup steps
+are in [development](development.md). Plod runs goose-http's loops and many of
 its scripts, so
 [goose-http's known issues](https://github.com/kaitk/goose-http/blob/main/docs/known-issues.md)
 apply here too.
@@ -63,7 +63,7 @@ traps apply too.
   before committing from it (2026-10-14).
 - WSL's Git can't read a worktree that Windows Git created. The worktree's `.git` file
   holds a Windows path, so `git` in WSL answers "not a git repository", and
-  `bench/rest.sh run` records goose-rest in `env.txt` as blank and "(modified)". Create
+  `bench/rest.sh run` records Plod in `env.txt` as blank and "(modified)". Create
   a worktree that WSL benchmarks with from WSL's Git (2026-10-20).
 - Windows Git's installer sets `core.autocrlf=true`, so a checkout made on Windows has
   CRLF files. The generator writes LF, and `bench/rest.sh build` stops with
@@ -138,5 +138,5 @@ Pro):
   refuses the mounted directory ("detected dubious ownership"), as it refuses the clone
   of a `GOOSE_COMMIT` build there (2026-10-15). The script sets `safe.directory` through
   `GIT_CONFIG_*` variables for both.
-- Docker's seccomp profile blocks `io_uring_setup`, so `rest::serve` runs on goose-http's
+- Docker's seccomp profile blocks `io_uring_setup`, so `plod::serve` runs on goose-http's
   emulated ring over epoll there.

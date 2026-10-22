@@ -1,9 +1,9 @@
-// docs/tutorial/02-routes.md and 03-errors.md: routes in a rest::routes chain, a
+// docs/tutorial/02-routes.md and 03-errors.md: routes in a plod::routes chain, a
 // scope, the extractors, and answers in JSON.
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 
 struct Project { id: i64, name: u8[..64], archived: bool }
 
@@ -13,7 +13,7 @@ let PROJECTS = [
     Project { id: 3, name: "gosling", archived: true },
 ];
 
-// How rest::json writes a Project.
+// How plod::json writes a Project.
 fn format(out: u8[>..]&, p: const Project&) {
     out.append("{\"id\":");
     format(out, p.id);
@@ -38,26 +38,26 @@ fn format(out: u8[>..]&, l: const Listing&) {
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::scope(cx, "/v1") { v1(cx); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::scope(cx, "/v1") { v1(cx); };
     };
 }
 
 // The routes under /v1, matched without the prefix.
 fn v1(cx) {
-    rest::get(cx, "/projects") {
-        let q, has_q = rest::query(cx, "q");
-        let archived, has_archived = rest::query_bool(cx, "archived");
-        let limit, has_limit = rest::query_int(cx, "limit");
-        rest::json(cx, 200, Listing { q: q, archived: archived, limit: if has_limit { limit } else { 10 } });
+    plod::get(cx, "/projects") {
+        let q, has_q = plod::query(cx, "q");
+        let archived, has_archived = plod::query_bool(cx, "archived");
+        let limit, has_limit = plod::query_int(cx, "limit");
+        plod::json(cx, 200, Listing { q: q, archived: archived, limit: if has_limit { limit } else { 10 } });
     };
-    rest::get(cx, "/projects/:id") { rest::json(cx, 200, find_project(cx, rest::param_int(cx, "id"))); };
-    rest::get(cx, "/me") {
-        let user, has_user = rest::header(cx, "X-User");
-        rest::require(cx, "X-User", has_user);
-        let theme, has_theme = rest::cookie(cx, "theme");
-        rest::text(cx, 200, str(user, " likes ", if has_theme { theme } else { "light" }));
+    plod::get(cx, "/projects/:id") { plod::json(cx, 200, find_project(cx, plod::param_int(cx, "id"))); };
+    plod::get(cx, "/me") {
+        let user, has_user = plod::header(cx, "X-User");
+        plod::require(cx, "X-User", has_user);
+        let theme, has_theme = plod::cookie(cx, "theme");
+        plod::text(cx, 200, str(user, " likes ", if has_theme { theme } else { "light" }));
     };
 }
 
@@ -65,11 +65,11 @@ fn find_project(cx, id: i64) -> const Project& {
     for &p in PROJECTS {
         if p.id == id { return p; }
     }
-    rest::fail(cx, 404, "project_not_found");
+    plod::fail(cx, 404, "project_not_found");
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx => handle(cx) };
+    let e = plod::serve(cfg) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

@@ -1,6 +1,6 @@
 # The generator
 
-`goose-rest gen` reads an OpenAPI 3.1 document and writes a Goose file with a struct, a
+`plod gen` reads an OpenAPI 3.1 document and writes a Goose file with a struct, a
 JSON reader, and a JSON writer for each schema under `components.schemas`, and a router,
 `dispatch`, from its `paths` ([Paths](#7-paths)). The design is in
 [Architecture](architecture.md#the-generator), and its reasons in
@@ -14,8 +14,8 @@ once:
 
 ```sh
 $GOOSE gen/main.goose -- gen api.json -o api_gen.goose
-$GOOSE build -o build/goose-rest gen/main.goose
-build/goose-rest gen api.json -o api_gen.goose --namespace api
+$GOOSE build -o build/plod gen/main.goose
+build/plod gen api.json -o api_gen.goose --namespace api
 ```
 
 `--namespace` names the generated file's namespace (default `api`), and `--handlers` the
@@ -24,14 +24,14 @@ writes nothing and exits with status 1, printing the construct's JSON pointer an
 section of this page that covers what it refuses:
 
 ```text
-goose-rest: api.json: #/components/schemas/A/properties/c/pattern: not supported on a string (generator.md §4)
+plod: api.json: #/components/schemas/A/properties/c/pattern: not supported on a string (generator.md §4)
 ```
 
 A program imports the file by its module name, so name it `<name>_gen.goose`, not
 `<name>.gen.goose`: an import is identifiers separated by dots, and a dot in a file
-name reads as a directory (spec §11.1). The file imports `json`, and `rest` when a
+name reads as a directory (spec §11.1). The file imports `json`, and `plod` when a
 check or the router needs it, and `http` with a router or a string field to write, so the
-program's root declares goose-rest and goose-http ([README](../README.md#quick-start)). It doesn't import the
+program's root declares Plod and goose-http ([README](../README.md#quick-start)). It doesn't import the
 handlers' module: the root does, wherever the module lives, and the router's qualified
 calls find it.
 
@@ -155,7 +155,7 @@ whose domain has two or more labels, without quoted local parts or address liter
 `ascii` as bytes below 0x80, so a name with an accent or an emoji fails with
 `<field>: format`, as a malformed `uuid` does. `ascii` isn't a format JSON Schema
 defines. A validator that doesn't know a format ignores it, so a client's validator
-accepts a value that isn't ASCII, and only goose-rest refuses it.
+accepts a value that isn't ASCII, and only Plod refuses it.
 
 ## 5. Names
 
@@ -176,10 +176,10 @@ For a schema `Project`, the file has:
 - `struct Project`.
 - `fn read_project(r: json::Reader&, scratch: u8[>..]&) -> Project`, the reader.
 - `fn read_project_<field>(r, scratch) -> T[>..]` for each array field.
-- `fn format(out: u8[>..]&, v: const Project&)`, the writer, which `rest::json` finds by
+- `fn format(out: u8[>..]&, v: const Project&)`, the writer, which `plod::json` finds by
   its namespace (spike 07).
-- `fn rest::from_request(cx, v: const api::Project?) -> api::Project`, the extractor
-  `rest::take<api::Project>(cx)` calls: it reads the JSON body with the reader, and
+- `fn plod::from_request(cx, v: const api::Project?) -> api::Project`, the extractor
+  `plod::take<api::Project>(cx)` calls: it reads the JSON body with the reader, and
   fails with 415 for another media type and 400 `invalid_body` for a body the reader
   refuses ([reference](reference.md#3-extractors)).
 
@@ -215,10 +215,10 @@ to know whether a comma is due.
 
 A document with `paths` also gets `fn dispatch(cx)`, which answers a
 request through the handler named by its path and method. A program calls it from
-`rest::serve`:
+`plod::serve`:
 
 ```rust
-let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
+let e = plod::serve(cfg, app) { cx => api::dispatch(cx) };
 ```
 
 ### 7.1 What it reads
@@ -226,12 +226,12 @@ let e = rest::serve(cfg, app) { cx => api::dispatch(cx) };
 | OpenAPI | Goose |
 |---|---|
 | A path, `/projects/{id}` | matched segment by segment; a parameter takes a whole, non-empty segment |
-| An operation, `get`, `post`, ... | a function, `route_<operationId in snake_case>`, that calls `<handlers>::<operationId in snake_case>` inside `rest::route`, which inside `rest::routes` joins its route; `dispatch` calls it |
-| A path parameter, `"type": "integer"` | an `i64` from `rest::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
-| A path parameter, `"type": "string"`, with `format: ascii` or none | the segment, decoded, from `rest::path_str`, checked as ASCII for `format: ascii` |
-| Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `rest::take` (below) |
-| `requestBody` with `application/json` and a `$ref` to an object | the object, from `rest::take`; 415 for another media type |
-| `"x-body-limit": n` on a `requestBody`, a positive byte count | `rest::body(cx, n)` before `rest::take`, so the route takes a body of up to `n` bytes, not 1 MB; 413 past it |
+| An operation, `get`, `post`, ... | a function, `route_<operationId in snake_case>`, that calls `<handlers>::<operationId in snake_case>` inside `plod::route`, which inside `plod::routes` joins its route; `dispatch` calls it |
+| A path parameter, `"type": "integer"` | an `i64` from `plod::path_int`, checked against `minimum`, `maximum`, and `format: int32` |
+| A path parameter, `"type": "string"`, with `format: ascii` or none | the segment, decoded, from `plod::path_str`, checked as ASCII for `format: ascii` |
+| Query, header, and cookie parameters | a struct, `<OperationId>Params`, read by `plod::take` (below) |
+| `requestBody` with `application/json` and a `$ref` to an object | the object, from `plod::take`; 415 for another media type |
+| `"x-body-limit": n` on a `requestBody`, a positive byte count | `plod::body(cx, n)` before `plod::take`, so the route takes a body of up to `n` bytes, not 1 MB; 413 past it |
 | `security: [{"<scheme>": []}]`, on the operation or the document | `<handlers>::security_<scheme>(cx)`, whose result the handler gets |
 
 The router's namespace also gets `MAX_BODY`, the largest `x-body-limit` or 1 MB, for
@@ -253,23 +253,23 @@ fn security_session(cx) -> Session { ... }
 ```
 
 Handlers and security checks reach the worker state through `cx.app` and the request
-state through `cx.state`. `rest::serve(cfg, app, fresh)` supplies both, and
-`rest::serve(cfg, app)` uses `rest::NoState` for the request.
+state through `cx.state`. `plod::serve(cfg, app, fresh)` supplies both, and
+`plod::serve(cfg, app)` uses `plod::NoState` for the request.
 
 An operation's `security: []` overrides the document's. A path item's `parameters`
 apply to each of its operations, and an operation's own replace one of the same name
 and place.
 
 An operation with query, header, or cookie parameters gets a struct of them, named after
-its `operationId` in PascalCase with `Params` after it, and a `fn rest::from_request`
+its `operationId` in PascalCase with `Params` after it, and a `fn plod::from_request`
 that reads and checks each. The struct holds the path item's parameters, then the
 operation's own, each a field in snake_case: `X-Request-Id` becomes `x_request_id`.
 An optional parameter has a `has_<field>: bool` before its field.
 
 | Schema | Field | Read with |
 |---|---|---|
-| `"type": "integer"`, with `minimum`, `maximum`, `format` (`int32`, `int64`) | `i64` | `rest::int_of` |
-| `"type": "boolean"` | `bool`, from `true` or `false` | `rest::bool_of` |
+| `"type": "integer"`, with `minimum`, `maximum`, `format` (`int32`, `int64`) | `i64` | `plod::int_of` |
+| `"type": "boolean"` | `bool`, from `true` or `false` | `plod::bool_of` |
 | `"type": "string"`, with `minLength`, `maxLength`, `format: ascii` | `const u8[:]`, a query parameter decoded with `+` as a space | as it is |
 
 A query parameter's value is decoded; a header's and a cookie's are given as sent. A
@@ -327,7 +327,7 @@ OpenAPI says, where the chain takes whichever comes first. `test/router/` checks
 rest byte for byte against such a chain.
 
 1. An unknown method is 501, and a path with a dot-segment or an escaped control byte
-   400, as `rest::otherwise` answers them.
+   400, as `plod::otherwise` answers them.
 2. A path without `%` is compared with the static paths by `match path.len`, then
    bytes.
 3. Then the path is walked segment by segment. At each segment the literals come first,
@@ -340,28 +340,28 @@ rest byte for byte against such a chain.
 5. A path nothing matched is 404, or 204 for `OPTIONS *`. Where `allow` isn't empty,
    it gets 405, or `OPTIONS` 204, with `allow` alone.
 
-`dispatch` reads `allow` from `rest::allow_before(cx)`: the `Allow` collected by
-hand-written routes in the surrounding `rest::routes` block, or an empty string with
-`rest::NoRouter`. A path matched by a hand-written route, a generated one, or both
+`dispatch` reads `allow` from `plod::allow_before(cx)`: the `Allow` collected by
+hand-written routes in the surrounding `plod::routes` block, or an empty string with
+`plod::NoRouter`. A path matched by a hand-written route, a generated one, or both
 answers another method as one router would, listing the hand-written routes' methods first
 ([tutorial](tutorial/05-schema.md#generated-and-hand-written-routes)):
 
 ```rust
-rest::routes(cx) { cx =>
-    rest::put(cx, "/uploads/:name") { upload(cx, rest::param(cx, "name")); };
+plod::routes(cx) { cx =>
+    plod::put(cx, "/uploads/:name") { upload(cx, plod::param(cx, "name")); };
     api::dispatch(cx);
 };
 ```
 
-`dispatch` begins with `rest::untaken(cx)`: after a hand-written route that took the
+`dispatch` begins with `plod::untaken(cx)`: after a hand-written route that took the
 request, it answers nothing. It answers every other request, so it comes after the
-hand-written routes. `rest::scope(cx, prefix) { ... }` narrows the path for the
+hand-written routes. `plod::scope(cx, prefix) { ... }` narrows the path for the
 hand-written routes in its block. `dispatch` matches the full request path from the
 schema, so it goes outside every scope. A generated handler gets each path
-parameter as an argument; a helper that calls `rest::param` inside a routes block
+parameter as an argument; a helper that calls `plod::param` inside a routes block
 reads the last hand-written match instead.
 
-Each answer is in goose-rest's error shape ([reference](reference.md#5-errors)). A route checks the security scheme first,
+Each answer is in Plod's error shape ([reference](reference.md#5-errors)). A route checks the security scheme first,
 then the path parameters, the other parameters, and the body, and answers the first
 failure: a path parameter that doesn't fit its schema is `400
 {"error":"invalid_parameter","detail":"id: minimum"}`.

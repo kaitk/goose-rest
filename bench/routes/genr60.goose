@@ -1,5 +1,5 @@
 // gen60 behind a hand-written route, as a program serves a route its schema
-// can't describe: rest::routes, PUT /uploads/:name, then the generated
+// can't describe: plod::routes, PUT /uploads/:name, then the generated
 // dispatch, which answers every request these benchmarks send. The difference
 // from gen60 is the cost of a router and one hand-written route before
 // dispatch. bench/routes.sh builds it beside gen60.
@@ -8,7 +8,7 @@
 import std;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import .routes_gen;
 import .app;
 
@@ -17,9 +17,9 @@ struct App { unused: bool = false }
 
 thread_fn worker(cfg: http::Config) {
     var app = App { .. };
-    let e = rest::serve_epoll(cfg, app) { cx =>
-        rest::routes(cx) { cx =>
-            rest::put(cx, "/uploads/:name") { app::ok(cx); };
+    let e = plod::serve_epoll(cfg, app) { cx =>
+        plod::routes(cx) { cx =>
+            plod::put(cx, "/uploads/:name") { app::ok(cx); };
             api::dispatch(cx);
         };
     };

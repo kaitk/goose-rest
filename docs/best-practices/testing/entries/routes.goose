@@ -5,26 +5,26 @@ namespace entries;
 import std;
 import os;
 import http;
-import rest;
+import plod;
 import entries.structs;
 import entries.errors;
 import entries.rules;
 
 fn routes(cx) {
-    rest::post(cx, "") { create(cx); };
+    plod::post(cx, "") { create(cx); };
 }
 
 // Creating an entry. On the worker: read the form, and ask the writer lane.
 fn create(cx) {
-    let project, has_project = rest::form_int(cx, "project");
-    rest::require(cx, "project", has_project);
-    let started, has_started = rest::form_int(cx, "started");
-    rest::require(cx, "started", has_started);
-    let stopped, has_stopped = rest::form_int(cx, "stopped");
-    rest::require(cx, "stopped", has_stopped);
+    let project, has_project = plod::form_int(cx, "project");
+    plod::require(cx, "project", has_project);
+    let started, has_started = plod::form_int(cx, "started");
+    plod::require(cx, "started", has_started);
+    let stopped, has_stopped = plod::form_int(cx, "stopped");
+    plod::require(cx, "stopped", has_stopped);
     let input = CreateInput { project: project, started: started, stopped: stopped };
     // Returns at once; at the reply, the worker calls resume(u: Writes.EntryCreate, cx).
-    rest::ask(cx, cx.app.writer, Writes.EntryCreate { input: input });
+    plod::ask(cx, cx.app.writer, Writes.EntryCreate { input: input });
 }
 
 // On the writer lane: the rule decides, at the time the job runs, and a
@@ -34,8 +34,8 @@ fn ::run(u: Writes.EntryCreate, w: Writer&, a) {
     let e, err = entries::new_entry(u.input, w.entries.len + 1, time() as i64);
     entries::check(err, a);
     w.entries.push(e);
-    rest::reply_value(a, e);
+    plod::reply_value(a, e);
 }
 
 // On the worker: the answer.
-fn ::resume(u: Writes.EntryCreate, cx) { rest::json(cx, 201, rest::answer<entries::Entry>(cx)); }
+fn ::resume(u: Writes.EntryCreate, cx) { plod::json(cx, 201, plod::answer<entries::Entry>(cx)); }

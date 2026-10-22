@@ -22,7 +22,7 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 out=$root/build/aarch64
 mkdir -p "$out/examples" "$out/goose-home"
 
-docker build -q --platform linux/amd64 -t goose-rest-cross-aarch64 - >/dev/null <<'EOF'
+docker build -q --platform linux/amd64 -t plod-cross-aarch64 - >/dev/null <<'EOF'
 FROM ubuntu:26.04
 # arm64 packages come from Ubuntu's ports archive, for liburing-dev:arm64.
 RUN sed -i 's/^Types: deb$/Types: deb\nArchitectures: amd64/' /etc/apt/sources.list.d/ubuntu.sources && \
@@ -33,7 +33,7 @@ RUN sed -i 's/^Types: deb$/Types: deb\nArchitectures: amd64/' /etc/apt/sources.l
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gcc-aarch64-linux-gnu liburing-dev:arm64 \
         git ca-certificates cmake g++ make >/dev/null
 EOF
-docker build -q --platform linux/arm64 -t goose-rest-run-arm64 - >/dev/null <<'EOF'
+docker build -q --platform linux/arm64 -t plod-run-arm64 - >/dev/null <<'EOF'
 FROM ubuntu:26.04
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq liburing2 curl >/dev/null
 EOF
@@ -48,7 +48,7 @@ if [ -z "${GOOSE:-}" ]; then
         mkdir -p "$out/goose"
         GOOSE=$(docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -v "$root:$root" \
             -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
-            -e root="$out/goose" -e GOOSE_COMMIT -e HOME="$out" goose-rest-cross-aarch64 \
+            -e root="$out/goose" -e GOOSE_COMMIT -e HOME="$out" plod-cross-aarch64 \
             sh "$root/scripts/goose.sh")
     else
         GOOSE=$(GOOSE_ASSET=linux-x64 "$root/scripts/goose.sh")
@@ -75,7 +75,7 @@ docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
     -v "$root:$root" -v "$checkout:$checkout" -w "$root" \
     -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
     -e GOOSE="$goose" -e GOOSE_HOME="$out/goose-home" -e HOME="$out" -e BIN="$out/examples" \
-    -e GH="${gh:-}" goose-rest-cross-aarch64 sh -c '
+    -e GH="${gh:-}" plod-cross-aarch64 sh -c '
 set -eu
 aarch64-linux-gnu-gcc --version | head -1
 for dir in examples/*/; do
@@ -91,12 +91,12 @@ fi'
 
 echo "running them on arm64"
 docker run --rm --platform linux/arm64 --user "$(id -u):$(id -g)" -v "$root:$root" -w "$root" \
-    -e PREBUILT=1 -e RSS=1 -e BIN="$out/examples" -e GH="${gh:-}" goose-rest-run-arm64 sh -c '
+    -e PREBUILT=1 -e RSS=1 -e BIN="$out/examples" -e GH="${gh:-}" plod-run-arm64 sh -c '
 set -eu
 uname -srm
 sh scripts/test-examples.sh
 [ -n "$GH" ] || exit 0
-# goose-http'\''s device on one worker, as goose-rest'\''s serves, after the
+# goose-http'\''s device on one worker, as Plod'\''s serves, after the
 # requests goose-http'\''s scripts/test-examples.sh makes of it.
 sys=$BIN/device-sys
 for loop in uring epoll; do

@@ -1,24 +1,24 @@
-// beside_dispatch.goose's routes as rest::put and rest::post before
+// beside_dispatch.goose's routes as plod::put and plod::post before
 // api::dispatch, which answers nothing after one of them took the request.
 import std;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import expect.gen.routes_gen;
 import expect.gen.app;
 import common;
 
 fn beside(cx) {
-    rest::routes(cx) { cx =>
-        rest::put(cx, "/uploads/:name") { t(cx, str("upload ", rest::param(cx, "name"))); };
-        rest::post(cx, "/v1/files/:id/content") { t(cx, "post_file_content"); };
+    plod::routes(cx) { cx =>
+        plod::put(cx, "/uploads/:name") { t(cx, str("upload ", plod::param(cx, "name"))); };
+        plod::post(cx, "/v1/files/:id/content") { t(cx, "post_file_content"); };
         api::dispatch(cx);
     };
 }
 
 fn answer_beside(text: const u8[:]) -> u8[>..] {
-    return rest::serve_one(text) { cx => beside(cx) };
+    return plod::serve_one(text) { cx => beside(cx) };
 }
 
 fn main() {

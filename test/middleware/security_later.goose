@@ -1,6 +1,6 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import security_common;
 
@@ -9,30 +9,30 @@ struct SecurityApp { lane: Lane }
 fn main() {
     let box, e = http::mail_open(2, 256);
     http::exit_on_error(e);
-    let lane = rest::lane_of<Reports>(box, Use.Report);
+    let lane = plod::lane_of<Reports>(box, Use.Report);
     var app = SecurityApp { lane: lane };
     let reply = reported(lane);
-    var options = rest::security_api();
+    var options = plod::security_api();
     options.frame_options = "";
-    let cfg = rest::prepare_security_headers(options);
+    let cfg = plod::prepare_security_headers(options);
     for timing in [0, 1, 2] {
         for timeout in [false, true] {
-            let wakes = [if timeout { rest::Wake { timeout: true, .. } } else { rest::wake(reply) }];
-            let out = rest::serve_one(expect::request("GET", "/report"), app, St { .. }, wakes) { cx =>
-                if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; }
+            let wakes = [if timeout { plod::Wake { timeout: true, .. } } else { plod::wake(reply) }];
+            let out = plod::serve_one(expect::request("GET", "/report"), app, St { .. }, wakes) { cx =>
+                if plod::resumed(cx) { plod::on_reply(cx) { resume(cx.state.use, cx); }; }
                 else {
                     if timing == 0 {
-                        rest::security_headers(cx, cfg) {
-                            rest::ask(cx, cx.app.lane, Reports.Report);
+                        plod::security_headers(cx, cfg) {
+                            plod::ask(cx, cx.app.lane, Reports.Report);
                             cx.scratch.append("unrelated scratch bytes");
                         };
                     } else if timing == 1 {
-                        rest::timed(cx, false) {
-                            rest::security_headers(cx, cfg) { rest::ask(cx, cx.app.lane, Reports.Report); };
+                        plod::timed(cx, false) {
+                            plod::security_headers(cx, cfg) { plod::ask(cx, cx.app.lane, Reports.Report); };
                         };
                     } else {
-                        rest::security_headers(cx, cfg) {
-                            rest::timed(cx, false) { rest::ask(cx, cx.app.lane, Reports.Report); };
+                        plod::security_headers(cx, cfg) {
+                            plod::timed(cx, false) { plod::ask(cx, cx.app.lane, Reports.Report); };
                         };
                     }
                 }
@@ -47,9 +47,9 @@ fn main() {
             http::mail_take(box) { key, tag, bytes => };
         }
     }
-    let upload = rest::serve_one("POST /upload HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello", app, St { .. }) { cx =>
-        if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; }
-        else { rest::security_headers(cx, cfg) { rest::body_in_pieces(cx, 100, Use.Upload); }; }
+    let upload = plod::serve_one("POST /upload HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello", app, St { .. }) { cx =>
+        if plod::resumed(cx) { plod::on_reply(cx) { resume(cx.state.use, cx); }; }
+        else { plod::security_headers(cx, cfg) { plod::body_in_pieces(cx, 100, Use.Upload); }; }
     };
     security_omitted(upload, "X-Frame-Options");
     security_header(upload, "Cache-Control", "no-store");

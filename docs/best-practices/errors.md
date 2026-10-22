@@ -7,13 +7,13 @@ The code on this page is from [`errors/`](errors/).
 
 ## 4.1 One error shape for the whole API
 
-Answer every error in goose-rest's shape, `{"error": code}`, which the framework's own
+Answer every error in Plod's shape, `{"error": code}`, which the framework's own
 errors already use ([Errors](../reference.md#5-errors)). If the API needs another shape,
-write it once, as the `rest::error_body` overload in `common/errors.goose`
+write it once, as the `plod::error_body` overload in `common/errors.goose`
 ([Answers and errors](../tutorial/03-errors.md#errors)).
 
-A client then reads every error the same way, whether a route or goose-rest answered
-it: a 404 from `rest::routes`, a 413 for a body past its limit, or an operation on a
+A client then reads every error the same way, whether a route or Plod answered
+it: a 404 from `plod::routes`, a 413 for a body past its limit, or an operation on a
 project that the domain refuses.
 
 ## 4.2 Each domain's codes in one place
@@ -30,9 +30,9 @@ enum Error { None, NotFound, NameTaken, Archived }
 // case function per variant: check(e, cx) runs the one for e's variant, and
 // the program doesn't compile while a variant has none.
 fn check(e: Error.None, cx) {}
-fn check(e: Error.NotFound, cx) { rest::fail(cx, 404, "project_not_found"); }
-fn check(e: Error.NameTaken, cx) { rest::fail(cx, 409, "project_name_taken"); }
-fn check(e: Error.Archived, cx) { rest::fail(cx, 409, "project_archived"); }
+fn check(e: Error.NotFound, cx) { plod::fail(cx, 404, "project_not_found"); }
+fn check(e: Error.NameTaken, cx) { plod::fail(cx, 409, "project_name_taken"); }
+fn check(e: Error.Archived, cx) { plod::fail(cx, 409, "project_archived"); }
 ```
 
 A rule returns an `Error` ([Routes and rules](routes-and-rules.md#32-what-a-rule-does)),
@@ -40,10 +40,10 @@ and the route passes it to `check`:
 
 ```rust
 fn show(cx) {
-    let id = rest::param_int(cx, "id");
+    let id = plod::param_int(cx, "id");
     // Ends the route with the rule's refusal, or goes on for Error.None.
     check(readable(id), cx);
-    rest::text(cx, 200, str("project ", id));
+    plod::text(cx, 200, str("project ", id));
 }
 ```
 
@@ -59,22 +59,22 @@ From [`errors/projects/routes.goose`](errors/projects/routes.goose):
 
 ```rust
 fn routes(cx) {
-    rest::get(cx, "/:id") { show(cx); };
-    rest::delete(cx, "/:id") { remove(cx); };
+    plod::get(cx, "/:id") { show(cx); };
+    plod::delete(cx, "/:id") { remove(cx); };
 }
 
 fn show(cx) {
-    let id = rest::param_int(cx, "id");
+    let id = plod::param_int(cx, "id");
     // Ends the route with the rule's refusal, or goes on for Error.None.
     check(readable(id), cx);
-    rest::text(cx, 200, str("project ", id));
+    plod::text(cx, 200, str("project ", id));
 }
 
 fn remove(cx) {
-    let role, has = rest::header(cx, "X-Role");
+    let role, has = plod::header(cx, "X-Role");
     guard has && role == "admin" else { common::check(common::Error.NotAnAdmin, cx); }
-    check(removable(rest::param_int(cx, "id")), cx);
-    rest::empty(cx, 204);
+    check(removable(plod::param_int(cx, "id")), cx);
+    plod::empty(cx, 204);
 }
 ```
 
@@ -99,8 +99,8 @@ enum Error { None, NotAMember, NotAnAdmin }
 
 // Fails the route with e's status and code, or returns for Error.None.
 fn check(e: Error.None, cx) {}
-fn check(e: Error.NotAMember, cx) { rest::fail(cx, 403, "not_a_member"); }
-fn check(e: Error.NotAnAdmin, cx) { rest::fail(cx, 403, "not_an_admin"); }
+fn check(e: Error.NotAMember, cx) { plod::fail(cx, 403, "not_a_member"); }
+fn check(e: Error.NotAnAdmin, cx) { plod::fail(cx, 403, "not_an_admin"); }
 ```
 
 ```rust
@@ -115,7 +115,7 @@ As with other shared code, an error moves here when a second domain answers it
 | Status | When | From |
 |---|---|---|
 | 400 | The request is malformed: a field is missing, or a value isn't a number | The extractors, as `invalid_parameter` or `invalid_body` |
-| 401 | No credentials, or credentials that aren't valid | `rest::bearer`, `rest::invalid_token` |
+| 401 | No credentials, or credentials that aren't valid | `plod::bearer`, `plod::invalid_token` |
 | 403 | The credentials are valid but don't allow the operation | `common/errors.goose`: `not_a_member` |
 | 404 | No such entity, or none the caller may see | The domain: `project_not_found` |
 | 409 | The entity's state prevents the change | The domain: `project_archived`, `timer_already_running` |

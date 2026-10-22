@@ -10,7 +10,7 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import .app;
 
 // A write takes a millisecond or so: 64 queued wait under a tenth of a second.
@@ -18,18 +18,18 @@ let WRITER_SLOTS: i32 = 64;
 
 // The writer lane, one thread: it owns the entries, and runs every job that
 // writes, one at a time.
-thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
+thread_fn writer(box: http::Box, jobs: plod::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var w = Writer { entries: all };
-    rest::lane(box, jobs) { u, a => run(u, w, a); };
+    plod::lane(box, jobs) { u, a => run(u, w, a); };
 }
 
-thread_fn worker(cfg: http::Config, lane: rest::Lane<Writes, Use>) {
+thread_fn worker(cfg: http::Config, lane: plod::Lane<Writes, Use>) {
     var projects: projects::Project[>..] = [];
     var app = App { projects: projects, writer: lane };
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let e = plod::serve(cfg, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -45,8 +45,8 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let lane = rest::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer);
+    let lane = plod::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, lane, worker);
-    rest::lane_stop(lane);
+    plod::lane_stop(lane);
 }

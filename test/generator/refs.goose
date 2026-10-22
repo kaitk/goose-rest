@@ -1,9 +1,9 @@
-// goose-rest gen's errors for a $ref outside its subset: another document,
+// plod gen's errors for a $ref outside its subset: another document,
 // a missing schema, a keyword beside it, and cycles.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
-import rest.gen.gen;
+import plod from "../../";
+import plod.gen.gen;
 import common;
 
 fn main() {

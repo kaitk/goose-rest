@@ -4,7 +4,7 @@ The first code that becomes hard to change in a web application is often the han
 does everything: it reads the request, decides what the domain allows, writes to the
 database, and builds the answer. Its decisions can then be tested only through HTTP,
 and a change to the request's shape sits in the same function as a change to the
-domain's logic. Most frameworks' guides warn against this "fat controller". goose-rest's
+domain's logic. Most frameworks' guides warn against this "fat controller". Plod's
 applications split the work three ways:
 
 - The **route** handles HTTP: it reads the request, checks its shape, and answers.
@@ -29,15 +29,15 @@ answers with the result or error. From
 
 ```rust
 fn create(cx) {
-    let name, has = rest::form(cx, "name");
+    let name, has = plod::form(cx, "name");
     // 400 invalid_parameter for a request without a name: the rule never runs.
-    rest::require(cx, "name", has);
+    plod::require(cx, "name", has);
     let project, err = new_project(CreateInput { name: name }, cx.app.projects.len + 1);
     // The rule's refusal, such as 422 project_name_required, ends the route.
     check(err, cx);
     // In place of a job on a lane, as the program has no database.
     cx.app.projects.push(project);
-    rest::json(cx, 201, project);
+    plod::json(cx, 201, project);
 }
 ```
 
@@ -52,19 +52,19 @@ From [`routes-and-rules/projects/routes.goose`](routes-and-rules/projects/routes
 
 ```rust
 fn routes(cx) {
-    rest::post(cx, "") { create(cx); };
-    rest::post(cx, "/:id/archive") { archive(cx); };
+    plod::post(cx, "") { create(cx); };
+    plod::post(cx, "/:id/archive") { archive(cx); };
 }
 ```
 
 ```rust
 fn archive(cx) {
-    let id = rest::param_int(cx, "id");
+    let id = plod::param_int(cx, "id");
     guard id >= 1 && id <= cx.app.projects.len else { check(Error.NotFound, cx); }
     let project, err = archived(cx.app.projects[id - 1]);
     check(err, cx);
     cx.app.projects[id - 1] = project;
-    rest::json(cx, 200, project);
+    plod::json(cx, 200, project);
 }
 ```
 

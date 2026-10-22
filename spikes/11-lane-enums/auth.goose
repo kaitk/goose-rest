@@ -3,7 +3,7 @@
 namespace auth;
 
 import std;
-import rest;
+import plod;
 
 struct User { id: i64, email: u8[..64], salt: u64, hash: u64 }
 struct Session { id: i64 = 0, user: i64 = 0 }
@@ -11,7 +11,7 @@ struct Session { id: i64 = 0, user: i64 = 0 }
 enum Error { None, BadCredentials }
 
 fn check(e: Error.None, x) {}
-fn check(e: Error.BadCredentials, x) { rest::fail(x, 401, "invalid_credentials"); }
+fn check(e: Error.BadCredentials, x) { plod::fail(x, 401, "invalid_credentials"); }
 
 fn format(out: u8[>..]&, s: const Session&) {
     format(out, "{\"session\":", s.id, ",\"user\":", s.user, "}");
@@ -21,36 +21,36 @@ fn format(out: u8[>..]&, s: const Session&) {
 let USERS = [User { id: 1, email: "ada@example.com", salt: 7, hash: hashed("goose", 7) }];
 
 fn routes(cx) {
-    if rest::on(cx, "POST", "/session") { sign_in(cx); } else { rest::otherwise(cx); }
+    if plod::on(cx, "POST", "/session") { sign_in(cx); } else { plod::otherwise(cx); }
 }
 
 fn sign_in(cx) {
-    let email, has_email = rest::query(cx, "email");
-    rest::require(cx, "email", has_email);
-    let password, has_password = rest::query(cx, "password");
-    rest::require(cx, "password", has_password);
-    rest::ask(cx, cx.app.hasher, Hashes.AuthPassword { email: email, password: password });
+    let email, has_email = plod::query(cx, "email");
+    plod::require(cx, "email", has_email);
+    let password, has_password = plod::query(cx, "password");
+    plod::require(cx, "password", has_password);
+    plod::ask(cx, cx.app.hasher, Hashes.AuthPassword { email: email, password: password });
 }
 
 // On the hasher lane: a wrong password is a 401 from here.
 fn ::run(u: Hashes.AuthPassword, h: Hasher&, a) {
     let user, err = auth::signed_in(h.users, u.email, u.password);
     auth::check(err, a);
-    rest::reply_value(a, user);
+    plod::reply_value(a, user);
 }
 
 // On the worker: the second wait, on the writer.
 fn ::resume(u: Hashes.AuthPassword, cx) {
-    rest::ask(cx, cx.app.writer, Writes.AuthSession { user: rest::answer<i64>(cx) });
+    plod::ask(cx, cx.app.writer, Writes.AuthSession { user: plod::answer<i64>(cx) });
 }
 
 fn ::run(u: Writes.AuthSession, w: Writer&, a) {
     let s = auth::Session { id: w.sessions.len + 1, user: u.user };
     w.sessions.push(s);
-    rest::reply_value(a, s);
+    plod::reply_value(a, s);
 }
 
-fn ::resume(u: Writes.AuthSession, cx) { rest::json(cx, 201, rest::answer<auth::Session>(cx)); }
+fn ::resume(u: Writes.AuthSession, cx) { plod::json(cx, 201, plod::answer<auth::Session>(cx)); }
 
 // password hashed with salt, standing in for a password hash.
 fn hashed(password: const u8[:], salt: u64) -> u64 {

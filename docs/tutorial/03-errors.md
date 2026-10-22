@@ -6,18 +6,18 @@ of these calls:
 
 | Call | Answers |
 |---|---|
-| `rest::json(cx, status, v)` | `v` as JSON, written by `v`'s `format` overload |
-| `rest::json_bytes(cx, status, body)` | JSON the program wrote itself |
-| `rest::text(cx, status, s)` | `s` as `text/plain; charset=utf-8` |
-| `rest::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
-| `rest::fail(cx, status, code)` | `{"error": code}`, from anywhere inside a route |
+| `plod::json(cx, status, v)` | `v` as JSON, written by `v`'s `format` overload |
+| `plod::json_bytes(cx, status, body)` | JSON the program wrote itself |
+| `plod::text(cx, status, s)` | `s` as `text/plain; charset=utf-8` |
+| `plod::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
+| `plod::fail(cx, status, code)` | `{"error": code}`, from anywhere inside a route |
 | `http::start`, `http::field`, `http::finish` | anything else, such as a page |
 
 ## A value as JSON
 
-`rest::json` calls `format(out, v)`, Goose's one type-directed hook, and Goose finds the
+`plod::json` calls `format(out, v)`, Goose's one type-directed hook, and Goose finds the
 overload in the namespace that declares `v`'s type. A type's JSON comes from a `format`
-overload: one you write, one that calls `rest::format_fields`, or the generator's ([JSON bodies](04-json.md)).
+overload: one you write, one that calls `plod::format_fields`, or the generator's ([JSON bodies](04-json.md)).
 From [`02-routes`](02-routes/main.goose):
 
 ```rust
@@ -35,13 +35,13 @@ escaped. It checks 16 bytes at a time for a byte to escape, so write strings wit
 rather than with `json::format_string`, whose output is the same.
 
 A writer whose keys are its struct's fields, in order, can be one call.
-`rest::format_fields` writes each field under its declared name, from the struct's
+`plod::format_fields` writes each field under its declared name, from the struct's
 declaration. From [`10-large-bodies`](10-large-bodies/main.goose):
 
 ```rust
 struct Imported { project: i64, imported: i64 }
 
-fn format(out: u8[>..]&, i: const Imported&) { rest::format_fields(out, i); }
+fn format(out: u8[>..]&, i: const Imported&) { plod::format_fields(out, i); }
 ```
 
 It writes every field, so a writer that leaves one out keeps its own code, as
@@ -56,7 +56,7 @@ in an object.
 
 ## Errors
 
-`rest::fail` takes a code, and any function inside a route can call it.
+`plod::fail` takes a code, and any function inside a route can call it.
 `find_project` returns a reference, and fails when there's no such project:
 
 ```rust
@@ -64,25 +64,25 @@ fn find_project(cx, id: i64) -> const Project& {
     for &p in PROJECTS {
         if p.id == id { return p; }
     }
-    rest::fail(cx, 404, "project_not_found");
+    plod::fail(cx, 404, "project_not_found");
 }
 ```
 
-Every error goose-rest writes, the framework's or the program's, has the same
+Every error Plod writes, the framework's or the program's, has the same
 shape: `{"error": code}`, with `detail` for parameter or body errors and `at` for
 the position where the body reader stopped. The [reference](../reference.md#5-errors)
 lists each status and code. The first answer wins: a route that answers and then
 fails keeps its answer.
 
-A program changes the error shape by overloading `rest::error_body` for its request
-state's type, set by `rest::serve(cfg, app, fresh)` ([State](08-state.md)).
-The overload handles every error, including the 404s, 405s, and 413s that goose-rest
+A program changes the error shape by overloading `plod::error_body` for its request
+state's type, set by `plod::serve(cfg, app, fresh)` ([State](08-state.md)).
+The overload handles every error, including the 404s, 405s, and 413s that Plod
 itself writes. From [`03-errors`](03-errors/main.goose), which has no worker state:
 
 ```rust
 struct St { unused: bool = false }
 
-fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:],
+fn plod::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:],
                     detail: const u8[:], at: i64) {
     body.append("{\"error\":{\"code\":");
     http::json_string(body, code);
@@ -97,8 +97,8 @@ fn rest::error_body(body: u8[>..]&, st: const St&, status: i32, code: const u8[:
 ```
 
 ```rust
-    var none = rest::NoState { .. };
-    let e = rest::serve(cfg, none, St { .. }) { cx => handle(cx) };
+    var none = plod::NoState { .. };
+    let e = plod::serve(cfg, none, St { .. }) { cx => handle(cx) };
 ```
 
 ```text
@@ -107,9 +107,9 @@ GET /projects/x  400 {"error":{"code":"invalid_parameter","status":400,"message"
 POST /projects/1 405 {"error":{"code":"method_not_allowed","status":405}}
 ```
 
-The overload is declared in the `rest` namespace, `fn rest::error_body`, because a
+The overload is declared in the `plod` namespace, `fn plod::error_body`, because a
 generic function finds names where it's defined, not where it's called. The same holds
-for `rest::from_request`, on the next page.
+for `plod::from_request`, on the next page.
 
 *Note: once an application has several domains, the best practices keep one error
 shape and each domain's codes in one place

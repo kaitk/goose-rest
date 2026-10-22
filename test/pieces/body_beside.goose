@@ -1,8 +1,8 @@
-// rest::body beside rest::body_in_pieces, before it and after it: the
+// plod::body beside plod::body_in_pieces, before it and after it: the
 // second read fails with body_already_read.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -14,5 +14,5 @@ fn main() {
     expect::same(expect::body_of(after), "{\"error\":\"body_already_read\"}", "body after body_in_pieces");
     // The route failed before any piece: CLOSED alone.
     expect::same(l2, "C ", "body after body_in_pieces's calls");
-    print("rest::body beside rest::body_in_pieces: ok");
+    print("plod::body beside plod::body_in_pieces: ok");
 }

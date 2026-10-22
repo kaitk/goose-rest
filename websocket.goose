@@ -1,16 +1,16 @@
-// rest::ws_upgrade and rest::ws_read, a WebSocket (RFC 6455) on a route,
+// plod::ws_upgrade and plod::ws_read, a WebSocket (RFC 6455) on a route,
 // with goose-http's http.websocket. Only a program that imports this module
 // needs goose-hash, which its root file declares at the tag goose-http's
 // websocket.goose names:
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
 //   import hash from "github.com/kaitk/goose-hash@v0.0.4";
-//   import rest from "github.com/kaitk/goose-rest@<tag>";
-//   import rest.websocket;
+//   import plod from "github.com/kaitk/goose-rest@<tag>";
+//   import plod.websocket;
 //
 // The program keeps the connection's http::WebSocket in its request state,
 // and sends with http::ws_send and http::ws_close on cx.out.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -19,7 +19,7 @@ import http.websocket;
 
 // Answers a request to open a WebSocket with 101 (http::ws_switch), with u
 // in cx.state.use: the connection then carries frames into ws, which
-// rest::ws_read reads at each later call, as for rest::upgrade. With
+// plod::ws_read reads at each later call, as for plod::upgrade. With
 // protocol, the 101 names it in Sec-WebSocket-Protocol;
 // http::field_of(cx.req, "sec-websocket-protocol") gives those the client
 // offered. Set ws.limit before it: http::ws_admit promises ws that many
@@ -52,7 +52,7 @@ fn ws_upgrade<S, A, R>(cx: Cx<S, A, R>&, ws: http::WebSocket&, u, protocol: cons
     upgraded(cx, u);
 }
 
-// The case function's work for a WebSocket rest::ws_upgrade opened: at
+// The case function's work for a WebSocket plod::ws_upgrade opened: at
 // http::BODY, reads the frames cx.body completes (http::ws_take) and calls
 // F(op, data) with each whole message, op http::WS_TEXT or WS_BINARY, data
 // lasting until F returns; at http::CLOSED, gives back what ws holds. A

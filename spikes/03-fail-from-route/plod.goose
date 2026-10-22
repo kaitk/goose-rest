@@ -1,4 +1,4 @@
-namespace rest;
+namespace plod;
 
 import std;
 

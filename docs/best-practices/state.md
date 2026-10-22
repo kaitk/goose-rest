@@ -38,7 +38,7 @@ flowchart LR
 | **Store** | Loaded at startup, and too large to copy into every worker: a GeoIP database, a catalog | goose-http's `http.store` ([state that workers share](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#state-that-workers-share)) |
 | **Lane data** | Changing, and every worker must see the change: the projects, the users, a member's running timer | A lane, a thread that owns it, which routes ask ([Lanes and jobs](lanes.md)) |
 | **Worker state** | A worker's own, where workers may differ: a cache, the counts of a limit that sheds load | `App`, reached as `cx.app` |
-| **Request state** | One request's own: the signed-in user, looked up once | `St`, reached as `cx.state`, with `rest::once` |
+| **Request state** | One request's own: the signed-in user, looked up once | `St`, reached as `cx.state`, with `plod::once` |
 
 Each row is the cheapest place that still gives every request the right answer. Data
 that must look the same to every worker isn't worker state, and data that one worker can
@@ -79,7 +79,7 @@ struct App { lookups: i64 }
 thread_fn worker(cfg: http::Config) {
     // Each worker's own App, which its routes reach as cx.app.
     var app = App { lookups: 0 };
-    let e = rest::serve(cfg, app) { cx => handle(cx) };
+    let e = plod::serve(cfg, app) { cx => handle(cx) };
 ```
 
 <details>
@@ -89,15 +89,15 @@ From [`state/app.goose`](state/app.goose):
 
 ```rust
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::get(cx, "/holidays") {
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::get(cx, "/holidays") {
             // This worker's own count: each worker keeps one.
             cx.app.lookups++;
             // The global, compiled into the program, which every worker reads.
-            rest::json(cx, 200, HOLIDAYS);
+            plod::json(cx, 200, HOLIDAYS);
         };
-        rest::get(cx, "/lookups") { rest::text(cx, 200, str(cx.app.lookups)); };
+        plod::get(cx, "/lookups") { plod::text(cx, 200, str(cx.app.lookups)); };
     };
 }
 ```

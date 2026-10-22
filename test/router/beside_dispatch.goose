@@ -3,17 +3,17 @@
 import std;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import expect.gen.routes_gen;
 import expect.gen.app;
 import common;
 
 fn beside(cx) {
-    rest::routes(cx) { cx =>
-        if rest::on(cx, "PUT", "/uploads/:name") {
-            rest::route(cx) { t(cx, str("upload ", rest::param(cx, "name"))); };
-        } else if rest::on(cx, "POST", "/v1/files/:id/content") {
+    plod::routes(cx) { cx =>
+        if plod::on(cx, "PUT", "/uploads/:name") {
+            plod::route(cx) { t(cx, str("upload ", plod::param(cx, "name"))); };
+        } else if plod::on(cx, "POST", "/v1/files/:id/content") {
             t(cx, "post_file_content");
         } else {
             api::dispatch(cx);
@@ -22,7 +22,7 @@ fn beside(cx) {
 }
 
 fn answer_beside(text: const u8[:]) -> u8[>..] {
-    return rest::serve_one(text) { cx => beside(cx) };
+    return plod::serve_one(text) { cx => beside(cx) };
 }
 
 fn main() {

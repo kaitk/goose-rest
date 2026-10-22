@@ -2,7 +2,7 @@
 // so each case is the same on every run.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../../../";
+import plod from "../../../../../";
 import app from "../../";
 
 let NOW: i64 = 1767268800;

@@ -1,7 +1,7 @@
 // The runtime: a request's context, routes that fail from any depth below
-// them, and answers in JSON, every error in one shape, goose-rest's or the
+// them, and answers in JSON, every error in one shape, Plod's or the
 // program's (docs/reference.md, "Errors").
-namespace rest;
+namespace plod;
 
 import std;
 import json;
@@ -13,12 +13,12 @@ import http from "github.com/kaitk/goose-http@v0.5.4";
 // state, app, which every request of the worker shares, and scratch for
 // what the extractors decode, which lasts until the handler returns. kind
 // is the event the handler is called for: http::REQUEST for a request, and
-// for each later call (rest::resumed) the event's, such as http::WAKE when
+// for each later call (plod::resumed) the event's, such as http::WAKE when
 // a route that asked another thread gets its reply, with reply, refused, and
 // more holding it (waiting.goose), or http::BODY with a piece in body
 // (pieces.goose). req is empty after REQUEST.
-// router is the http::Router of rest::routes' block, R, and a NoRouter
-// elsewhere, so that rest::on and the calls that read a matched route take
+// router is the http::Router of plod::routes' block, R, and a NoRouter
+// elsewhere, so that plod::on and the calls that read a matched route take
 // only the context routes gives its block, or the program doesn't compile.
 struct Cx<S, A, R> {
     req: const http::Request&,
@@ -30,8 +30,8 @@ struct Cx<S, A, R> {
     kind: u8 = 0,
     reply: const u8[:] = "",
     refused: bool = false,
-    // More follows: at a WAKE, more of the reply (rest::relay); at serve's
-    // REQUEST, more of the body than came with the head (rest::body).
+    // More follows: at a WAKE, more of the reply (plod::relay); at serve's
+    // REQUEST, more of the body than came with the head (plod::body).
     more: bool = false,
     // The request's exchange, under serve; null elsewhere.
     ex: Exchange? = null,
@@ -41,19 +41,19 @@ struct Cx<S, A, R> {
     router: R&,
 }
 
-// A context's router outside rest::routes: none.
+// A context's router outside plod::routes: none.
 struct NoRouter { unused: bool = false }
 
 // Runs F(c) as the request's one route, c being cx with a router over its
-// request, so that the block's rest::get and its kin, rest::scope,
-// rest::param, and rest::route take c alone. When the block leaves the
+// request, so that the block's plod::get and its kin, plod::scope,
+// plod::param, and plod::route take c alone. When the block leaves the
 // request unanswered, with nothing awaited, routes answers it as
-// rest::otherwise does: 404, 405 with Allow, OPTIONS, and 501. A generated
+// plod::otherwise does: 404, 405 with Allow, OPTIONS, and 501. A generated
 // dispatch inside the block answers with the Allow of the routes tried
 // before it.
 //
-//   rest::routes(cx) { cx =>
-//       rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+//   plod::routes(cx) { cx =>
+//       plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
 //   };
 inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     let mark = cx.out.buf.len;
@@ -70,16 +70,16 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
     };
 }
 
-// Answers as rest::otherwise does when the routes tried since mark left the
+// Answers as plod::otherwise does when the routes tried since mark left the
 // request unanswered.
 fn settle(cx, mark: i64) {
     guard unanswered(cx, mark) else { return; }
     otherwise(cx);
 }
 
-// Marks the request taken: the router's bad, which http::on and rest::scope
-// check first, so that the routes and scopes after it in rest::routes'
-// block don't match. Outside rest::routes, nothing.
+// Marks the request taken: the router's bad, which http::on and plod::scope
+// check first, so that the routes and scopes after it in plod::routes'
+// block don't match. Outside plod::routes, nothing.
 fn taken<S, A>(cx: Cx<S, A, http::Router>&) { cx.router.bad = true; }
 
 fn taken<S, A>(cx: Cx<S, A, NoRouter>&) {}
@@ -90,17 +90,17 @@ fn untaken<S, A>(cx: const Cx<S, A, http::Router>&) -> bool { !cx.router.bad }
 
 fn untaken<S, A>(cx: const Cx<S, A, NoRouter>&) -> bool { true }
 
-// Runs F, inside rest::routes as a route of its own: a failure inside F is
-// answered there, and a request F leaves unanswered gets rest::routes'
+// Runs F, inside plod::routes as a route of its own: a failure inside F is
+// answered there, and a request F leaves unanswered gets plod::routes'
 // answer there, so that both are answered inside the middleware that calls
 // scoped, with the fields it adds. The request is then taken. Middleware
 // that adds fields to answers, or answers itself, runs its block in it;
-// outside rest::routes, scoped only runs F.
+// outside plod::routes, scoped only runs F.
 //
 //   inline fn branded<F>(cx) {
 //       let common = cx.out.common;
 //       cx.out.common = BRAND;   // "X-Brand: acme\r\n"
-//       rest::scoped(cx) { F(); };
+//       plod::scoped(cx) { F(); };
 //       cx.out.common = common;
 //   }
 inline fn scoped<S, A, F>(cx: Cx<S, A, http::Router>&) {
@@ -123,16 +123,16 @@ fn unanswered(cx, mark: i64) -> bool {
 // The request state, or the worker state, of a program that keeps none.
 struct NoState { unused: bool = false }
 
-// The most bytes of a body rest::body takes unless a route says otherwise.
+// The most bytes of a body plod::body takes unless a route says otherwise.
 let BODY_LIMIT = 1024 * 1024;
 
 // The worker's gather budget is goose-http's, http::gather_budget, which a
-// program sets in main before http::run. It bounds the bodies rest::body
-// gathers, heads included, the replies rest::ask waits for, at its reply
+// program sets in main before http::run. It bounds the bodies plod::body
+// gathers, heads included, the replies plod::ask waits for, at its reply
 // limit each, and what the middleware keeps for an answer at a later call.
 // A body the budget can't promise its bytes gets 503 unavailable with
-// Retry-After at its head, and a rest::ask the same before its job is sent.
-// Bodies read with rest::body_in_pieces, and replies relayed, take nothing
+// Retry-After at its head, and a plod::ask the same before its job is sent.
+// Bodies read with plod::body_in_pieces, and replies relayed, take nothing
 // beyond their promise.
 //
 // The seconds a 503 past the budget asks a client to wait, the fewest the
@@ -141,15 +141,15 @@ let BODY_LIMIT = 1024 * 1024;
 let RETRY_AFTER = "1";
 
 // What a route asked serve for past its first call, Exchange.mode's bits:
-// the body gathered whole (rest::body), its pieces (rest::body_in_pieces), MORE for
-// a response it sends in pieces (rest::begin, rest::file), and the bytes of
-// a connection it upgraded (rest::upgrade), the four LATER names. KEPT says
+// the body gathered whole (plod::body), its pieces (plod::body_in_pieces), MORE for
+// a response it sends in pieces (plod::begin, plod::file), and the bytes of
+// a connection it upgraded (plod::upgrade), the four LATER names. KEPT says
 // the exchange keeps what its middleware decided for a later answer.
-// OFFERED says the handler runs inside rest::compressed, and CODED that the
-// response rest::begin began there holds an encoder (compression.goose).
-// ASKED says the exchange holds a promise for the reply rest::ask waits for,
+// OFFERED says the handler runs inside plod::compressed, and CODED that the
+// response plod::begin began there holds an encoder (compression.goose).
+// ASKED says the exchange holds a promise for the reply plod::ask waits for,
 // which collects a reply_value's pieces (collect_reply). PAUSED says the
-// route paused before beginning a response (rest::pause).
+// route paused before beginning a response (plod::pause).
 let GATHERING: u16 = 1;
 let RECEIVING: u16 = 2;
 let SENDING: u16 = 4;
@@ -162,7 +162,7 @@ let ASKED: u16 = 128;
 let PAUSED: u16 = 256;
 
 // What serve keeps of a request past the handler's first call. run is a run
-// of the worker's gather pool: a body gathered for rest::body, the head
+// of the worker's gather pool: a body gathered for plod::body, the head
 // rebuilt (run.head bytes) and then the body so far, or with KEPT, what
 // stash_kept wrote, run.head being the length of its fields: a route keeps
 // it only once its body is gathered. A body received in pieces counts its
@@ -171,7 +171,7 @@ let PAUSED: u16 = 256;
 // and its run.
 struct Exchange {
     mode: u16 = 0,
-    limit: i64 = 0,          // the first rest::body's or rest::body_in_pieces's limit, 0 before it
+    limit: i64 = 0,          // the first plod::body's or plod::body_in_pieces's limit, 0 before it
     run: http::Gather = http::Gather { .. },
     reply: i64 = 0,
 }
@@ -190,11 +190,11 @@ struct Slot<S> { state: S, ex: Exchange = Exchange { .. } }
 // connection's bytes (pieces.goose). app, the worker state, is in cx.app,
 // and the request state, starting from fresh, in cx.state. A body that
 // doesn't come with its head is gathered when a route asks for it
-// (rest::body), and H runs again once it's whole, within the worker's
+// (plod::body), and H runs again once it's whole, within the worker's
 // gather budget (http::gather_budget).
 //
 //   var app = App { .. };
-//   rest::serve(cfg, app) { cx => handle(cx) };
+//   plod::serve(cfg, app) { cx => handle(cx) };
 fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S) -> http::Error {
     return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
         let mark = on_event(ev, st, app, out) { cx => H(cx) };
@@ -319,7 +319,7 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
 // http::REQUEST.
 let GATHERED: u8 = 254;
 
-// The calls to H that follow a route's rest::body, body_in_pieces, begin, file, or
+// The calls to H that follow a route's plod::body, body_in_pieces, begin, file, or
 // upgrade (Exchange.mode): one for ev, when it comes after the request's
 // first call, and then those each call leads to, as a body that came whole
 // passed on as a BODY and an END, or CLOSED for a route that ended early.
@@ -372,15 +372,15 @@ fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, m
         }
     }
     // A route that stopped the wait at a later call, or ended, as with
-    // rest::end on an upgraded connection, whose wait goose-http clears only
+    // plod::end on an upgraded connection, whose wait goose-http clears only
     // once the handler returns, gets no more of the reply it collected. A
     // route that receives its body has no stream open, and still waits.
     if !out.stream.waiting || (!out.stream.open && (st.ex.mode & LATER) == 0) { drop_reply(st.ex); }
     settle_kept(st.ex, o, from);
 }
 
-// What the middleware around a route decided at its request (rest::cors,
-// rest::timed), for the answer if the route leaves it to a later call: the
+// What the middleware around a route decided at its request (plod::cors,
+// plod::timed), for the answer if the route leaves it to a later call: the
 // fields its answers get after the status line, the innermost middleware's,
 // at from..to in cx.scratch, and timed's start and log.
 struct Kept {
@@ -542,9 +542,9 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply) -> u8 {
 }
 
 // What follows a call to H for k, which wrote out.buf from before: the
-// gathering rest::body left the route for, the BODY and END of a body that
+// gathering plod::body left the route for, the BODY and END of a body that
 // came whole, or CLOSED for a route that answered before its body's END or
-// that rest::route cut short (route), as the end of its exchange.
+// that plod::route cut short (route), as the end of its exchange.
 fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, k: u8, before: i64) -> u8 {
     let x .= st.ex;
     if k == http::CLOSED {
@@ -554,7 +554,7 @@ fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, k: u8, before: i64)
         return http::NO_EVENT;
     }
     if (x.mode & GATHERING) != 0 {
-        // An answer after rest::body left the route, as a middleware's, ends
+        // An answer after plod::body left the route, as a middleware's, ends
         // the gathering.
         guard k == GATHERED else {
             if out.buf.len > before { release(x); }
@@ -582,7 +582,7 @@ fn head_of(req: const http::Request&, gathered: bool, g: const http::Gather&) ->
     return r;
 }
 
-// The most bytes of a reply rest::ask takes unless a route says otherwise:
+// The most bytes of a reply plod::ask takes unless a route says otherwise:
 // its promise from the worker's gather budget while it waits.
 let REPLY_LIMIT: i64 = 64 * 1024;
 
@@ -600,9 +600,9 @@ fn promise_reply(x: Exchange&, most: i64) -> bool {
 }
 
 // Adds data, a piece with tag of a reply its lane marked REPLY_VALUE, to the
-// run that collects it, up to the most rest::ask promised it, and has the
+// run that collects it, up to the most plod::ask promised it, and has the
 // route wait for the next piece while more follows, with the time limit
-// rest::ask gave. Returns true once the reply is whole, for on_event to
+// plod::ask gave. Returns true once the reply is whole, for on_event to
 // call the handler with it, and false while more follows, or for a reply
 // past its limit: then the run is freed and the route answered 502
 // reply_too_large, or cut short with its response begun, and the later
@@ -672,10 +672,10 @@ fn release(x: Exchange&) {
 // with 413 payload_too_large. The first call's limit holds for the request.
 // A body that hasn't come with the head leaves the route without an answer:
 // serve gathers it and calls the handler again with it whole, so a route
-// runs twice up to its first rest::body. A body the worker's gather budget
+// runs twice up to its first plod::body. A body the worker's gather budget
 // can't promise its bytes, a Content-Length's or a chunked body's limit,
 // with its head, fails with 503 unavailable and Retry-After (http::gather_budget). After
-// rest::body_in_pieces, 500 body_already_read, and at a later call than the
+// plod::body_in_pieces, 500 body_already_read, and at a later call than the
 // request's, 500 body_too_late: the head that gathering needs has gone by
 // then.
 fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
@@ -710,7 +710,7 @@ inline fn attempt<F>() -> Failure[] {
 }
 
 // Runs F, the route's handler, and answers the failure if it or anything it
-// calls fails. Inside rest::routes, F joins the request's one route there:
+// calls fails. Inside plod::routes, F joins the request's one route there:
 // a function that fails returns to the innermost route, and a route inside
 // a route keeps both out of line.
 inline fn route<S, A, F>(cx: Cx<S, A, NoRouter>&) { routed(cx) { F(); }; }
@@ -727,7 +727,7 @@ inline fn routed<F>(cx) {
     let mark = cx.out.buf.len;
     let failed = attempt(F);
     for f in failed {
-        // Status 0 is rest::body leaving to gather the body, unanswered.
+        // Status 0 is plod::body leaving to gather the body, unanswered.
         if f.status == 0 {
         } else if cx.out.stream.open {
             cx.out.stream.open = false;
@@ -740,7 +740,7 @@ inline fn routed<F>(cx) {
 }
 
 // Leaves the enclosing route, which answers status with {"error": code}.
-// Every caller runs inside rest::route, or the program doesn't compile.
+// Every caller runs inside plod::route, or the program doesn't compile.
 fn fail(cx, status: i32, code: const u8[:]) {
     return [Failure { status: status, at: -1, code: str(code), detail: "", challenge: "" }] from attempt;
 }
@@ -776,7 +776,7 @@ fn fail_param(cx, detail: const u8[:]) {
 }
 
 // The JSON body as R(r, scratch), a generated reader, reads it: 415 unless
-// the request says it's application/json, 413 past rest::body's limit, and
+// the request says it's application/json, 413 past plod::body's limit, and
 // 400 invalid_body for a body R refused or one with more after its value.
 // Generated from_request overloads call it.
 inline fn json_body<R>(cx) {
@@ -806,7 +806,7 @@ fn segment_is(seg: const u8[:], lit: const u8[:], plain: bool) -> bool {
 // Answers a request whose path matched with a method no route of the path
 // takes: OPTIONS with 204 and an Allow, any other method with 405 and that
 // Allow. The Allow is that of the program's routes before dispatch, in
-// rest::routes, then those of mine, the generated path's, that theirs lacks.
+// plod::routes, then those of mine, the generated path's, that theirs lacks.
 fn no_method(cx, mine: const u8[:]) {
     let theirs = allow_before(cx);
     guard theirs.len > 0 else { allowed(cx, mine); return; }
@@ -825,7 +825,7 @@ fn no_method(cx, mine: const u8[:]) {
     allowed(cx, both);
 }
 
-// The Allow of the routes rest::routes' block tried, "" outside one.
+// The Allow of the routes plod::routes' block tried, "" outside one.
 fn allow_before<S, A>(cx: const Cx<S, A, http::Router>&) -> const u8[:] { cx.router.allow }
 
 fn allow_before<S, A>(cx: const Cx<S, A, NoRouter>&) -> const u8[:] { "" }
@@ -860,7 +860,7 @@ fn no_route(cx, method: const u8[:], path: const u8[:]) {
 
 // Answers a request whose method is known and whose path is routable, as
 // the generated routers have checked by then, and that no route matched, as
-// otherwise does: inside rest::routes, with the Allow of the program's routes
+// otherwise does: inside plod::routes, with the Allow of the program's routes
 // before dispatch.
 fn not_found<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], path: const u8[:]) {
     unrouted(cx, http::unrouted(cx.router), cx.router.allow);
@@ -888,7 +888,7 @@ fn json_bytes(cx, status: i32, body: const u8[:]) {
     http::finish(cx.out, http::JSON, body);
 }
 
-// finish's fields for rest::text. http::TEXT names no charset, which leaves a
+// finish's fields for plod::text. http::TEXT names no charset, which leaves a
 // client to guess one for anything past ASCII.
 const TEXT_UTF8: u8[57] = "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ";
 
@@ -910,7 +910,7 @@ fn empty(cx, status: i32) {
 // refused 400 bad_path, a path no route matched 404 not_found, and another
 // method of a path that did 405 method_not_allowed, with Allow. OPTIONS gets
 // 204 with that Allow, or for "*" without one. After a route that took the
-// request, it answers nothing. rest::routes answers so itself when its block
+// request, it answers nothing. plod::routes answers so itself when its block
 // doesn't; a program that builds its own http::router passes it.
 fn otherwise<S, A>(cx: Cx<S, A, http::Router>&) { otherwise(cx, cx.router); }
 
@@ -979,7 +979,7 @@ fn problem_body(body: u8[>..]&, status: i32, code: const u8[:], detail: const u8
 // The error shape: {"error": code}, with "detail" when detail isn't empty,
 // and "at" when at isn't negative. A program writes its own shape with an
 // overload for its request state's type, which wins over this generic
-// one: fn rest::error_body(body: u8[>..]&, st: const app::St&, status: i32,
+// one: fn plod::error_body(body: u8[>..]&, st: const app::St&, status: i32,
 // code: const u8[:], detail: const u8[:], at: i64).
 fn error_body(body: u8[>..]&, st, status: i32, code: const u8[:], detail: const u8[:], at: i64) {
     body.append("{\"error\":");

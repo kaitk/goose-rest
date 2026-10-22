@@ -9,7 +9,7 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import db from "../db/";
 
 let DELAY_MS: i64 = 20;
@@ -26,29 +26,29 @@ enum Use { None, Db, Mail }
 
 struct St { use: Use = Use.None }
 
-struct App { db: rest::Lane<DbJob, Use>, mailer: rest::Lane<MailJob, Use> }
+struct App { db: plod::Lane<DbJob, Use>, mailer: plod::Lane<MailJob, Use> }
 
 struct Invited { project: i64, user: i64, mail: i64 }
 
-fn format(out: u8[>..]&, i: const Invited&) { rest::format_fields(out, i); }
+fn format(out: u8[>..]&, i: const Invited&) { plod::format_fields(out, i); }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::get(cx, "/v1/projects/:id/tasks") {
-            rest::ask(cx, cx.app.db, DbJob.Tasks { project: rest::param_int(cx, "id") });
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::get(cx, "/v1/projects/:id/tasks") {
+            plod::ask(cx, cx.app.db, DbJob.Tasks { project: plod::param_int(cx, "id") });
         };
-        rest::post(cx, "/v1/projects/:id/members") {
-            let user, has_user = rest::query_int(cx, "user");
-            rest::require(cx, "user", has_user);
-            rest::ask(cx, cx.app.db, DbJob.AddMember { project: rest::param_int(cx, "id"), user: user });
+        plod::post(cx, "/v1/projects/:id/members") {
+            let user, has_user = plod::query_int(cx, "user");
+            plod::require(cx, "user", has_user);
+            plod::ask(cx, cx.app.db, DbJob.AddMember { project: plod::param_int(cx, "id"), user: user });
         };
     };
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
-fn resume(u: Use.Db, cx) { resume(rest::job<DbJob>(cx), cx); }
-fn resume(u: Use.Mail, cx) { resume(rest::job<MailJob>(cx), cx); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Db, cx) { resume(plod::job<DbJob>(cx), cx); }
+fn resume(u: Use.Mail, cx) { resume(plod::job<MailJob>(cx), cx); }
 
 // On the database lane: the project's tasks as a JSON array, in pieces of
 // the worker's message size, 64 bytes here.
@@ -63,56 +63,56 @@ fn run(u: DbJob.Tasks, c: db::Conn&, a) {
         format(out, ",\"assignee\":", t.assignee, "}");
     }
     out.push(']');
-    rest::reply(a, out);
+    plod::reply(a, out);
 }
 
 // Called at the first piece, which starts a chunked response; the rest go on as chunks.
-fn resume(u: DbJob.Tasks, cx) { rest::relay(cx, 200, "application/json"); }
+fn resume(u: DbJob.Tasks, cx) { plod::relay(cx, 200, "application/json"); }
 
 fn run(u: DbJob.AddMember, c: db::Conn&, a) {
     db::begin(c);
     let p, found = db::fetch_one<db::Project>(c, "SELECT * FROM projects WHERE id = $1", [u.project]);
-    guard found else { db::rollback(c); rest::fail(a, 404, "project_not_found"); }
+    guard found else { db::rollback(c); plod::fail(a, 404, "project_not_found"); }
     let m, member = db::fetch_one<db::Member>(c, "SELECT * FROM members WHERE project = $1 AND user = $2", [u.project, u.user]);
-    guard !member else { db::rollback(c); rest::fail(a, 409, "already_a_member"); }
+    guard !member else { db::rollback(c); plod::fail(a, 409, "already_a_member"); }
     db::execute(c, "INSERT INTO members (project, user) VALUES ($1, $2)", [u.project, u.user]);
     db::commit(c);
     // The job alone: the resume needs nothing more.
-    rest::reply(a, "");
+    plod::reply(a, "");
 }
 
 // The database added the member: ask the mailer next, and wait again. The
 // job came back with the reply, so its project and user are at hand.
 fn resume(u: DbJob.AddMember, cx) {
-    rest::ask(cx, cx.app.mailer, MailJob.Invite { project: u.project, user: u.user });
+    plod::ask(cx, cx.app.mailer, MailJob.Invite { project: u.project, user: u.user });
 }
 
 // On the mailer: it numbers each invitation it sends.
 fn run(u: MailJob.Invite, sent: i64&, a) {
     sleep_ms(DELAY_MS);
     sent++;
-    rest::reply_value(a, sent);
+    plod::reply_value(a, sent);
 }
 
 fn resume(u: MailJob.Invite, cx) {
-    rest::json(cx, 201, Invited { project: u.project, user: u.user, mail: rest::answer<i64>(cx) });
+    plod::json(cx, 201, Invited { project: u.project, user: u.user, mail: plod::answer<i64>(cx) });
 }
 
-thread_fn database(box: http::Box, jobs: rest::Jobs<DbJob>) {
+thread_fn database(box: http::Box, jobs: plod::Jobs<DbJob>) {
     var c = db::open(DELAY_MS);
-    rest::lane(box, jobs) { u, a => run(u, c, a); };
+    plod::lane(box, jobs) { u, a => run(u, c, a); };
 }
 
-thread_fn mailer(box: http::Box, jobs: rest::Jobs<MailJob>) {
+thread_fn mailer(box: http::Box, jobs: plod::Jobs<MailJob>) {
     var sent: i64 = 0;
-    rest::lane(box, jobs) { u, a => run(u, sent, a); };
+    plod::lane(box, jobs) { u, a => run(u, sent, a); };
 }
 
 thread_fn worker(cfg: http::Config, lanes: App) {
     var app = lanes;
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let e = plod::serve(cfg, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -129,11 +129,11 @@ fn main() {
     }
     http::exit_on_error(http::stop_on_signals());
     let app = App {
-        db: rest::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, database),
-        mailer: rest::lane_open<MailJob>(http::LaneConfig { .. }, Use.Mail, mailer),
+        db: plod::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, database),
+        mailer: plod::lane_open<MailJob>(http::LaneConfig { .. }, Use.Mail, mailer),
     };
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, mail_size: 64, max_waiting: 1024, .. };
     http::run(cfg, app, worker);
-    rest::lane_stop(app.db);
-    rest::lane_stop(app.mailer);
+    plod::lane_stop(app.db);
+    plod::lane_stop(app.mailer);
 }

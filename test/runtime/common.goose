@@ -2,7 +2,7 @@
 // project that a route loads through two calls that may fail.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 
 struct Project { id: i64, name: const u8[:] }
@@ -23,12 +23,12 @@ fn answers<H>(text: const u8[:], want: const u8[:], more: const u8[:] = "") {
     var out: u8[>..] = [];
     var keep = true;
     var st = http::Stream { .. };
-    var state = rest::NoState { .. };
+    var state = plod::NoState { .. };
     let body = text[req.len..];
     var scratch: u8[>..] = [];
-    var app = rest::NoState { .. };
-    var none = rest::NoRouter { .. };
-    var cx = rest::Cx<rest::NoState, rest::NoState, rest::NoRouter> { req: req, body: body, out: http::Reply { buf: out,
+    var app = plod::NoState { .. };
+    var none = plod::NoRouter { .. };
+    var cx = plod::Cx<plod::NoState, plod::NoState, plod::NoRouter> { req: req, body: body, out: http::Reply { buf: out,
                         common: "", keep_alive: keep, minor: 1, head: false, stream: st }, state: state, app: app,
                         scratch: scratch, router: none };
     H(cx);
@@ -36,13 +36,13 @@ fn answers<H>(text: const u8[:], want: const u8[:], more: const u8[:] = "") {
 }
 
 fn find(cx, id: i64) -> Project {
-    guard id != 0 else { rest::fail(cx, 404, "project_not_found"); }
+    guard id != 0 else { plod::fail(cx, 404, "project_not_found"); }
     return Project { id: id, name: "goose \"one\"" };
 }
 
 fn load(cx, id: i64) -> Project {
     let p = find(cx, id);
-    guard p.id != 13 else { rest::fail(cx, 403, str("forbidden_", p.id)); }
+    guard p.id != 13 else { plod::fail(cx, 403, str("forbidden_", p.id)); }
     return p;
 }
 

@@ -1,4 +1,4 @@
-// rest::serve and rest::serve_epoll with a TlsServer, each on a Unix socket in
+// plod::serve and plod::serve_epoll with a TlsServer, each on a Unix socket in
 // TMPDIR whose listener serves TLS, with a certificate goose-tls makes here: a
 // route's answer, an error, and a WebSocket's echo over wss, each read by a
 // client of goose-tls's that trusts the certificate.
@@ -7,43 +7,43 @@ import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import rest from "../../";
-import rest.tls;
-import rest.websocket;
+import plod from "../../";
+import plod.tls;
+import plod.websocket;
 
 enum Use { None, Echo }
 
 struct St { use: Use = Use.None, ws: http::WebSocket = http::WebSocket { .. } }
 
 fn handle(cx) {
-    if rest::resumed(cx) {
-        rest::on_reply(cx) { resume(cx.state.use, cx); };
+    if plod::resumed(cx) {
+        plod::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
-        rest::routes(cx) { cx =>
-            rest::get(cx, "/hello") { rest::text(cx, 200, "hello over TLS"); };
-            rest::get(cx, "/ws") { rest::ws_upgrade(cx, cx.state.ws, Use.Echo); };
+        plod::routes(cx) { cx =>
+            plod::get(cx, "/hello") { plod::text(cx, 200, "hello over TLS"); };
+            plod::get(cx, "/ws") { plod::ws_upgrade(cx, cx.state.ws, Use.Echo); };
         };
     }
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 fn resume(u: Use.Echo, cx) {
-    rest::ws_read(cx, cx.state.ws) { op, data => http::ws_send(cx.out, op, data); };
+    plod::ws_read(cx, cx.state.ws) { op, data => http::ws_send(cx.out, op, data); };
 }
 
 thread_fn ring_worker(cfg: http::Config, ctx: tls::Context) {
     var server = http::tls_server(ctx);
-    var app = rest::NoState { .. };
-    let e = rest::serve(cfg, app, St { .. }, server) { cx => handle(cx); };
+    var app = plod::NoState { .. };
+    let e = plod::serve(cfg, app, St { .. }, server) { cx => handle(cx); };
     http::release(server);
     if e.code != 0 { http::report(e); }
 }
 
 thread_fn epoll_worker(cfg: http::Config, ctx: tls::Context) {
     var server = http::tls_server(ctx);
-    var app = rest::NoState { .. };
-    let e = rest::serve_epoll(cfg, app, St { .. }, server) { cx => handle(cx); };
+    var app = plod::NoState { .. };
+    let e = plod::serve_epoll(cfg, app, St { .. }, server) { cx => handle(cx); };
     http::release(server);
     if e.code != 0 { http::report(e); }
 }

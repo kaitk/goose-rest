@@ -1,9 +1,9 @@
-// A handler behind goose-rest's middleware, rest::timed, rest::cors, block
-// scopes, and rest::bearer, around rest::get and a failure two calls below
+// A handler behind Plod's middleware, plod::timed, plod::cors, block
+// scopes, and plod::bearer, around plod::get and a failure two calls below
 // it, written out under /v1 and as a stack calling a stack under /v2:
 // member_routes calls signed_in_routes, and the token passes through both
-// blocks. Inside rest::routes, cors and timed run their block in
-// rest::scoped, a route of its own inside the request's one route.
+// blocks. Inside plod::routes, cors and timed run their block in
+// plod::scoped, a route of its own inside the request's one route.
 // scripts/test.sh compiles it with -O2 and checks that the C holds no
 // function of the middleware's, the routes', the scopes', the stacks', or the
 // helpers that fail: all of it is inlined into handle, each early answer a jump, as in
@@ -11,49 +11,49 @@
 // does (docs/goose-findings.md).
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../";
+import plod from "../";
 
 struct Item { id: i64, owner: i64 }
 
 fn format(out: u8[>..]&, it: const Item&) { format(out, "{\"id\":", it.id, ",\"owner\":", it.owner, "}"); }
 
 fn find_item(cx, id: i64) -> Item {
-    guard id > 0 else { rest::fail(cx, 404, "item_not_found"); }
+    guard id > 0 else { plod::fail(cx, 404, "item_not_found"); }
     return Item { id: id, owner: id % 3 };
 }
 
 fn load(cx, user: i64, id: i64) -> Item {
     let it = find_item(cx, id);
-    guard it.owner == user else { rest::fail(cx, 403, "not_owner"); }
+    guard it.owner == user else { plod::fail(cx, 403, "not_owner"); }
     return it;
 }
 
 inline fn signed_in_routes<F>(cx) {
-    rest::bearer(cx) { token => F(token); };
+    plod::bearer(cx) { token => F(token); };
 }
 
 inline fn member_routes<F>(cx) {
-    rest::timed(cx, false) {
-        rest::cors(cx, rest::Cors { origins: "https://a.example", .. }) {
+    plod::timed(cx, false) {
+        plod::cors(cx, plod::Cors { origins: "https://a.example", .. }) {
             signed_in_routes(cx) { token => F(token); };
         };
     };
 }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::scope(cx, "/v1") {
-            rest::cors(cx, rest::Cors { origins: "https://a.example", .. }) {
-                rest::bearer(cx) { token =>
-                    let user = rest::int_of(cx, token, "token");
-                    rest::get(cx, "/items/:id") { rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id"))); };
+    plod::routes(cx) { cx =>
+        plod::scope(cx, "/v1") {
+            plod::cors(cx, plod::Cors { origins: "https://a.example", .. }) {
+                plod::bearer(cx) { token =>
+                    let user = plod::int_of(cx, token, "token");
+                    plod::get(cx, "/items/:id") { plod::json(cx, 200, load(cx, user, plod::param_int(cx, "id"))); };
                 };
             };
         };
-        rest::scope(cx, "/v2") {
+        plod::scope(cx, "/v2") {
             member_routes(cx) { token =>
-                let user = rest::int_of(cx, token, "token");
-                rest::get(cx, "/items/:id") { rest::json(cx, 200, load(cx, user, rest::param_int(cx, "id"))); };
+                let user = plod::int_of(cx, token, "token");
+                plod::get(cx, "/items/:id") { plod::json(cx, 200, load(cx, user, plod::param_int(cx, "id"))); };
             };
         };
     };
@@ -67,11 +67,11 @@ fn main() {
         let req, status = http::parse(text);
         var keep = true;
         var st = http::Stream { .. };
-        var state = rest::NoState { .. };
+        var state = plod::NoState { .. };
         var scratch: u8[>..] = [];
-        var app = rest::NoState { .. };
-        var none = rest::NoRouter { .. };
-        var cx = rest::Cx<rest::NoState, rest::NoState, rest::NoRouter> { req: req, body: "", out: http::Reply {
+        var app = plod::NoState { .. };
+        var none = plod::NoRouter { .. };
+        var cx = plod::Cx<plod::NoState, plod::NoState, plod::NoRouter> { req: req, body: "", out: http::Reply {
                                            buf: out, common: "", keep_alive: keep, minor: 1, head: false, stream: st },
                                            state: state, app: app, scratch: scratch, router: none };
         handle(cx);

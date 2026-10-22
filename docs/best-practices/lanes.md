@@ -10,7 +10,7 @@ database, and not to compute for long. That work goes to a lane, as a job:
   passwords. Each thread takes its jobs from its **box**, a queue with a fixed number of
   slots.
 - A **job** is one use case, such as "create this entry": a variant of its lane's enum
-  of jobs. A route sends it to a lane with `rest::ask`, as a small message. The worker
+  of jobs. A route sends it to a lane with `plod::ask`, as a small message. The worker
   serves its other connections until the reply comes back. On the lane, the job's `run`
   case function does it from start to end, in one transaction
   ([Work that waits](../tutorial/11-waiting.md)).
@@ -71,7 +71,7 @@ enum Use { None, Write, Report, Hash }
 ```
 
 Every route that waits, and each of its jobs, is then listed in one place, so a reader
-sees which lane does what before opening a domain's files. `rest::ask` takes only its
+sees which lane does what before opening a domain's files. `plod::ask` takes only its
 lane's enum, so a job sent to the wrong lane doesn't compile, and each lane's `run`
 cases take that lane's own state:
 
@@ -122,25 +122,25 @@ lane more threads, each with its own box, rather than make one box larger
 <details>
 <summary>How <code>main.goose</code> starts the lanes</summary>
 
-`main` opens each lane with `rest::lane_open`, naming its jobs' enum and its mark. It
+`main` opens each lane with `plod::lane_open`, naming its jobs' enum and its mark. It
 starts the lane's threads, each with a box of its own, with slots of 256 bytes to fit
 the largest job a route sends. It gives the workers the lanes in `App`, which a route
-reads as `cx.app.writer`. At shutdown, it stops each lane with `rest::lane_stop`, which
+reads as `cx.app.writer`. At shutdown, it stops each lane with `plod::lane_stop`, which
 waits for the lane's threads:
 
 ```rust
     let app = App {
-        writer: rest::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer),
-        reports: rest::lane_open<Reports>(http::LaneConfig { slots: REPORTS_SLOTS, .. }, Use.Report, reports),
-        hasher: rest::lane_open<Hashes>(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, Use.Hash, hasher),
+        writer: plod::lane_open<Writes>(http::LaneConfig { slots: WRITER_SLOTS, .. }, Use.Write, writer),
+        reports: plod::lane_open<Reports>(http::LaneConfig { slots: REPORTS_SLOTS, .. }, Use.Report, reports),
+        hasher: plod::lane_open<Hashes>(http::LaneConfig { threads: 2, slots: HASHER_SLOTS, .. }, Use.Hash, hasher),
     };
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, app, worker);
     // A flag in each box, not a message: a full box can't refuse it. Each
     // lane_stop waits for its lane's threads.
-    rest::lane_stop(app.writer);
-    rest::lane_stop(app.reports);
-    rest::lane_stop(app.hasher);
+    plod::lane_stop(app.writer);
+    plod::lane_stop(app.reports);
+    plod::lane_stop(app.hasher);
 ```
 
 </details>
@@ -149,20 +149,20 @@ waits for the lane's threads:
 <summary>What a lane's thread runs</summary>
 
 A lane's thread owns the lane's state, and hands each job in its box to the job's `run`
-with `rest::lane`. Its `rest::Jobs<Writes>` parameter names the lane's enum, which
-`rest::lane_open` checks, so a thread opened for another lane doesn't compile. The
+with `plod::lane`. Its `plod::Jobs<Writes>` parameter names the lane's enum, which
+`plod::lane_open` checks, so a thread opened for another lane doesn't compile. The
 writer:
 
 ```rust
 // The writer lane, one thread: the database's one writer. It owns the entries
 // and the sessions, and runs every job that writes, one at a time.
-thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
+thread_fn writer(box: http::Box, jobs: plod::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
     var w = Writer { entries: all, sessions: sessions };
     // Each job in the box, in order, to its run case function, until main
     // stops the lane.
-    rest::lane(box, jobs) { u, a => run(u, w, a); };
+    plod::lane(box, jobs) { u, a => run(u, w, a); };
 }
 ```
 
@@ -188,18 +188,18 @@ while the hasher works. From [`lanes/auth/routes.goose`](lanes/auth/routes.goose
 
 ```rust
 fn sign_in(cx) {
-    let email, has_email = rest::form(cx, "email");
-    rest::require(cx, "email", has_email);
-    let password, has_password = rest::form(cx, "password");
-    rest::require(cx, "password", has_password);
+    let email, has_email = plod::form(cx, "email");
+    plod::require(cx, "email", has_email);
+    let password, has_password = plod::form(cx, "password");
+    plod::require(cx, "password", has_password);
     // Returns at once; at the reply, the worker calls resume(u: Hashes.AuthPassword, cx).
-    rest::ask(cx, cx.app.hasher, Hashes.AuthPassword { email: email, password: password });
+    plod::ask(cx, cx.app.hasher, Hashes.AuthPassword { email: email, password: password });
 }
 ```
 
-**2. The hasher's thread runs the job.** `rest::lane` hands it to the job's `run`, which
+**2. The hasher's thread runs the job.** `plod::lane` hands it to the job's `run`, which
 finds the user, calls the rule, and replies with the user's id. A wrong password fails
-the route from the lane: `auth::check` calls `rest::fail` with the lane's `a`, as it
+the route from the lane: `auth::check` calls `plod::fail` with the lane's `a`, as it
 does with a route's `cx`, and the route answers 401 before its `resume` runs:
 
 ```rust
@@ -208,7 +208,7 @@ does with a route's `cx`, and the route answers 401 before its `resume` runs:
 fn ::run(u: Hashes.AuthPassword, h: Hasher&, a) {
     let user, err = auth::signed_in(h.users, u.email, u.password);
     auth::check(err, a);
-    rest::reply_value(a, user);
+    plod::reply_value(a, user);
 }
 ```
 
@@ -257,9 +257,9 @@ From [`lanes/main.goose`](lanes/main.goose):
 ```rust
 // A thread of the hasher lane: password checks, work that takes CPU, not
 // waiting, so that it holds up neither the worker's connections nor the writer.
-thread_fn hasher(box: http::Box, jobs: rest::Jobs<Hashes>) {
+thread_fn hasher(box: http::Box, jobs: plod::Jobs<Hashes>) {
     var h = Hasher { users: auth::USERS };
-    rest::lane(box, jobs) { u, a => run(u, h, a); };
+    plod::lane(box, jobs) { u, a => run(u, h, a); };
 }
 ```
 
@@ -299,9 +299,9 @@ with 500 `no_reply`, which no one waits for here:
 // On the reports lane: the query, then the rule that sums. A report whose
 // client has gone isn't run.
 fn ::run(u: Reports.ReportTotals, r: Reader&, a) {
-    guard rest::still_wanted(a) else { return; }
+    guard plod::still_wanted(a) else { return; }
     if u.ms > 0 { sleep_ms(u.ms); }
-    rest::reply_value(a, reports::totals(r.entries, u.project));
+    plod::reply_value(a, reports::totals(r.entries, u.project));
 }
 ```
 
@@ -318,25 +318,25 @@ the `resume` for the job. From [`lanes/app.goose`](lanes/app.goose):
 ```rust
 // Each mark's resume: the reply carries its job back, which resume
 // dispatches on again, to the domain's resume for that job.
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
-fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }
-fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
-fn resume(u: Use.Hash, cx) { resume(rest::job<Hashes>(cx), cx); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Write, cx) { resume(plod::job<Writes>(cx), cx); }
+fn resume(u: Use.Report, cx) { resume(plod::job<Reports>(cx), cx); }
+fn resume(u: Use.Hash, cx) { resume(plod::job<Hashes>(cx), cx); }
 ```
 
 A job's `resume` gets the job as the route sent it, so what it needs from the request
 travels in the job, and the request state keeps only the mark. A job and its answer
 longer than one message of the worker's box, 256 bytes by default, come in pieces,
-which the worker collects within the reply limit `rest::ask` takes, promised from its
+which the worker collects within the reply limit `plod::ask` takes, promised from its
 gather budget, before the `resume` runs
 ([Lanes](../reference.md#41-lanes)). To send a long answer on as it comes, reply with
-`rest::reply` and answer with `rest::relay`
+`plod::reply` and answer with `plod::relay`
 ([A reply in pieces](../tutorial/12-two-lanes.md#a-reply-in-pieces)).
 
 Write a `run` and a `resume` for each variant, never one that takes the whole enum. An
 overload of `run(u, w: Writer&, a)` with `u` untyped, or of `resume(u: Writes, cx)`,
 matches every job exactly, so it takes every call, and the variants' own cases never
-run. The compiler doesn't warn. `rest::lane` answers 500 `no_reply` for a catch-all
+run. The compiler doesn't warn. `plod::lane` answers 500 `no_reply` for a catch-all
 `run` that doesn't reply, but nothing catches a catch-all `resume`
 ([reference](../reference.md#41-lanes)).
 
@@ -353,14 +353,14 @@ fn ::run(u: Writes.EntryCreate, w: Writer&, a) {
     let e, err = entries::new_entry(u.input, w.entries.len + 1, time() as i64);
     entries::check(err, a);
     w.entries.push(e);
-    rest::reply_value(a, e);
+    plod::reply_value(a, e);
 }
 
 // On the worker: the answer.
-fn ::resume(u: Writes.EntryCreate, cx) { rest::json(cx, 201, rest::answer<entries::Entry>(cx)); }
+fn ::resume(u: Writes.EntryCreate, cx) { plod::json(cx, 201, plod::answer<entries::Entry>(cx)); }
 ```
 
-`rest::answer<T>` fails the route with 502 `bad_reply` for a reply that isn't a `T`, so
+`plod::answer<T>` fails the route with 502 `bad_reply` for a reply that isn't a `T`, so
 a `resume` needs no check of its own.
 
 ### 6.5.2 A route with two slow steps
@@ -386,7 +386,7 @@ A route that waits takes four pieces in two files: a variant of its lane's enum 
 `app.goose`, and in its domain's `routes.goose`, the route, the job's `run`, and its
 `resume`, in the order they run. For a second step, the next job's `run` and `resume`
 follow. Each function opens with a comment saying where it runs: on the worker or on a
-lane. Each `rest::ask` names the `resume` it leads to.
+lane. Each `plod::ask` names the `resume` it leads to.
 
 `run` and `resume` are declared `fn ::run` and `fn ::resume`: the lanes' enums are the
 program's, declared in `app.goose` in the global namespace
@@ -406,7 +406,7 @@ hasher's `run`:
 // On the worker: the route's second wait, on the writer lane: at the reply,
 // resume(u: Writes.AuthSession, cx).
 fn ::resume(u: Hashes.AuthPassword, cx) {
-    rest::ask(cx, cx.app.writer, Writes.AuthSession { user: rest::answer<i64>(cx) });
+    plod::ask(cx, cx.app.writer, Writes.AuthSession { user: plod::answer<i64>(cx) });
 }
 
 // On the writer lane: one write. The writer's sessions stand in for the
@@ -414,16 +414,16 @@ fn ::resume(u: Hashes.AuthPassword, cx) {
 fn ::run(u: Writes.AuthSession, w: Writer&, a) {
     let s = auth::Session { id: w.sessions.len + 1, user: u.user };
     w.sessions.push(s);
-    rest::reply_value(a, s);
+    plod::reply_value(a, s);
 }
 
 // On the worker: the answer.
-fn ::resume(u: Writes.AuthSession, cx) { rest::json(cx, 201, rest::answer<auth::Session>(cx)); }
+fn ::resume(u: Writes.AuthSession, cx) { plod::json(cx, 201, plod::answer<auth::Session>(cx)); }
 ```
 
 </details>
 
-A test plays a job through its `run` with `rest::play`, without a thread
+A test plays a job through its `run` with `plod::play`, without a thread
 ([Testing](testing.md)), and calls a rule as a plain function. When a domain's
 `routes.goose` grows too long, it splits by operation
 ([When a domain grows](layout.md#23-when-a-domain-grows)).
@@ -432,7 +432,7 @@ A test plays a job through its `run` with `rest::play`, without a thread
 
 Give a lane several threads when its jobs can run side by side, such as password checks
 that each take a core: `http::LaneConfig { threads: 2, .. }`, as the hasher has. Each
-thread has its own box, and `rest::ask` sends a job to the least busy one, so a route
+thread has its own box, and `plod::ask` sends a job to the least busy one, so a route
 gets 503 only when every box is full. The lane's code doesn't change: each thread runs
 the same `thread_fn`.
 

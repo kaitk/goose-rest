@@ -6,14 +6,14 @@
 # same bytes: routes1.goose has routes60's first route, routes1_last.goose
 # its last, and routes1_post.goose the POST route the 405 is a GET of.
 #
-# gen60.goose serves the same routes through the router goose-rest
+# gen60.goose serves the same routes through the router Plod
 # gen writes from test/gen/routes.json. It answers a 404 and a 405 in the
 # JSON error shape, a body of 21 to 30 bytes, where the others send none.
 #
-# hand60.goose serves the same routes written by hand on goose-rest,
-# through rest::serve_epoll, and answers as gen60 does. The query case reads
+# hand60.goose serves the same routes written by hand on Plod,
+# through plod::serve_epoll, and answers as gen60 does. The query case reads
 # GET /v1/projects's three query parameters, which routes60 ignores. genr60.goose
-# is gen60 behind rest::routes and one hand-written route, as a program serves
+# is gen60 behind plod::routes and one hand-written route, as a program serves
 # a route its schema can't describe.
 #
 # goose-http's bench/count.sh's load on macOS, which has no perf: one worker,
@@ -94,7 +94,7 @@ query hand60 /v1/projects?page=2&archived=false&q=go 2'
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
     "macOS $(sw_vers -productVersion), Darwin $(uname -r), $(h2load --version | head -1)," \
-    "goose-rest $(git -C "$root" rev-parse --short HEAD), load $(sysctl -n vm.loadavg)"
+    "Plod $(git -C "$root" rev-parse --short HEAD), load $(sysctl -n vm.loadavg)"
 printf 'case\tserver\trun\tinstructions/req\tcycles/req\treq/s\n'
 for run in $(seq "$runs"); do
     while read -r name server target class; do

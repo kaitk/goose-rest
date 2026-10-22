@@ -12,7 +12,7 @@ replies of different types dispatch, how much the request state grows, and wheth
   program's four use cases on the package, with the calls of `proposal.goose`. `main`
   plays goose-http's loop, as spikes 06 and 09 do, with three real lanes.
 - `proposal.goose`: the calls the package would take, in namespace `spike10` beside
-  the package's `rest`: `ask` with a variant, `lane`, `reply_value`, `on_reply`, and
+  the package's `plod`: `ask` with a variant, `lane`, `reply_value`, `on_reply`, and
   `answer`. They were in namespace `rest` until the package took spike 11's calls of
   the same names (2026-10-19), with the same output.
 - `sizes/main.goose`: the request state, and a connection's bytes, with each enum.
@@ -36,7 +36,7 @@ $GOOSE check differing_replies.goose   # each of the four fails to compile
 A route that waits costs four pieces in two files, down from nine in four: a variant
 of `Use` in `app.goose`, and the route, its `run`, and its `resume` in its domain's
 file. The tags, the job structs, the lane's if chain, the `::resume` forwarders, and
-the `guard ok else { rest::fail(cx, 502, "bad_reply"); }` of every `resume` go:
+the `guard ok else { plod::fail(cx, 502, "bad_reply"); }` of every `resume` go:
 
 ```rust
 // app.goose
@@ -60,11 +60,11 @@ fn ::run(u: Use.EntryCreate, db: Db&, a) {
     spike10::reply_value(a, e);
 }
 
-fn ::resume(u: Use.EntryCreate, cx) { rest::json(cx, 201, spike10::answer<entries::Entry>(cx)); }
+fn ::resume(u: Use.EntryCreate, cx) { plod::json(cx, 201, spike10::answer<entries::Entry>(cx)); }
 ```
 
 Each program writes, once, a `run` and a `resume` for `Use.None`, one lane thread for
-every lane, and `spike10::on_reply` in place of `rest::route` at a later call:
+every lane, and `spike10::on_reply` in place of `plod::route` at a later call:
 
 ```rust
 thread_fn lane(box: http::Box) {
@@ -73,8 +73,8 @@ thread_fn lane(box: http::Box) {
     spike10::lane<Use>(box) { u, a => run(u, db, a); };
 }
 
-rest::serve(cfg, app, St { .. }) { cx =>
-    if rest::resumed(cx) { spike10::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
+plod::serve(cfg, app, St { .. }) { cx =>
+    if plod::resumed(cx) { spike10::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 };
 ```
 
@@ -123,7 +123,7 @@ The job crosses as the enum itself. `spike10::ask` stores the variant in `cx.sta
 and sends an `Ask<Use>` built from that field, since a variant's constructor
 (`Use.EntryCreate { ... }`) has the variant's type, which would make an `Ask` of the
 variant. The image is a fixed 157 bytes for every job, from `http::lane_send_value`;
-the lane reads it with `http::mail_value` into a `rest::Ask<Use>`, whose `from_bytes` checks the tag, and
+the lane reads it with `http::mail_value` into a `plod::Ask<Use>`, whose `from_bytes` checks the tag, and
 dispatches on it. `LaneConfig.size` must hold the largest variant's image: a longer one
 returns `TOO_LONG`, which `ask` answers as 503.
 
@@ -150,20 +150,20 @@ takes the whole enum is an exact match, so a call with a `Use` takes it for ever
 variant, and the variant's own case never runs (`cases/main.goose`: `rows taken by the
 Report case: 0`).
 
-A route that waits on its own body (`rest::body_in_pieces`) or on a pause, not a lane,
+A route that waits on its own body (`plod::body_in_pieces`) or on a pause, not a lane,
 has a variant too, so each lane's dispatch needs a `run` for it that does nothing.
 
 ## An error a job returns fails the route
 
-A `run` fails as a route does: `rest::fail(a, 422, "entry_ends_before_start")` is a
-`return ... from rest::attempt`, which `spike10::lane` wraps around the dispatch. `fail`
+A `run` fails as a route does: `plod::fail(a, 422, "entry_ends_before_start")` is a
+`return ... from plod::attempt`, which `spike10::lane` wraps around the dispatch. `fail`
 ignores its first argument, so a domain's `check(e, x)` serves a route's `cx` and a
 lane's `a` unchanged. `spike10::lane` replies the failure as a `Refusal { status, code }`
 with the tag `JOB_FAILED`, and `spike10::on_reply` fails the route with it before the
 `resume` runs. A `run` that can fail doesn't compile when called outside `spike10::lane` or
-`rest::attempt`.
+`plod::attempt`.
 
-The reply is a fixed struct, not `rest::Failure`: its owned `u8[]` fields make it
+The reply is a fixed struct, not `plod::Failure`: its owned `u8[]` fields make it
 variable-size, and `http::mail_value` indexes the image's array, which Goose refuses for
 variable-size elements. `JOB_FAILED` is the bit the package gives `REPLY_REFUSED`,
 beside `REPLY_MORE` and `REPLY_CONT`, so that the package's `cx.refused` says it.
@@ -176,16 +176,16 @@ beside `REPLY_MORE` and `REPLY_CONT`, so that the package's `cx.refused` says it
 The variant waits in `cx.state`, so the state takes a tag and the largest job's
 payload. `sizes/main.goose`, in bytes (`expected.txt` there):
 
-| Request state | State | `rest::Slot` | goose-http's `RingConn` |
+| Request state | State | `plod::Slot` | goose-http's `RingConn` |
 |---|---:|---:|---:|
-| Tier M (`rest::NoState`) | 1 | 59 | 242 |
+| Tier M (`plod::NoState`) | 1 | 59 | 242 |
 | Tiers C and D (`Heavy`) | 9 | 67 | 250 |
 | The lanes, `Waiting` | 1 | 59 | 242 |
 | The lanes, `Use` | 131 | 189 | 372 |
 | The lanes, `Use` without the sign-in | 25 | 83 | 266 |
 
 The `Slot`s are 8 bytes larger than when the spike ran, for the promise in the
-`http::Gather` that `rest::Exchange` holds from 2026-10-22.
+`http::Gather` that `plod::Exchange` holds from 2026-10-22.
 
 The sign-in's two `u8[..64]` fields, 65 bytes each, make 130 of the 131. With ids
 alone, the largest job is three `i64`s, and a connection grows by 24 bytes, 10%. With

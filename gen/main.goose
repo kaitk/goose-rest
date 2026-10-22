@@ -1,18 +1,18 @@
-// goose-rest gen: writes Goose types, JSON readers, and JSON writers from the
+// plod gen: writes Goose types, JSON readers, and JSON writers from the
 // schemas of an OpenAPI 3.1 document, and a router from its paths
 // (docs/generator.md).
 //
-//   goose-rest gen IN -o OUT [--namespace NAME] [--handlers NAME]
+//   plod gen IN -o OUT [--namespace NAME] [--handlers NAME]
 //
 // The namespace defaults to api, and the handlers' to app. On an error, OUT
-// isn't written, and the error goes to standard error as "goose-rest: IN:
+// isn't written, and the error goes to standard error as "plod: IN:
 // <JSON pointer>: <message>".
 import std;
 import os;
 import .gen;
 
 fn usage() {
-    write_stderr("usage: goose-rest gen IN -o OUT [--namespace NAME] [--handlers NAME]\n");
+    write_stderr("usage: plod gen IN -o OUT [--namespace NAME] [--handlers NAME]\n");
     exit(2);
 }
 
@@ -33,15 +33,15 @@ fn main() {
     }
     guard input.len > 0 && output.len > 0 else { usage(); }
     guard gen::is_ident(ns) && gen::is_ident(handlers) else {
-        write_stderr("goose-rest: a namespace must be a Goose identifier\n");
+        write_stderr("plod: a namespace must be a Goose identifier\n");
         exit(2);
     }
     var text: u8[>..] = [];
-    guard read_file(input, text) else { write_stderr(str("goose-rest: can't read ", input, "\n")); exit(1); }
+    guard read_file(input, text) else { write_stderr(str("plod: can't read ", input, "\n")); exit(1); }
     var slash = -1;
     for c, k in input { if c == '/' || c == '\\' { slash = k; } }
     var out: u8[>..] = [];
     let err = gen::generate(text, ns, handlers, input[slash + 1..], out);
-    guard err.len == 0 else { write_stderr(str("goose-rest: ", input, ": ", err, "\n")); exit(1); }
-    guard write_file(output, out) else { write_stderr(str("goose-rest: can't write ", output, "\n")); exit(1); }
+    guard err.len == 0 else { write_stderr(str("plod: ", input, ": ", err, "\n")); exit(1); }
+    guard write_file(output, out) else { write_stderr(str("plod: can't write ", output, "\n")); exit(1); }
 }

@@ -13,7 +13,7 @@
 # request has an Origin the middleware allows. MIDDLE and LAST are the
 # scopes of the middle and last cases, a GET route in each: the last area's
 # last scope for LAST. TODAY, a worktree of today's package, builds hand
-# against it rather than this one's, whose rest::routes is design A's. GOOSE
+# against it rather than this one's, whose plod::routes is design A's. GOOSE
 # names the compiler (default: the pinned one, scripts/goose.sh). Prints each
 # build's time, then one line per run.
 set -eu
@@ -88,7 +88,7 @@ done
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
     "macOS $(sw_vers -productVersion), Darwin $(uname -r), $(h2load --version | head -1)," \
-    "goose-rest $(git -C "$root" rev-parse --short HEAD), today $(git -C "$today" rev-parse --short HEAD)," \
+    "Plod $(git -C "$root" rev-parse --short HEAD), today $(git -C "$today" rev-parse --short HEAD)," \
     "AREAS $areas MODULES $modules ROLES $roles CORS $cors, load $(sysctl -n vm.loadavg)"
 printf 'case\tserver\trun\tinstructions/req\tcycles/req\treq/s\n'
 for run in $(seq "$runs"); do

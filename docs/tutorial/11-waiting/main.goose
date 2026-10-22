@@ -10,7 +10,7 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import db from "../db/";
 import .database;
 import .app;
@@ -18,12 +18,12 @@ import .app;
 // How long each statement takes, as a query over a network would.
 let DELAY_MS: i64 = 20;
 
-thread_fn worker(cfg: http::Config, lane: rest::Lane<DbJob, Use>) {
+thread_fn worker(cfg: http::Config, lane: plod::Lane<DbJob, Use>) {
     var conn = db::open(DELAY_MS);
     var app = App { conn: conn, db: lane };
-    let e = rest::serve(cfg, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let e = plod::serve(cfg, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }
@@ -39,8 +39,8 @@ fn main() {
         if ok { port = p; }
     }
     http::exit_on_error(http::stop_on_signals());
-    let lane = rest::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, DELAY_MS, database);
+    let lane = plod::lane_open<DbJob>(http::LaneConfig { .. }, Use.Db, DELAY_MS, database);
     let cfg = http::Config { port: port as i32, workers: 1, mail_slots: 64, max_waiting: 1024, .. };
     http::run(cfg, lane, worker);
-    rest::lane_stop(lane);
+    plod::lane_stop(lane);
 }

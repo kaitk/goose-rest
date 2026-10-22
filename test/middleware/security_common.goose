@@ -1,12 +1,12 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
-fn secured(cfg: const rest::SecurityFields&, method: const u8[:] = "GET") -> u8[>..] {
+fn secured(cfg: const plod::SecurityFields&, method: const u8[:] = "GET") -> u8[>..] {
     return answer(expect::request(method, "/")) { cx =>
-        rest::security_headers(cx, cfg) { rest::text(cx, 200, "ok"); };
+        plod::security_headers(cx, cfg) { plod::text(cx, 200, "ok"); };
     };
 }
 
@@ -26,8 +26,8 @@ fn security_omitted(out: const u8[:], name: const u8[:]) {
 }
 
 fn security_baseline_field(name: const u8[:], html: const u8[:], api: const u8[:]) {
-    let h = rest::prepare_security_headers(rest::security_html());
-    let a = rest::prepare_security_headers(rest::security_api());
+    let h = plod::prepare_security_headers(plod::security_html());
+    let a = plod::prepare_security_headers(plod::security_api());
     let hout = secured(h);
     let aout = secured(a);
     if html.len > 0 { security_header(hout, name, html); } else { security_omitted(hout, name); }

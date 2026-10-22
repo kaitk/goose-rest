@@ -1,10 +1,10 @@
-"""Writes goose-rest's tier R sources from github.txt:
+"""Writes Plod's tier R sources from github.txt:
 
     python3 bench/rest/tiers/github_goose.py
 
 - bench/rest/goose-rest/github.json, an OpenAPI 3.1 document of the 203
   routes, operation n named rN, each path parameter a string, from which
-  goose-rest gen writes github_gen.goose's router (bench/rest.sh build);
+  plod gen writes github_gen.goose's router (bench/rest.sh build);
 - bench/rest/goose-rest/github_app.goose, the handlers both routers call,
   app::rN, and chain, the same routes as an http::router if chain in
   github.txt's order.
@@ -58,7 +58,7 @@ lines = [
     "",
     "import std;",
     "import http;",
-    "import rest;",
+    "import plod;",
     "",
     "fn answer(cx, n: i64, values: const u8[:][:]) {",
     "    var b: u8[>..] = [];",
@@ -67,7 +67,7 @@ lines = [
     "        b.push(' ');",
     "        b.append(v);",
     "    }",
-    "    rest::text(cx, 200, b);",
+    "    plod::text(cx, 200, b);",
     "}",
     "",
 ]
@@ -79,10 +79,10 @@ lines += ["", "// The routes as an if chain, in github.txt's order.", "fn chain(
           "    var r = http::router(cx.req);"]
 for n, (method, pattern) in enumerate(routes, 1):
     names = params(pattern)
-    args = "".join(f", rest::param(cx, r, \"{p}\")" for p in names)
+    args = "".join(f", plod::param(cx, r, \"{p}\")" for p in names)
     lead = "if" if n == 1 else "} else if"
     lines.append(f"    {lead} http::on(r, \"{method}\", \"{pattern}\") {{")
     lines.append(f"        r{n}(cx{args});")
-lines += ["    } else {", "        rest::otherwise(cx, r);", "    }", "}", ""]
+lines += ["    } else {", "        plod::otherwise(cx, r);", "    }", "}", ""]
 with open(os.path.join(out, "github_app.goose"), "w") as f:
     f.write("\n".join(lines))

@@ -1,11 +1,11 @@
-// A response sent in pieces inside rest::compressed, in each coding: each
+// A response sent in pieces inside plod::compressed, in each coding: each
 // piece flushed in a chunk of its own, every encoder back after, and one
 // entry reused by each response in turn.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 import common;
 
@@ -43,6 +43,6 @@ fn main() {
     expect::same(l3, "M1 M2 M3 ");
     assert(all_released());
     // One entry, reused by each response in turn.
-    assert(rest::coded.len == 1);
+    assert(plod::coded.len == 1);
     print("responses in pieces, compressed: ok");
 }

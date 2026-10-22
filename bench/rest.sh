@@ -1,7 +1,7 @@
 #!/bin/sh
 # The REST benchmark (docs/benchmarks.md): goose-http's REST tiers A to D
-# through its own bench/rest.sh, with goose-rest, Axum, actix-web, ntex,
-# dusty with a route per path, and Aegon beside goose-http alone, and goose-rest's tiers
+# through its own bench/rest.sh, with Plod, Axum, actix-web, ntex,
+# dusty with a route per path, and Aegon beside goose-http alone, and Plod's tiers
 # F, R, and M (bench/rest/tiers) run here the same way. Results go to
 # bench/results/<date>-rest-<machine>/ unless OUT names another directory.
 #
@@ -18,7 +18,7 @@
 #   bench/rest.sh run     goose-http's bench/rest.sh run with SERVERS, then
 #                         tiers F, R, and M at saturation, into the same OUT
 #   bench/rest.sh count   as root: count.sh's user instructions per request on
-#                         goose-http alone and goose-rest, one request each,
+#                         goose-http alone and Plod, one request each,
 #                         on LOOP's loop (default: epoll; or uring)
 #
 # Linux only but for check: run and count need taskset, /proc, and perf.
@@ -26,7 +26,7 @@
 # The servers, by name: goose-epoll and goose-uring, goose-http alone
 # (goose-http's build/rest/rest; on tier F, goose-*-bare, this repository's
 # server with BARE=1 on http::serve); goose-epoll-rest and goose-uring-rest,
-# goose-rest; goose-*-rest-gen, goose-rest through the generated router, tier
+# Plod; goose-*-rest-gen, Plod through the generated router, tier
 # R only; axum, actix-web, ntex, dusty-routes; aegon, and aegon-small with
 # its buffers for a low memlock limit; and goose-http's dusty, its
 # catch-all entry, and hyper, as anchors to its tables.
@@ -46,7 +46,7 @@
 # MACHINE, DATA, OUT):
 #   GOOSE        the compiler, for both repositories' builds (default: the
 #                pinned release, scripts/goose.sh)
-#   GOOSE_HTTP   a goose-http checkout at the pin rest.goose names (default:
+#   GOOSE_HTTP   a goose-http checkout at the pin plod.goose names (default:
 #                a clone at the pin in build/, scripts/goose-http.sh)
 #   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-rest
 #                goose-epoll-rest axum actix-web ntex dusty-routes aegon
@@ -69,8 +69,8 @@ tiers=$root/bench/rest/tiers
 PATH=$HOME/.cargo/bin:$PATH
 export GOOSE_HTTP=$gh
 
-# goose-http at the pin rest.goose imports.
-ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/rest.goose" | head -1)
+# goose-http at the pin plod.goose imports.
+ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/plod.goose" | head -1)
 pin=$(git -C "$gh" rev-parse --verify -q "$ref^{commit}" || true)
 [ -n "$pin" ] && [ "$(git -C "$gh" rev-parse HEAD)" = "$pin" ] ||
     echo "bench/rest.sh: $gh isn't at goose-http's pin $ref" >&2
@@ -322,7 +322,7 @@ else
     } >"$out/env.txt"
 fi
 {
-    echo "goose-rest: $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet || echo ' (modified)')"
+    echo "Plod: $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet || echo ' (modified)')"
     echo "axum: $(sed -n '/^name = "axum"$/{n;s/version = //p;}' "$root/bench/rest/axum/Cargo.lock")," \
         "actix-web: $(sed -n '/^name = "actix-web"$/{n;s/version = //p;}' "$root/bench/rest/actix-web/Cargo.lock")," \
         "ntex: $(sed -n '/^name = "ntex"$/{n;s/version = //p;}' "$root/bench/rest/ntex/Cargo.lock")"

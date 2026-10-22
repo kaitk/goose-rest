@@ -1,5 +1,5 @@
 // Fixed response fields, prepared before serving and selected per request.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -89,7 +89,7 @@ fn security_fields(c: const SecurityHeaders&) -> u8[>..] {
 }
 
 // Put outside route so that route writes errors while these fields are active.
-// Inside rest::routes, F runs in rest::scoped.
+// Inside plod::routes, F runs in plod::scoped.
 // Select one prepared policy here; nesting this middleware is unsupported.
 inline fn security_headers<S, A, R, F>(cx: Cx<S, A, R>&, cfg: const SecurityFields&) {
     guard cx.kind == http::REQUEST else { scoped(cx) { F(); }; return; }

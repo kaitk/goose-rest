@@ -1,9 +1,9 @@
-// goose-rest gen's errors for keywords outside its subset, each naming the
+// plod gen's errors for keywords outside its subset, each naming the
 // keyword and its JSON pointer.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
-import rest.gen.gen;
+import plod from "../../";
+import plod.gen.gen;
 import common;
 
 fn main() {

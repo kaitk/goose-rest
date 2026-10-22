@@ -1,10 +1,10 @@
-// rest::compressed: a large answer compressed in each coding the client
+// plod::compressed: a large answer compressed in each coding the client
 // takes, at the default level and at a level of the program's.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 import common;
 
@@ -22,8 +22,8 @@ fn main() {
                  str("HTTP/1.1 200 OK\r\n", JSON_HEAD, "Content-Encoding: deflate\r\nContent-Length: ", zl.len, "\r\n\r\n", zl));
     // A level of the program's.
     let gz9 = coded(compress::GZIP, 9);
-    let nine = rest::serve_one(expect::request("GET", "/big", GZIP)) { cx =>
-        rest::compressed(cx, http::Compression { level: 9, .. }) { cx => rest::json_bytes(cx, 200, records()); };
+    let nine = plod::serve_one(expect::request("GET", "/big", GZIP)) { cx =>
+        plod::compressed(cx, http::Compression { level: 9, .. }) { cx => plod::json_bytes(cx, 200, records()); };
     };
     expect::same(nine, str("HTTP/1.1 200 OK\r\n", JSON_HEAD, "Content-Encoding: gzip\r\nContent-Length: ", gz9.len,
                            "\r\n\r\n", gz9));

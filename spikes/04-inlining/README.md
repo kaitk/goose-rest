@@ -1,7 +1,7 @@
 # 04: Inlining to straight-line code
 
-Checks whether three nested middleware blocks (`rest::with_cors`, `with_auth`,
-`with_role`, as in spike 02) around a `rest::route` wrapper with `rest::fail` (as in
+Checks whether three nested middleware blocks (`plod::with_cors`, `with_auth`,
+`with_role`, as in spike 02) around a `plod::route` wrapper with `plod::fail` (as in
 spike 03) compile to one function, with no function pointers and no call frame per
 layer.
 
@@ -19,7 +19,7 @@ $GOOSE -O2 -o forward.c forward.goose     # the reduced case below
 
 With `main.goose` as it is, Goose inlines everything: `optimized -O2: 12 inlined`, and
 the only Goose function left in the C is `main_g`. Each middleware's early answer is a
-`goto` past the rest of the nesting. `rest::fail`'s `return ... from run` costs no
+`goto` past the rest of the nesting. `plod::fail`'s `return ... from run` costs no
 discriminant: it becomes an assignment to `route`'s result and a `goto`:
 
 ```c
@@ -30,7 +30,7 @@ if (!(t32)) {                       /* with_auth: cookie != "ok" */
     goto L29;
 }
 ...
-        t52.status_g = 404;         /* rest::fail(404, "not_found") in find */
+        t52.status_g = 404;         /* plod::fail(404, "not_found") in find */
         ...
         f_g = t52;
         goto L47;
@@ -40,7 +40,7 @@ The C contains no function-pointer calls outside the runtime's thread start.
 
 ## The workaround: wrap a forwarded function value in a block
 
-`rest::route` originally passed its block on by name, `let f = run(F);`. Goose then
+`plod::route` originally passed its block on by name, `let f = run(F);`. Goose then
 inlines nothing on the path: the C keeps `handler_g`, `rest_with_cors_g4`,
 `rest_with_auth_g4`, `rest_with_role_g4`, `rest_route_g4`, and `rest_run_g4`. Each is a
 direct call that passes free variables as pointers, plus an `if (gs_rf)` check after

@@ -1,8 +1,8 @@
-// rest::scope: prefix scopes, nested, with 404, 405, and OPTIONS across
+// plod::scope: prefix scopes, nested, with 404, 405, and OPTIONS across
 // them, an escaped prefix, and the paths that aren't in one.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -10,16 +10,16 @@ import common;
 // outside, after /v1, which owns the paths under it.
 fn scoped(text: const u8[:]) -> u8[>..] {
     return answer(text) { cx =>
-        rest::routes(cx) { cx =>
-            rest::scope(cx, "/v1") {
-                rest::get(cx, "") { rest::text(cx, 200, "v1"); };
-                rest::get(cx, "/projects") { rest::text(cx, 200, "list"); };
-                rest::post(cx, "/projects") { rest::text(cx, 200, "create"); };
-                rest::scope(cx, "/admin") {
-                    rest::delete(cx, "/users/:id") { rest::text(cx, 200, str("delete ", rest::param(cx, "id"))); };
+        plod::routes(cx) { cx =>
+            plod::scope(cx, "/v1") {
+                plod::get(cx, "") { plod::text(cx, 200, "v1"); };
+                plod::get(cx, "/projects") { plod::text(cx, 200, "list"); };
+                plod::post(cx, "/projects") { plod::text(cx, 200, "create"); };
+                plod::scope(cx, "/admin") {
+                    plod::delete(cx, "/users/:id") { plod::text(cx, 200, str("delete ", plod::param(cx, "id"))); };
                 };
             };
-            rest::get(cx, "/health") { rest::text(cx, 200, "health"); };
+            plod::get(cx, "/health") { plod::text(cx, 200, "health"); };
         };
     };
 }
@@ -47,5 +47,5 @@ fn main() {
     expect::same(scoped(expect::request("GET", "/v1/admin")), missing);
     expect::same(expect::status_of(scoped(expect::request("GET", "/v1/../health"))), "HTTP/1.1 400 Bad Request");
     expect::same(expect::status_of(scoped(expect::request("BREW", "/v1/projects"))), "HTTP/1.1 501 Not Implemented");
-    print("rest::scope: ok");
+    print("plod::scope: ok");
 }

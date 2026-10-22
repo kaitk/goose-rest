@@ -3,7 +3,7 @@
 // package, `import app from "../../";`, as a test can't import main.goose.
 import std;
 import http;
-import rest;
+import plod;
 import entries.routes;
 import reports.routes;
 import auth.routes;
@@ -28,22 +28,22 @@ struct Writer { entries: entries::Entry[>..]&, sessions: auth::Session[>..]& }
 struct Reader { entries: const entries::Entry[:] }
 struct Hasher { users: const auth::User[:] }
 
-// The lanes the routes send their jobs to: rest::ask takes a lane's least
+// The lanes the routes send their jobs to: plod::ask takes a lane's least
 // busy thread, and only that lane's jobs.
-struct App { writer: rest::Lane<Writes, Use>, reports: rest::Lane<Reports, Use>, hasher: rest::Lane<Hashes, Use> }
+struct App { writer: plod::Lane<Writes, Use>, reports: plod::Lane<Reports, Use>, hasher: plod::Lane<Hashes, Use> }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::scope(cx, "/auth") { auth::routes(cx); };
-        rest::scope(cx, "/entries") { entries::routes(cx); };
-        rest::scope(cx, "/reports") { reports::routes(cx); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::scope(cx, "/auth") { auth::routes(cx); };
+        plod::scope(cx, "/entries") { entries::routes(cx); };
+        plod::scope(cx, "/reports") { reports::routes(cx); };
     };
 }
 
 // Each mark's resume: the reply carries its job back, which resume
 // dispatches on again, to the domain's resume for that job.
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
-fn resume(u: Use.Write, cx) { resume(rest::job<Writes>(cx), cx); }
-fn resume(u: Use.Report, cx) { resume(rest::job<Reports>(cx), cx); }
-fn resume(u: Use.Hash, cx) { resume(rest::job<Hashes>(cx), cx); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Write, cx) { resume(plod::job<Writes>(cx), cx); }
+fn resume(u: Use.Report, cx) { resume(plod::job<Reports>(cx), cx); }
+fn resume(u: Use.Hash, cx) { resume(plod::job<Hashes>(cx), cx); }

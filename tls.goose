@@ -1,13 +1,13 @@
-// rest::serve and rest::serve_epoll with HTTPS on the listeners that ask for
+// plod::serve and plod::serve_epoll with HTTPS on the listeners that ask for
 // it, with goose-http's http.tls. Only a program that imports this module
 // needs goose-tls, which its root file declares at the tag goose-http's
 // tls.goose names:
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
 //   import tls from "github.com/kaitk/goose-tls@v0.0.5";
-//   import rest from "github.com/kaitk/goose-rest@<tag>";
-//   import rest.tls;
-namespace rest;
+//   import plod from "github.com/kaitk/goose-rest@<tag>";
+//   import plod.tls;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -22,7 +22,7 @@ import http.tls;
 // Its block repeats serve's, as serve_epoll's does.
 //
 //   var server = http::tls_server(ctx);
-//   rest::serve(cfg, app, St { .. }, server) { cx => handle(cx) };
+//   plod::serve(cfg, app, St { .. }, server) { cx => handle(cx) };
 //   http::release(server);
 fn serve<A, S, C, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServerOf<C>&) -> http::Error {
     return http::serve(cfg, Slot<S> { state: fresh }, server) { ev, st, out =>

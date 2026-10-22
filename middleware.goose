@@ -1,15 +1,15 @@
 // Middleware: blocks around a group of routes, inlined into the handler
-// (spike 04), and prefix scopes over http::router. One rest::route takes a
+// (spike 04), and prefix scopes over http::router. One plod::route takes a
 // request's failures: routes nested in routes keep each other out of line
 // (docs/architecture.md, "Middleware and inlining"). So middleware that adds fields
 // to every answer, timed and cors, goes outside the route and answers what
 // it refuses itself, and checks that fail, as bearer, go inside it.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 
-// Server-Timing as rest::timed writes it before its value, and the spaces it
+// Server-Timing as plod::timed writes it before its value, and the spaces it
 // leaves for the value.
 let TIMING = "Server-Timing: app;dur=";
 let TIMING_WIDTH = 12;
@@ -27,7 +27,7 @@ fn fill_timing(out: http::Reply, mark: i64, before: i64, ms: const u8[:]) {
 }
 
 // Cross-origin resource sharing (the Fetch standard's CORS protocol), for
-// rest::cors. origins lists the origins allowed, separated by spaces, as
+// plod::cors. origins lists the origins allowed, separated by spaces, as
 // "https://app.example https://admin.example", or is "*" for any.
 struct Cors {
     origins: const u8[:],
@@ -55,9 +55,9 @@ fn origin_in(list: const u8[:], origin: const u8[:]) -> bool {
 // age, without running F; the browser checks the request against them. A
 // route F leaves to answer at a later call keeps the fields with its
 // exchange, and serve adds them to that answer (keep_fields). Inside
-// rest::routes, F runs in rest::scoped.
+// plod::routes, F runs in plod::scoped.
 //
-//   rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) { ... };
+//   plod::cors(cx, plod::Cors { origins: "https://app.example", .. }) { ... };
 inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the block sees the caller's cx.out
     let origin, has_origin = http::field_of(cx.req, "origin");
     let common = cx.out.common;
@@ -86,7 +86,7 @@ inline fn cors<S, A, R, F>(cx: Cx<S, A, R>&, c: Cors) {   // a reference: the bl
 
 // Keeps the fields the middleware around F adds, cx.out.common, which is
 // cx.scratch[from..to], for the answer at a later call, when F left the
-// request unanswered for one: a reply it waits for (rest::ask), or a body
+// request unanswered for one: a reply it waits for (plod::ask), or a body
 // it reads in pieces. The innermost middleware keeps them first, with the
 // outer ones' in them. Kept holds offsets, not the slice: the checker can't
 // tell that the scratch outlives what cx.kept points to.
@@ -99,7 +99,7 @@ fn keep_fields(cx, from: i64, to: i64) {
 }
 
 // Whether the route waits to answer at a later call, at REQUEST. A body
-// left to gather (rest::body) runs the route again, middleware and all,
+// left to gather (plod::body) runs the route again, middleware and all,
 // once it's whole.
 fn answers_later(cx) -> bool {
     guard cx.kind == http::REQUEST else { return false; }
@@ -155,13 +155,13 @@ fn with_cors(scratch: u8[>..]&, common: const u8[:], c: Cors, origin: const u8[:
 // Runs F(token) with the request's bearer token (RFC 6750 §2.1), which the
 // block checks. A request without one fails with 401 unauthenticated and
 // WWW-Authenticate: Bearer. The block refuses a token with invalid_token.
-// It goes inside rest::route, as any code that fails does.
+// It goes inside plod::route, as any code that fails does.
 inline fn bearer<F>(cx) {
     F(bearer_token(cx));
 }
 
 // The request's bearer token, or a failure, 401 unauthenticated with
-// WWW-Authenticate: Bearer, as rest::bearer gives it. For a generated
+// WWW-Authenticate: Bearer, as plod::bearer gives it. For a generated
 // router's security_<scheme> function.
 fn bearer_token(cx) -> const u8[:] {
     let token, found = http::bearer(cx.req);
@@ -187,7 +187,7 @@ fn invalid_token(cx) {
 // value, and timed fills them in once F has answered, so that no byte of the
 // answer moves. The spaces the value doesn't take are whitespace a field
 // value may end in (RFC 9110 §5.5). At a later call, F runs as it is.
-// Inside rest::routes, F runs in rest::scoped.
+// Inside plod::routes, F runs in plod::scoped.
 inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a reference, as cors's
     let begun = clock_ns();
     let mark = cx.out.buf.len;
@@ -223,9 +223,9 @@ inline fn timed<S, A, R, F>(cx: Cx<S, A, R>&, log: bool = true) {   // a referen
 }
 
 // Whether the request is method on a path pattern matches, as http::on
-// takes them, against the router of the rest::routes block around it, the
+// takes them, against the router of the plod::routes block around it, the
 // only context that has one. A pattern that matches with another method adds
-// the method to the router's Allow, which rest::routes answers with.
+// the method to the router's Allow, which plod::routes answers with.
 fn on<S, A>(cx: Cx<S, A, http::Router>&, method: const u8[:], pattern: const u8[:]) -> bool {
     return http::on(cx.router, method, pattern);
 }
@@ -242,9 +242,9 @@ inline fn route_on<S, A, F>(cx: Cx<S, A, http::Router>&, method: const u8[:], pa
     }
 }
 
-// The route for a method on pattern, inside rest::routes. get takes HEAD too.
+// The route for a method on pattern, inside plod::routes. get takes HEAD too.
 //
-//   rest::get(cx, "/projects/:id") { project(cx, rest::param_int(cx, "id")); };
+//   plod::get(cx, "/projects/:id") { project(cx, plod::param_int(cx, "id")); };
 inline fn get<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "GET", pattern) { F(); }; }
 inline fn post<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "POST", pattern) { F(); }; }
 inline fn put<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "PUT", pattern) { F(); }; }
@@ -252,15 +252,15 @@ inline fn patch<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { ro
 inline fn delete<S, A, F>(cx: Cx<S, A, http::Router>&, pattern: const u8[:]) { route_on(cx, "DELETE", pattern) { F(); }; }
 
 // Runs F when the path left to match starts with prefix, as narrowed below
-// takes it, against the router of the rest::routes block around it, so that
-// rest::get and its kin in F match the rest. Then it answers as rest::routes
+// takes it, against the router of the plod::routes block around it, so that
+// plod::get and its kin in F match the rest. Then it answers as plod::routes
 // does when F left the request unanswered, and takes it: the scope owns the
 // paths under prefix, and the routes after it don't match.
 //
-//   rest::routes(cx) { cx =>
-//       rest::get(cx, "/health") { ... };
-//       rest::scope(cx, "/v1") {
-//           rest::get(cx, "/projects") { ... };
+//   plod::routes(cx) { cx =>
+//       plod::get(cx, "/health") { ... };
+//       plod::scope(cx, "/v1") {
+//           plod::get(cx, "/projects") { ... };
 //       };
 //   };
 inline fn scope<S, A, F>(cx: Cx<S, A, http::Router>&, prefix: const u8[:]) {
@@ -278,7 +278,7 @@ inline fn scope<S, A, F>(cx: Cx<S, A, http::Router>&, prefix: const u8[:]) {
 // segments. If it does, r's path becomes the rest, which the routes inside
 // the scope match: "/projects" for "/v1/projects", "" for "/v1" itself. A
 // route that doesn't match there still adds its method to r's Allow, so
-// rest::otherwise answers 404, 405, and OPTIONS across scopes. The caller
+// plod::otherwise answers 404, 405, and OPTIONS across scopes. The caller
 // checks r.bad first, inline, so that a scope after a route that took the
 // request costs a branch rather than a call.
 fn narrowed(r: http::Router&, prefix: const u8[:]) -> bool {

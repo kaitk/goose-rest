@@ -9,23 +9,23 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import projects.structs;
 import projects.routes;
 
 struct App { projects: projects::Project[>..]& }
 
 fn handle(cx) {
-    rest::routes(cx) { cx =>
-        rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
-        rest::scope(cx, "/projects") { projects::routes(cx); };
+    plod::routes(cx) { cx =>
+        plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
+        plod::scope(cx, "/projects") { projects::routes(cx); };
     };
 }
 
 thread_fn worker(cfg: http::Config) {
     var projects: projects::Project[>..] = [];
     var app = App { projects: projects };
-    let e = rest::serve(cfg, app) { cx => handle(cx) };
+    let e = plod::serve(cfg, app) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

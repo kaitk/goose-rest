@@ -7,7 +7,7 @@ import std;
 import os;
 import base64;
 import http;
-import rest;
+import plod;
 import api_gen;
 
 // Where the hardware is, and the token the writes need. Flat, so it crosses
@@ -28,7 +28,7 @@ let PAGE = embed_file("index.html");
 
 // The security scheme token: a bearer token, which must be the board's.
 fn security_token(cx) -> bool {
-    guard rest::bearer_token(cx) == cx.app.board.token else { rest::invalid_token(cx); }
+    guard plod::bearer_token(cx) == cx.app.board.token else { plod::invalid_token(cx); }
     return true;
 }
 
@@ -37,12 +37,12 @@ fn page(cx) {
     http::finish(cx.out, "Content-Type: text/html; charset=utf-8\r\nContent-Length: ", PAGE);
 }
 
-fn health(cx) { rest::text(cx, 200, "ok"); }
+fn health(cx) { plod::text(cx, 200, "ok"); }
 
 fn get_status(cx) {
     let temp, has_temp = read_value(str(cx.app.board.thermal, "/temp"));
     let up, has_up = read_value(cx.app.board.uptime);
-    rest::json(cx, 200, api::Status {
+    plod::json(cx, 200, api::Status {
         name: cx.app.settings.name,
         temp_mc_null: !has_temp,
         temp_mc: temp,
@@ -51,7 +51,7 @@ fn get_status(cx) {
     });
 }
 
-fn get_settings(cx) { rest::json(cx, 200, cx.app.settings); }
+fn get_settings(cx) { plod::json(cx, 200, cx.app.settings); }
 
 // Sets the LED's brightness, when the board names one, before keeping the
 // settings.
@@ -59,21 +59,21 @@ fn put_settings(cx,s: bool, body: const api::Settings&) {
     if cx.app.board.led.len > 0 {
         var level: u8[..24] = [];
         format(level, body.brightness);
-        guard write_file(str(cx.app.board.led, "/brightness"), level) else { rest::fail(cx, 500, "led_unavailable"); }
+        guard write_file(str(cx.app.board.led, "/brightness"), level) else { plod::fail(cx, 500, "led_unavailable"); }
     }
     cx.app.settings = body;
-    rest::json(cx, 200, cx.app.settings);
+    plod::json(cx, 200, cx.app.settings);
 }
 
 // Checks an image and answers its size and CRC-32. The example keeps no
 // image.
 fn put_firmware(cx,s: bool, body: const api::FirmwareUpload&) {
     var image: u8[>..] = [];
-    guard base64::decode(image, body.image) else { rest::fail(cx, 400, "image_not_base64"); }
+    guard base64::decode(image, body.image) else { plod::fail(cx, 400, "image_not_base64"); }
     var hex: u8[..32] = [];
     let c = crc32(image);
     for i in 8 { hex.push("0123456789abcdef"[(c >> ((7 - i) * 4)) & 15]); }
-    rest::json(cx, 200, api::Firmware { version: body.version, bytes: image.len, crc32: hex });
+    plod::json(cx, 200, api::Firmware { version: body.version, bytes: image.len, crc32: hex });
 }
 
 // CRC-32 (IEEE 802.3), bit by bit: an image is read once, and a table would

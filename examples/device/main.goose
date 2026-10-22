@@ -1,5 +1,5 @@
 // A device's HTTP API, for an embedded Linux board, from a schema: api.json
-// describes it, goose-rest gen writes api_gen.goose from it, and app.goose
+// describes it, plod gen writes api_gen.goose from it, and app.goose
 // holds the handlers. The SoC's temperature and the uptime are read from
 // sysfs and /proc, and PUT /v1/settings sets an LED's brightness through
 // sysfs. The page at / shows them. One worker, which keeps the settings, and
@@ -7,7 +7,7 @@
 // examples/device is the schema: the settings' bounds, the token scheme, and
 // the upload's limit. Events over time and a GPIO line through C are there.
 //
-//   build/goose-rest gen examples/device/api.json -o examples/device/api_gen.goose
+//   build/plod gen examples/device/api.json -o examples/device/api_gen.goose
 //   goose build -o build/examples/device examples/device/main.goose
 //   LED=/sys/class/leds/user-led build/examples/device 8080
 //   curl -s localhost:8080/v1/status
@@ -23,16 +23,16 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import .api_gen;
 import .app;
 
 thread_fn worker(cfg: http::Config, b: app::Board) {
     var settings = api::Settings { name: "device", brightness: 0, interval_ms: 1000 };
     var app = app::App { board: b, settings: settings };
-    let e = rest::serve(cfg, app) { cx =>
-        rest::timed(cx) {
-            rest::cors(cx, rest::Cors { origins: "https://fleet.example", methods: "GET, HEAD, PUT", .. }) {
+    let e = plod::serve(cfg, app) { cx =>
+        plod::timed(cx) {
+            plod::cors(cx, plod::Cors { origins: "https://fleet.example", methods: "GET, HEAD, PUT", .. }) {
                 api::dispatch(cx);
             };
         };

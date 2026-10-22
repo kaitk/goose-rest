@@ -5,23 +5,23 @@
 import std;
 import json;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import expect.gen.routes_gen;
 import expect.gen.app;
 
-fn t(cx, s: const u8[:]) { rest::text(cx, 200, s); }
+fn t(cx, s: const u8[:]) { plod::text(cx, 200, s); }
 
 // The if chain, flat, each route answering as the handler in gen/app.goose
 // it stands for, given a request without query, header, or cookie
-// parameters but X-Trace. Inside one route, since rest::param can fail.
+// parameters but X-Trace. Inside one route, since plod::param can fail.
 fn chain(cx) {
-    rest::route(cx) { chain_routes(cx); };
+    plod::route(cx) { chain_routes(cx); };
 }
 
 fn chain_routes(cx) {
     var r = http::router(cx.req);
-    fn p(name: const u8[:]) -> const u8[:] { rest::param(cx, r, name) }
+    fn p(name: const u8[:]) -> const u8[:] { plod::param(cx, r, name) }
     if http::on(r, "GET", "/health") { t(cx, "health"); }
     else if http::on(r, "POST", "/v1/auth/login") { t(cx, "login"); }
     else if http::on(r, "POST", "/v1/auth/logout") { t(cx, "logout"); }
@@ -77,7 +77,7 @@ fn chain_routes(cx) {
     else if http::on(r, "GET", "/v1/reports/time/:user") { t(cx, str("user_time_report ", p("user"))); }
     else if http::on(r, "GET", "/v1/reports/budget") { t(cx, "budget_report"); }
     else if http::on(r, "GET", "/v1/reports/exports") {
-        let trace, found = rest::header(cx, "X-Trace");
+        let trace, found = plod::header(cx, "X-Trace");
         t(cx, str("list_exports ", trace));
     }
     else if http::on(r, "POST", "/v1/reports/exports") { t(cx, "create_export"); }
@@ -85,12 +85,12 @@ fn chain_routes(cx) {
     else if http::on(r, "DELETE", "/v1/reports/exports/:id") { t(cx, str("delete_export ", p("id"))); }
     else if http::on(r, "POST", "/v1/reports/exports/:id/cancel") { t(cx, str("cancel_export ", p("id"))); }
     else if http::on(r, "GET", "/v1/reports/exports/:id/download") { t(cx, str("download_export ", p("id"))); }
-    else { rest::otherwise(cx, r); }
+    else { plod::otherwise(cx, r); }
 }
 
 // What the generated router, or the if chain, answers to text.
 fn answer(text: const u8[:], generated: bool) -> u8[>..] {
-    return rest::serve_one(text) { cx => if generated { api::dispatch(cx); } else { chain(cx); } };
+    return plod::serve_one(text) { cx => if generated { api::dispatch(cx); } else { chain(cx); } };
 }
 
 fn request(method: const u8[:], target: const u8[:], fields: const u8[:] = "X-Trace: t1\r\n") -> u8[>..] {

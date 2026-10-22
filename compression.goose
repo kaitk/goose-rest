@@ -1,13 +1,13 @@
-// rest::compressed, the answers of a block of routes compressed by the
+// plod::compressed, the answers of a block of routes compressed by the
 // request's Accept-Encoding, with goose-http's http.compression. Only a
 // program that imports this module needs goose-compress, which its root file
 // declares at the tag goose-http's compression.goose names:
 //
 //   import http from "github.com/kaitk/goose-http@v0.5.4";
 //   import compress from "github.com/kaitk/goose-compress@v0.1.1";
-//   import rest from "github.com/kaitk/goose-rest@<tag>";
-//   import rest.compression;
-namespace rest;
+//   import plod from "github.com/kaitk/goose-rest@<tag>";
+//   import plod.compression;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -18,18 +18,18 @@ import http.compression;
 // writes that answer compressed, as http::respond_compressed would have: in
 // the coding the request's Accept-Encoding weighs highest, with
 // Content-Encoding, the compressed Content-Length, and Vary:
-// Accept-Encoding. Errors count when the block holds the rest::route that
+// Accept-Encoding. Errors count when the block holds the plod::route that
 // answers them. HEAD, 206, a body under c.min_size, and a request that takes
 // no coding get only the Vary. An answer whose type http::compressible
 // refuses, one that has a Content-Encoding, and one without a body go as F
 // wrote them. The buffer can't be cx.out's own, which a handler can't shrink
 // while it holds the request (spec §5.1), so the answer is copied once. A
-// response F begins with rest::begin, under serve or serve_one, is
-// compressed as it's sent (begin_coded); rest::file's and other responses in
-// pieces go as F wrote them. Inside rest::routes, F runs in rest::scoped,
+// response F begins with plod::begin, under serve or serve_one, is
+// compressed as it's sent (begin_coded); plod::file's and other responses in
+// pieces go as F wrote them. Inside plod::routes, F runs in plod::scoped,
 // and the request is then taken.
 //
-//   rest::compressed(cx) { cx => rest::routes(cx) { cx => ... }; };
+//   plod::compressed(cx) { cx => plod::routes(cx) { cx => ... }; };
 inline fn compressed<S, A, R, F>(cx: Cx<S, A, R>&, c: http::Compression = http::Compression { .. }) {
     var buf: u8[>..] = [];
     let o = cx.out;
@@ -54,12 +54,12 @@ inline fn compressed<S, A, R, F>(cx: Cx<S, A, R>&, c: http::Compression = http::
     taken(cx);   // inner's router is a copy
 }
 
-// The options of the innermost rest::compressed this worker runs, for a
-// response rest::begin begins inside it.
+// The options of the innermost plod::compressed this worker runs, for a
+// response plod::begin begins inside it.
 var offered: http::Compression;
 
 // A response in pieces compressed on the connection fd, and its encoder from
-// goose-http's pool, which z holds from rest::begin to rest::end or CLOSED.
+// goose-http's pool, which z holds from plod::begin to plod::end or CLOSED.
 struct Coded { fd: i32 = -1, z: http::Compressed = http::Compressed { .. } }
 
 // Each worker's responses in pieces being compressed, found by their
@@ -85,11 +85,11 @@ fn free_coded() -> i64 {
     return coded.len - 1;
 }
 
-// Begins a response for rest::begin inside rest::compressed (OFFERED), when
+// Begins a response for plod::begin inside plod::compressed (OFFERED), when
 // content_type is one http::compressible takes: compressed, chunked, with
 // Content-Type, Vary, and Content-Encoding, as http::begin_compressed begins
-// it, for a request that takes a coding; or else as rest::begin would, with
-// Vary. Returns whether it began it; rest::begin begins any other.
+// it, for a request that takes a coding; or else as plod::begin would, with
+// Vary. Returns whether it began it; plod::begin begins any other.
 fn begin_coded(x: Exchange&, out: http::Reply, req: const http::Request&, status: i32, content_type: const u8[:],
                length: i64) -> bool {
     guard (x.mode & OFFERED) != 0 && content_type.len > 0 && http::compressible(content_type) else { return false; }
@@ -116,7 +116,7 @@ fn end_coded(x: Exchange&, out: http::Reply, trailers: const u8[:]) {
     x.mode &= ~CODED;
 }
 
-// Frees the entry of the response on fd, which ended without rest::end.
+// Frees the entry of the response on fd, which ended without plod::end.
 fn release_coded(x: Exchange&, fd: i32) {
     http::release_compressed(coded[coded_at(fd)].z);
     x.mode &= ~CODED;

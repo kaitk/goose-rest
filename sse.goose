@@ -1,11 +1,11 @@
 // Server-Sent Events over the ordinary response stream.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 
 // A 200 event stream, with u in cx.state.use as for begin. Pause it with
-// rest::pause and finish it with rest::end.
+// plod::pause and finish it with plod::end.
 fn sse_begin<S, A, R>(cx: Cx<S, A, R>&, u) {
     let common = cx.out.common;
     let at = cx.scratch.len;
@@ -30,7 +30,7 @@ fn sse_event(cx, event: const u8[:], data: const u8[:]) -> bool {
 
 fn sse_data(cx, data: const u8[:]) { sse_event(cx, "", data); }
 
-// The same format overload rest::json uses must write JSON for v.
+// The same format overload plod::json uses must write JSON for v.
 fn sse_json(cx, v, event: const u8[:] = "") -> bool {
     var data: u8[>..] = [];
     format(data, v);

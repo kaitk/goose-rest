@@ -2,8 +2,8 @@
 // a type array with null does.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
-import rest.gen.gen;
+import plod from "../../";
+import plod.gen.gen;
 import common;
 
 fn same_code(a: const u8[:], b: const u8[:]) {

@@ -2,8 +2,8 @@
 // format whose values are ASCII takes 20 (36 for a uuid's exact length).
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
-import rest.gen.gen;
+import plod from "../../";
+import plod.gen.gen;
 import common;
 
 fn main() {
@@ -17,7 +17,7 @@ fn main() {
     }
     let ok = generated(doc("""{"A":{"type":"object","properties":{"s":{"type":"string","format":"ascii"}}}}"""));
     assert(find(ok, "    s: u8[],\n") >= 0);
-    assert(find(ok, "if has_s && !rest::is_ascii(s) { json::fail(r, \"s: format\"); }") >= 0);
+    assert(find(ok, "if has_s && !plod::is_ascii(s) { json::fail(r, \"s: format\"); }") >= 0);
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "string", "format": "ascii", "enum": ["a"]}}}}"""),
         "#/components/schemas/A/properties/c/format: not supported beside enum");
     fails(doc("""{"A": {"type": "object", "properties": {"c": {"type": "string", "format": "ASCII"}}}}"""),

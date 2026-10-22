@@ -1,6 +1,6 @@
 // A context that carries the worker's state and, for hand-written routes, the
 // router, so that a route's functions take cx alone.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";

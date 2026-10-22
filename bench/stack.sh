@@ -3,9 +3,9 @@
 # macOS, beside bench/routes.sh's routers. The server is the REST benchmark's
 # (bench/rest/goose-rest/main.goose); the requests are bench/stack/pipelined.lua's:
 #
-#   json   tier F, POST /json read with rest::take
+#   json   tier F, POST /json read with plod::take
 #   item   GET /api/items/42 on tier A, then on tier M, which is tier A inside
-#          rest::timed, rest::cors, and rest::bearer: the difference is the stack
+#          plod::timed, plod::cors, and plod::bearer: the difference is the stack
 #   post   POST /api/items/7 with a JSON body, on tiers A and M the same way
 #   error  GET /api/items/0 on tier A, answered with 404 item_not_found
 #
@@ -73,7 +73,7 @@ error a'
 
 echo "# $(date -u +%FT%TZ), $(sysctl -n machdep.cpu.brand_string)," \
     "macOS $(sw_vers -productVersion), Darwin $(uname -r), $(wrk -v 2>&1 | head -1 | cut -d' ' -f1-2)," \
-    "goose-rest $(git -C "$root" rev-parse --short HEAD), load $(sysctl -n vm.loadavg)"
+    "Plod $(git -C "$root" rev-parse --short HEAD), load $(sysctl -n vm.loadavg)"
 printf 'case\ttier\trun\tinstructions/req\treq/s\n'
 for run in $(seq "$runs"); do
     while read -r name tier; do

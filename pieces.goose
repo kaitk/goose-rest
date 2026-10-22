@@ -2,19 +2,19 @@
 // reads its body as it arrives (body_in_pieces), sends its response as the client
 // takes it, or takes the connection's bytes says so with a variant of the
 // program's Use, which holds what the route needs at each call and goes in
-// cx.state.use, as a lane's mark does at rest::ask. serve calls the handler
-// again for each event of the exchange, rest::resumed, with cx.kind saying
+// cx.state.use, as a lane's mark does at plod::ask. serve calls the handler
+// again for each event of the exchange, plod::resumed, with cx.kind saying
 // which (goose-http's docs/patterns.md, "Request bodies" and "Long
 // responses"):
 //
 //   enum Use { None, Upload { project: i64 } }
-//   rest::serve(cfg, app, St { .. }) { cx =>
-//       if rest::resumed(cx) { rest::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
+//   plod::serve(cfg, app, St { .. }) { cx =>
+//       if plod::resumed(cx) { plod::on_reply(cx) { resume(cx.state.use, cx); }; } else { handle(cx); }
 //   };
 //
 // A case function gets http::CLOSED once when the exchange ends before the
 // route finished, and releases what the state holds then.
-namespace rest;
+namespace plod;
 
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
@@ -30,7 +30,7 @@ import http from "github.com/kaitk/goose-http@v0.5.4";
 // Content-Length over limit fails here with 413 payload_too_large, before
 // the body is sent; a chunked body past it gets 413 and the connection
 // closes. Config.max_body caps limit. 500 body_already_read after
-// rest::body, 500 body_too_late at a later call than the request's, and 500
+// plod::body, 500 body_too_late at a later call than the request's, and 500
 // not_served outside serve and serve_one.
 fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, u) {
     var x .= cx.ex;
@@ -48,14 +48,14 @@ fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, u) {
 // content_type unless it's empty, and a body of length bytes, or -1 for one
 // of a length not known yet, chunked. u goes in cx.state.use, and the
 // handler is called again with http::MORE each time the client has taken
-// what was sent, and sends the next piece with rest::send, until rest::end.
+// what was sent, and sends the next piece with plod::send, until plod::end.
 // A piece of about 16 KB each time keeps within Config.max_queued. A
 // handler that neither sends nor ends at MORE closes the connection. The
 // handler gets http::CLOSED once if the response ends otherwise: when the
 // client goes, or when the route fails with it open, which cuts it short
-// (rest::route). A HEAD request, or a status without a body, gets the head
-// alone, and no calls. Begun after rest::body_in_pieces, the pieces of the body
-// still come, then MORE once it has ended. Inside rest::compressed, a
+// (plod::route). A HEAD request, or a status without a body, gets the head
+// alone, and no calls. Begun after plod::body_in_pieces, the pieces of the body
+// still come, then MORE once it has ended. Inside plod::compressed, a
 // response of a type worth compressing is compressed (compression.goose).
 fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], length: i64, u) {
     var x .= cx.ex;
@@ -74,16 +74,16 @@ fn begin<S, A, R>(cx: Cx<S, A, R>&, status: i32, content_type: const u8[:], leng
     x.mode |= SENDING;
 }
 
-// Pauses the response rest::begin began for ms milliseconds, for events
+// Pauses the response plod::begin began for ms milliseconds, for events
 // sent over time, such as Server-Sent Events: the handler is called again
 // with http::TIMEOUT then, the response still open, and sends the next
 // piece, pauses again, or ends. What was sent before still goes to the
 // client meanwhile, and no MORE comes until the pause ends. A TIMEOUT call
 // that neither pauses nor ends gets MORE once the client has taken what it
 // sent. A client that goes meanwhile ends the pause, and the handler gets
-// http::CLOSED. Needs Config.mail_slots and max_waiting, as rest::ask does.
+// http::CLOSED. Needs Config.mail_slots and max_waiting, as plod::ask does.
 // Past max_waiting, goose-http has no timer for the pause, and gives
-// TIMEOUT at once, tagged http::NO_ROOM: goose-rest ends the response, and
+// TIMEOUT at once, tagged http::NO_ROOM: Plod ends the response, and
 // the handler gets CLOSED. 500 not_sending without a response begun and
 // open, and 500 not_served outside serve and serve_one.
 fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64) {
@@ -96,7 +96,7 @@ fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64) {
 // Pauses a route before its response has begun for ms milliseconds, with u
 // in cx.state.use: the handler is called again with http::TIMEOUT then, and
 // answers or waits again. Past max_waiting, or with no mail slots,
-// goose-http gives TIMEOUT at once, tagged http::NO_ROOM, and goose-rest
+// goose-http gives TIMEOUT at once, tagged http::NO_ROOM, and Plod
 // answers 503 unavailable with Retry-After without calling the handler. 500
 // already_waiting when the route waits already, and 500 not_served outside
 // serve and serve_one.
@@ -109,8 +109,8 @@ fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64, u) {
     http::later(cx.out, ms);
 }
 
-// Sends data, the next piece of the response rest::begin began, or bytes as
-// they are on a connection rest::upgrade took.
+// Sends data, the next piece of the response plod::begin began, or bytes as
+// they are on a connection plod::upgrade took.
 fn send(cx, data: const u8[:]) {
     var x .= cx.ex;
     if x {
@@ -122,8 +122,8 @@ fn send(cx, data: const u8[:]) {
     http::send(cx.out, data);
 }
 
-// Ends the response rest::begin began, with trailers when it's chunked
-// (http::end), or closes a connection rest::upgrade took. The route has
+// Ends the response plod::begin began, with trailers when it's chunked
+// (http::end), or closes a connection plod::upgrade took. The route has
 // finished: it gets no more calls, CLOSED included.
 fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
     var x .= cx.ex;
@@ -135,13 +135,13 @@ fn end<S, A, R>(cx: Cx<S, A, R>&, trailers: const u8[:] = "") {
     x.mode &= KEPT | ASKED;
 }
 
-// What a response rest::begin begins inside rest::compressed does: these
-// leave it as written. rest.compression overloads them for an Exchange, and
+// What a response plod::begin begins inside plod::compressed does: these
+// leave it as written. plod.compression overloads them for an Exchange, and
 // where a program imports it, its overloads win, as a concrete match does
 // over a generic one (spec §7.1), so that the core neither imports
 // goose-compress nor keeps a byte for it. begin_coded returns whether it
 // began the response; the others run only for one it began with an encoder
-// (CODED), at each rest::send, at rest::end, and at CLOSED.
+// (CODED), at each plod::send, at plod::end, and at CLOSED.
 fn begin_coded(x, out: http::Reply, req: const http::Request&, status: i32, content_type: const u8[:],
                length: i64) -> bool {
     return false;
@@ -159,11 +159,11 @@ fn release_coded(x, fd: i32) {}
 // content_type, or by path's extension when it's empty
 // (http::content_type_of). body, a field of the request state, holds
 // what is left to send, and u goes in cx.state.use: the case function
-// calls rest::send_file(cx, body) for each call, which sends the rest and
+// calls plod::send_file(cx, body) for each call, which sends the rest and
 // closes the file. A response with nothing to send, as for HEAD or 304,
 // gets no calls. Fails with 404 file_not_found for no file, or a
 // directory, at path, 403 forbidden where reading it isn't allowed, and 500
-// file_unreadable. Inside rest::compressed, the file goes as it is: coded on
+// file_unreadable. Inside plod::compressed, the file goes as it is: coded on
 // the fly, it would lose its Content-Length, its ranges, and the loop's
 // sendfile.
 fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, content_type: const u8[:] = "") {
@@ -183,10 +183,10 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, 
 // Answers 101 and switches the connection to protocol (http::upgrade), with
 // u in cx.state.use. The handler is called again with http::BODY and the
 // client's bytes in cx.body as they arrive, with no END and no limit, and
-// writes with rest::send, bytes as they are, until rest::end closes the
+// writes with plod::send, bytes as they are, until plod::end closes the
 // connection. It gets http::CLOSED once if the client closes first, or the
 // route fails. http::upgrade_of(cx.req) says what the request asks to switch
-// to. A route that then waits on a lane (rest::ask) gets the bytes that come
+// to. A route that then waits on a lane (plod::ask) gets the bytes that come
 // meanwhile in the resume of the lane's mark, and sets cx.state.use back to
 // u's to get them where they went before. An HTTP/2 stream can't switch:
 // goose-http answers it 501, and the route gets no calls.
@@ -206,7 +206,7 @@ fn upgraded<S, A, R>(cx: Cx<S, A, R>&, u) {
     x.mode |= UPGRADED;
 }
 
-// The case function's work for a file rest::file answered: at http::MORE,
+// The case function's work for a file plod::file answered: at http::MORE,
 // sends the next piece of body, and ends the response after the last; at
 // http::CLOSED, closes the file.
 fn send_file<S, A, R>(cx: Cx<S, A, R>&, body: http::FileBody&) {

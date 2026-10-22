@@ -7,35 +7,35 @@
 // README.md has the verdict.
 //
 // main plays goose-http's loop, as spikes 06, 09, and 10 do, so that the
-// output is fixed: each request goes through rest::on_event, the code
-// rest::serve runs, and each reply message addressed to it comes back as a
+// output is fixed: each request goes through plod::on_event, the code
+// plod::serve runs, and each reply message addressed to it comes back as a
 // WAKE. The lanes are real threads, each with its box.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import .app;
 
 // A thread for each lane, each with its own state and its own enum.
-thread_fn writer(box: http::Box, jobs: rest::Jobs<Writes>) {
+thread_fn writer(box: http::Box, jobs: plod::Jobs<Writes>) {
     var all: entries::Entry[>..] = [];
     var sessions: auth::Session[>..] = [];
     var w = Writer { entries: all, sessions: sessions };
-    rest::lane(box, jobs) { u, a => run(u, w, a); };
+    plod::lane(box, jobs) { u, a => run(u, w, a); };
 }
 
-thread_fn reader(box: http::Box, jobs: rest::Jobs<Reports>) {
+thread_fn reader(box: http::Box, jobs: plod::Jobs<Reports>) {
     var r = Reader { entries: reports::ENTRIES };
-    rest::lane(box, jobs) { u, a => run(u, r, a); };
+    plod::lane(box, jobs) { u, a => run(u, r, a); };
 }
 
-thread_fn hasher(box: http::Box, jobs: rest::Jobs<Hashes>) {
+thread_fn hasher(box: http::Box, jobs: plod::Jobs<Hashes>) {
     var h = Hasher { users: auth::USERS };
-    rest::lane(box, jobs) { u, a => run(u, h, a); };
+    plod::lane(box, jobs) { u, a => run(u, h, a); };
 }
 
 fn serve_event(cx) {
-    if rest::resumed(cx) {
-        rest::on_reply(cx) { resume(cx.state.use, cx); };
+    if plod::resumed(cx) {
+        plod::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
         handle(cx);
     }
@@ -44,9 +44,9 @@ fn serve_event(cx) {
 // The job a reply carries back, for the output: the reply is all the worker
 // holds of it.
 fn shown(u: Use.None, bytes: const u8[:]) -> u8[>..] { str("") }
-fn shown(u: Use.Write, bytes: const u8[:]) -> u8[>..] { str(" ", rest::echoed<Writes>(bytes)) }
-fn shown(u: Use.Report, bytes: const u8[:]) -> u8[>..] { str(" ", rest::echoed<Reports>(bytes)) }
-fn shown(u: Use.Hash, bytes: const u8[:]) -> u8[>..] { str(" ", rest::echoed<Hashes>(bytes)) }
+fn shown(u: Use.Write, bytes: const u8[:]) -> u8[>..] { str(" ", plod::echoed<Writes>(bytes)) }
+fn shown(u: Use.Report, bytes: const u8[:]) -> u8[>..] { str(" ", plod::echoed<Reports>(bytes)) }
+fn shown(u: Use.Hash, bytes: const u8[:]) -> u8[>..] { str(" ", plod::echoed<Hashes>(bytes)) }
 
 // One request through to its whole response, printed without CRs: REQUEST,
 // then a WAKE for each reply message addressed to it, as the loops do; then
@@ -57,9 +57,9 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
     var out: u8[>..] = [];
     var keep = r.keep_alive;
     var stream = http::Stream { later: http::address(box, key), .. };
-    var st = rest::Slot<St> { state: St { .. } };
+    var st = plod::Slot<St> { state: St { .. } };
     let reply = http::Reply { buf: out, common: "", keep_alive: keep, minor: r.minor, head: false, stream: stream };
-    rest::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply)
+    plod::on_event(http::Event { kind: http::REQUEST, req: r, data: "", whole: true, trailers: "" }, st, a, reply)
                    { cx => H(cx) };
     var wakes: u8[>..] = [];
     while stream.waiting {
@@ -70,8 +70,8 @@ fn exchange<H>(box: http::Box, key: u64, a: App&, text: const u8[:]) {
                 // The mark the route waits with, and the job the reply
                 // carries back, or that the job failed.
                 format(wakes, "\n  wake: ", st.state.use,
-                       if (tag & rest::REPLY_REFUSED) != 0 { str(", job failed") } else { shown(st.state.use, bytes) });
-                rest::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
+                       if (tag & plod::REPLY_REFUSED) != 0 { str(", job failed") } else { shown(st.state.use, bytes) });
+                plod::on_event(http::Event { kind: http::WAKE, req: r, data: bytes, whole: false, trailers: "",
                                              tag: tag }, st, a, reply) { cx => H(cx) };
             }
         };
@@ -89,9 +89,9 @@ fn main() {
     let worker, e = http::mail_open(16, 256);
     http::exit_on_error(e);
     var a = App {
-        writer: rest::lane_open<Writes>(http::LaneConfig { slots: 16, .. }, Use.Write, writer),
-        reports: rest::lane_open<Reports>(http::LaneConfig { slots: 2, .. }, Use.Report, reader),
-        hasher: rest::lane_open<Hashes>(http::LaneConfig { threads: 2, slots: 16, .. }, Use.Hash, hasher),
+        writer: plod::lane_open<Writes>(http::LaneConfig { slots: 16, .. }, Use.Write, writer),
+        reports: plod::lane_open<Reports>(http::LaneConfig { slots: 2, .. }, Use.Report, reader),
+        hasher: plod::lane_open<Hashes>(http::LaneConfig { threads: 2, slots: 16, .. }, Use.Hash, hasher),
     };
     var key: u64 = 0;
     fn served(text: const u8[:]) {
@@ -107,8 +107,8 @@ fn main() {
     served(post("/auth/session?email=ada@example.com&password=goose"));
     served(post("/auth/session?email=ada@example.com&password=gander"));
     served(post("/entries?project=2&started=1767268800&stopped=1767270600"));
-    rest::lane_stop(a.writer);
-    rest::lane_stop(a.reports);
-    rest::lane_stop(a.hasher);
+    plod::lane_stop(a.writer);
+    plod::lane_stop(a.reports);
+    plod::lane_stop(a.hasher);
     http::mail_close(worker);
 }

@@ -8,13 +8,13 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import .app;
 
 thread_fn worker(cfg: http::Config) {
     // Each worker's own App, which its routes reach as cx.app.
     var app = App { lookups: 0 };
-    let e = rest::serve(cfg, app) { cx => handle(cx) };
+    let e = plod::serve(cfg, app) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

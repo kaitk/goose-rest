@@ -1,11 +1,11 @@
-// A rest::reply_value in pieces, event by event as serve gives them, in
+// A plod::reply_value in pieces, event by event as serve gives them, in
 // the worker's gather pool: the reply's run holds the pieces while they
 // come, within the limit its ask promised, and is freed once the resume has
 // the value, when the route then waits again, when the client goes
 // mid-reply, when the wait times out mid-reply, and past the limit.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 
 enum Counts { Next { n: i64 } }
@@ -15,34 +15,34 @@ enum Use { None, Count }
 struct St { use: Use = Use.None }
 
 // most is the reply limit of the route's first ask.
-struct App { to: rest::Lane<Counts, Use>, most: i64 = rest::REPLY_LIMIT }
+struct App { to: plod::Lane<Counts, Use>, most: i64 = plod::REPLY_LIMIT }
 
 // A value wider than a piece.
 struct Row { n: i64, digits: u8[..40] }
 
 fn handle(cx) {
-    if rest::resumed(cx) {
-        rest::on_reply(cx) { resume(cx.state.use, cx); };
+    if plod::resumed(cx) {
+        plod::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
-        rest::route(cx) { rest::ask(cx, cx.app.to, Counts.Next { n: 1 }, 5000, cx.app.most); };
+        plod::route(cx) { plod::ask(cx, cx.app.to, Counts.Next { n: 1 }, 5000, cx.app.most); };
     }
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
-fn resume(u: Use.Count, cx) { resume(rest::job<Counts>(cx), cx); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.Count, cx) { resume(plod::job<Counts>(cx), cx); }
 
 // Two waits in turn: the first answer asks again.
 fn resume(u: Counts.Next, cx) {
-    let r = rest::answer<Row>(cx);
-    if r.n < 2 { rest::ask(cx, cx.app.to, Counts.Next { n: r.n + 1 }); } else { rest::text(cx, 200, str(r.n, " ", r.digits)); }
+    let r = plod::answer<Row>(cx);
+    if r.n < 2 { plod::ask(cx, cx.app.to, Counts.Next { n: r.n + 1 }); } else { plod::text(cx, 200, str(r.n, " ", r.digits)); }
 }
 
-fn run(u: Counts.Next, a) { rest::reply_value(a, Row { n: u.n, digits: "0123456789" }); }
+fn run(u: Counts.Next, a) { plod::reply_value(a, Row { n: u.n, digits: "0123456789" }); }
 
 // One exchange of a worker, whose gather pool the test's thread holds.
 struct Conn {
     req: http::Request,
-    st: rest::Slot<St> = rest::Slot<St> { state: St { .. } },
+    st: plod::Slot<St> = plod::Slot<St> { state: St { .. } },
     keep: bool = true,
     stream: http::Stream = http::Stream { .. },
 }
@@ -54,20 +54,20 @@ fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i3
         c.stream.waiting = false;
         c.stream.rearm = false;
     }
-    rest::deliver(http::Event { kind: kind, req: c.req, data: data, whole: true, trailers: "", tag: tag }, c.st, app,
+    plod::deliver(http::Event { kind: kind, req: c.req, data: data, whole: true, trailers: "", tag: tag }, c.st, app,
                   reply) { cx => handle(cx); };
     assert(http::gather_promised <= http::gather_most);
 }
 
 // Pieces from..to of p's reply in pieces of size bytes, tagged as a lane
 // sends them, while the exchange waits: goose-http drops the others.
-fn wake(c: Conn&, out: u8[>..]&, app: App&, p: const rest::Played&, size: i64, from: i64, to: i64) {
+fn wake(c: Conn&, out: u8[>..]&, app: App&, p: const plod::Played&, size: i64, from: i64, to: i64) {
     for i in from..to {
         if !c.stream.waiting { return; }
         let at = i * size;
         let end = min(at + size, p.data.len);
-        let first = if i == 0 { p.tag } else { rest::REPLY_CONT | (p.tag & rest::REPLY_VALUE) };
-        let tag = if end < p.data.len { first | rest::REPLY_MORE } else { first };
+        let first = if i == 0 { p.tag } else { plod::REPLY_CONT | (p.tag & plod::REPLY_VALUE) };
+        let tag = if end < p.data.len { first | plod::REPLY_MORE } else { first };
         send(c, out, app, http::WAKE, p.data[at..end], tag);
     }
 }
@@ -78,15 +78,15 @@ fn in_use() -> i64 { http::gather_promised }
 fn main() {
     let box, e = http::mail_open(16, 256);
     http::exit_on_error(e);
-    var app = App { to: rest::lane_of<Counts>(box, Use.Count) };
+    var app = App { to: plod::lane_of<Counts>(box, Use.Count) };
     let text = expect::request("GET", "/count");
     let req, status = http::parse(text);
     assert(status == 200);
-    let one = rest::play(app.to, Counts.Next { n: 1 }) { u, a => run(u, a); };
-    let two = rest::play(app.to, Counts.Next { n: 2 }) { u, a => run(u, a); };
+    let one = plod::play(app.to, Counts.Next { n: 1 }) { u, a => run(u, a); };
+    let two = plod::play(app.to, Counts.Next { n: 2 }) { u, a => run(u, a); };
     let size = (one.data.len + 2) / 3;
     print("a reply of ", one.data.len, " bytes, in pieces of ", size, ", marked: ",
-          (one.tag & rest::REPLY_VALUE) != 0);
+          (one.tag & plod::REPLY_VALUE) != 0);
 
     // Three pieces, a second wait, and three more: the run holds each
     // reply until its resume has it.

@@ -1,17 +1,17 @@
-// Responses in pieces rest::compressed leaves alone: no coding taken, HEAD,
+// Responses in pieces plod::compressed leaves alone: no coding taken, HEAD,
 // and a type not worth compressing.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 import expect from "../";
 import common;
 
 fn main() {
     var all: u8[>..] = [];
     for i in 3 { all.append(piece(i)); }
-    // No coding taken: the length rest::begin was given, and Vary.
+    // No coding taken: the length plod::begin was given, and Vary.
     let plain, l1 = streamed("GET /export HTTP/1.1\r\n\r\n", 2, "text/csv", all.len);
     expect::same(plain, str("HTTP/1.1 200 OK\r\nContent-Length: ", all.len, "\r\nContent-Type: text/csv\r\n",
                             "Vary: Accept-Encoding\r\n\r\n", all));

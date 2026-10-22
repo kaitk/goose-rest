@@ -1,6 +1,6 @@
 // Answers compressed by the request's Accept-Encoding: a service's event log
-// behind rest::compressed, which only a program that imports
-// rest.compression builds with, and goose-compress with it. Under /v1, with
+// behind plod::compressed, which only a program that imports
+// plod.compression builds with, and goose-compress with it. Under /v1, with
 // goose-http's defaults, a listing past 1 KB comes compressed; one event, an
 // error, or /health is too short for it. /v1/export sends the events in
 // pieces, compressed as they go. /archive serves the same events with options
@@ -13,8 +13,8 @@
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
-import rest from "../../";
-import rest.compression;
+import plod from "../../";
+import plod.compression;
 
 // The log holds this many events, made up from their ids.
 let EVENTS: i64 = 1000;
@@ -45,34 +45,34 @@ fn format(out: u8[>..]&, l: const Listing&) {
 let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
 
 fn handle(cx) {
-    rest::timed(cx) {
-        rest::routes(cx) { cx =>
-            rest::get(cx, "/health") { rest::text(cx, 200, "ok"); };
+    plod::timed(cx) {
+        plod::routes(cx) { cx =>
+            plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
             // goose-http's defaults: level 1, zstd offered, from 1 KB.
-            rest::scope(cx, "/v1") { rest::compressed(cx) { cx => events(cx); }; };
-            rest::scope(cx, "/archive") { rest::compressed(cx, ARCHIVE) { cx => events(cx); }; };
+            plod::scope(cx, "/v1") { plod::compressed(cx) { cx => events(cx); }; };
+            plod::scope(cx, "/archive") { plod::compressed(cx, ARCHIVE) { cx => events(cx); }; };
         };
     };
 }
 
 // The routes under /v1 and /archive.
 fn events(cx) {
-    rest::get(cx, "/events") {
-        var limit, has_limit = rest::query_int(cx, "limit");
+    plod::get(cx, "/events") {
+        var limit, has_limit = plod::query_int(cx, "limit");
         if !has_limit { limit = 50; }
-        guard limit >= 0 && limit <= EVENTS else { rest::fail(cx, 400, "invalid_limit"); }
-        rest::json(cx, 200, Listing { limit: limit });
+        guard limit >= 0 && limit <= EVENTS else { plod::fail(cx, 400, "invalid_limit"); }
+        plod::json(cx, 200, Listing { limit: limit });
     };
-    rest::get(cx, "/export") {
-        var limit, has_limit = rest::query_int(cx, "limit");
+    plod::get(cx, "/export") {
+        var limit, has_limit = plod::query_int(cx, "limit");
         if !has_limit { limit = EVENTS; }
-        guard limit >= 0 && limit <= EVENTS else { rest::fail(cx, 400, "invalid_limit"); }
-        rest::begin(cx, 200, "application/x-ndjson", -1, Use.Export { limit: limit });
+        guard limit >= 0 && limit <= EVENTS else { plod::fail(cx, 400, "invalid_limit"); }
+        plod::begin(cx, 200, "application/x-ndjson", -1, Use.Export { limit: limit });
     };
-    rest::get(cx, "/events/:id") {
-        let id = rest::param_int(cx, "id");
-        guard id >= 1 && id <= EVENTS else { rest::fail(cx, 404, "event_not_found"); }
-        rest::json(cx, 200, Event { id: id });
+    plod::get(cx, "/events/:id") {
+        let id = plod::param_int(cx, "id");
+        guard id >= 1 && id <= EVENTS else { plod::fail(cx, 404, "event_not_found"); }
+        plod::json(cx, 200, Event { id: id });
     };
 }
 
@@ -89,10 +89,10 @@ struct St {
     next: i64 = 0,   // the export's next event
 }
 
-fn resume(u: Use.None, cx) { rest::fail(cx, 500, "not_waiting"); }
+fn resume(u: Use.None, cx) { plod::fail(cx, 500, "not_waiting"); }
 
 // The next events of the export, a line each, and the end after the last.
-// It runs outside rest::compressed: the response keeps the coding it began
+// It runs outside plod::compressed: the response keeps the coding it began
 // with.
 fn resume(u: Use.Export, cx) {
     guard cx.kind == http::MORE else { return; }   // CLOSED: the state holds nothing to release
@@ -103,15 +103,15 @@ fn resume(u: Use.Export, cx) {
         format(piece, Event { id: cx.state.next });
         piece.push('\n');
     }
-    rest::send(cx, piece);
-    if cx.state.next == u.limit { rest::end(cx); }
+    plod::send(cx, piece);
+    if cx.state.next == u.limit { plod::end(cx); }
 }
 
 thread_fn worker(cfg: http::Config) {
-    var none = rest::NoState { .. };
-    let e = rest::serve(cfg, none, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    var none = plod::NoState { .. };
+    let e = plod::serve(cfg, none, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
             handle(cx);
         }

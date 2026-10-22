@@ -8,31 +8,31 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../../";
+import plod from "../../../";
 import stacks;
 
 fn handle(cx) {
-    rest::timed(cx) {
-        rest::cors(cx, rest::Cors { origins: "https://app.example", .. }) {
-            rest::routes(cx) { cx =>
-                public_routes(cx) { rest::get(cx, "/health") { rest::text(cx, 200, "ok"); }; };
-                rest::scope(cx, "/settings") { user_routes(cx) { user => settings(cx, user); }; };
-                rest::scope(cx, "/organization") { member_routes(cx) { member => projects(cx, member); }; };
+    plod::timed(cx) {
+        plod::cors(cx, plod::Cors { origins: "https://app.example", .. }) {
+            plod::routes(cx) { cx =>
+                public_routes(cx) { plod::get(cx, "/health") { plod::text(cx, 200, "ok"); }; };
+                plod::scope(cx, "/settings") { user_routes(cx) { user => settings(cx, user); }; };
+                plod::scope(cx, "/organization") { member_routes(cx) { member => projects(cx, member); }; };
             };
         };
     };
 }
 
 fn settings(cx, user: users::User) {
-    rest::get(cx, "") { rest::text(cx, 200, str("the settings of user ", user.id)); };
+    plod::get(cx, "") { plod::text(cx, 200, str("the settings of user ", user.id)); };
 }
 
 fn projects(cx, member: members::Member) {
-    rest::get(cx, "/projects") { rest::text(cx, 200, str("the projects of organization ", member.organization)); };
+    plod::get(cx, "/projects") { plod::text(cx, 200, str("the projects of organization ", member.organization)); };
 }
 
 thread_fn worker(cfg: http::Config) {
-    let e = rest::serve(cfg) { cx => handle(cx) };
+    let e = plod::serve(cfg) { cx => handle(cx) };
     if e.code != 0 { http::report(e); }
 }
 

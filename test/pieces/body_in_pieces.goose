@@ -1,8 +1,8 @@
-// rest::body_in_pieces: a body that came with its head, an empty one, a
+// plod::body_in_pieces: a body that came with its head, an empty one, a
 // longer one a piece at a time, and one over the limit.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -24,5 +24,5 @@ fn main() {
     expect::same(expect::status_of(big), "HTTP/1.1 413 Content Too Large", "over the limit");
     expect::same(expect::body_of(big), "{\"error\":\"payload_too_large\"}", "over the limit's body");
     expect::same(l4, "", "over the limit's calls");
-    print("rest::body_in_pieces: ok");
+    print("plod::body_in_pieces: ok");
 }

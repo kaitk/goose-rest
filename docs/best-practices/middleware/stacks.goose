@@ -1,8 +1,8 @@
 // The stacks, one per audience: the middleware each audience's routes run
-// behind, inside rest::routes' one route.
+// behind, inside plod::routes' one route.
 import std;
 import http;
-import rest;
+import plod;
 import middleware;
 
 // Routes anyone may call.

@@ -1,5 +1,5 @@
 #!/bin/sh
-# The nightly session: measures goose-http's and goose-rest's Goose servers,
+# The nightly session: measures goose-http's and Plod's Goose servers,
 # unattended, with no competitor, whose cells come from earlier runs. In order:
 #
 #   1. Preparation: the tools, both checkouts brought to origin/main where they
@@ -10,13 +10,13 @@
 #   4. This repository's bench/rest.sh check.
 #   5. goose-http's bench/run.sh and bench/files.sh.
 #   6. This repository's bench/rest.sh run: goose-http's tiers A to D and
-#      tiers F, R, and M, on goose-http alone and goose-rest.
+#      tiers F, R, and M, on goose-http alone and Plod.
 #   7. As root: goose-http's bench/instructions.sh, and bench/rest.sh count.
 #
 # It stops only when nothing can be measured: a tool missing, or no compiler.
 # Anything else is a warning that the session records and goes on past: a
 # checkout with local changes or off origin/main, goose-http's code apart
-# from the tag rest.goose pins, a machine that won't go idle, failing tests,
+# from the tag plod.goose pins, a machine that won't go idle, failing tests,
 # or no root for the counts. A step that fails is recorded, and the steps
 # after it run unless they need its output. The terminal gets a line per step
 # and per warning; the commands' output goes to the session's log.
@@ -222,11 +222,11 @@ GOOSE=$(cd "$(dirname "$GOOSE")" && pwd)/$(basename "$GOOSE")
 [ -x "$GOOSE" ] || stop "GOOSE isn't executable: $GOOSE"
 export GOOSE GOOSE_HTTP=$gh MACHINE=$machine
 export RATE_A=${RATE_A:-100000} RATE_B=${RATE_B:-24000} RATE_C=${RATE_C:-1700}
-# goose-rest builds against the pinned goose-http; goose-http's measured build
+# Plod builds against the pinned goose-http; goose-http's measured build
 # is its HEAD. Scripts, tests, and records may differ.
-ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/rest.goose" | head -1)
+ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/plod.goose" | head -1)
 git -C "$gh" diff --quiet "$ref" HEAD -- . ':!bench/results' ':!bench/*.sh' ':!test' ':!*.md' 2>/dev/null ||
-    warn "goose-http's code differs from $ref, which goose-rest pins: goose-http alone and goose-rest measure different goose-http"
+    warn "goose-http's code differs from $ref, which Plod pins: goose-http alone and Plod measure different goose-http"
 [ "${DRY:-}" = 1 ] || wait_idle
 {
     echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -234,7 +234,7 @@ git -C "$gh" diff --quiet "$ref" HEAD -- . ':!bench/results' ':!bench/*.sh' ':!t
     echo "kernel: $(uname -r)"
     echo "cpu: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) logical CPUs"
     command -v wsl.exe >/dev/null && echo "wsl: $(wsl.exe --version | iconv -f UTF-16LE -t UTF-8 | tr -d '\r' | head -1)"
-    echo "goose-rest: $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet HEAD || echo ' (modified)'), goose-http: $(git -C "$gh" rev-parse --short HEAD)$(git -C "$gh" diff --quiet HEAD || echo ' (modified)') (pinned: $ref)"
+    echo "Plod: $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet HEAD || echo ' (modified)'), goose-http: $(git -C "$gh" rev-parse --short HEAD)$(git -C "$gh" diff --quiet HEAD || echo ' (modified)') (pinned: $ref)"
     echo "goose: $(goose_version), $GOOSE, sha256 $(sha256sum <"$GOOSE" | cut -d' ' -f1)"
     echo "gcc: $(gcc --version | head -1)"
     echo "rates: A $RATE_A, B $RATE_B, C $RATE_C; reuse: ${REUSE:-none}"
@@ -273,8 +273,8 @@ rest_counts() {
 }
 if [ "${TESTS:-1}" != 0 ]; then
     run_step "goose-http tests" "" tests "$gh"
-    run_step "goose-rest tests" "" tests "$root"
-    for s in "goose-http tests" "goose-rest tests"; do
+    run_step "Plod tests" "" tests "$root"
+    for s in "goose-http tests" "Plod tests"; do
         [ "$(status_of "$s")" = ok ] || warn "$s failed; the servers are measured anyway (session.log)"
     done
 else
@@ -282,15 +282,15 @@ else
     say "tests skipped (TESTS=0)"
 fi
 run_step "goose-http build" "" http_build
-run_step "goose-rest build" "" rest_build
-run_step "REST check" "goose-rest build" check
+run_step "Plod build" "" rest_build
+run_step "REST check" "Plod build" check
 run_step "goose-http run.sh" "goose-http build" http_run
 run_step "goose-http files.sh" "goose-http build" http_files
 TIMES=$root/bench/results/$stamp-rest-$machine/times.txt
 run_step "REST run" "REST check" rest_run
 if [ -n "$counts" ]; then
     run_step "goose-http instructions" "goose-http build" http_counts
-    run_step "REST count" "goose-rest build" rest_counts
+    run_step "REST count" "Plod build" rest_counts
 else
     total=$((total - 2))
 fi

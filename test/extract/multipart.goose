@@ -1,10 +1,10 @@
-// Multipart fields, rest::part, rest::part_int, rest::part_bool, and
-// rest::file_part, through rest::serve_one: text, files with and without a
+// Multipart fields, plod::part, plod::part_int, plod::part_bool, and
+// plod::file_part, through plod::serve_one: text, files with and without a
 // content type, a quoted boundary, a field after a file, a missing field, and
 // each failure's answer.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
@@ -25,7 +25,7 @@ fn upload(name: const u8[:], filename: const u8[:], kind: const u8[:], data: con
 }
 
 fn says_of<F>(content_type: const u8[:], body: const u8[:]) -> u8[>..] {
-    return rest::serve_one(post(content_type, body)) { cx => rest::text(cx, 200, str(F(cx))); };
+    return plod::serve_one(post(content_type, body)) { cx => plod::text(cx, 200, str(F(cx))); };
 }
 
 fn main() {
@@ -40,34 +40,34 @@ fn main() {
     b.append(field("name", "second"));
     b.append("--XyZ--\r\nepilogue");
     expect::same(expect::body_of(says_of(TYPE, b) { cx =>
-        let name, has_name = rest::part(cx, "name");
-        let n, has_n = rest::part_int(cx, "n");
-        let on, has_on = rest::part_bool(cx, "on");
-        let e, has_e = rest::part(cx, "empty");
-        let none, has_none = rest::part(cx, "none");
+        let name, has_name = plod::part(cx, "name");
+        let n, has_n = plod::part_int(cx, "n");
+        let on, has_on = plod::part_bool(cx, "on");
+        let e, has_e = plod::part(cx, "empty");
+        let none, has_none = plod::part(cx, "none");
         str(name, "|", n, "|", on, has_on, "|", e.len, has_e, "|", none.len, has_none)
     }), "wild goose|3|truetrue|0true|0false");
     expect::same(expect::body_of(says_of(TYPE, b) { cx =>
-        let data, filename, kind, has = rest::file_part(cx, "pic");
+        let data, filename, kind, has = plod::file_part(cx, "pic");
         str(data.len, "|", filename, "|", kind, "|", has)
     }), "14|a b.png|image/png|true");
     expect::same(expect::body_of(says_of(TYPE, b) { cx =>
-        let data, filename, kind, has = rest::file_part(cx, "raw");
+        let data, filename, kind, has = plod::file_part(cx, "raw");
         str(data, "|", filename, "|", kind, "|", has)
     }), "raw|r.bin|application/octet-stream|true");
     expect::same(expect::body_of(says_of(TYPE, b) { cx =>
-        let data, filename, kind, has = rest::file_part(cx, "name");
-        let none, nf, nk, found = rest::file_part(cx, "none");
+        let data, filename, kind, has = plod::file_part(cx, "name");
+        let none, nf, nk, found = plod::file_part(cx, "none");
         str(data, "|", filename.len, "|", kind, "|", has, "|", found)
     }), "wild goose|0|application/octet-stream|true|false");
-    expect::same(expect::body_of(says_of(TYPE, b) { cx => let v, has = rest::part(cx, "after"); v }), "last");
-    expect::same(expect::body_of(says_of(TYPE, b) { cx => let v, has = rest::part_int(cx, "name"); v }),
+    expect::same(expect::body_of(says_of(TYPE, b) { cx => let v, has = plod::part(cx, "after"); v }), "last");
+    expect::same(expect::body_of(says_of(TYPE, b) { cx => let v, has = plod::part_int(cx, "name"); v }),
                  bad("name: integer"));
-    expect::same(expect::body_of(says_of(TYPE, b) { cx => let v, has = rest::part_bool(cx, "n"); v }),
+    expect::same(expect::body_of(says_of(TYPE, b) { cx => let v, has = plod::part_bool(cx, "n"); v }),
                  bad("n: boolean"));
     expect::same(expect::body_of(says_of(TYPE, b) { cx =>
-        let v, has = rest::part(cx, "none");
-        rest::require(cx, "none", has);
+        let v, has = plod::part(cx, "none");
+        plod::require(cx, "none", has);
         v
     }), bad("none: required"));
 
@@ -75,15 +75,15 @@ fn main() {
     let quoted = "Content-Type: multipart/form-data; boundary=\"XyZ\"\r\n";
     var q = field("a", "1");
     q.append("--XyZ--\r\n");
-    expect::same(expect::body_of(says_of(quoted, q) { cx => let v, has = rest::part_int(cx, "a"); v }), "1");
+    expect::same(expect::body_of(says_of(quoted, q) { cx => let v, has = plod::part_int(cx, "a"); v }), "1");
 
     // Another media type, or no usable boundary: 415.
-    let wrong = says_of("Content-Type: application/x-www-form-urlencoded\r\n", "a=1") { cx => let v, has = rest::part(cx, "a"); v };
+    let wrong = says_of("Content-Type: application/x-www-form-urlencoded\r\n", "a=1") { cx => let v, has = plod::part(cx, "a"); v };
     expect::same(wrong, str("HTTP/1.1 415 Unsupported Media Type\r\nContent-Type: application/json\r\nContent-Length: 34\r\n\r\n",
                             "{\"error\":\"unsupported_media_type\"}"));
     for t in ["", "Content-Type: multipart/form-data\r\n", "Content-Type: multipart/form-data; boundary=\r\n",
               "Content-Type: multipart/form-data; boundary=a\"b\r\n"] {
-        expect::same(expect::status_of(says_of(t, q) { cx => let v, has = rest::part(cx, "a"); v }),
+        expect::same(expect::status_of(says_of(t, q) { cx => let v, has = plod::part(cx, "a"); v }),
                      "HTTP/1.1 415 Unsupported Media Type");
     }
 
@@ -96,14 +96,14 @@ fn main() {
         "--XyZ\r\nContent-Type: text/plain\r\n\r\n1\r\n--XyZ--\r\n",                    // no Content-Disposition
     ];
     for m in bodies {
-        let out = says_of(TYPE, m) { cx => let v, has = rest::part(cx, "a"); v };
+        let out = says_of(TYPE, m) { cx => let v, has = plod::part(cx, "a"); v };
         expect::same(expect::status_of(out), "HTTP/1.1 400 Bad Request");
         expect::same(expect::body_of(out), bad("body: multipart"));
     }
     // A part found before the damage is read; the rest isn't.
     var early = field("a", "1");
     early.append("--XyZ\r\nbroken");
-    expect::same(expect::body_of(says_of(TYPE, early) { cx => let v, has = rest::part(cx, "a"); v }), "1");
+    expect::same(expect::body_of(says_of(TYPE, early) { cx => let v, has = plod::part(cx, "a"); v }), "1");
 
     // A body past the read buffer is gathered, and the route runs again.
     var long = str("--XyZ\r\nContent-Disposition: form-data; name=\"pad\"\r\n\r\n");
@@ -114,7 +114,7 @@ fn main() {
     var runs = 0;
     expect::same(expect::body_of(says_of(TYPE, long) { cx =>
         runs++;
-        let v, has = rest::part(cx, "name");
+        let v, has = plod::part(cx, "name");
         v
     }), "last");
     assert(runs == 2);

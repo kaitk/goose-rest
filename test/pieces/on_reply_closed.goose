@@ -1,20 +1,20 @@
-// rest::on_reply around a route that reads its body in pieces: a BODY that
+// plod::on_reply around a route that reads its body in pieces: a BODY that
 // fails, or answers before the END, leaves the variant in cx.state.use, so
 // the CLOSED that follows reaches it and not Use.None.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.4";
-import rest from "../../";
+import plod from "../../";
 import expect from "../";
 import common;
 
 fn upload_on_reply(text: const u8[:]) -> u8[>..], u8[>..] {
     var log: u8[>..] = [];
     var app = App { log: log };
-    let out = rest::serve_one(text, app, St { .. }) { cx =>
-        if rest::resumed(cx) {
-            rest::on_reply(cx) { resume(cx.state.use, cx); };
+    let out = plod::serve_one(text, app, St { .. }) { cx =>
+        if plod::resumed(cx) {
+            plod::on_reply(cx) { resume(cx.state.use, cx); };
         } else {
-            rest::body_in_pieces(cx, 1 << 20, Use.Upload);
+            plod::body_in_pieces(cx, 1 << 20, Use.Upload);
         }
     };
     return out, log;
@@ -29,5 +29,5 @@ fn main() {
     let stopped, l2 = upload_on_reply(post("stop", 4));
     expect::same(expect::body_of(stopped), "stopped", "stopped");
     expect::same(l2, "B4 C ", "stopped's calls");
-    print("rest::on_reply's CLOSED: ok");
+    print("plod::on_reply's CLOSED: ok");
 }
