@@ -2,6 +2,20 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
+## v0.3.3 (2026-10-22)
+
+A TLS connection's context chosen per connection, from goose-http `v0.5.3`. Goose
+`v2026.3`, goose-http `v0.5.3`, goose-compress `v0.1.1`; `rest.websocket` declares
+goose-hash `v0.0.4`, and `rest.tls` goose-tls `v0.0.5`. No breaking changes in
+goose-rest's API.
+
+Added:
+
+- `rest::serve` and `rest::serve_epoll` in `rest.tls` take goose-http's
+  `http::TlsServerOf<C>`, a server with a chooser, as well as `http::TlsServer`. The
+  chooser's `http::tls_hello` moves a connection to another context at its
+  ClientHello, as ACME's TLS-ALPN-01 needs (`docs/reference.md`, "HTTPS").
+
 ## v0.3.2 (2026-10-22)
 
 Faster TLS, from goose-tls `v0.0.5`. Goose `v2026.3`, goose-http `v0.5.2`,
