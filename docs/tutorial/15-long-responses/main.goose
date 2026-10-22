@@ -12,7 +12,7 @@
 //   curl -N localhost:8080/v1/projects/1/progress
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
 import rest from "../../../";
 
 let PROJECTS = 2;

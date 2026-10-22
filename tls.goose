@@ -3,20 +3,21 @@
 // needs goose-tls, which its root file declares at the tag goose-http's
 // tls.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@v0.5.0";
-//   import tls from "github.com/kaitk/goose-tls@v0.0.3";
+//   import http from "github.com/kaitk/goose-http@v0.5.1";
+//   import tls from "github.com/kaitk/goose-tls@v0.0.4";
 //   import rest from "github.com/kaitk/goose-rest@<tag>";
 //   import rest.tls;
 namespace rest;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.0";
-import tls from "github.com/kaitk/goose-tls@v0.0.3";
+import http from "github.com/kaitk/goose-http@v0.5.1";
+import tls from "github.com/kaitk/goose-tls@v0.0.4";
 import http.tls;
 
 // serve, whose listeners with tls (http::Listener.tls, or Config.tls for
-// Config.port's) serve HTTP/1.1 over TLS with server, the worker's
-// http::TlsServer, which http::release frees once serve has returned.
+// Config.port's) serve TLS with server, the worker's http::TlsServer, which
+// http::release frees once serve has returned: h2 where the context lists
+// "h2" and the client chose it, HTTP/1.1 otherwise.
 // Its block repeats serve's, as serve_epoll's does.
 //
 //   var server = http::tls_server(ctx);
@@ -29,8 +30,7 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&
     };
 }
 
-// serve with TLS on goose-http's epoll loop, which on Linux can hand a
-// connection's records to the kernel (tls::use_kernel).
+// serve with TLS on goose-http's epoll loop.
 fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, server: http::TlsServer&) -> http::Error {
     return http::serve_epoll(cfg, Slot<S> { state: fresh }, server) { ev, st, out =>
         let mark = on_event(ev, st, app, out) { cx => H(cx) };

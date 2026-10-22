@@ -2,7 +2,7 @@
 // at its head, so one the budget can't promise that much gets 503 there,
 // before any piece, and one it can is never refused later.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
 import rest from "../../";
 import expect from "../";
 import common;

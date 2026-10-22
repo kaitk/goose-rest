@@ -1,7 +1,7 @@
 // The worker's gather budget, through rest::serve_one: a body with a length
 // past it refused at its head, in the route's first run, and one it holds.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
 import rest from "../../";
 import expect from "../";
 import common;

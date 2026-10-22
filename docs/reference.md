@@ -134,8 +134,8 @@ use them, declare goose-tls in the root file at the tag goose-http's `tls.goose`
 import the module, and give each worker goose-http's `http::TlsServer`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.0";
-import tls from "github.com/kaitk/goose-tls@v0.0.3";
+import http from "github.com/kaitk/goose-http@v0.5.1";
+import tls from "github.com/kaitk/goose-tls@v0.0.4";
 import rest from "github.com/kaitk/goose-rest@<tag>";
 import rest.tls;
 
@@ -148,11 +148,13 @@ thread_fn worker(cfg: http::Config, ctx: tls::Context) {
 }
 ```
 
-`rest::serve(cfg, app, fresh, server)` serves HTTP/1.1 over TLS 1.3 on the
-listeners that ask for it, `Config.tls` or a `Listener`'s `tls`, and the rest as
-`rest::serve` does; `rest::serve_epoll` takes the same arguments. Handlers don't
-change, and a WebSocket on a TLS listener is `wss://`. The context, the listeners, what
-the loops refuse, and kTLS are goose-http's
+`rest::serve(cfg, app, fresh, server)` serves TLS 1.3 on the listeners that ask for
+it, `Config.tls` or a `Listener`'s `tls`, and the rest as `rest::serve` does;
+`rest::serve_epoll` takes the same arguments. A context made with
+`["h2", "http/1.1"]` as its ALPN protocols serves h2 to a client that chooses it and
+HTTP/1.1 to one that doesn't, on one port; one made with `["http/1.1"]` serves only
+HTTP/1.1. Handlers don't change, and a WebSocket on a TLS listener is `wss://`. The
+context, the listeners, and what the loops refuse are goose-http's
 ([HTTPS](https://github.com/kaitk/goose-http/blob/main/docs/api.md#https)), and the
 build needs CMake and OpenSSL 3's headers
 ([goose-tls's setup](https://github.com/kaitk/goose-tls/blob/main/docs/development.md#openssl)).
@@ -229,7 +231,7 @@ the root file at the tag goose-http's `compression.goose` names, and import the
 module:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import rest from "github.com/kaitk/goose-rest@<tag>";
 import rest.compression;
@@ -736,7 +738,7 @@ goose-hash in the root file at the tag goose-http's `websocket.goose` names, imp
 module, and keep the connection's `http::WebSocket` in the request state:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import rest from "github.com/kaitk/goose-rest@<tag>";
 import rest.websocket;

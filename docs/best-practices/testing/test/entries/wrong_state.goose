@@ -3,7 +3,7 @@
 // asks a lane keeps the lane's mark in the state's use, so the program
 // doesn't compile.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.0";
+import http from "github.com/kaitk/goose-http@v0.5.1";
 import rest from "../../../../../";
 import app from "../../";
 
