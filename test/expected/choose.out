@@ -1,0 +1,26 @@
+serve:
+  acme.test offering acme-tls/1:
+    the challenge's certificate, ALPN 'acme-tls/1'
+  acme.test offering http/1.1:
+    the server's certificate, ALPN 'http/1.1'
+    HTTP/1.1 200 OK
+  localhost offering acme-tls/1:
+    refused
+  localhost offering h2:
+    the server's certificate, ALPN 'h2'
+  localhost offering http/1.1:
+    the server's certificate, ALPN 'http/1.1'
+    HTTP/1.1 200 OK
+serve_epoll:
+  acme.test offering acme-tls/1:
+    the challenge's certificate, ALPN 'acme-tls/1'
+  acme.test offering http/1.1:
+    the server's certificate, ALPN 'http/1.1'
+    HTTP/1.1 200 OK
+  localhost offering acme-tls/1:
+    refused
+  localhost offering h2:
+    the server's certificate, ALPN 'h2'
+  localhost offering http/1.1:
+    the server's certificate, ALPN 'http/1.1'
+    HTTP/1.1 200 OK

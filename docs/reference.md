@@ -159,6 +159,37 @@ context, the listeners, and what the loops refuse are goose-http's
 build needs CMake and OpenSSL 3's headers
 ([goose-tls's setup](https://github.com/kaitk/goose-tls/blob/main/docs/development.md#openssl)).
 
+**A context per connection.** Both forms also take a server with a chooser, goose-http's
+`http::TlsServerOf<C>`, which moves a connection to another context at its ClientHello.
+ACME's TLS-ALPN-01 challenge (RFC 8737) needs this: a client offering `acme-tls/1` for
+the challenged name gets the challenge certificate, and every other client gets the
+server's certificate and the routes, on the same port:
+
+```rust
+struct Chooser { challenge: tls::Context }
+
+fn http::tls_hello(c: Chooser&, conn: tls::Conn) {
+    if tls::server_name(conn) == "example.com" && tls::offers(conn, "acme-tls/1") {
+        tls::use_context(conn, c.challenge);
+    }
+}
+
+thread_fn worker(cfg: http::Config, ctx: tls::Context, c: Chooser) {
+    var server = http::tls_server(ctx, c);
+    var app = rest::NoState { .. };
+    let e = rest::serve(cfg, app, St { .. }, server) { cx => handle(cx) };
+    http::release(server);
+    if e.code != 0 { http::report(e); }
+}
+```
+
+The program calls `tls::choose_context(ctx)` once, before the workers start, and
+declares `http::tls_hello` for its chooser's type, which the handshake calls once a
+connection. The chooser is the worker's own, and the contexts it holds are the
+program's to free. A challenge or a renewed certificate from another thread reaches
+the chooser as the program arranges, such as by mail that `tls_hello` takes
+([goose-http's context per connection](https://github.com/kaitk/goose-http/blob/main/docs/api.md#https)).
+
 ## 2. Middleware
 
 Middleware is a block around the routes it applies to, inlined into the handler: a scope
