@@ -2,7 +2,38 @@
 
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 
-## Unreleased
+## v0.3.0 (2026-10-22)
+
+Shorter routes, goose-http's gather pool for gathered bodies and replies, WebSocket and
+HTTPS modules, and helpers for security headers, cookies, Server-Sent Events, and
+problem details. Goose `v2026.3`, goose-http `v0.5.0`, goose-compress `v0.1.1`;
+`rest.websocket` declares goose-hash `v0.0.4`, and `rest.tls` goose-tls `v0.0.3`.
+
+Breaking changes, and what a program changes:
+
+- `rest::scope(cx, "/p") { ... };` is a block, which owns the paths under its prefix
+  and answers a 404 or 405 for them itself. The `bool` `rest::scope` is gone: write the
+  block where a program wrote `if rest::scope(cx, "/p") { ... }`.
+- `rest::Config` is gone, and `rest::serve`, `rest::serve_epoll`, and `rest::serve_one`
+  no longer take `limits`: drop the argument. A program sets its gather budget with
+  `http::gather_budget(bytes)` in `main`, before `http::run`; `rest::serve` and
+  `rest::serve_one` leave the budget as it is. `rest::GATHER_BUDGET`, `rest::Budget`,
+  `rest::Run`, and `Cx.budget` are gone.
+- `rest::ask` takes `most`, the reply's limit, `rest::REPLY_LIMIT`, 64 KB, by default,
+  promised from the gather pool before the job is sent, and refused there with 503
+  `unavailable`. A `rest::reply_value` past it gets 502 `reply_too_large`: pass a
+  larger `most` to a lane that replies more.
+- A chunked body is refused at its head, with 503 `unavailable` and `Retry-After: 1`,
+  when the gather budget can't promise its route's limit, not once it grows past the
+  budget.
+- goose-http's `TIMEOUT` at once, for want of a timer, is told by its tag
+  `http::NO_ROOM`, not by the clock, so a busy loop no longer passes it for a pause's
+  own. `rest::ask` answers it 503 `unavailable` with `Retry-After: 1`, where it
+  answered 504 `timeout`.
+- `rest::body` and `rest::body_in_pieces` called at a later call than the request's
+  fail with 500 `body_too_late`, where `rest::body` returned an empty body and
+  `rest::body_in_pieces` ended a body after its first piece: read the body at the
+  request.
 
 Shorter routes: a program's routes are statements in a row, and scopes are blocks
 ([reference](docs/reference.md#1-context-and-routes),
@@ -13,9 +44,6 @@ Shorter routes: a program's routes are statements in a row, and scopes are block
   request don't match, and the code after it runs.
 - `rest::routes` opens the request's one route, and answers 404, 405, OPTIONS, and 501
   itself when its block answered nothing. Inside it, `rest::route` joins that route.
-- Breaking: `rest::scope(cx, "/p") { ... };` is a block, which owns the paths under
-  its prefix and answers a 404 or 405 for them itself. The `bool` `rest::scope` is
-  gone.
 - `rest::scoped(cx) { ... }` runs a middleware's block, inside `rest::routes`, as a
   route of its own that gives the default answer. `rest::cors`, `rest::timed`,
   `rest::security_headers`, and `rest::compressed` run their block in it, so each works
@@ -23,37 +51,22 @@ Shorter routes: a program's routes are statements in a row, and scopes are block
 - `rest::on` and `rest::otherwise` stay; `rest::otherwise` answers nothing after a
   route that took the request. The generated `dispatch` begins with
   `rest::untaken(cx)`, and answers nothing after a hand-written route that took it.
-
-goose-http's parts in place of goose-rest's own copies, on goose-http `5701a0d`, ahead
-of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
-
-- goose-http's `TIMEOUT` at once, for want of a timer, is told by its tag
-  `http::NO_ROOM`, not by the clock, so a busy loop no longer passes it for a pause's
-  own. Breaking: `rest::ask` answers it 503 `unavailable` with `Retry-After: 1`, where
-  it answered 504 `timeout`.
-- Breaking: `rest::body` and `rest::body_in_pieces` fail with 500 `body_too_late` at a
-  later call than the request's, where `rest::body` returned an empty body and
-  `rest::body_in_pieces` ended a body after its first piece. Whether a body came whole
-  is goose-http's `Event.whole`, read where it's given, with no bit kept per
-  connection.
-- `rest::upgrade` on an HTTP/2 stream, which goose-http answers 501, no longer gives the
-  route a `CLOSED`.
 - `rest::routes`, `rest::otherwise`, and the generated router take a request no route
   took's status from `http::unrouted`, rather than deciding it again.
+- The generated `dispatch` passes the context to each operation by reference, which
+  saves a copy of `rest::Cx` per request. Regenerate a router to take it.
+
+goose-http's parts in place of goose-rest's own copies
+([decisions](docs/decisions.md#waiting-on-another-thread)).
+
 - Gathered bodies, collected replies, and the fields middleware keeps for a later answer
-  are runs of goose-http's gather pool, under the budget a program sets with
-  `http::gather_budget` in `main`, in place of goose-rest's own spill. Each is promised
-  its most when it's admitted, and refused there with 503 `unavailable` and
-  `Retry-After: 1`. Breaking: a chunked body is refused at its head when the budget
-  can't promise its route's limit, not once it grows past the budget; `rest::ask` takes
-  `most`, the reply's limit, `rest::REPLY_LIMIT`, 64 KB, by default, promised before
-  the job is sent, and a `rest::reply_value` past it gets 502 `reply_too_large`, where
-  the budget alone bounded it; `rest::GATHER_BUDGET`, `rest::Budget`, `rest::Run`,
-  `Cx.budget`, and `rest::Config.gather_budget` are gone: a program calls
-  `http::gather_budget(bytes)` in `main` before `http::run`, and `rest::serve` and
-  `rest::serve_one` leave the budget as it is.
-- Breaking: `rest::Config`, empty once the budget moved to goose-http, is gone, and
-  `rest::serve`, `rest::serve_epoll`, and `rest::serve_one` no longer take `limits`.
+  are runs of goose-http's gather pool, in place of goose-rest's own spill. Each is
+  promised its most when it's admitted, and refused there with 503 `unavailable` and
+  `Retry-After: 1`.
+- Whether a body came whole is goose-http's `Event.whole`, read where it's given, with
+  no bit kept per connection.
+- `rest::upgrade` on an HTTP/2 stream, which goose-http answers 501, no longer gives the
+  route a `CLOSED`.
 
 WebSocket and HTTPS, each in a module `rest` doesn't import, made of goose-http's parts
 ([decisions](docs/decisions.md#websocket-and-https)).
@@ -63,10 +76,34 @@ WebSocket and HTTPS, each in a module `rest` doesn't import, made of goose-http'
   refuses in the program's error shape: 426 `upgrade_required`, 400 `bad_handshake`, 501
   `not_implemented` on h2, and 503 `unavailable`. `rest::ws_read(cx, ws) { op, data =>
   ... }` gives a case function each whole message, and releases at `CLOSED`
-  ([reference](docs/reference.md#43-websocket)).
+  ([reference](docs/reference.md#43-websocket)). `examples/websocket` is an echo server.
 - `rest.tls`: `rest::serve` and `rest::serve_epoll` take goose-http's
   `http::TlsServer`, and serve HTTPS on the listeners that ask for it
   ([reference](docs/reference.md#13-https)).
+
+Helpers:
+
+- `rest::security_headers(cx, cfg) { ... }` adds a prepared security policy to every
+  answer inside, errors included, from the `rest::security_html()` or
+  `rest::security_api()` presets that `rest::prepare_security_headers` writes once per
+  worker ([reference](docs/reference.md#22-security-headers)).
+- `rest::set_cookie` and `rest::clear_cookie` write a `Set-Cookie` field through
+  goose-http's `http::set_cookie` ([reference](docs/reference.md#12-cookies-out)).
+- `rest::sse_begin`, `sse_event`, `sse_data`, `sse_json`, `sse_comment`, and
+  `sse_retry` send Server-Sent Events ([reference](docs/reference.md#42-server-sent-events)).
+- `rest::problem_body` writes an error as RFC 9457 problem details, chosen with a
+  program's `rest::error_body` and `rest::error_type` overloads.
+- `rest::pause(cx, ms, u)` pauses a route before a response has begun, with `u` in
+  `cx.state.use`.
+
+Benchmarks: `bench/rest.sh count` takes `LOOP=uring`, and tier A's server takes
+`SECURITY=1` for the API security headers. Instructions per request, from `bd9967b` on
+goose-http `v0.4.3` to `0dd585f` on goose-http `e128cb39`, the commit `v0.5.0` tags,
+with goose-http's `count.sh` and 1 million requests a case, one run each, on a Ryzen 7 PRO 6850U (WSL2, kernel 6.18.54, gcc 15.2,
+Goose `v2026.3` both sides): on epoll, every case costs the same or less, from 15 fewer
+on tier F's `/` to 105 fewer on tier M's 401. On io_uring, most cost less, up to 90
+fewer on tier M's 401, but tier A's `/api/me` 401 costs 14 more and tier R's
+`/authorizations` 6 more.
 
 ## v0.2.1 (2026-10-20)
 
