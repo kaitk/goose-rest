@@ -7,14 +7,15 @@ Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that 
 
 goose-rest is now Plod. The package, its namespace, and its generator take the new
 name; error codes, JSON shapes, and HTTP behaviour are as in `v0.3.4`. The repository
-is still `github.com/kaitk/goose-rest` until it is renamed to `kaitk/plod`. Goose
+is now `github.com/kaitk/plod`; GitHub redirects `kaitk/goose-rest`, so imports of
+earlier tags keep working. Goose
 `v2026.3`, goose-http `v0.5.4`, goose-compress `v0.1.1`; `plod.websocket` declares
 goose-hash `v0.0.4`, and `plod.tls` goose-tls `v0.0.5`.
 
 Breaking changes, and what a program changes:
 
 - The package is `plod`, and its entry `plod.goose`: write
-  `import plod from "github.com/kaitk/goose-rest@v0.4.0";` where the root wrote
+  `import plod from "github.com/kaitk/plod@v0.4.0";` where the root wrote
   `import rest from ...`, and `import plod;` in the files that wrote `import rest;`.
 - Every call and type is in namespace `plod`: `rest::get` becomes `plod::get`,
   `rest::Cx` `plod::Cx`, and an overload a program declares, such as
