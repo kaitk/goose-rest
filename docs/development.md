@@ -37,7 +37,8 @@ bench/            benchmark servers, scripts, and results (bench/README.md)
 scripts/          test scripts, and the Goose and goose-http setup and pin scripts
 docs/             the tutorial and its programs (docs/tutorial/), the best practices and
                   theirs (docs/best-practices/), references, architecture, decisions,
-                  benchmarks, development setup, known issues, Goose findings
+                  benchmarks, development setup, known issues, Goose findings, and
+                  the logo's images (docs/assets/)
 tasks/            task tracking (tasks/README.md)
 CHANGELOG.md      what each tag adds
 ```

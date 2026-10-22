@@ -1,3 +1,5 @@
+![Plod: Ari, a low-poly banana slug, climbs a branch beside the words "Takes its time, not yours."](docs/assets/plod-hero.png)
+
 # Plod
 
 *Takes its time, not yours.*
