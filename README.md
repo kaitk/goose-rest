@@ -41,7 +41,7 @@ pass their tests on arm64 Linux.
 | ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
 | 🟢 | Bodies in pieces | `rest::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `rest::body` gathers it whole ([reference](docs/reference.md#4-later-calls)). |
 | 🟢 | Static files, streaming | `rest::file` serves a file with ranges and conditional requests, `rest::begin` sends a response in pieces as the client takes them, and `rest::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#4-later-calls)). |
-| 🔴 | WebSocket | Currently out of scope, as in goose-http; `rest::upgrade` hands an upgraded connection's bytes to the route ([reference](docs/reference.md#4-later-calls)). |
+| 🟢 | WebSocket | `rest::ws_upgrade` and `rest::ws_read`, in an optional module, over goose-http's RFC 6455 frames; `rest::upgrade` hands any other upgraded protocol's bytes to the route ([reference](docs/reference.md#43-websocket)). |
 
 ### Middleware
 
@@ -116,6 +116,7 @@ programs to start from, each built and tested with HTTP requests:
 | [`schema/`](examples/schema/) | From `api.json`: generated types and router, hand-written handlers, and a 2 MB route limit set with `x-body-limit` |
 | [`compress/`](examples/compress/main.goose) | Answers compressed according to `Accept-Encoding`, with the optional `rest.compression` module: goose-http's defaults, an export compressed as it's sent in pieces, and a scope with its own compression levels and no zstd |
 | [`upgrade/`](examples/upgrade/main.goose) | An upgraded connection with `rest::upgrade`: a 101, then the client's bytes echoed back until the server closes the connection, or the client closes it first |
+| [`websocket/`](examples/websocket/main.goose) | A WebSocket echo with the optional `rest.websocket` module: `rest::ws_upgrade` at the request, and each message back through `rest::ws_read` |
 | [`device/`](examples/device/) | A board's API: sysfs readings, bounded settings, a firmware upload, a bearer token, and CORS, on one worker |
 
 ## Concepts

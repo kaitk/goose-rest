@@ -1,0 +1,33 @@
+  log: [1 hello][1 hello!][CLOSED]
+echo: ok
+  log: [CLOSED]
+chat: ok
+HTTP/1.1 426 Upgrade Required
+Connection: Upgrade
+Upgrade: websocket
+Content-Type: application/json
+Content-Length: 28
+
+{"error":"upgrade_required"}
+HTTP/1.1 426 Upgrade Required
+Sec-WebSocket-Version: 13
+Content-Type: application/json
+Content-Length: 28
+
+{"error":"upgrade_required"}
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Content-Length: 25
+
+{"error":"bad_handshake"}
+HTTP/1.1 503 Service Unavailable
+Retry-After: 1
+Content-Type: application/json
+Content-Length: 23
+
+{"error":"unavailable"}
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Content-Length: 25
+
+{"error":"bad_handshake"}

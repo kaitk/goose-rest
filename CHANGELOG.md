@@ -53,6 +53,16 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   `http::gather_budget(bytes)` in `main` before `http::run`, and `rest::serve` and
   `rest::serve_one` leave the budget as it is.
 
+WebSocket, in a module `rest` doesn't import, made of goose-http's parts
+([decisions](docs/decisions.md#websocket)).
+
+- `rest.websocket`: `rest::ws_upgrade(cx, ws, u, protocol)` answers a WebSocket's
+  handshake with 101, its `http::WebSocket` promised its bytes from the gather pool, and
+  refuses in the program's error shape: 426 `upgrade_required`, 400 `bad_handshake`, 501
+  `not_implemented` on h2, and 503 `unavailable`. `rest::ws_read(cx, ws) { op, data =>
+  ... }` gives a case function each whole message, and releases at `CLOSED`
+  ([reference](docs/reference.md#43-websocket)).
+
 ## v0.2.1 (2026-10-20)
 
 The tier C benchmark's JWT check scans 16 bytes at a time, and the goose-http pin

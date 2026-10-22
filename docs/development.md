@@ -22,11 +22,12 @@ cookies.goose     outgoing cookies through goose-http's cookie writer
 middleware.goose  CORS, bearer, timed, and scope
 waiting.goose     lanes of jobs: ask one, run its jobs, and resume with its reply
 compression.goose rest::compressed, a module rest doesn't import (goose-compress)
+websocket.goose   rest::ws_upgrade and ws_read, a module rest doesn't import (goose-hash)
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
 examples/         JSON APIs with and without a schema, waiting on a thread, compressed
-                  answers, and a device
+                  answers, a WebSocket, and a device
 test/             tests by area, test/<area>/<name>.goose, with golden files in
                   test/expected/ and the runner, run_tests.py; test/gen/ the
                   generator's golden files

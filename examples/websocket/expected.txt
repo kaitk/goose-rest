@@ -1,0 +1,3 @@
+GET /health 200 ok
+GET /ws 426 {"error":"upgrade_required"}
+WS /ws 101 ..hello....

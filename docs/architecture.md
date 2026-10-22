@@ -278,6 +278,11 @@ later call still gets the CORS fields, security policy, and `Server-Timing`. A f
 being sent lives in the program's state, so a program that serves no files keeps no
 bytes for one.
 
+A WebSocket is an upgrade whose bytes `rest::ws_read` reads as frames, in the optional
+module `rest.websocket`. Its `http::WebSocket` lives in the program's state too, and a
+message not yet whole in the gather pool, promised its most at the upgrade and refused
+there with 503, as a body is.
+
 ## The generator
 
 The generator is a Goose program that reads an OpenAPI 3.1 document, whose types are

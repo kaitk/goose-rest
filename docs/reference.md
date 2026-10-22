@@ -506,6 +506,7 @@ and the request state holds the route's progress.
 | `rest::pause`, after `rest::begin` | `http::TIMEOUT`, the response still open; `http::CLOSED` if the client goes first | goose-http's `TIMEOUT` at once, with no timer free: the response ends, then `CLOSED` |
 | `rest::file` | `http::MORE`; `http::CLOSED`, both for `rest::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
 | `rest::upgrade` | `http::BODY` per arrival; `http::CLOSED` | |
+| `rest::ws_upgrade` | `http::BODY` per arrival and `http::CLOSED`, both for `rest::ws_read` | pings, Closes, and frames the protocol forbids ([WebSocket](#43-websocket)) |
 | `rest::relay`, at a reply's first piece | none | the reply's later pieces |
 
 `http::CLOSED` means that the exchange ended before the route finished, and that the
@@ -568,8 +569,7 @@ fn resume(u: Asks.Lookup, cx) {
 }
 ```
 
-A WebSocket's framing isn't provided: a package on top of
-`rest::upgrade` can add it. The tutorial builds an upload with `body_in_pieces`
+A WebSocket is an upgrade with frames ([WebSocket](#43-websocket)). The tutorial builds an upload with `body_in_pieces`
 ([page 14](tutorial/14-bodies-in-pieces.md)), and an export and downloads with `begin`
 and `file` ([page 15](tutorial/15-long-responses.md));
 [`examples/upgrade`](../examples/upgrade/main.goose) echoes an upgraded connection.
@@ -698,6 +698,46 @@ At each timeout, send the next event or a heartbeat and pause again. The existin
 the client leaves. The helpers keep no stream state of their own and add no work to
 requests that don't call them.
 
+### 4.3 WebSocket
+
+`rest::ws_upgrade` and `rest::ws_read` are in the module `rest.websocket`, which `rest`
+doesn't import, so a program without it builds without goose-hash. To use them, declare
+goose-hash in the root file at the tag goose-http's `websocket.goose` names, import the
+module, and keep the connection's `http::WebSocket` in the request state:
+
+```rust
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import hash from "github.com/kaitk/goose-hash@v0.0.4";
+import rest from "github.com/kaitk/goose-rest@<tag>";
+import rest.websocket;
+
+enum Use { None, Echo }
+
+struct St { use: Use = Use.None, ws: http::WebSocket = http::WebSocket { .. } }
+
+// in a route
+rest::get(cx, "/ws") { rest::ws_upgrade(cx, cx.state.ws, Use.Echo); };
+
+fn resume(u: Use.Echo, cx) {
+    rest::ws_read(cx, cx.state.ws) { op, data => http::ws_send(cx.out, op, data); };
+}
+```
+
+| Call | Does | Fails with |
+|---|---|---|
+| `rest::ws_upgrade(cx, ws, u, protocol)` | With `u` in `cx.state.use`, answers a request to open a WebSocket with 101 and `Sec-WebSocket-Accept`, as `rest::upgrade` does, and promises `ws` its `limit`, 64 KiB by default, and `http::WS_SLACK` bytes of the worker's gather pool, under the budget `http::gather_budget` sets. Set `ws.limit` before it. With `protocol`, the 101 names it in `Sec-WebSocket-Protocol`; `http::field_of(cx.req, "sec-websocket-protocol")` gives those the client offered. | 426 `upgrade_required`, with `Connection: Upgrade` and `Upgrade: websocket`, or with `Sec-WebSocket-Version: 13` for another version; 400 `bad_handshake` for a method other than `GET`, a malformed `Sec-WebSocket-Key`, or a `protocol` that isn't a valid field value (`http::is_field`); 501 `not_implemented` on an HTTP/2 stream; 503 `unavailable` with `Retry-After: 1` where the budget can't promise `ws` its bytes |
+| `rest::ws_read(cx, ws) { op, data => ... }` | For the case function: at `BODY`, reads the frames `cx.body` completes and runs the block with each whole message, `op` `http::WS_TEXT` or `http::WS_BINARY`, a message in fragments joined; `data` lasts until the block returns. At `CLOSED`, gives back what `ws` holds. Other kinds, such as `TIMEOUT`, are the case function's. | |
+
+Send with goose-http's `http::ws_send(cx.out, op, data)`, at any later call, and close
+with `http::ws_close(cx.out, ws, code, reason)`. A ping gets its pong and the client's
+Close its Close without the block, and a frame the protocol forbids or a message past
+`ws.limit` closes the connection with its close code
+([goose-http's WebSocket](https://github.com/kaitk/goose-http/blob/main/docs/api.md#websocket)).
+Once the connection closes, from either side, the case function gets `CLOSED`, where
+`ws_read` gives the pool its bytes back, so pass `CLOSED` to it too. A route that waits
+on a lane gets the frames in the mark's `resume`, as for [`rest::upgrade`](#4-later-calls).
+[`examples/websocket`](../examples/websocket/main.goose) echoes each message.
+
 ## 5. Errors
 
 By default, every error goose-rest answers is a JSON object whose member `error` is a
@@ -714,6 +754,7 @@ another shape, as the end of this section shows:
 | 400 | `invalid_body`, with `detail` and `at` | `rest::fail_body(cx, r)`, for a body a JSON reader refused |
 | 400 | `invalid_parameter`, with `detail` | the [extractors](#3-extractors), `rest::fail_param`, and the generated router: a parameter missing, malformed, or outside its schema, as `id: integer`, `q: required`, or `page: minimum` |
 | 400 | `bad_path` | `rest::routes` and `rest::otherwise`: a path with a dot-segment or an escaped control byte |
+| 400 | `bad_handshake` | `rest::ws_upgrade`: a method other than `GET`, a malformed `Sec-WebSocket-Key`, or a subprotocol that isn't a valid field value ([WebSocket](#43-websocket)) |
 | 401 | `unauthenticated`, with `WWW-Authenticate: Bearer` | `rest::bearer`: no bearer token |
 | 401 | `invalid_token`, with `WWW-Authenticate: Bearer error="invalid_token"` | `rest::invalid_token(cx)` |
 | 403 | `origin_not_allowed` | `rest::cors`: an `Origin` it doesn't list |
@@ -723,6 +764,7 @@ another shape, as the end of this section shows:
 | 404 | `file_not_found` | `rest::file`: no file, or a directory, at the path |
 | 413 | `payload_too_large` | `rest::body`, `rest::body_in_pieces`, `rest::take` of a schema type, and the form extractors: a body over the limit |
 | 415 | `unsupported_media_type` | `rest::take` of a schema type: a JSON body sent as another media type; the form extractors: a body that isn't `application/x-www-form-urlencoded`; the multipart extractors: a body that isn't `multipart/form-data` with a usable boundary |
+| 426 | `upgrade_required`, with `Connection: Upgrade` and `Upgrade: websocket`, or `Sec-WebSocket-Version: 13` | `rest::ws_upgrade`: a request that doesn't ask for a WebSocket, or asks for another version |
 | 500 | `already_waiting` | `rest::ask` or `rest::pause(cx, ms, u)` while the route waits already, as at an upgraded connection's `BODY` during a wait |
 | 500 | `body_already_read` | `rest::body_in_pieces` after `rest::body`, or `rest::body` after `rest::body_in_pieces` |
 | 500 | `body_too_late` | `rest::body`, `rest::body_in_pieces`, and the extractors that read the body, at a later call than the request's, as in a `resume` |
@@ -732,11 +774,11 @@ another shape, as the end of this section shows:
 | 500 | `not_a_reply` | `rest::job` at another event than `WAKE`, as an upgraded connection's `BODY` during a wait |
 | 500 | `not_sending` | `rest::pause` without a response begun with `rest::begin` and still open |
 | 500 | `not_served` | `rest::body_in_pieces` or `rest::pause` with a context that `rest::serve` or `serve_one` didn't make |
-| 501 | `not_implemented` | `rest::routes` and `rest::otherwise`: a method HTTP doesn't define |
+| 501 | `not_implemented` | `rest::routes` and `rest::otherwise`: a method HTTP doesn't define; `rest::ws_upgrade` on an HTTP/2 stream |
 | 502 | `bad_reply` | `rest::job`, `rest::answer`, and `rest::relay`: a reply that doesn't hold its job, or a value of the type read |
 | 502 | `reply_too_large` | `rest::ask`: a reply of `rest::reply_value`, in pieces, past the `most` the ask gave ([Lanes](#41-lanes)) |
 | 503 | `unavailable` | `rest::ask`: every box of the lane is full, or the lane is stopped ([Lanes](#41-lanes)) |
-| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)); `rest::ask`: a reply past it; `rest::cors` and `rest::timed`: fields kept for a later answer past it; `rest::ask` and `rest::pause(cx, ms, u)`: no timer free ([Later calls](#4-later-calls)) |
+| 503 | `unavailable`, with `Retry-After: 1` | `rest::body`, `rest::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)); `rest::ask`: a reply past it; `rest::cors` and `rest::timed`: fields kept for a later answer past it; `rest::ask` and `rest::pause(cx, ms, u)`: no timer free ([Later calls](#4-later-calls)); `rest::ws_upgrade`: a WebSocket's bytes past the budget |
 
 The generated router answers 404, 405, 501, and `bad_path` as `rest::otherwise` does,
 through `rest::no_route`, `rest::no_method`, and `rest::not_found`. Each takes the status

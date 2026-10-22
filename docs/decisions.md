@@ -371,6 +371,24 @@ per-request field in the program's state, with `begin_compressed`, `send_compres
 and `end_compressed` of goose-rest's own, was the alternative: a larger API, and one
 more field for the program to keep and release at `CLOSED`.
 
+### WebSocket
+
+Decided (2026-10-22): a WebSocket is `rest::ws_upgrade` and `rest::ws_read` in
+`rest.websocket`, a module `rest` doesn't import, as goose-http keeps its frames in
+`http.websocket`, so only a program that imports it declares goose-hash. They compose
+goose-http's parts rather than wrap its helpers: `http::ws_check` for the verdict,
+`http::ws_admit` for the gather pool's promise, and `http::ws_switch` for the 101, so a
+refusal is written in the program's error shape, with the fields `ws_check` gives a 426;
+and `http::ws_take` at `BODY` and `http::ws_release` at `CLOSED`, since goose-rest's case
+function gets `cx.kind` and `cx.body`, not an `http::Event`. The upgrade then marks the
+exchange as `rest::upgrade` does, through the same function, and only once the stream
+is open. The program keeps the `http::WebSocket` in its request state and sends with
+`http::ws_send` and `http::ws_close`: the connection holds one WebSocket for its whole
+life, as goose-http's own handler state does, so a table of the module's by fd, which
+compression keeps for a response's encoder, would add a lookup and nothing else, and a
+field in `Cx` or the exchange would cost every program. goose-rest adds no send or close
+of its own, which would only rename goose-http's.
+
 ### Inlining
 
 Decided (2026-10-13), from `test/inline_route.goose`'s C. A handler behind

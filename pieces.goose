@@ -192,6 +192,13 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, 
 // goose-http answers it 501, and the route gets no calls.
 fn upgrade<S, A, R>(cx: Cx<S, A, R>&, protocol: const u8[:], u) {
     http::upgrade(cx.out, protocol);
+    upgraded(cx, u);
+}
+
+// Gives the route the connection's later bytes, with u in cx.state.use,
+// once a 101 has switched its stream; an answer that didn't, as h2's 501,
+// leaves it to end as any answer does.
+fn upgraded<S, A, R>(cx: Cx<S, A, R>&, u) {
     guard cx.out.stream.open else { return; }
     cx.state.use = u;
     var x .= cx.ex;
