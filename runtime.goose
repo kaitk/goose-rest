@@ -63,8 +63,10 @@ inline fn routes<S, A, F>(cx: Cx<S, A, NoRouter>&) {
                        kind: cx.kind, reply: cx.reply, refused: cx.refused, more: cx.more, ex: cx.ex,
                        kept: cx.kept, router: r };
     routed(c) {
-        F(&c);   // a block given the local itself gets a copy of it
-        settle(c, mark);
+        // A block, or a function's untyped parameter, given the local
+        // itself gets a copy of it, which gcc keeps where the call stays one.
+        F(&c);
+        settle(&c, mark);
     };
 }
 
