@@ -56,7 +56,7 @@ Work can start at any point unless the table says otherwise.
 | 027: a helper over the shared store | Deferred until a program needs it. |
 | 022: OpenAPI output | Planned for later. |
 | 043: workers started with `http::run` | Done on a pinned Goose commit; the README waits for releases. |
-| 046: rename to Plod | Released as `v0.4.0` from `kaitk/plod`; the SVG logo (task 059) and a manual trademark search remain. |
+| 046: rename to Plod | Released as `v0.4.0` from `kaitk/plod`; the SVG logo (task 059) remains. |
 | 059: Ari's logo as SVG | After 046's PNG logo; any time. |
 | 047: HttpArena | After 046; the master plan, with the work in goose-http, goose-tls, goose-sqlite, and goose-postgres. |
 | 052: database work on lanes | goose-postgres's and goose-sqlite's decisions and tasks; beside 047. |

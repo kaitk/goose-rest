@@ -1,8 +1,7 @@
 # 046: Rename to Plod
 
 Status: in-progress. Plod `v0.4.0` is released from `github.com/kaitk/plod`, renamed
-from `kaitk/goose-rest` on 2026-10-23; the SVG logo (task 059) and a manual trademark
-search remain.
+from `kaitk/goose-rest` on 2026-10-23; the SVG logo (task 059) remains.
 
 Rename goose-rest to Plod before it goes on HttpArena. The joke is a framework named for
 slowness at or near the top of the rankings, so a rival's result reads as "N% slower
@@ -61,6 +60,19 @@ is named plod.
 | Domains | plod.dev registered (Cloudflare, no site); plod.io registered and parked until 2027-05; plod.sh appears free |
 | Trademarks | EUIPO and USPTO not queried directly. Web searches found no PLOD mark in classes 9 or 42, only PLODES, PLODOS, and PLODICA, in jewelry, cosmetics, and furniture |
 
+## The trademark search (2026-10-23)
+
+No live PLOD mark covers software (classes 9 or 42) in either register. This is a
+clearance screen, not a legal opinion.
+
+| Register | How | Found in classes 9 or 42 |
+|---|---|---|
+| USPTO | The search API behind tmsearch.uspto.gov, on the word mark | No PLOD or PLODS. Nearest live: UNPLOD (class 42, a games company) and PLODES (classes 6, 20, 42). PLOD ON (class 25) is cancelled; PLOD SQUAD (class 41) is live |
+| TMview (EUIPO, WIPO, and national offices) | The JSON search behind tmdn.org/tmview, "PLOD", all 2,030 hits read | PLOD in Russia (classes 1–42) has ended. "Plod s.p." in Slovenia (classes 29, 31, 35, 42) is live, a company-name mark outside software. PLODS (Australia, 9 and 42) has ended. Live near variants: PLODON (China), PLODSI and PLODSIPAY (Turkey), THE PLODCAST (UK), DIGI PLOD (Australia, classes 7 and 9) |
+
+Live PLOD marks elsewhere sit in classes 4, 25, 28, and 41 (UK, China, Mexico, Korea,
+Russia, France), none for software.
+
 ## The repository
 
 Imports name the repository, so `github.com/kaitk/goose-rest` stayed in every import,
@@ -74,8 +86,8 @@ GitHub redirects the old URL after a rename, for git clones too, so a program pi
 
 - [x] Plod is checked beyond GitHub: crates.io, npm, PyPI, a `plod` GitHub
       organization, the .dev, .io, and .sh domains, and EUIPO and USPTO for software
-      marks. If it fails, Trudge gets the same check. Unchecked: a manual TMview and
-      USPTO search for PLOD in classes 9 and 42.
+      marks. If it fails, Trudge gets the same check. TMview and USPTO searched for
+      PLOD in classes 9 and 42 (2026-10-23).
 - [ ] Ari's logo exists as an SVG, with the horizontal, icon, and favicon variants
       (task 059; PNGs in `docs/assets/` meanwhile)
 - [x] A decision in `docs/decisions.md` records the name and the reason
