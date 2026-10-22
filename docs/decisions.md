@@ -505,7 +505,7 @@ pauses a route before its response has begun, with `u` in `cx.state.use`, so a r
 wait on the worker's timer table and then answer a normal response, as HttpArena's
 `GET /delay/{ms}` needs. `rest::pause(cx, ms)` stays for a response `rest::begin` began.
 A new bit of `Exchange.mode`, `PAUSED`, marks the pre-response pause. `mode` widens from
-`u8` to `u16`, and `pending` becomes its bit `PENDING`, so `Exchange` keeps its 50 bytes:
+`u8` to `u16`, and `pending` becomes its bit `PENDING` (gone on 2026-10-22, below), so `Exchange` keeps its 50 bytes:
 Goose packs its structs, so a wider field has no padding to fill. `PAUSED` stays out of
 `LATER`, and only `on_event`'s `http::TIMEOUT` branch checks it. When set, it clears the
 bit and either answers 503 `unavailable` with `Retry-After` if `clock_ns() < x.due`
@@ -538,6 +538,30 @@ the reply's run after the `resume` from that field, and no longer saves it first
 
 Rejected: a mode bit or field that records the wait's purpose in `Exchange` for the
 check, which the tag makes unneeded.
+
+Decided (2026-10-22), replacing the `PENDING` bit of the 2026-10-21 entry above: whether
+a request's body came whole is goose-http's `Event.whole`, given at each `REQUEST`, and
+goose-rest reads it there rather than copy it into each connection's `Exchange.mode`.
+`after`, which has the event, tests `ev.whole` and `ev.kind`. `rest::body`,
+`rest::body_in_pieces`, and the middleware's `answers_later` see only the context, so
+`on_event` gives it in `Cx.more`, which says "more follows" already: at a `WAKE`, more of
+the reply; at the `REQUEST`, more of the body than came with the head. `on_event`
+already stored `more` for every `Cx`, so the request path loses the bit's load, mask,
+and store, and gains no field; a handler that doesn't read `more` leaves a dead store.
+
+- `rest::body` and `rest::body_in_pieces` fail with 500 `body_too_late` at a later call
+  than the request's. The bit had been cleared at a `WAKE`, so `rest::body` there
+  returned an empty body for one still coming, and `rest::body_in_pieces` got an `END`
+  made up after the body's first piece, which its route answered, and the rest was
+  dropped. Gathering needs the request's head, which has gone by then, and a body read
+  in pieces is the request's, so the route reads it before it waits.
+
+Rejected: a new `Cx` field, `pending`, which costs a store for each `Cx` built, in
+`on_event` and each copy routing makes, for what `more` already carries; keeping the
+bit, which costs the slot's `mode` a load, a mask, and a store per request and leaves a
+copy that can go stale, as at the `WAKE`; and a flag in goose-http's `Stream`, which
+would mirror its own `Exchange.body` at every place that changes it to report a value
+it already reports.
 
 Decided (2026-10-16): an upgraded connection that waits on `rest::ask` keeps one
 variant, the one in `cx.state.waiting`, for every later call. From goose-http v0.3.3 the

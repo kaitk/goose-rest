@@ -30,6 +30,8 @@ struct Cx<S, A, R> {
     kind: u8 = 0,
     reply: const u8[:] = "",
     refused: bool = false,
+    // More follows: at a WAKE, more of the reply (rest::relay); at serve's
+    // REQUEST, more of the body than came with the head (rest::body).
     more: bool = false,
     // The request's exchange, under serve; null elsewhere.
     ex: Exchange? = null,
@@ -165,8 +167,7 @@ let RETRY_AFTER = "1";
 // response rest::begin began there holds an encoder (compression.goose).
 // COLLECTING says the exchange collects a reply_value's pieces in a run of
 // the spill (collect_reply). PAUSED says the route paused before beginning a
-// response (rest::pause). PENDING says the body hasn't come whole: a bit
-// rather than a bool, which would cost each connection a byte.
+// response (rest::pause).
 let GATHERING: u16 = 1;
 let RECEIVING: u16 = 2;
 let SENDING: u16 = 4;
@@ -177,7 +178,6 @@ let OFFERED: u16 = 32;
 let CODED: u16 = 64;
 let COLLECTING: u16 = 128;
 let PAUSED: u16 = 256;
-let PENDING: u16 = 512;
 
 // What serve keeps of a request past the handler's first call. A body
 // gathered for rest::body is a run of the worker's spill from at, of cap
@@ -309,7 +309,6 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         var fields: u8[>..] = [];
         var kept = Kept { .. };
         let wake = ev.kind != http::REQUEST;
-        st.ex.mode = (st.ex.mode & ~PENDING) | (if !wake && !ev.whole { PENDING } else { 0 });
         mark = out.buf.len;
         var o = out;
         if wake { o.common = kept_fields(out.common, st.ex, spill, fields); }
@@ -317,7 +316,8 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         var cx = Cx<S, A, NoRouter> { req: ev.req, body: if wake { "" } else { ev.data }, out: o, state: st.state,
                                       app: app, scratch: scratch, kind: ev.kind,
                                       reply: if wake { collected(st.ex, ev.data, ev.tag, spill) } else { "" },
-                                      refused: wake && (ev.tag & REPLY_REFUSED) != 0, more: (ev.tag & REPLY_MORE) != 0,
+                                      refused: wake && (ev.tag & REPLY_REFUSED) != 0,
+                                      more: if wake { (ev.tag & REPLY_MORE) != 0 } else { !ev.whole },
                                       ex: st.ex, kept: kept, budget: budget, router: none };
         H(cx);
         if wake {
@@ -355,7 +355,6 @@ fn on_later<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, s
     while k != http::NO_EVENT {
         let before = out.buf.len;
         let gathered = k == GATHERED;
-        if gathered { st.ex.mode &= ~PENDING; }
         let g = st.ex;
         let head = head_of(ev.req, gathered, g, spill);
         var scratch: u8[>..] = [];
@@ -586,8 +585,9 @@ fn after<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, bu
     if (x.mode & (SENDING | UPGRADED)) != 0 && !open { return http::CLOSED; }
     if (x.mode & RECEIVING) != 0 {
         if out.buf.len > before && !open { return http::CLOSED; }
-        if (x.mode & PENDING) == 0 && k == http::REQUEST { return if ev.data.len > 0 { http::BODY } else { http::END }; }
-        if (x.mode & PENDING) == 0 && k == http::BODY { return http::END; }
+        // A body that came whole with its REQUEST goes on as a BODY and an END.
+        if ev.whole && k == http::REQUEST { return if ev.data.len > 0 { http::BODY } else { http::END }; }
+        if ev.kind == http::REQUEST && k == http::BODY { return http::END; }
     }
     return http::NO_EVENT;
 }
@@ -794,16 +794,19 @@ fn release(g: Exchange&, spill: u8[>..]&, budget: Budget&) {
 // serve gathers it and calls the handler again with it whole, so a route
 // runs twice up to its first rest::body. A body the worker's spill can't
 // place within its gather budget fails with 503 unavailable and Retry-After
-// (Config). After rest::body_in_pieces, 500 body_already_read.
+// (Config). After rest::body_in_pieces, 500 body_already_read, and at a
+// later call than the request's, 500 body_too_late: the head that gathering
+// needs has gone by then.
 fn body<S, A, R>(cx: Cx<S, A, R>&, limit: i64 = BODY_LIMIT) -> const u8[:] {
     var g .= cx.ex;
     guard g else {
         if cx.body.len > limit { fail(cx, 413, "payload_too_large"); }
         return cx.body;
     }
+    guard cx.kind == http::REQUEST else { fail(cx, 500, "body_too_late"); }
     guard (g.mode & RECEIVING) == 0 else { fail(cx, 500, "body_already_read"); }
     if g.limit == 0 { g.limit = limit; }
-    if (g.mode & PENDING) != 0 {
+    if cx.more {
         if !cx.req.chunked && cx.req.body > g.limit { fail(cx, 413, "payload_too_large"); }
         if !fits(cx.budget, run_size(cx.req)) {
             return [Failure { status: 503, at: -1, code: str("unavailable"), detail: "", challenge: "", retry: true }]

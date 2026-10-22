@@ -31,6 +31,11 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   `http::NO_ROOM`, not by the clock, so a busy loop no longer passes it for a pause's
   own. Breaking: `rest::ask` answers it 503 `unavailable` with `Retry-After: 1`, where
   it answered 504 `timeout`.
+- Breaking: `rest::body` and `rest::body_in_pieces` fail with 500 `body_too_late` at a
+  later call than the request's, where `rest::body` returned an empty body and
+  `rest::body_in_pieces` ended a body after its first piece. Whether a body came whole
+  is goose-http's `Event.whole`, read where it's given, with no bit kept per
+  connection.
 
 ## v0.2.1 (2026-10-20)
 

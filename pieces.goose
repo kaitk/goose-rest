@@ -30,12 +30,14 @@ import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d50736417202385
 // Content-Length over limit fails here with 413 payload_too_large, before
 // the body is sent; a chunked body past it gets 413 and the connection
 // closes. Config.max_body caps limit. 500 body_already_read after
-// rest::body, and 500 not_served outside serve and serve_one.
+// rest::body, 500 body_too_late at a later call than the request's, and 500
+// not_served outside serve and serve_one.
 fn body_in_pieces<S, A, R>(cx: Cx<S, A, R>&, limit: i64, u) {
     var x .= cx.ex;
     guard x else { fail(cx, 500, "not_served"); }
+    guard cx.kind == http::REQUEST else { fail(cx, 500, "body_too_late"); }
     guard x.limit == 0 else { fail(cx, 500, "body_already_read"); }
-    let over = if (x.mode & PENDING) != 0 { !cx.req.chunked && cx.req.body > limit } else { cx.body.len > limit };
+    let over = if cx.more { !cx.req.chunked && cx.req.body > limit } else { cx.body.len > limit };
     if over { fail(cx, 413, "payload_too_large"); }
     x.limit = limit;
     x.len = 0;
