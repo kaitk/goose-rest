@@ -54,7 +54,7 @@ fn json(body: Vec<u8>) -> Reply {
     Reply::json(200, body)
 }
 
-// goose-http's tiers A to D, and goose-rest's own (bench/rest/tiers): F, a
+// goose-http's tiers A to D, and Plod's own (bench/rest/tiers): F, a
 // framework micro tier; R, the GitHub API's routes; and M, tier A behind a
 // middleware stack.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

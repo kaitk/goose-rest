@@ -1,4 +1,4 @@
-// goose-rest's framework tiers (bench/rest/tiers), on Aegon's own types:
+// Plod's framework tiers (bench/rest/tiers), on Aegon's own types:
 //
 //   F   GET /, GET /id/:id?name= with x-powered-by, and POST /json echoing
 //       its body through glz::generic, whose objects keep their members' order

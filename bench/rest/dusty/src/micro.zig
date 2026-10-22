@@ -1,4 +1,4 @@
-// goose-rest's own tiers, whose spec is goose-rest's
+// Plod's own tiers, whose spec is Plod's
 // bench/rest/tiers/check.py:
 //
 //   F  the bun-http-framework-benchmark's three routes: f_routes

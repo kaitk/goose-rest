@@ -74,7 +74,7 @@ weren't there.
 Several agents work in these repositories at once (2026-10-20).
 
 - Work in a worktree of your own, on a branch from `origin/main`:
-  `git worktree add ../goose-rest-<topic> -b <topic> origin/main`. Remove it once the
+  `git worktree add ../plod-<topic> -b <topic> origin/main`. Remove it once the
   branch is merged.
 - Leave alone a branch, a commit, or an uncommitted change that isn't yours, in any
   checkout. Ask if it's in your way.

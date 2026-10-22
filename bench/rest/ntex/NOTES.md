@@ -10,7 +10,7 @@ routing.
 
 ```sh
 RUSTFLAGS="-C target-cpu=native" cargo build --release --locked \
-    --target-dir ~/.cache/goose-rest-bench/target-ntex
+    --target-dir ~/.cache/plod-bench/target-ntex
 REST_DATA=<dir> TIER=a|b|c|d|f|r|m JSON=serialize|template WORKERS=<n> \
     [ROUTES=bench/rest/tiers/github.txt] rest-ntex <port>
 ```

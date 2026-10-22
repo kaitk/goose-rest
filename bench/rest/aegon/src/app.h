@@ -6,7 +6,7 @@
 //   snow       tier B, snowtime's k6 hot path, under /api/v1
 //   heavy      tier C, a clinic's schedule and records, under /api/v2
 //   writes     tier D, writes with large bodies, under /api/v3, beside C
-//   framework  goose-rest's tiers F, R, and M (bench/rest/tiers)
+//   framework  Plod's tiers F, R, and M (bench/rest/tiers)
 //
 // Each tier's file holds its records and answers, and its routes() on
 // Aegon's Router, groups, and middleware.

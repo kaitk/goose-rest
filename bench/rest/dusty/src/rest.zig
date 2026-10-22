@@ -255,7 +255,7 @@ const Data = struct {
 
 pub var data: Data = .{};
 
-// goose-http's tiers A to D, and goose-rest's F, R, and M (micro.zig).
+// goose-http's tiers A to D, and Plod's F, R, and M (micro.zig).
 pub const Tier = enum { a, b, c, d, f, r, m };
 
 // The tier, the worker count, and the port, from TIER, WORKERS, and the

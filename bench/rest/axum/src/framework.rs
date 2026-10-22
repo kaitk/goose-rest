@@ -1,4 +1,4 @@
-// goose-rest's framework tiers (bench/rest/tiers), on axum's own types:
+// Plod's framework tiers (bench/rest/tiers), on axum's own types:
 //
 //   F   GET /, GET /id/{id}?name= with x-powered-by, and POST /json echoing
 //       its body as a serde_json Value, members in order

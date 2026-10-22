@@ -9,7 +9,7 @@ records, the serde types, both JSON ways, and tier D's readers come from
 
 ```sh
 RUSTFLAGS="-C target-cpu=native" cargo build --release --locked \
-    --target-dir ~/.cache/goose-rest-bench/target-axum
+    --target-dir ~/.cache/plod-bench/target-axum
 REST_DATA=<dir> TIER=a|b|c|d|f|r|m JSON=serialize|template WORKERS=<n> \
     [ROUTES=bench/rest/tiers/github.txt] rest-axum <port>
 ```

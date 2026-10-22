@@ -21,8 +21,8 @@ remaining overhead over goose-http.
 [Architecture](docs/architecture.md) · [Development](docs/development.md) ·
 [Changelog](CHANGELOG.md)
 
-*Note: Plod was named goose-rest before `v0.4.0`, and its repository keeps that name
-until it moves to `kaitk/plod`.*
+*Note: Plod was named goose-rest before `v0.4.0`. GitHub redirects `kaitk/goose-rest`
+to `kaitk/plod`, so imports of earlier tags still build.*
 
 ## Status
 
@@ -167,8 +167,10 @@ For differences from Actix and the reasons behind them, see the
 
 *Slow by name only.*
 
-Measured as goose-rest `v0.2.1`, Plod's name before `v0.4.0`, on goose-http `v0.4.3` and Goose master `f114b5a`, on a Ryzen 7
-5800X3D (WSL2), 4 workers per server. [All results, the method, and the losses](docs/benchmarks.md).
+Measured as goose-rest `v0.2.1`, Plod's name before `v0.4.0`, on goose-http `v0.4.3`
+and Goose master `f114b5a`. The machine: a Ryzen 7 5800X3D running Ubuntu under WSL2,
+4 workers per server, with wrk as the client.
+[All results, the method, and the losses](docs/benchmarks.md).
 
 Every framework serves the same REST APIs through its own router, extractors, and
 middleware.

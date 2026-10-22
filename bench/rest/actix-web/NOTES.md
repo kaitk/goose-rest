@@ -10,7 +10,7 @@ tier D's readers come from `bench/rest/rust-app`, a port of goose-http's
 
 ```sh
 RUSTFLAGS="-C target-cpu=native" cargo build --release --locked \
-    --target-dir ~/.cache/goose-rest-bench/target-actix-web
+    --target-dir ~/.cache/plod-bench/target-actix-web
 REST_DATA=<dir> TIER=a|b|c|d|f|r|m JSON=serialize|template WORKERS=<n> \
     [ROUTES=bench/rest/tiers/github.txt] rest-actix-web <port>
 ```
