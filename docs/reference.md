@@ -16,7 +16,7 @@ in `main` before `http::run`, bounds what each worker's gather pool promises at 
 the bodies it gathers ([Extractors](#3-extractors)), the replies `rest::ask` waits for
 ([Lanes](#41-lanes)), and what the middleware keeps for an answer at a later call
 ([Middleware](#2-middleware)). `rest::serve_epoll` has
-the same forms.
+the same forms, and the module `rest.tls` adds both with HTTPS ([HTTPS](#13-https)).
 
 The context is `rest::Cx<S, A, R>`: the request state, the worker state, and the
 router type. Its `req`, `body`, `out`, and `scratch` carry the request and response.
@@ -126,6 +126,37 @@ http::finish(cx.out, http::JSON, "{\"ok\":true}");
 `Max-Age=0`, and an expiry at the Unix epoch. It preserves the other attributes and
 returns the same boolean. Pass the original name, path, and domain to remove the
 same cookie. Neither helper stores cookies or adds request state.
+
+### 1.3 HTTPS
+
+`rest::serve` and `rest::serve_epoll` with HTTPS are in the module `rest.tls`, which
+`rest` doesn't import, so a program without it builds without goose-tls and OpenSSL. To
+use them, declare goose-tls in the root file at the tag goose-http's `tls.goose` names,
+import the module, and give each worker goose-http's `http::TlsServer`:
+
+```rust
+import http from "github.com/kaitk/goose-http@5701a0d83a2f6e381bc13b69d80ae0a33d42daef";
+import tls from "github.com/kaitk/goose-tls@v0.0.3";
+import rest from "github.com/kaitk/goose-rest@<tag>";
+import rest.tls;
+
+thread_fn worker(cfg: http::Config, ctx: tls::Context) {
+    var server = http::tls_server(ctx);
+    var app = rest::NoState { .. };
+    let e = rest::serve(cfg, app, St { .. }, server) { cx => handle(cx) };
+    http::release(server);
+    if e.code != 0 { http::report(e); }
+}
+```
+
+`rest::serve(cfg, app, fresh, server, limits)` serves HTTP/1.1 over TLS 1.3 on the
+listeners that ask for it, `Config.tls` or a `Listener`'s `tls`, and the rest as
+`rest::serve` does; `rest::serve_epoll` takes the same arguments. Handlers don't
+change, and a WebSocket on a TLS listener is `wss://`. The context, the listeners, what
+the loops refuse, and kTLS are goose-http's
+([HTTPS](https://github.com/kaitk/goose-http/blob/main/docs/api.md#https)), and the
+build needs CMake and OpenSSL 3's headers
+([goose-tls's setup](https://github.com/kaitk/goose-tls/blob/main/docs/development.md#openssl)).
 
 ## 2. Middleware
 

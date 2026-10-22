@@ -371,7 +371,7 @@ per-request field in the program's state, with `begin_compressed`, `send_compres
 and `end_compressed` of goose-rest's own, was the alternative: a larger API, and one
 more field for the program to keep and release at `CLOSED`.
 
-### WebSocket
+### WebSocket and HTTPS
 
 Decided (2026-10-22): a WebSocket is `rest::ws_upgrade` and `rest::ws_read` in
 `rest.websocket`, a module `rest` doesn't import, as goose-http keeps its frames in
@@ -388,6 +388,13 @@ life, as goose-http's own handler state does, so a table of the module's by fd, 
 compression keeps for a response's encoder, would add a lookup and nothing else, and a
 field in `Cx` or the exchange would cost every program. goose-rest adds no send or close
 of its own, which would only rename goose-http's.
+
+Decided (2026-10-22): HTTPS is `rest::serve` and `rest::serve_epoll` overloads that take
+goose-http's `http::TlsServer`, in `rest.tls`, a module `rest` doesn't import, so only a
+program that imports it declares goose-tls and builds with OpenSSL. Each repeats
+`serve`'s block over goose-http's TLS loop, as `serve_epoll` repeats it over epoll. A
+`TlsServer` field in `rest::Config` was the alternative: every program would then build
+goose-tls.
 
 ### Inlining
 

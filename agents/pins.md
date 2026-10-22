@@ -53,5 +53,6 @@ point at a local goose-http checkout instead.
 goose-compress at the tag the pinned goose-http's `compression.goose` names. When the
 new goose-http names another, change it in the same commit (2026-10-15).
 
-The same holds for goose-hash, which `websocket.goose` and the programs that import it
-declare at the tag goose-http's `websocket.goose` names (2026-10-22).
+The same holds for goose-hash, which `websocket.goose` declares at the tag goose-http's
+`websocket.goose` names, and goose-tls, which `tls.goose` declares at the tag its
+`tls.goose` names, with the programs that import them (2026-10-22).

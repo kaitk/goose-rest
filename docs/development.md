@@ -23,6 +23,7 @@ middleware.goose  CORS, bearer, timed, and scope
 waiting.goose     lanes of jobs: ask one, run its jobs, and resume with its reply
 compression.goose rest::compressed, a module rest doesn't import (goose-compress)
 websocket.goose   rest::ws_upgrade and ws_read, a module rest doesn't import (goose-hash)
+tls.goose         rest::serve over HTTPS, a module rest doesn't import (goose-tls)
 check.goose       what generated code calls: code points, string formats, numbers
 gen/              goose-rest gen, the generator (gen/main.goose)
 ts/               the TypeScript helper: types for the generator's subset, api.mts
@@ -64,19 +65,22 @@ unpacked there (2026-10-15).
 
 ## Build and test
 
-The tests need git, `curl`, a C compiler, and on Linux liburing; the TypeScript
-helper's tests also need Node or Bun ([below](#run-the-typescript-helpers-tests)). On
-Ubuntu or Debian:
+The tests need git, `curl`, a C compiler, and on Linux liburing; `test/tls/`'s also
+need CMake and OpenSSL 3's headers, for goose-tls
+([its setup](https://github.com/kaitk/goose-tls/blob/main/docs/development.md#openssl)),
+and don't run on Windows; the TypeScript helper's tests also need Node or Bun
+([below](#run-the-typescript-helpers-tests)). On Ubuntu or Debian:
 
 ```sh
-sudo apt-get install -y git curl gcc libc6-dev liburing-dev
+sudo apt-get install -y git curl gcc libc6-dev liburing-dev cmake libssl-dev
 ```
 
 When using `GOOSE_COMMIT` or Linux on arm64, which has no Goose release archive, the
 scripts build Goose from source; also run `sudo apt-get install -y cmake g++`. Both sets passed the suite on a
 clean `ubuntu:26.04` for arm64 (2026-10-15).
 
-On macOS, the Xcode command line tools (`xcode-select --install`) have all of them. On
+On macOS, the Xcode command line tools (`xcode-select --install`) have all of them but
+CMake and OpenSSL 3, which `brew install cmake openssl@3` adds. On
 Windows, run the tests in WSL ([below](#windows-through-wsl)). goose-http's guide has
 each platform in full
 ([Linux](https://github.com/kaitk/goose-http/blob/main/docs/development.md#linux),

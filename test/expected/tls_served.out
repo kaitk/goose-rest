@@ -1,0 +1,40 @@
+== serve
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: text/plain; charset=utf-8
+Content-Length: 14
+
+hello over TLS
+HTTP/1.1 404 Not Found
+Connection: close
+Content-Type: application/json
+Content-Length: 21
+
+{"error":"not_found"}
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Upgrade: websocket
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+
+
+echoed over wss
+== serve_epoll
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: text/plain; charset=utf-8
+Content-Length: 14
+
+hello over TLS
+HTTP/1.1 404 Not Found
+Connection: close
+Content-Type: application/json
+Content-Length: 21
+
+{"error":"not_found"}
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Upgrade: websocket
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+
+
+echoed over wss

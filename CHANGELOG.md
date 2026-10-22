@@ -53,8 +53,8 @@ of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
   `http::gather_budget(bytes)` in `main` before `http::run`, and `rest::serve` and
   `rest::serve_one` leave the budget as it is.
 
-WebSocket, in a module `rest` doesn't import, made of goose-http's parts
-([decisions](docs/decisions.md#websocket)).
+WebSocket and HTTPS, each in a module `rest` doesn't import, made of goose-http's parts
+([decisions](docs/decisions.md#websocket-and-https)).
 
 - `rest.websocket`: `rest::ws_upgrade(cx, ws, u, protocol)` answers a WebSocket's
   handshake with 101, its `http::WebSocket` promised its bytes from the gather pool, and
@@ -62,6 +62,9 @@ WebSocket, in a module `rest` doesn't import, made of goose-http's parts
   `not_implemented` on h2, and 503 `unavailable`. `rest::ws_read(cx, ws) { op, data =>
   ... }` gives a case function each whole message, and releases at `CLOSED`
   ([reference](docs/reference.md#43-websocket)).
+- `rest.tls`: `rest::serve` and `rest::serve_epoll` take goose-http's
+  `http::TlsServer`, and serve HTTPS on the listeners that ask for it
+  ([reference](docs/reference.md#13-https)).
 
 ## v0.2.1 (2026-10-20)
 

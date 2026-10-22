@@ -61,7 +61,9 @@ spec.
 
 Each worker's thread builds its own state and calls `rest::serve`, which puts that
 state in `cx.app`, starts the request state `cx.state` fresh for each request, and
-calls the program's handler with one context, `cx`. The handler is plain code:
+calls the program's handler with one context, `cx`. Over HTTPS, with the optional
+module `rest.tls`, goose-http's loop decrypts the bytes before they reach `serve`, so
+the path below is the same. The handler is plain code:
 
 ```rust
 fn handle(cx) {

@@ -233,6 +233,11 @@ def find_tests(names):
         source = p.read_text(encoding="utf-8")
         if re.search(r"^// error: |^fn main\(", source, re.MULTILINE):
             tests.append(p)
+    # test/tls/'s programs import goose-tls, which builds with OpenSSL, not yet
+    # set up on Windows (goose-http's docs/development.md, "OpenSSL"), and
+    # serve on serve_epoll, which Windows lacks.
+    if WINDOWS:
+        tests = [t for t in tests if t.parent.name != "tls"]
     stems = {}
     for t in tests:
         if t.stem in stems:
