@@ -185,9 +185,7 @@ let PENDING: u16 = 512;
 // far; a body received in pieces counts its bytes so far in len. With KEPT,
 // at and cap are instead the run stash_kept wrote, and head the length of
 // its fields: a route keeps it only once its body is gathered. With
-// COLLECTING, due is instead where the run of a reply being collected
-// starts: an exchange has one wait, a pause's or a reply's, and a pause sets
-// due afresh.
+// COLLECTING, reply is where the run of a reply being collected starts.
 struct Exchange {
     mode: u16 = 0,
     limit: i64 = 0,          // the first rest::body's or rest::body_in_pieces's limit, 0 before it
@@ -195,7 +193,7 @@ struct Exchange {
     len: i64 = 0,
     cap: i64 = 0,
     head: i64 = 0,
-    due: i64 = 0,            // the clock_ns from which a TIMEOUT is rest::pause's own, not goose-http's at once
+    reply: i64 = 0,
 }
 
 // goose-http's state for each request: the program's, and the exchange's.
@@ -262,8 +260,9 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 // What serve does with each of goose-http's events: H(cx) at REQUEST and at
 // the first message of a reply, or for a reply_value in pieces at its last,
 // once collect_reply has collected them; the later pieces of a reply relay
-// sends on itself; and 504 when a reply doesn't come in time, except on an
-// upgraded connection, whose route on_later calls with the TIMEOUT. A reply
+// sends on itself; and 504 when a reply doesn't come in time, or 503 when
+// goose-http had no room for the wait, except on an upgraded connection,
+// whose route on_later calls with the TIMEOUT. A reply
 // cut short by its time limit leaves the response open, and goose-http
 // closes the connection.
 // An answer after REQUEST gets the fields its middleware kept (stash_kept).
@@ -284,16 +283,19 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
             return if (st.ex.mode & COLLECTING) != 0 { -1 } else { out.buf.len };
         }
     }
-    // A pause's TIMEOUT before its time is goose-http's, given at once for
-    // want of a timer. One in time goes to H below, as a WAKE does, so that
-    // the handler is inlined at one call here.
+    // A TIMEOUT tagged NO_ROOM is goose-http's, given at once for want of a
+    // timer: a refusal at admission, 503, where a wait that ran out gets 504.
+    // A pause's own goes to H below, as a WAKE does, so that the handler is
+    // inlined at one call here.
     if ev.kind == http::TIMEOUT {
         let paused = (st.ex.mode & PAUSED) != 0;
+        let no_room = (ev.tag & http::NO_ROOM) != 0;
         st.ex.mode &= ~PAUSED;
-        guard paused && clock_ns() >= st.ex.due else {
+        guard paused && !no_room else {
+            let refused = paused || no_room;
             drop_reply(st.ex, spill, budget);
-            end_wait(st, out, spill, budget, if paused { 503 } else { 504 }, if paused { "unavailable" } else { "timeout" },
-                     false, if paused { RETRY_AFTER } else { "" });
+            end_wait(st, out, spill, budget, if refused { 503 } else { 504 }, if refused { "unavailable" } else { "timeout" },
+                     false, if refused { RETRY_AFTER } else { "" });
             return -1;
         }
     }
@@ -317,12 +319,10 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
                                       reply: if wake { collected(st.ex, ev.data, ev.tag, spill) } else { "" },
                                       refused: wake && (ev.tag & REPLY_REFUSED) != 0, more: (ev.tag & REPLY_MORE) != 0,
                                       ex: st.ex, kept: kept, budget: budget, router: none };
-        // A rest::pause in H sets due afresh: the run starts where it did.
-        let run = st.ex.due;
         H(cx);
         if wake {
             settle_kept(st.ex, o, mark, spill, budget);
-            drop_run(st.ex, run, spill, budget);
+            drop_reply(st.ex, spill, budget);
         } else if kept.taken {
             let at, n, len = stash_kept(kept, scratch, out.common, ev.req, spill, budget);
             keep_run(st.ex, at, n, len);
@@ -529,10 +529,10 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply, spill: u8[>..]&, 
     }
     if k == http::CLOSED { return k; }
     // A response begun can't be answered with 504: the route gets its
-    // TIMEOUT, unless goose-http gave it at once, before the time
-    // rest::pause asked for, having no timer: then the response ends.
+    // TIMEOUT, unless goose-http gave it at once, having no timer
+    // (NO_ROOM): then the response ends.
     if k == http::TIMEOUT && (x.mode & SENDING) != 0 && out.stream.open {
-        guard clock_ns() >= x.due else {
+        guard (ev.tag & http::NO_ROOM) == 0 else {
             if (x.mode & CODED) != 0 { end_coded(x, out, ""); } else { http::end(out); }
             x.mode &= KEPT;
             return http::CLOSED;
@@ -687,7 +687,7 @@ fn placed_end(b: const Budget&, at: i64, cap: i64, n: i64) -> i64 {
 let REPLY_HEAD = 16;
 
 // Adds data, a piece with tag of a reply its lane marked REPLY_VALUE, to the
-// run of the spill the exchange collects it in, from x.due with COLLECTING,
+// run of the spill the exchange collects it in, from x.reply with COLLECTING,
 // and has the route wait for the next piece while more follows, with the
 // time limit rest::ask gave. Returns true once the reply is whole, for
 // on_event to call the handler with it, and false while more follows, or
@@ -701,7 +701,7 @@ fn collect_reply<S>(st: Slot<S>&, data: const u8[:], tag: i32, out: http::Reply,
     var cap: i64 = 0;
     var len: i64 = 0;
     if (x.mode & COLLECTING) != 0 {
-        at = x.due;
+        at = x.reply;
         len = word(spill, at);
         cap = word(spill, at + 8);
     }
@@ -715,7 +715,7 @@ fn collect_reply<S>(st: Slot<S>&, data: const u8[:], tag: i32, out: http::Reply,
     copy_into(spill[start + REPLY_HEAD + len..start + n], data);
     set_word(spill, start, len + data.len);
     set_word(spill, start + 8, room);
-    x.due = start;
+    x.reply = start;
     x.mode |= COLLECTING;
     guard (tag & REPLY_MORE) == 0 else {
         http::later(out, out.stream.wait_ms);
@@ -728,20 +728,16 @@ fn collect_reply<S>(st: Slot<S>&, data: const u8[:], tag: i32, out: http::Reply,
 // message, as a refusal is.
 fn collected(x: const Exchange&, data: const u8[:], tag: i32, spill: const u8[:]) -> const u8[:] {
     guard (x.mode & COLLECTING) != 0 && (tag & REPLY_VALUE) != 0 else { return data; }
-    let from = x.due + REPLY_HEAD;
-    return spill[from..from + word(spill, x.due)];
+    let from = x.reply + REPLY_HEAD;
+    return spill[from..from + word(spill, x.reply)];
 }
 
 // Frees the run of the reply x collects, if any.
-fn drop_reply(x: Exchange&, spill: u8[>..]&, budget: Budget&) { drop_run(x, x.due, spill, budget); }
-
-// drop_reply for a run that starts at at, which due holds unless a pause has
-// set it since: then due keeps the pause's deadline.
-fn drop_run(x: Exchange&, at: i64, spill: u8[>..]&, budget: Budget&) {
+fn drop_reply(x: Exchange&, spill: u8[>..]&, budget: Budget&) {
     guard (x.mode & COLLECTING) != 0 else { return; }
-    spill.free_slice(spill[at..at + word(spill, at + 8)]);
-    untrack(budget, at);
-    if x.due == at { x.due = 0; }
+    spill.free_slice(spill[x.reply..x.reply + word(spill, x.reply + 8)]);
+    untrack(budget, x.reply);
+    x.reply = 0;
     x.mode &= ~COLLECTING;
 }
 

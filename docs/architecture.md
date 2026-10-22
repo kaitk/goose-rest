@@ -241,10 +241,10 @@ calls the handler again for each event of the exchange, with `cx.kind` saying wh
 `BODY`, `END`, `MORE`, `TIMEOUT`, or `CLOSED`. `CLOSED` comes once to a route that ended early, so
 that its case function releases what the state holds. A route can pause before its
 response begins, or after `rest::begin`, with `rest::pause`, and gets `TIMEOUT` when
-the time has passed: the exchange keeps the pause's deadline, and a mode bit for a
-pause before `rest::begin`, so that when goose-http has no timer free and gives
-`TIMEOUT` at once, goose-rest answers 503 with `Retry-After` before `rest::begin` or
-ends an open response after it. One case function per variant
+the time has passed. When goose-http has no timer free, it gives `TIMEOUT` at once,
+tagged `http::NO_ROOM`, and goose-rest answers 503 with `Retry-After` before
+`rest::begin`, as for `rest::ask`, or ends an open response after it; the exchange keeps
+a mode bit for a pause before `rest::begin`. One case function per variant
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#4-later-calls) has each call and event.
 
@@ -258,10 +258,8 @@ apart by `cx.kind`. An exchange has one wait, so a second `rest::ask` during it 
 A body gathered for `rest::body` and a `rest::reply_value` collected from its pieces
 are each a run of the worker's spill, which `rest::Config`'s `gather_budget` bounds. A
 reply's run starts with its length and capacity, and the exchange keeps only where it
-starts, in the field a pause's deadline uses, since an exchange waits on a pause or a
-reply, never both: the slot that goose-http copies for each request stays its size. The
-run is freed once the `resume` has had the reply, from where it started before that
-call, since the `resume` may pause again, or when the client goes, the time limit
+starts, so that the slot that goose-http copies for each request stays small. The
+run is freed once the `resume` has had the reply, or when the client goes, the time limit
 passes, the reply passes the budget, or the route stops waiting, ends, or fails at a
 later call. A reply past the budget cuts a response begun, and its route gets `CLOSED`.
 

@@ -33,8 +33,9 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, cfg: http::Config = 
 // data with tag, a reply as a lane sends it, which rest::play gives (wake),
 // or with timeout, the end of the wait, which rest::ask answers with 504,
 // and rest::pause's route gets as http::TIMEOUT. early makes that timeout
-// goose-http's own, given at once when it has no timer: a pause before a
-// response begins then answers 503, and a pause after ends its response. sent
+// goose-http's own, given at once with http::NO_ROOM when it has no timer:
+// rest::ask and a pause before a response begins then answer 503, and a
+// pause after ends its response. sent
 // is what the client of an upgraded connection sends while the route waits,
 // which comes as one http::BODY before the reply or the timeout; on any other
 // connection, goose-http holds it back, and serve_one drops it.
@@ -170,9 +171,8 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
         if w.timeout {
             stream.waiting = false;
             stream.rearm = false;
-            // The time a rest::pause asked for has come, or with early hasn't.
-            st.ex.due = if w.early { 1 << 62 } else { 0 };
-            deliver(http::Event { kind: http::TIMEOUT, req: gone, data: "", whole: false, trailers: "" },
+            deliver(http::Event { kind: http::TIMEOUT, req: gone, data: "", whole: false, trailers: "",
+                                  tag: if w.early { http::NO_ROOM } else { 0 } },
                     st, app, reply, spill, budget) { cx => H(cx) };
             continue;
         }

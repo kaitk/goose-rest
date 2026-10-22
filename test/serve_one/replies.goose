@@ -161,6 +161,11 @@ fn main() {
     expect::same(answer("/value", [rest::Wake { timeout: true }]),
                  "HTTP/1.1 504 Gateway Timeout\r\nContent-Type: application/json\r\nContent-Length: 19\r\n\r\n{\"error\":\"timeout\"}",
                  "timeout");
+    // No room to wait, which goose-http says at once: a refusal at admission.
+    expect::same(answer("/value", [rest::Wake { timeout: true, early: true }]),
+                 str("HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\nContent-Type: application/json\r\n",
+                     "Content-Length: 23\r\n\r\n{\"error\":\"unavailable\"}"),
+                 "no room");
 
     // Each ask sent its job to the box, read as the lane reads it.
     var jobs: u8[>..] = [];

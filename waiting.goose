@@ -92,9 +92,11 @@ fn is_waiting(cx) -> bool { cx.out.stream.waiting }
 // them at its front, and with 500 already_waiting when the route waits
 // already, as at an upgraded connection's BODY during a wait: goose-http's
 // exchange has one wait, which a second job's reply would share. Needs
-// Config.mail_slots and max_waiting; without them the route gets 504 at
-// once. On an upgraded connection, the mark's resume gets the client's bytes
-// as BODY while it waits, and TIMEOUT in place of 504.
+// Config.mail_slots and max_waiting: past max_waiting, or without them,
+// goose-http has no room for the wait, and the route gets 503 unavailable
+// with Retry-After at once. On an upgraded connection, the mark's resume gets
+// the client's bytes as BODY while it waits, and TIMEOUT in place of 504 or
+// 503.
 fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000) {
     if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
     let back = http::later(cx.out, ms);

@@ -164,7 +164,7 @@ as for [work that waits](11-waiting.md):
 
 When the worker already holds `max_waiting` waits, goose-http gives `TIMEOUT` at once
 ([answers that wait](https://github.com/kaitk/goose-http/blob/main/docs/api.md#answers-that-wait)).
-goose-rest tells that `TIMEOUT` from the pause's own by the clock, ends the response,
+goose-rest tells that `TIMEOUT` from the pause's own by its tag, `http::NO_ROOM`, ends the response,
 and the case function gets `CLOSED`. A client of Server-Sent Events reconnects to a
 stream that ends.
 

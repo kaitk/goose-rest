@@ -1,9 +1,8 @@
-// An exchange keeps a pause's deadline and the start of a reply being
-// collected in one field: a route that began a response and paused asks a
-// lane at each TIMEOUT, gets a rest::reply_value in pieces, and pauses again
-// in the resume; and an upgraded connection that asks gets bytes while the
-// reply's pieces are being collected. Each reply's run is freed, and the
-// pause still ends.
+// A pause and a reply being collected in one exchange: a route that began a
+// response and paused asks a lane at each TIMEOUT, gets a rest::reply_value
+// in pieces, and pauses again in the resume; and an upgraded connection that
+// asks gets bytes while the reply's pieces are being collected. Each reply's
+// run is freed, and the pause still ends.
 import std;
 import http from "github.com/kaitk/goose-http@b5f82a2d302b01c83e6d5073641720238590af22";
 import rest from "../../";
@@ -88,8 +87,6 @@ fn send(c: Conn&, out: u8[>..]&, app: App&, kind: u8, data: const u8[:], tag: i3
         c.stream.waiting = false;
         c.stream.rearm = false;
     }
-    // The time the pause asked for has come.
-    if kind == http::TIMEOUT { c.st.ex.due = 0; }
     rest::deliver(http::Event { kind: kind, req: c.req, data: data, whole: true, trailers: "", tag: tag }, c.st, app,
                   reply, spill, budget) { cx => handle(cx); };
 }
@@ -118,7 +115,7 @@ fn main() {
     expect::same(expect::body_of(ticks), "d\r\n1 0123456789\n\r\nd\r\n2 0123456789\n\r\n0\r\n\r\n", "paused, then asked");
 
     // The same, event by event, with the spill in view: each run is freed,
-    // and the pause after the first reply waits on its own deadline.
+    // and the route pauses again after the first reply.
     let text = expect::request("GET", "/ticks");
     let req, status = http::parse(text);
     assert(status == 200);
@@ -137,7 +134,7 @@ fn main() {
              spill, b);
     }
     print("after the first reply: paused ", c.stream.waiting, ", collecting ", (c.st.ex.mode & rest::COLLECTING) != 0,
-          ", in the spill ", in_use(b), ", deadline ahead ", c.st.ex.due > clock_ns());
+          ", in the spill ", in_use(b));
 
     // An upgraded connection that asks: bytes come between the reply's
     // pieces, and the run holds the pieces meanwhile.

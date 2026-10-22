@@ -475,7 +475,7 @@ response begun with `rest::begin` goes to the route, whatever asked for it, sinc
 goose-http's docs do, and keeps it apart from `WAKE`, a reply's event. Three
 questions, settled:
 
-- The deadline lives in `Exchange`, as `due`: `pause` reads the clock once and stores
+- Replaced on 2026-10-22 (below): the deadline lives in `Exchange`, as `due`: `pause` reads the clock once and stores
   the time halfway to `ms`, and a `TIMEOUT` reads it once more. goose-http gives
   `TIMEOUT` at once when it has no timer for the wait (`Config.max_waiting`), and the
   route can't tell that from its own except by the clock. Halfway, as goose-http's
@@ -509,13 +509,35 @@ A new bit of `Exchange.mode`, `PAUSED`, marks the pre-response pause. `mode` wid
 Goose packs its structs, so a wider field has no padding to fill. `PAUSED` stays out of
 `LATER`, and only `on_event`'s `http::TIMEOUT` branch checks it. When set, it clears the
 bit and either answers 503 `unavailable` with `Retry-After` if `clock_ns() < x.due`
-(goose-http's immediate `TIMEOUT` when no timer is free), or passes the `TIMEOUT` to the
+(goose-http's immediate `TIMEOUT` when no timer is free; replaced on 2026-10-22, below,
+by the `TIMEOUT`'s tag), or passes the `TIMEOUT` to the
 handler at the call `REQUEST` and `WAKE` use, with the fields the middleware kept. A
 second call to the handler would inline it twice in every program that serves.
 Clearing `PAUSED` leaves a later `rest::ask` in the same exchange to get 504 if its reply
 times out. Rejected: checking `due > 0` without a mode bit, which collides with
 `COLLECTING`'s use of `due` for a reply run's start and with `serve_one` setting
 `due = 0` for a non-early timeout.
+
+Decided (2026-10-22), replacing the 2026-10-16 entry's first point and the clock
+comparison of the 2026-10-21 entry above: goose-rest tells goose-http's `TIMEOUT` at
+once, for want of a timer (`Config.max_waiting`), by its tag, `http::NO_ROOM`, which
+goose-http gives from v0.5.0, rather than by the clock. `rest::pause` reads no clock and
+stores no deadline, and `on_event` and `arrived` test `ev.tag`. The clock could
+misclassify: an immediate `TIMEOUT` that reached the handler after half a pause's time,
+as when the loop is busy, passed for the pause's own. `Exchange.due` then held only a
+collected reply's start, and is renamed `reply`; with no pause moving it, serve frees
+the reply's run after the `resume` from that field, and no longer saves it first.
+
+- `rest::ask` given `NO_ROOM` answers 503 `unavailable` with `Retry-After: 1`, as a
+  pause before a response does, rather than 504 `timeout`: no room to wait is a refusal
+  at admission, not a lane that was slow.
+- On an upgraded connection, `NO_ROOM` stays a plain `TIMEOUT` for the route, as when
+  the time has passed: the 101 has gone, and `Cx` carries no tag. It waits until a
+  route needs to tell them apart.
+- `rest::serve_one` gives a `Wake { early: true }` as a `TIMEOUT` tagged `NO_ROOM`.
+
+Rejected: a mode bit or field that records the wait's purpose in `Exchange` for the
+check, which the tag makes unneeded.
 
 Decided (2026-10-16): an upgraded connection that waits on `rest::ask` keeps one
 variant, the one in `cx.state.waiting`, for every later call. From goose-http v0.3.3 the
@@ -730,7 +752,8 @@ are unchanged. `rest::reply`'s pieces stay unmarked, and the handler gets each, 
   wait. Amended (2026-10-19): the two meet at one call, the `resume` of a collected
   reply, which can pause the response it began before the run is freed. serve reads
   the run's start before that call and frees the run from it, leaving a deadline the
-  `resume` set in `due`.
+  `resume` set in `due`. Amended (2026-10-22): a pause keeps no deadline, so the field
+  is the run's alone, named `reply`, and serve frees the run from it after the call.
 
 This rejected:
 

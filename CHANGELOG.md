@@ -24,6 +24,14 @@ Shorter routes: a program's routes are statements in a row, and scopes are block
   route that took the request. The generated `dispatch` begins with
   `rest::untaken(cx)`, and answers nothing after a hand-written route that took it.
 
+goose-http's parts in place of goose-rest's own copies, on goose-http `b5f82a2`, ahead
+of its `v0.5.0` ([decisions](docs/decisions.md#waiting-on-another-thread)).
+
+- goose-http's `TIMEOUT` at once, for want of a timer, is told by its tag
+  `http::NO_ROOM`, not by the clock, so a busy loop no longer passes it for a pause's
+  own. Breaking: `rest::ask` answers it 503 `unavailable` with `Retry-After: 1`, where
+  it answered 504 `timeout`.
+
 ## v0.2.1 (2026-10-20)
 
 The tier C benchmark's JWT check scans 16 bytes at a time, and the goose-http pin
