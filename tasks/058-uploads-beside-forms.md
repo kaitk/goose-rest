@@ -32,3 +32,34 @@ it, and on epoll the gathered bodies would explain the 17 MB.
       stays
 - [ ] Uploads beside forms rerun against goose-http alone, recorded in
       `docs/benchmarks.md`
+
+## Found from the code (2026-10-22)
+
+Not measured: this compares the two tier servers' code, without perf.
+
+The first candidate doesn't hold as written. goose-http's tier D also holds a batch or
+a form whole: one that came with its head is answered at once, and one that didn't is
+joined piece by piece into a spool (`join` in its `bench/rest/goose/app.goose`) and
+answered at its END. The forms role's requests are four in seven batches of
+200-500 KB, which never come with the head, so both servers gather most of them.
+
+What differs for a body that didn't come whole:
+
+- Per piece, goose-rest does no more. A body with a Content-Length gets a run of its
+  exact size, so `gather_piece` copies each piece without growing the run, where
+  goose-http's spool starts at 16 KB and doubles, copying each body about twice.
+- Per request, goose-rest does more. The route runs twice, `rest::body` leaving it
+  the first time, so the second call routes, checks the bearer token and the type
+  again; `head_of` parses the head again from its copy; and `fits` and `track` scan
+  the worker's runs. This is small beside parsing a batch's JSON, so it probably
+  isn't the whole rate gap.
+- goose-rest gathers into the package's spill, a local of each worker's `serve`,
+  while the uploads' spools are in the tier server's `spill`; goose-http keeps both in
+  its one spill. Two spills keep two peaks, which could hold more memory, but would
+  do so on io_uring as well, where peak RSS is even. So it doesn't explain epoll's
+  17 MB alone.
+
+Next, on Linux: `perf record` of both servers in the mixed run on each loop, to see
+where goose-rest's extra time goes; and, as a check of the package's share, the tier
+server's batch and form routes with `rest::body_in_pieces` and a spool, as goose-http
+reads them, measured once and not kept, since the tier measures `rest::body`.
