@@ -1,8 +1,8 @@
 # 058: Uploads beside forms
 
-Status: in-progress (asked for 2026-10-20). The memory gap's cause is found
-("Measured on Linux"); its fix is goose-http's gather pool (its task 059), and the
-rerun comes after goose-rest adopts it.
+Status: in-progress (asked for 2026-10-20). One arena didn't close epoll's memory
+gap ("After the gather pool"): it comes from reading the bodies whole, not from where
+they're kept. With three rounds, the rate gap shows on this machine too.
 
 With tier D's forms running beside its uploads, goose-rest serves fewer of both than
 goose-http alone, on both loops, and holds more memory on epoll. Alone, uploads are
@@ -102,6 +102,29 @@ Alone, uploads were 668-724 a second and 70-72 MB for all six.
   route twice, and none of `spill_end`, `free_at`, or `track` is among the top 25
   symbols. Routing a gathered body once isn't worth its machinery for this tier.
 
-The fix: gathered bodies in goose-http's per-worker pool, which a budget bounds, as
-goose-http's task 059 designs it, so a worker keeps one arena. Then this run again,
-against goose-http alone, with three rounds.
+The proposed fix was gathered bodies in goose-http's per-worker pool, as goose-http's
+task 059 designs it, so a worker keeps one arena.
+
+## After the gather pool (2026-10-22)
+
+goose-rest `fe402bd`, which gathers in goose-http's pool, against goose-http alone at
+`5701a0d8`: goose-http's `bench/rest.sh run` with `STEPS=2`, three rounds of 5 s
+after 5 s of warm-up, on the same machine, Goose v2026.3 and gcc 15.2. Uploads a
+second are the median, with the range.
+
+| Loop | Uploads role | goose-http | goose-rest |
+|---|---|---|---|
+| epoll | alone | 651 (643-657), 70 MB | 647 (611-670), 70 MB |
+| io_uring | alone | 620 (464-639), 71 MB | 627 (619-632), 72 MB |
+| epoll | beside forms | 70.9 (68.8-74.4), 129 MB | 66.9 (65.0-68.5), 148 MB |
+| io_uring | beside forms | 91.0 (85.3-94.8), 123 MB | 84.4 (79.3-87.6), 122 MB |
+
+- **Epoll's memory gap stays, at 19 MB.** With one arena, goose-rest's peak is
+  148 MB, against 150 MB with its own spill. So the second arena wasn't the cause.
+  Reading the bodies whole is: the server that read them in pieces ("Measured on
+  Linux") held 131 MB. Why only epoll's peak grows is still open.
+- **The rate gap shows with three rounds:** goose-rest serves 5.6% fewer uploads
+  beside forms on epoll, and 7.3% fewer on io_uring. The one-round run above was
+  within its noise. On epoll the ranges don't overlap; on io_uring they do.
+
+Both point at the first candidate: forms read whole beside uploads read in pieces.
