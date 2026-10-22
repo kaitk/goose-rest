@@ -4,7 +4,7 @@
 // small for it; and a refusal's code longer than a message, which rest::play
 // gives whole and serve_one cuts to fit, as the lane does on the real path.
 import std;
-import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
+import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
 import rest from "../../";
 import expect from "../";
 

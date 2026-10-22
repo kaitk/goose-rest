@@ -11,7 +11,7 @@
 // rest::serve runs, and each reply message addressed to it comes back as a
 // WAKE. The lanes are real threads, each with its box.
 import std;
-import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
+import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
 import rest from "../../";
 import .app;
 

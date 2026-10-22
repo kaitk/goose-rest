@@ -1,7 +1,7 @@
 // rest::file: a file whole in pieces of 64 KB, a range, a 304 for its ETag,
 // HEAD, and no file. Writes test_pieces.tmp in the working directory.
 import std;
-import http from "github.com/kaitk/goose-http@cbffc2a2b67db1a06467486cb128dda4b28e6eea";
+import http from "github.com/kaitk/goose-http@e128cb39d82c0fa45280452b1c434a55384e14d7";
 import rest from "../../";
 import expect from "../";
 import common;
