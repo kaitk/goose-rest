@@ -1,8 +1,8 @@
 # 046: Rename to Plod
 
-Status: in-progress. The package, its namespace, the generator, and the docs are Plod on
-branch `plod` (2026-10-22), for `v0.4.0`; the GitHub repository's rename and the SVG
-logo (task 059) remain.
+Status: in-progress. Plod `v0.4.0` is released from `github.com/kaitk/plod`, renamed
+from `kaitk/goose-rest` on 2026-10-23; the SVG logo (task 059) and a manual trademark
+search remain.
 
 Rename goose-rest to Plod before it goes on HttpArena. The joke is a framework named for
 slowness at or near the top of the rankings, so a rival's result reads as "N% slower
@@ -84,11 +84,10 @@ GitHub redirects the old URL after a rename, for git clones too, so a program pi
 - [ ] Ari's logo exists as an SVG, with the horizontal, icon, and favicon variants
       (task 059; PNGs in `docs/assets/` meanwhile)
 - [x] A decision in `docs/decisions.md` records the name and the reason
-- [ ] The repository, package, imports in every root under `test/`, `examples/`,
+- [x] The repository, package, imports in every root under `test/`, `examples/`,
       `docs/tutorial/`, `docs/best-practices/`, `spikes/`, and `bench/`, the scripts,
       `README.md`, `CHANGELOG.md`, and `docs/` use the new name, in their own commit.
-      Done but for the repository's URL, which waits on GitHub's rename and
-      `scripts/rename-repo-url.sh`. Recorded results and the benchmark server
+      The repository's URL moved with `scripts/rename-repo-url.sh`. Recorded results and the benchmark server
       `bench/rest/goose-rest/` keep the name they were measured under.
 - [x] `scripts/test.sh` passes
 - [ ] `v0.4.0` is tagged, and the README's quick start, which imports it, builds

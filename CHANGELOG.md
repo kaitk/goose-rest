@@ -3,7 +3,7 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
-## v0.4.0 (unreleased)
+## v0.4.0 (2026-10-23)
 
 goose-rest is now Plod. The package, its namespace, and its generator take the new
 name; error codes, JSON shapes, and HTTP behaviour are as in `v0.3.4`. The repository
