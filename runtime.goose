@@ -218,28 +218,25 @@ fn serve<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config 
     var runs: Run[>..] = [];
     var budget = Budget { size: limits.gather_budget, runs: runs };
     return http::serve(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        step(ev, st, app, out, spill, budget) { cx => H(cx) };
+        let mark = on_event(ev, st, app, out, spill, budget) { cx => H(cx) };
+        // Here, not in on_event: a function holding a call given a block
+        // that stays a call isn't inlined.
+        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => H(cx) }; }
     };
 }
 
 // serve on goose-http's epoll loop, http::serve_epoll, rather than its
-// io_uring loop.
+// io_uring loop. Its block repeats serve's: shared as an inline fn, gcc
+// emitted it out of line, about 200 more instructions per request on Linux
+// (2026-10-22).
 fn serve_epoll<A, S, H>(cfg: http::Config, app: A&, fresh: S, limits: Config = Config { .. }) -> http::Error {
     reusable[] var spill: u8[>..] = [];
     var runs: Run[>..] = [];
     var budget = Budget { size: limits.gather_budget, runs: runs };
     return http::serve_epoll(cfg, Slot<S> { state: fresh }) { ev, st, out =>
-        step(ev, st, app, out, spill, budget) { cx => H(cx) };
+        let mark = on_event(ev, st, app, out, spill, budget) { cx => H(cx) };
+        if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => H(cx) }; }
     };
-}
-
-// What each loop's block does with an event. on_later is called here, not
-// in on_event: a function holding a call given a block that stays a call
-// isn't inlined.
-inline fn step<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::Reply, spill: u8[>..]&,
-                        budget: Budget&) {
-    let mark = on_event(ev, st, app, out, spill, budget) { cx => H(cx) };
-    if (st.ex.mode & LATER) != 0 { on_later(ev, st, app, out, spill, budget, mark) { cx => H(cx) }; }
 }
 
 // serve for a program that keeps no request state.
