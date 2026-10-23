@@ -6,11 +6,11 @@ and passes HttpArena's `validate.sh` at `3717e25`: 144 checks, none failed, the
 static files' optional compression skipped (2026-10-23, Docker Desktop on an M1 Pro).
 A review against peer entries (2026-10-23) left it ready to submit: its JSON is
 serialized per request with `plod::format_fields`, `/async-db`'s and the cache's rows
-decoded into structs; production-stack's cache admits at most 64 asks a worker, with
+decoded into structs; production-stack's cache admits at most 256 asks a worker, with
 its boxes sized from that count ("Bounding production-stack's memory", below); it has a
 README, a two-line Dockerfile per proxy, `*_CPUSET` variables in its compose files, and
-imports Plod at `v0.5.1`, its Dockerfile downloading Goose's release. The submission
-and the benchmark runs remain.
+imports Plod at commit `a23bd98` of branch `try-reply` until `v0.5.2` is tagged, its
+Dockerfile downloading Goose's release. The submission and the benchmark runs remain.
 
 This task is the master plan: which profiles the entry can run, what each one needs, and
 which repository builds it. The protocol and database work happens in those
@@ -52,35 +52,42 @@ workers. The cache now follows Plod's production guidance
 ([sizing a lane's admissions and boxes](../docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes),
 and the decision of the same date):
 
-- A worker admits at most 64 cache asks at once, and answers one past them with 503
-  `busy` at once. A full lane box is 503 `unavailable` (`plod::try_ask`'s
-  `http::FULL`); `http::TOO_LONG` is 500. Nothing retries.
+- A worker admits at most 256 cache asks at once, more than the connections it serves
+  under healthy load, and answers one past them with 503 `busy` at once. 64 refused 15%
+  of a healthy load at 3 workers under 256 connections (2026-10-23). A full lane box is
+  503 `unavailable` (`plod::try_ask`'s `http::FULL`); `http::TOO_LONG` is 500
+  `job_too_long`. Nothing retries.
 - The route owns its waits (`plod::own_waits`), so the reply, the lane's refusal, the
   `TIMEOUT` (504, never asked again), and the `CLOSED` each reach it, and the admission
   is given back there. A plain paused route gets no `CLOSED` (its timer is cancelled),
   which would have lost the admission. Checked natively against a Postgres address
-  that never answers: rounds of 600 parallel requests admitted 512 at 8 workers each
-  time, after timeouts, after clients that left at 1 s, and after refusals.
-- Lane boxes hold four times each lane's share of the admissions (256 at a lane per
-  worker): at the share alone, 10 lanes refused 0.2% of a load they kept up with. Each
-  worker's box holds 128 replies, and `max_waiting` is 64.
-- A reply is one 512-byte message, which the server checks as it starts. The lanes
-  send it themselves with `http::mail_send` and drop it when the worker's box is full,
-  rather than wait as `plod::reply_value` does; Plod's own wait stays, since a worker's
-  box is shared by every lane and by long replies' pieces. Each lane checks
+  that never answers, rounds of 600 parallel requests at 8 workers: every request was
+  admitted and timed out, again after clients that left at 1 s; a hot id filled its
+  lane's box and the rest got 503 at once; and 300 refusals from a closed port left the
+  admissions whole.
+- Each lane's box holds its share of the admissions, 256 at a lane per worker: 3 and
+  10 lanes refused nothing under healthy load over three runs each, so twice the share
+  wasn't needed. Each worker's box holds 512 replies, and `max_waiting` is 256.
+- The lanes reply with `plod::try_reply` and refuse with `plod::try_refuse` (Plod
+  branch `try-reply`, for `v0.5.2`), which drop a reply that finds the worker's box
+  full; a reply past one 512-byte message is 500 `reply_too_long`. Each lane checks
   `plod::still_wanted` before a job.
 - `plod::try_ask`'s contract holds (its test, and the code): a refusal sends nothing,
   leaves no gather promise and no wait armed, and leaves `cx.state.use` as it was.
 
-Boxes take 0.54, 3.21, and 8.56 MiB at 4, 24, and 64 workers, and the timer tables
-12, 72, and 192 KiB, where `max_conns` made them 3, 18, and 48 MiB. The server's peak
-RSS (`VmHWM`) on its own Postgres, under wrk at 256 connections on `/api/items/:id` and
-`/api/me` (Docker Desktop on an M1 Pro, one run each): 46 MiB at 3 workers against
-95a8822's 85 MiB, and 77 MiB at 10 workers against 209 MiB. With 10 workers both
-answered every request; with 3, 85 connections a worker, 15% of `/api/items/:id` got
-503 `busy`, where 95a8822 queued them all. The dictionaries don't evict: the dataset
-bounds them. Still to measure on Linux (the laptop's run D): production-stack through
-its edge against 95a8822, and successful requests against 503s under overload.
+Boxes take 1.32, 7.92, and 21.1 MiB at 4, 24, and 64 workers, and the timer tables
+48, 288, and 768 KiB, where `max_conns` made them 51, 306, and 816 MiB, and 3, 18, and
+48 MiB. Measured on Docker Desktop on an M1 Pro (2026-10-23, one run each), the server
+on its own Postgres under wrk at 256 connections, 15 s on `/api/items/:id` and 10 s on
+`/api/me`: peak RSS (`VmHWM`) 45 MiB at 3 workers against 95a8822's 86 MiB, and 77 MiB
+at 10 workers against 211 MiB; every request answered 200 by both; `/api/items/:id` at
+330,000 and 366,000 requests a second against 334,000 and 372,000. At 3 workers under
+1,024 connections the entry answered 67% with 200, 25% with 503 `busy`, and 7% with
+503 `unavailable`, where 95a8822 queued all of them at a mean latency of 3 ms, with
+24% more 200s. validate.sh passes, 144 checks, none failed, with the Plod commit
+seeded into the build's Goose cache, since the branch isn't on GitHub yet. The
+dictionaries don't evict: the dataset bounds them. Still to measure on Linux (the
+laptop's run D): production-stack through its edge against 95a8822.
 
 ## The entry's tier
 
