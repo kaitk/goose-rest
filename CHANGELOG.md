@@ -3,6 +3,16 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## Unreleased
+
+Added:
+
+- `plod::try_ask` asks a lane as `plod::ask` does, but returns its refusal rather than
+  answering 503: `plod::NO_BUDGET` when the gather budget can't promise the reply, or
+  `http::FULL`, `http::STALE`, or `http::TOO_LONG` from the lane's send. The route
+  answers its own way, or pauses and asks again within a deadline
+  ([Lanes](docs/reference.md#41-lanes)). `plod::ask` is unchanged.
+
 ## v0.5.0 (2026-10-23)
 
 Goose `v2026.3`, goose-http `v0.5.6`, goose-compress `v0.1.2`; `plod.websocket`

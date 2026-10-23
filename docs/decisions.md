@@ -689,6 +689,31 @@ their answers, and a paused route gets no `CLOSED`. This rejected:
   no `CLOSED`, and the socket's wait replaces its timer.
 - A field in `Cx` or `Exchange`, which a bit of `mode` makes unneeded.
 
+Decided (2026-10-23): `plod::try_ask` is `plod::ask` that returns its refusal at
+admission, where `plod::ask` answers it with 503. It returns `http::SENT`, or why the
+job wasn't sent: `plod::NO_BUDGET` when the gather budget can't promise the reply, or
+the lane's send's `http::FULL`, `http::STALE`, or `http::TOO_LONG`. A refusal leaves
+nothing promised and the route not waiting, so the route answers its own way, or
+pauses and asks again within a deadline of its own. `plod::ask` is `try_ask` and the
+503s it gave before. This follows Tina's admission rule
+([backpressure and drops](https://github.com/pmbanugo/tina/blob/main/docs/concepts/backpressure_and_drops.md)):
+a send to a full mailbox returns `mailbox_full` at once, the runtime never blocks or
+retries, and the handler decides, shedding or retrying on a later tick, with any wait
+bounded by a time limit. A program that bounds its memory by refusing at admission,
+as the HttpArena entry's cache does, needs the refusal, not an answer already
+written. goose-http's lack of a timer past `max_waiting` still comes after the
+handler returns, as a `TIMEOUT` tagged `NO_ROOM`: goose-http decides it in its loop,
+and a program that sizes `max_waiting` for its admitted asks doesn't meet it. The 500s,
+`job_too_large` and `already_waiting`, stay failures: they are the program's errors,
+not load. This rejected:
+
+- A flag on `plod::ask`, which every call of it would pass, and whose return the
+  callers that want the 503 would ignore.
+- A `bool` and a code, where `http::lane_send`'s results already say why, and one
+  constant of Plod's adds the budget.
+- Answering the refusal through the mark's `resume`, as a `TIMEOUT`: a second call for
+  what the route can decide in the call that asked.
+
 Decided (2026-10-22), replacing the `PENDING` bit of the 2026-10-21 entry above: whether
 a request's body came whole is goose-http's `Event.whole`, given at each `REQUEST`, and
 goose-rest reads it there rather than copy it into each connection's `Exchange.mode`.

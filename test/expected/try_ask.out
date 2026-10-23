@@ -1,0 +1,9 @@
+admitted: 4 16
+box full: not asked: full, promised 0
+box full, paused: paused, then: full
+box full, plod::ask: HTTP/1.1 503 Service Unavailable {"error":"unavailable"}
+jobs in the box: 2
+over the budget: not asked: budget, promised 0
+over the budget, paused: paused, then: budget
+over the budget, plod::ask: HTTP/1.1 503 Service Unavailable {"error":"unavailable"}
+jobs sent past the budget: 0
