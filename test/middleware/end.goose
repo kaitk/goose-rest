@@ -1,7 +1,7 @@
 // The middleware's fields on an answer at a body's END, through
 // plod::serve_one: a body whole with its head, and one in pieces.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import expect from "../";
 import common;

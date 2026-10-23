@@ -4,7 +4,7 @@
 //
 //   short60m http [port]   (WORKERS 1)
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import compact from "../../spikes/12-compact-routes";
 

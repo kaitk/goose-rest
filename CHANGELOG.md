@@ -3,6 +3,21 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## v0.5.3 (2026-10-23)
+
+Goose `v2026.3`, goose-http `v0.5.7`, goose-compress `v0.1.3`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` goose-tls `v0.0.5`. No breaking changes.
+
+Changed:
+
+- goose-http `v0.5.7` and goose-compress `v0.1.3`: gzip and deflate are faster with the
+  same bytes (CRC-32 on the CPU's carryless multiply, an inlined `load32`), and an
+  io_uring send made at once reserves its completion before sending. In the HttpArena
+  entry, json-comp serves 20% more requests a second.
+- The best practices' lane guide sizes a lane's admissions from the requests in flight
+  a worker, not its connections, with the HttpArena entry as the example
+  ([Lanes](docs/best-practices/lanes.md)).
+
 ## v0.5.2 (2026-10-23)
 
 Goose `v2026.3`, goose-http `v0.5.6`, goose-compress `v0.1.2`; `plod.websocket`

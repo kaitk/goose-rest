@@ -7,9 +7,9 @@
 // /f/x, is answered after cors has unwound, without its fields. Run it from
 // this folder with goose.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
-import compress from "github.com/kaitk/goose-compress@v0.1.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.3";
 import plod.compression;
 import .compact;
 

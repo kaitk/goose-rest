@@ -2,7 +2,7 @@
 // covers what they refuse: The subset (§4), Names (§5), and What it refuses
 // (§7.2), for anything under paths or security.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import plod.gen.gen;
 import common;

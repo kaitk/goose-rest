@@ -11,7 +11,7 @@
 // plod::serve runs, and each reply message addressed to it comes back as a
 // WAKE. The lanes are real threads, each with its box.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import .app;
 

@@ -1,7 +1,7 @@
 // plod::timed: the Server-Timing field, its value padded to a fixed width,
 // and nothing added when nothing was written.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import expect from "../";
 import common;

@@ -2,7 +2,7 @@
 // one gathered and the route run again with it whole, one past plod::body's
 // limit, and one past the server's max_body.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import expect from "../";
 

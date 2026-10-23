@@ -3,7 +3,7 @@
 //
 //   goose docs/tutorial/05-schema/test.goose
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../../";
 import .api_gen;
 import .app;

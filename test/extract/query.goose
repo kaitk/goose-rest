@@ -1,7 +1,7 @@
 // Query parameters: plod::query, plod::query_int, and plod::query_bool,
 // decoded, missing, and each failure's answer, and plod::require.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import expect from "../";
 import common;

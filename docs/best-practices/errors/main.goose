@@ -7,7 +7,7 @@
 //   curl -s localhost:8080/projects/2
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../../";
 import projects.routes;
 

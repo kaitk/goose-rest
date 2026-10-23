@@ -1,7 +1,7 @@
 // A program's plod::error_body overload for its per-request state, which
 // shapes every error answer: a failure's and plod::otherwise's.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.7";
 import plod from "../../";
 import expect from "../";
 import common;
