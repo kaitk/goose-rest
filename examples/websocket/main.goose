@@ -7,7 +7,7 @@
 //   build/examples/websocket 8080
 //   websocat ws://localhost:8080/ws
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "../../";
 import plod.websocket;

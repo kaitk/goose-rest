@@ -1,7 +1,7 @@
 // plod::file: a file whole in pieces of 64 KB, a range, a 304 for its ETag,
 // HEAD, and no file. Writes test_pieces.tmp in the working directory.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import plod from "../../";
 import expect from "../";
 import common;

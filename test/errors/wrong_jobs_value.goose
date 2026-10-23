@@ -1,7 +1,7 @@
 // error: expected a value of type plod::Jobs<Reports>, got plod::Jobs<Writes>
 // wrong_jobs.goose's lane, opened with a value each thread takes too.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import plod from "../../";
 enum Writes { Create { project: i64 } }
 enum Reports { Totals { project: i64 } }

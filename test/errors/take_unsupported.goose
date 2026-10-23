@@ -3,7 +3,7 @@
 // each schema object in its subset, and refuses a schema outside it, such as
 // a oneOf of shapes, so a type standing for that schema has none.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import plod from "../../";
 
 struct Shape { kind: u8[], radius: f64 }

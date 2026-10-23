@@ -1,7 +1,7 @@
 // plod::bearer: a token in any case of the scheme, none, another scheme, an
 // empty one, and one the program refuses.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import plod from "../../";
 import expect from "../";
 import common;

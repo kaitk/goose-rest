@@ -2,12 +2,12 @@
 // program declares both packages in its root file, goose-http at the
 // reference this file imports it at, a release tag or a commit:
 //
-//   import http from "github.com/kaitk/goose-http@v0.5.4";
+//   import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 //   import plod from "github.com/kaitk/plod@<commit>";
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import .check;
 import .runtime;
 import .extract;

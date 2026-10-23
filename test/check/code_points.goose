@@ -1,7 +1,7 @@
 // plod::code_points, which the generated readers call: the count of a
 // string's code points, or -1 for one that isn't UTF-8.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.4";
+import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
 import plod from "../../";
 
 fn main() {
