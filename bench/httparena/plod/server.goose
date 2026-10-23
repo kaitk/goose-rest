@@ -3,7 +3,7 @@ import std;
 import http from "github.com/kaitk/goose-http@v0.5.5";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import pg from "github.com/kaitk/goose-postgres@dfd16c1b8a2aa0f678ffc59a1a47ed65e9f32812";
+import pg from "github.com/kaitk/goose-postgres@v0.0.3";
 import plod from "../../../";
 import app;
 
