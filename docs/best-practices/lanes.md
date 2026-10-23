@@ -448,35 +448,37 @@ are in goose-http's
 ## 6.7 Sizing a lane's admissions and boxes
 
 When every worker asks the same lanes, bound the asks in flight with an admission count
-per worker, and size the boxes from it. Don't size the boxes for every wait goose-http
-allows. One wait per connection, `max_conns`, is 16,384 a worker by default, and boxes
-that hold a reply and a job for each of them take 306 MiB at 24 workers. This is the
-production setting for a server whose lanes serve all its workers, such as a cache with
-a lane per worker that owns the keys sent to it. HttpArena's production-stack entry,
+per worker, and size the boxes from it. This is the production setting for a server
+whose lanes serve all its workers, such as a cache with a lane per worker that owns the
+keys sent to it. HttpArena's production-stack entry,
 [`bench/httparena/plod/app.goose`](../../bench/httparena/plod/app.goose), follows it.
+
+Don't size the boxes for every wait goose-http allows instead. One wait per connection,
+`max_conns`, is 16,384 a worker by default, and boxes that hold a reply and a job for
+each of them take 306 MiB at 24 workers. Boxes sized from an admission count of 256
+take 8 MiB.
 
 ### 6.7.1 Pick the admission count
 
 The admission count, *A*, is the most asks a worker has on the lanes at once, each from
-its `plod::try_ask` until its outcome reaches the route. Start from Little's law: the
-asks in flight across all workers average the asks per second times the time each takes
-from the ask to its reply, queueing included. Pick a few times that mean, so that a
-worker whose connections bring it more than its share still admits them. Then check
-that the boxes it implies fit your memory budget
-([What it costs](#675-what-it-costs)). The HttpArena entry admits 64 asks a worker:
-1,536 at 24 workers, four to eight times the 200 to 400 its load keeps in flight.
+its `plod::try_ask` until its outcome reaches the route. A connection carries at most
+one ask at a time, and when the server is the bottleneck, every connection with a
+request waits on the lanes at once. So pick *A* from the connections a worker serves
+under healthy load, with room for a worker that gets more than its share. Refusal is
+then the ceiling under overload, not part of normal operation. Little's law gives a
+floor to check against: the asks in flight average the asks per second times the time
+each takes from the ask to its reply, queueing included.
 
-Check *A* against the connections too. When the server is the bottleneck, every
-connection that sends a request waits on the lanes at once, so a worker with more such
-connections than *A* refuses the rest with 503, even while its lanes keep up. With
-*A* = 64 and 256 connections from wrk on `/api/items/:id`, 10 workers answered every
-request, and 3 workers, 85 connections each, refused 15% with 503 `busy`
-([What it costs](#675-what-it-costs) has the setup). HttpArena's production-stack opens
-256 and then 1,024 connections to its edge, which pass at most 1,024 requests at once
-to 24 workers: 43 a worker on average.
+The HttpArena entry admits 256 asks a worker. HttpArena's production-stack opens 256
+and then 1,024 connections to its edge, which pass at most 1,024 requests at once to 24
+workers: 43 a worker on average.
 
-A larger *A* adds no throughput: past what the lanes finish, the extra asks queue in the
-lanes' boxes and time out. A smaller one refuses bursts the lanes could absorb.
+An *A* below the connections a worker serves refuses healthy load. With *A* = 64, 3
+workers under 256 connections from wrk, 85 a worker, refused 15% of `/api/items/:id`
+with 503 `busy` while their lanes kept up. With *A* = 256 they refused none
+([What it costs](#675-what-it-costs) has the setup). Past the connections a worker
+serves, a larger *A* adds no throughput, and each admission costs about 0.9 KiB of boxes
+and timers.
 
 ### 6.7.2 Count the admissions in the route
 
@@ -521,9 +523,9 @@ reply. `http::TIMEOUT` answers 504 and never asks again, since a write may have 
 | Setting | Size | Why |
 |---|---|---|
 | A worker's box, `Config.mail_slots` | *A*, plus the worker's other senders, such as a pool's hand-over per connection, to a power of two | A reply for each admitted ask, and room for replies to asks that ended while their replies were in flight |
-| A worker's message, `Config.mail_size` | The largest reply: the job, its 4-byte length, and the value | Each reply takes one slot. Check it at startup with `plod::echo_head_len` and `plod::value_bytes` |
+| A worker's message, `Config.mail_size` | The largest reply: the job, its 4-byte length, and the value | Each reply takes one slot. `plod::try_reply` returns `http::TOO_LONG` for a reply that doesn't fit, which the lane refuses with 500 |
 | A worker's waits, `Config.max_waiting` | *A*, plus the worker's other waits | Each admitted ask holds one wait, and its outcome frees it |
-| A lane's box, `LaneConfig.slots` | Four times its share of every worker's admissions, `4 × workers × A / lanes`, to a power of two | The keys spread unevenly over the lanes from moment to moment. At its share alone, 10 lanes refused 0.2% of the requests of a load they kept up with; at twice it, 0.003%; at four times, none. Not every worker's admissions: a hot key can send them all to one lane, whose box then refuses them |
+| A lane's box, `LaneConfig.slots` | Its share of every worker's admissions, `workers × A / lanes`, to a power of two | At *A* = 256, 3 and 10 lanes at their share refused nothing under healthy load, over three runs each. Not every worker's admissions: a hot key can send them all to one lane, whose box then refuses them |
 | The reply's promise, `plod::try_ask`'s `most` | One message | A reply in one message collects no pieces |
 
 Don't retry a refused ask. A retry waits in the route as the job would in a box, and
@@ -537,48 +539,57 @@ recovers from a stall skips the jobs whose clients have gone.
 |---|---|---|
 | Past the worker's admissions | The route refuses before it asks | 503 `busy`, at once |
 | The lane's box is full | `plod::try_ask` returns `http::FULL` | 503 `unavailable`, at once |
-| A job longer than a lane's slot | `plod::try_ask` returns `http::TOO_LONG`, a configuration error | 500 |
-| The worker's box is full when the reply comes | The lane drops the reply | 504 `timeout`, at the ask's time limit |
+| A job longer than a lane's slot | `plod::try_ask` returns `http::TOO_LONG`, a configuration error | 500 `job_too_long` |
+| A reply longer than a worker's slot | `plod::try_reply` returns `http::TOO_LONG`, a configuration error | 500 `reply_too_long` |
+| The worker's box is full when the reply comes | `plod::try_reply` returns `http::FULL`, and the lane drops the reply | 504 `timeout`, at the ask's time limit |
 | No reply within the ask's time limit | The route gets `TIMEOUT` | 504 `timeout` |
 
-`plod::reply_value` and a lane's `plod::fail` wait for room when the worker's box is
-full, a millisecond at a time, until the route's wait ends. That suits most lanes. Every
-lane that replies to a worker shares its box, as do the pieces of a long reply, and the
-room comes back within a pass of the worker's loop. A lane that every worker asks
-shouldn't wait on one worker, because the other workers' jobs queue behind it. The
-entry's lanes send each reply in one message with `http::mail_send`, built as
-`plod::reply_value` builds it, and drop the reply when the box is full.
+Reply with `plod::try_reply`, and refuse with `plod::try_refuse`, on a lane that every
+worker asks. `plod::reply_value` and a lane's `plod::fail` wait for room when the
+worker's box is full, a millisecond at a time, until the route's wait ends. That suits
+most lanes: every lane that replies to a worker shares its box, as do the pieces of a
+long reply, and room comes back within a pass of the worker's loop. A lane that every
+worker asks shouldn't wait on one worker, because the other workers' jobs queue behind
+it. The entry's lane:
+
+```rust
+fn reply_to(a, v) {
+    if plod::try_reply(a, v) == http::TOO_LONG { plod::try_refuse(a, 500, "reply_too_long"); }
+}
+```
 
 ### 6.7.5 What it costs
 
 A box takes its slots times the slot size plus 24 bytes, and the timer table 48 bytes a
-wait. With *A* = 64, a lane per worker, 512-byte replies, and 256-byte jobs, as the
-entry has:
+wait. With *A* = 256, a lane per worker, 512-byte replies, and 256-byte jobs, as the
+entry has, each worker's box has 512 slots and each lane's 256:
 
 | Workers | Boxes, from *A* | Boxes, for `max_conns` | Timers, from *A* | Timers, for `max_conns` |
 |---:|---:|---:|---:|---:|
-| 4 | 0.54 MiB | 51 MiB | 12 KiB | 3 MiB |
-| 24 | 3.21 MiB | 306 MiB | 72 KiB | 18 MiB |
-| 64 | 8.56 MiB | 816 MiB | 192 KiB | 48 MiB |
+| 4 | 1.32 MiB | 51 MiB | 48 KiB | 3 MiB |
+| 24 | 7.92 MiB | 306 MiB | 288 KiB | 18 MiB |
+| 64 | 21.1 MiB | 816 MiB | 768 KiB | 48 MiB |
 
 Each worker's box also keeps a live-key table of 8 bytes a connection, 128 KiB at the
 default `max_conns`, however the boxes are sized.
 
-Measured on the entry's server alone, under Docker Desktop on an M1 Pro (2026-10-23):
-its own Postgres, then wrk with 4 threads and 256 connections, 15 seconds on
-`/api/items/:id` over 10,000 ids and 10 seconds on `/api/me`, one run each. The peak
-resident memory, `VmHWM`:
+Measured on the entry's server alone, under Docker Desktop on an M1 Pro (2026-10-23),
+one run each: its own Postgres, then wrk with 4 threads and 256 connections, 15 seconds
+on `/api/items/:id` over 10,000 ids and 10 seconds on `/api/me`. Both sizings answered
+every request with 200. The peak resident memory, `VmHWM`, and the requests a second on
+`/api/items/:id`:
 
-| Workers (CPUs) | Boxes from *A* | Boxes for `max_conns` |
-|---:|---:|---:|
-| 3 | 46 MiB | 85 MiB |
-| 10 | 77 MiB | 209 MiB |
+| Workers (CPUs) | `VmHWM`, from *A* | `VmHWM`, for `max_conns` | Requests/s, from *A* | Requests/s, for `max_conns` |
+|---:|---:|---:|---:|---:|
+| 3 | 45 MiB | 86 MiB | 330,000 | 334,000 |
+| 10 | 77 MiB | 211 MiB | 366,000 | 372,000 |
 
-With 10 workers both answered every request, at 365,000 and 383,000 requests a second
-on `/api/items/:id`: 5% apart, from one run each. With 3 workers, the boxes from *A*
-refused 15% of `/api/items/:id` with 503 `busy` and still answered 6% more of it with
-200, and refused 7% of `/api/me`. The boxes for `max_conns` refused none
-([Pick the admission count](#671-pick-the-admission-count)).
+Past *A*, the refusals start. With 3 workers under 1,024 connections, 341 a worker, the
+boxes from *A* answered 67% of the requests with 200, 25% with 503 `busy`, and 7% with
+503 `unavailable`, from lane boxes that the extra asks filled. The boxes for `max_conns`
+queued every request and answered all of them, 24% more with 200, at a mean latency of
+3 ms. That's the trade: past the connections *A* was picked for, a worker answers at
+once with 503 rather than hold more work in memory.
 
 ---
 

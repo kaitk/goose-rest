@@ -14,7 +14,7 @@ on arm64, which the release has no archive for.
 
 | Package | Tag | What for |
 |---|---|---|
-| [Plod](https://github.com/kaitk/plod) | `v0.5.1` | The framework |
+| [Plod](https://github.com/kaitk/plod) | `a23bd98`, until `v0.5.2` is tagged | The framework, with `plod::try_reply` |
 | [goose-http](https://github.com/kaitk/goose-http) | `v0.5.6` | HTTP/1.1, h2, WebSocket, the loop, and mail between threads |
 | [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.2` | gzip, deflate, and zstd |
 | [goose-tls](https://github.com/kaitk/goose-tls) | `v0.0.5` | TLS 1.3 over OpenSSL |
@@ -81,15 +81,17 @@ Each is documented configuration, set as the documentation says, not tuning.
 - production-stack's cache follows Plod's production guidance for lanes that every
   worker asks
   ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/main/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
-  A worker admits at most 64 asks to the lanes at once (`ADMITTED` in `app.goose`), and
-  answers one past them with 503 `busy`, and one a full lane box refuses with 503
-  `unavailable`, at once; it doesn't retry. The boxes and waits are sized from that
-  count: each lane's box holds 256 jobs, four times its share of every worker's
-  admissions; each worker's box 128 replies, its admitted asks and its pool's
-  hand-overs; and `max_waiting` is 64, so production-stack's waits are its admitted
-  asks. At 24 workers the boxes take 3.2 MiB. A reply is one message of 512 bytes, which the server
-  checks as it starts. A lane that finds a worker's box full drops the reply, and the
-  ask times out with 504, rather than hold up every other worker's jobs.
+  A worker admits at most 256 asks to the lanes at once (`ADMITTED` in `app.goose`),
+  more than the connections it serves under the profile's load, since each carries one
+  ask at a time. It answers one past them with 503 `busy`, and one a full lane box
+  refuses with 503 `unavailable`, at once, and doesn't retry. The boxes and waits are
+  sized from that count: each lane's box holds 256 jobs, its share of every worker's
+  admissions; each worker's box 512 replies, its admitted asks and its pool's
+  hand-overs, to a power of two; and `max_waiting` is 256, so production-stack's waits
+  are its admitted asks. At 24 workers the boxes take 7.9 MiB. A reply is one message
+  of 512 bytes. The lanes reply with `plod::try_reply`, which drops a reply that finds
+  a worker's box full, and the ask then times out with 504, rather than hold up every
+  other worker's jobs.
 - The Postgres pools are sized from `DATABASE_MAX_CONN`, less one connection left for
   another client, as go-stdlib, chi, echo, and gin leave headroom: an even share for
   each worker's pool, and in production-stack at most half for the lanes.

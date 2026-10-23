@@ -732,28 +732,29 @@ doesn't fit one message is `TOO_LONG`, so one ask stays one message. This reject
 Decided (2026-10-23): a server whose lanes every worker asks bounds its asks in flight
 by an admission count per worker, and sizes its boxes and `max_waiting` from it
 ([Sizing a lane's admissions and boxes](best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
-The route refuses an ask past the count with 503 at once, owns its waits so that every
-outcome reaches it, and gives the admission back at that outcome. A full lane box is a
-503 too: a hot key can send every worker's asks to one lane, and no box size short of
-all of them prevents it. HttpArena's production-stack entry admits 64 asks a worker.
-Plod's `send_reply` keeps waiting for room when a worker's box is full, a millisecond
-at a time until the route's wait ends. The box is shared by every lane that replies to
-the worker and by the pieces of a long reply, so dropping a reply there would turn a
-box full for a moment into a 504 for an unrelated route. A lane that every worker asks
-sends its one-message reply itself, and drops it when the box is full, so that it
-never waits on one worker. This rejected:
+The count covers the connections a worker serves under healthy load, since each
+carries one ask at a time, so refusal is the ceiling under overload, not part of normal
+operation. The route refuses an ask past the count with 503 `busy` at once, owns its
+waits so that every outcome reaches it, and gives the admission back at that outcome.
+A full lane box is 503 `unavailable`: a hot key can send every worker's asks to one
+lane, and no box size short of all of them prevents it. Each lane's box holds its share
+of every worker's admissions. The lanes reply with `plod::try_reply` and refuse with
+`plod::try_refuse` (the entry above), so that a full worker box drops the reply, which
+ends as that route's 504, and a lane never waits on one worker. HttpArena's
+production-stack entry admits 256 asks a worker. This rejected:
 
 - Boxes sized for every wait goose-http allows, `max_waiting` = `max_conns`: 306 MiB at
-  24 workers, where the admission count takes 3.2 MiB.
-- Lane boxes of each lane's share of the admissions alone: the keys spread unevenly
-  from moment to moment, and 10 lanes refused 0.2% of a load they kept up with, where
-  four times the share refused none.
+  24 workers, where an admission count of 256 takes 7.9 MiB.
+- An admission count of 64 a worker, from Little's law's mean in flight: it was below
+  the connections a worker serves, and 3 workers under 256 connections refused 15% of a
+  load their lanes kept up with, where 256 refused none.
+- Lane boxes of four times their share, which 64 admissions a worker needed (at the
+  share, 10 lanes refused 0.2%): at 256, the share refused nothing.
 - A connection cap at an nginx edge: open-source nginx answers 502 past an upstream's
   `max_conns`, with no queue, and without a shared zone it counts per nginx worker.
 - Retrying a refused ask from the route, paused, until a deadline: the retries are a
   queue of their own, and under sustained overload they delay the same 503 while each
   holds a connection and a timer. Retries wait for a measurement that shows they help.
-- Dropping a reply on a full box in `send_reply` for every lane, for the reason above.
 
 Decided (2026-10-22), replacing the `PENDING` bit of the 2026-10-21 entry above: whether
 a request's body came whole is goose-http's `Event.whole`, given at each `REQUEST`, and
