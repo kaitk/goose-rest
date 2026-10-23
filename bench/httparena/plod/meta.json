@@ -1,7 +1,7 @@
 {
   "display_name": "plod",
   "language": "Goose",
-  "type": "emerging",
+  "type": "experimental",
   "mode": "standard",
   "engine": "io_uring",
   "completeness": {

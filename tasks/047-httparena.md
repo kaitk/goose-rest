@@ -46,12 +46,19 @@ experimental (very new work, hidden on the leaderboard unless a reader opts in).
 entry picks its tier, and HttpArena's maintainers may change it on review. Aegon entered
 as experimental.
 
-The entry asks for emerging (2026-10-19). HttpArena's only requirement of a framework
-entry is that it implements HTTP itself and passes `validate.sh` on its own; nothing
-else is checked, and Plod fits emerging as its rules word it (2026-10-23, replacing a
-list of conditions for emerging set on 2026-10-19). What follows is this project's own
-bar, held so that a crash doesn't surface on a public leaderboard, not what earns the
-tier:
+The entry enters as experimental, as Aegon did, and asks for emerging later
+(2026-10-23, replacing the plan of 2026-10-19 to enter as emerging). A tier changes by
+a pull request that edits `meta.json`'s `type`, which the maintainers accept or not;
+they also move entries themselves (viltrum went from emerging to experimental with its
+1.1.0 update, 2026-10-21). The request for emerging goes with a substantive update, such
+as the Postgres profiles. Until then, the leaderboard hides the entry unless a reader
+opts in.
+
+HttpArena's only requirement of a framework entry is that it implements HTTP itself and
+passes `validate.sh` on its own (2026-10-23, replacing a list of conditions for
+emerging set on 2026-10-19). What follows is this project's own bar, held so that a
+crash doesn't surface on a public leaderboard, and the case the request for emerging
+makes:
 
 1. Releases to rely on: tagged versions with a changelog, under the new name (task 046),
    and goose-http's API settled (its task 027).
@@ -116,8 +123,9 @@ implementations.
 
 - [x] goose-http has tasks for outbound connections (053) and WebSocket (054), and its
       task 014 records this order (2026-10-19, on goose-http's `main`)
-- [ ] The project's own bar met, as "The entry's tier" lists, and `meta.json` says
-      `emerging`
+- [ ] The entry submitted as experimental
+- [ ] The project's own bar met, as "The entry's tier" lists, and a pull request
+      setting `meta.json`'s `type` to `emerging` accepted
 - [ ] The entry runs the six HTTP/1.1 profiles; `validate.sh` passes and the results are
       saved
 - [ ] json-tls and 8gbit in the entry, passing HttpArena's TLS checks
