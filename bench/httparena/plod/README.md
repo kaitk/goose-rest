@@ -73,14 +73,14 @@ over keys without such a bound needs a capacity and eviction.
 Each is documented configuration, set as the documentation says, not tuning.
 
 - Workers: goose-http's default, one per CPU of the container's cpuset
-  ([`http::worker_count`](https://github.com/kaitk/goose-http/blob/v0.5.6/docs/api.md#config-and-shutdown)).
+  ([`http::worker_count`](https://github.com/kaitk/goose-http/blob/v0.5.7/docs/api.md#config-and-shutdown)).
 - `mail_slots` and `max_waiting` turn waiting on, and are 0 by default
-  ([answers that wait](https://github.com/kaitk/goose-http/blob/v0.5.6/docs/api.md#answers-that-wait)):
+  ([answers that wait](https://github.com/kaitk/goose-http/blob/v0.5.7/docs/api.md#answers-that-wait)):
   `/delay` and `/async-db` need them. `max_waiting` is a worker's connection limit,
   `max_conns`: one wait per connection.
 - production-stack's cache follows Plod's production guidance for lanes that every
   worker asks
-  ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/main/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
+  ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/v0.5.3/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
   A worker admits at most 1,024 asks to the lanes at once, less its Postgres pool's
   hand-overs: 1,015 at 24 workers (`admission` in `app.goose`).
   The profile's load keeps about 16,000 requests in flight at the edge, 1,024 h2
@@ -104,7 +104,7 @@ Each is documented configuration, set as the documentation says, not tuning.
 
 goose-http's head writers, `http::start`, `http::field`, and `http::finish`, are Plod's
 documented way to add a header, as `X-Cache` here
-([reference](https://github.com/kaitk/plod/blob/v0.5.1/docs/reference.md#12-cookies-out)),
+([reference](https://github.com/kaitk/plod/blob/v0.5.3/docs/reference.md#12-cookies-out)),
 and `http::respond` its way to send bytes as they came, as `/echo` does.
 
 ## Completeness

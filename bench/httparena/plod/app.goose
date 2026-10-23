@@ -157,10 +157,8 @@ fn no_items(cx) {
     plod::json(cx, 200, Listing<Item> { items: none, count: 0 });
 }
 
-// At the request, and at each later event of the query: a connection handed
-// over, the socket ready, its time limit passed, or the client gone, where
-// the pool gives its connection back. The block sees every row in the call
-// that finds the whole answer.
+// Runs at the request and at each later event of the query; the block sees
+// every row in the call that finds the whole answer.
 fn resume(u: Use.Items, cx) {
     var rows: Item[>..] = [];
     var fits = true;
@@ -191,18 +189,9 @@ fn item_of(r, it: Item&) -> bool {
     return fits;
 }
 
-// production-stack's cache, of lanes, each a thread that owns the cache of
-// the ids it's given and a Postgres connection. One lane answers for each
-// item, so that a write and the reads after it meet one cache, where a
-// worker's own would miss the writes other workers took. Users, which
-// nothing writes, go to each lane in turn, so that /api/me, whose user is
-// the same on every request, doesn't queue on one lane.
-//
-// A lane blocks on Postgres for each miss, and the jobs behind it wait, so
-// there are as many lanes as workers: the misses grow with the load the
-// workers take. A lane costs a thread and its box, and waits on the box
-// while idle. The lanes' connections take at most half of
-// DATABASE_MAX_CONN, and the workers' pools share the rest.
+// production-stack's cache: lanes of one thread each, which own the ids sent
+// to them and a Postgres connection, so a write and the reads after it meet
+// one cache. Users, which nothing writes, take each lane in turn.
 let ITEM_TTL_NS: i64 = 1000000000;
 let USER_TTL_NS: i64 = 30000000000;
 
@@ -229,23 +218,15 @@ let REPLY_SLOT: i32 = 512;
 // connection of its pool, a power of two.
 let REPLY_SLOTS = 1024;
 
-// The cache's admission, the box's slots less the pool's hand-overs: the
-// most asks a worker has on the lanes at once, each from its plod::try_ask
-// until its outcome reaches the route. It covers the requests in flight a
-// worker gets under production-stack's load: 1,024 h2 connections of 16
-// streams each at the edge, which reach the workers as one request per
-// upstream connection, some 400 cache asks a worker at 24 workers. One past
-// it gets 503 busy at once (Plod's "Sizing a lane's admissions and boxes",
-// docs/best-practices/lanes.md).
+// The most asks a worker has on the lanes at once: the box's slots less the
+// pool's hand-overs. One past it gets 503 busy.
 var admission = 0;
 
 // The worker's asks on the lanes now.
 var admitted = 0;
 
-// Opens cache_lanes lanes, and sizes the boxes and the waits from the
-// admission: each lane's box holds its share of every worker's admitted jobs,
-// and refuses one past them, as a hot id makes it; and the worker's waits are
-// its admitted asks, the only waits production-stack's routes make.
+// Opens cache_lanes lanes, each box sized for its share of every worker's
+// admitted asks.
 fn open_caches(cfg: http::Config&) {
     guard cache_lanes > 0 else { return; }
     admission = REPLY_SLOTS - per_worker;
@@ -272,10 +253,8 @@ fn stop_caches() {
     for l in caches { plod::lane_stop(l); }
 }
 
-// Asks the lane owner picks for job, within the worker's admission, and
-// promises its reply one slot of the worker's gather budget. An ask past the
-// admission gets 503 busy at once, and one that the lane's box refuses 503
-// unavailable; neither is asked again.
+// Sends job to the lane that owner picks. Past the admission it answers 503
+// busy, and where the lane's box is full 503 unavailable.
 fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
     guard id > 0 else { plod::fail(cx, 404, "not_found"); }
     guard caches.len > 0 else { plod::fail(cx, 503, "no_cache"); }
@@ -321,11 +300,8 @@ thread_fn cache(box: http::Box, jobs: plod::Jobs<CacheJob>) {
     pg::close(db);
 }
 
-// Replies v to a's job in one message, which plod::try_reply drops where the
-// worker's box is full, the route's ask then timing out: a lane that waited
-// for room would hold every worker's jobs behind one worker's. A reply past
-// one message is refused, 500. The lane's refusals are plod::try_refuse's,
-// for the same reason.
+// Replies without waiting for room in the worker's box, so one slow worker
+// doesn't hold up the lane; a dropped reply times out the ask, 504.
 fn reply_to(a, v) {
     if plod::try_reply(a, v) == http::TOO_LONG { plod::try_refuse(a, 500, "reply_too_long"); }
 }
@@ -579,12 +555,8 @@ var db_ok = false;
 var per_worker = 1;
 var cache_lanes = 0;
 
-// Reads DATABASE_URL and DATABASE_MAX_CONN, the connections over all of
-// cfg's workers and the cache's lanes, 256 without it, less one: HttpArena's
-// Postgres allows exactly DATABASE_MAX_CONN, and a pool that took them all
-// would refuse any other client, such as a check with psql. The lanes are only
-// where API_CACHE is set, as production-stack's compose file sets it.
-// Without a usable URL, /async-db answers no_items, and /api 503.
+// Splits DATABASE_MAX_CONN, less one left for another client, between the
+// workers' pools and, where API_CACHE is set, the cache's lanes.
 fn load_database(cfg: http::Config) {
     var url: u8[>..] = [];
     guard env("DATABASE_URL", url) else { return; }
@@ -605,10 +577,7 @@ fn load_database(cfg: http::Config) {
     per_worker = max((total - cache_lanes) / workers, 1);
 }
 
-// The configuration both root files serve: HttpArena's 8080, h2c on 8082,
-// and the waits of /delay and /async-db, as many a worker as its
-// connections. Its box takes the pool's hand-overs, one per connection of a
-// pool of fewer than 256.
+// 8080, h2c on 8082, and a wait per connection for /delay and /async-db.
 fn config() -> http::Config {
     var cfg = http::Config { port: 8080, mail_slots: 256, .. };
     cfg.max_waiting = cfg.max_conns;
