@@ -32,9 +32,14 @@ COPY app.goose server.goose server_tls.goose ./
 # Two builds: server, without TLS, and server-tls, with the TLS listeners:
 # goose-tls's TLS 1.3 server, in Goose, over OpenSSL's libcrypto for the
 # ciphers and keys. The plain profiles don't load libcrypto.
-RUN goose=$(cat /goose-path) && \
-    $goose build --cc gcc --standalone -o /server server.goose && \
-    $goose build --cc gcc --standalone -o /server-tls server_tls.goose
+# goose build takes no C flags, so gcc comes through a wrapper that adds
+# -O3 and -march=native after Goose's -O2; HttpArena builds the image on the
+# machine it runs on.
+RUN mkdir /opt/cc && printf '#!/bin/sh\nexec /usr/bin/gcc "$@" -O3 -march=native\n' >/opt/cc/gcc && \
+    chmod +x /opt/cc/gcc && \
+    goose=$(cat /goose-path) && \
+    $goose build --cc /opt/cc/gcc --standalone -o /server server.goose && \
+    $goose build --cc /opt/cc/gcc --standalone -o /server-tls server_tls.goose
 
 FROM ubuntu:26.04
 # goose-http links liburing on Linux, and the TLS build OpenSSL.

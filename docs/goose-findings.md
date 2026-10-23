@@ -179,6 +179,28 @@ docs advise; `copy` refuses a slice. A limited array such as `u8[..32]` works to
 
 ## Feature requests
 
+### goose build takes no C compiler flags
+
+Found and checked on `8511ae34bdc9aabf77baaab80b4d659ea87835e2`, release `v2026.3`, the
+pin in `scripts/goose.sh` (2026-10-23). Status: open
+
+`goose build` runs the C compiler with `-O2` and nothing else a program can add:
+`-O0` to `-O2` and `-D` macros are its only options, so a build can't ask for
+`-march=native` or `-O3`. `goose build --cc gcc --standalone --dry-run -v` prints:
+
+    /usr/bin/gcc -O2 /root/.goose/build/prog/s-442efe67/s.c -o /tmp/s -lm -pthread
+
+Expected: an option, or a variable such as `GOOSE_CFLAGS`, whose flags follow Goose's
+own on every C compile, the program's, the runtime's, and the packages' native parts.
+
+Workaround: the HttpArena entry's Dockerfile passes `--cc` a script named `gcc` that
+runs `/usr/bin/gcc "$@" -O3 -march=native`. Goose and CMake both take it as gcc, so
+the flags reach goose-tls's CMake build too. Other entries build for the machine HttpArena
+runs them on, as Aegon's `-O3 -march=native`; on a Ryzen 7 5800X3D (2026-10-23) the
+flags served 5% more requests a second on json-comp and 6% on pipelined, and the same
+on baseline, which the load generator limits, and on json-tls, whose ciphers are
+libcrypto's.
+
 ### A mismatch names the type variable, not the type another argument bound it to
 
 Found on `dcc2747`, spike 11. Status: open

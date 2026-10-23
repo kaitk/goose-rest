@@ -102,6 +102,10 @@ Each is documented configuration, set as the documentation says, not tuning.
 - `API_CACHE`, set only in `compose.production-stack.yml`, opens the lanes.
 - Compression is `plod::compressed`'s defaults: the coding `Accept-Encoding` weighs
   highest, at goose-http's default levels.
+- The C that Goose writes is compiled with `-O3 -march=native`, for the machine that
+  builds the image, as actix, userver, and Aegon build theirs. Goose's documentation
+  names no flags, and `goose build` takes none, so the Dockerfile passes `--cc` a gcc
+  wrapper that adds them.
 
 goose-http's head writers, `http::start`, `http::field`, and `http::finish`, are Plod's
 documented way to add a header, as `X-Cache` here
