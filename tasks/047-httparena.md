@@ -6,10 +6,11 @@ and passes HttpArena's `validate.sh` at `3717e25`: 144 checks, none failed, the
 static files' optional compression skipped (2026-10-23, Docker Desktop on an M1 Pro).
 A review against peer entries (2026-10-23) left it ready to submit: its JSON is
 serialized per request with `plod::format_fields`, `/async-db`'s and the cache's rows
-decoded into structs; production-stack's boxes are sized from `max_waiting` and the
-workers; it has a README, a two-line Dockerfile per proxy, `*_CPUSET` variables in its
-compose files, and imports Plod at `v0.5.0`, its Dockerfile downloading Goose's
-release. The submission and the benchmark runs remain.
+decoded into structs; production-stack's cache admits at most 64 asks a worker, with
+its boxes sized from that count ("Bounding production-stack's memory", below); it has a
+README, a two-line Dockerfile per proxy, `*_CPUSET` variables in its compose files, and
+imports Plod at `v0.5.1`, its Dockerfile downloading Goose's release. The submission
+and the benchmark runs remain.
 
 This task is the master plan: which profiles the entry can run, what each one needs, and
 which repository builds it. The protocol and database work happens in those
@@ -34,12 +35,52 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | baseline, limited-conn, json-comp, async, latency-1m, latency-10k | Nothing more: goose-http passes them (goose-http's task 018), and `rest::pause(cx, ms, u)` (done, 2026-10-21) pauses a route before its response begins so `/delay/{ms}` answers 200 `text/plain` from the worker's timer table | This task's entry |
 | json-tls, 8gbit; static-tls (reference) | TLS 1.3 on port 8081 with the mounted RSA-2048 certificate, ALPN `http/1.1`. 8gbit echoes 10 KB at a pinned 50K requests per second and is scored on CPU per request | goose-tls task 001; goose-http task 014 |
 | api-4, api-16; async-db (reference) | `/async-db`: a Postgres range query, through an async driver with a pool of `DATABASE_MAX_CONN` (256) connections. The async-db profile itself is published but not scored | goose-postgres tasks 001 (the protocol, done) and 005 (the pool) |
-| gateway-64, gateway-h3, production-stack | `/async-db` again, behind a standard proxy that terminates TLS, h2, and h3. The rules forbid a custom proxy, so the server speaks plaintext HTTP/1.1. In production-stack the shared `authsvc` verifies the JWT at the edge, and the cache can be in-process | Done (2026-10-23): a compose file each, stock nginx for gateway-64 and production-stack and stock Caddy for gateway-h3 (stock nginx has no QUIC), and production-stack's routes in `app.goose`, its cache in lanes that each own the ids they're given and a blocking Postgres connection. The lanes start only where the compose file sets `API_CACHE`, one per worker, their connections within half of `DATABASE_MAX_CONN`, with boxes sized from the waits there can be: a reply for each of a worker's `max_waiting`, and a job for each lane's share of every worker's (2026-10-23). validate.sh checks h3 only through h2; one h2load-h3 run got 2xx over h3 on Docker Desktop. Measuring remains |
+| gateway-64, gateway-h3, production-stack | `/async-db` again, behind a standard proxy that terminates TLS, h2, and h3. The rules forbid a custom proxy, so the server speaks plaintext HTTP/1.1. In production-stack the shared `authsvc` verifies the JWT at the edge, and the cache can be in-process | Done (2026-10-23): a compose file each, stock nginx for gateway-64 and production-stack and stock Caddy for gateway-h3 (stock nginx has no QUIC), and production-stack's routes in `app.goose`, its cache in lanes that each own the ids they're given and a blocking Postgres connection. The lanes start only where the compose file sets `API_CACHE`, one per worker, their connections within half of `DATABASE_MAX_CONN`, with boxes sized from the asks each worker admits (2026-10-23, below). validate.sh checks h3 only through h2; one h2load-h3 run got 2xx over h3 on Docker Desktop. Measuring remains |
 | echo-ws, echo-ws-pipeline, echo-ws-limited | WebSocket: the handshake, framing, and masking over `rest::upgrade` | goose-http task 054 |
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
 | unary-grpc and three more | gRPC over h2, and protobuf | After h2 |
 | baseline-h3, static-h3 | QUIC | Last |
+
+## Bounding production-stack's memory
+
+Done (2026-10-23), after a review
+(`build/reviews/resource-bounding-review-2026-10-23.md`, of which the issues were taken
+and the cures only in part). Sizing the boxes for every wait goose-http allows,
+`max_waiting` = `max_conns`, had committed 51, 306, and 816 MiB at 4, 24, and 64
+workers. The cache now follows Plod's production guidance
+([sizing a lane's admissions and boxes](../docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes),
+and the decision of the same date):
+
+- A worker admits at most 64 cache asks at once, and answers one past them with 503
+  `busy` at once. A full lane box is 503 `unavailable` (`plod::try_ask`'s
+  `http::FULL`); `http::TOO_LONG` is 500. Nothing retries.
+- The route owns its waits (`plod::own_waits`), so the reply, the lane's refusal, the
+  `TIMEOUT` (504, never asked again), and the `CLOSED` each reach it, and the admission
+  is given back there. A plain paused route gets no `CLOSED` (its timer is cancelled),
+  which would have lost the admission. Checked natively against a Postgres address
+  that never answers: rounds of 600 parallel requests admitted 512 at 8 workers each
+  time, after timeouts, after clients that left at 1 s, and after refusals.
+- Lane boxes hold four times each lane's share of the admissions (256 at a lane per
+  worker): at the share alone, 10 lanes refused 0.2% of a load they kept up with. Each
+  worker's box holds 128 replies, and `max_waiting` is 64.
+- A reply is one 512-byte message, which the server checks as it starts. The lanes
+  send it themselves with `http::mail_send` and drop it when the worker's box is full,
+  rather than wait as `plod::reply_value` does; Plod's own wait stays, since a worker's
+  box is shared by every lane and by long replies' pieces. Each lane checks
+  `plod::still_wanted` before a job.
+- `plod::try_ask`'s contract holds (its test, and the code): a refusal sends nothing,
+  leaves no gather promise and no wait armed, and leaves `cx.state.use` as it was.
+
+Boxes take 0.54, 3.21, and 8.56 MiB at 4, 24, and 64 workers, and the timer tables
+12, 72, and 192 KiB, where `max_conns` made them 3, 18, and 48 MiB. The server's peak
+RSS (`VmHWM`) on its own Postgres, under wrk at 256 connections on `/api/items/:id` and
+`/api/me` (Docker Desktop on an M1 Pro, one run each): 46 MiB at 3 workers against
+95a8822's 85 MiB, and 77 MiB at 10 workers against 209 MiB. With 10 workers both
+answered every request; with 3, 85 connections a worker, 15% of `/api/items/:id` got
+503 `busy`, where 95a8822 queued them all. The dictionaries don't evict: the dataset
+bounds them. Still to measure on Linux (the laptop's run D): production-stack through
+its edge against 95a8822, and successful requests against 503s under overload.
 
 ## The entry's tier
 
