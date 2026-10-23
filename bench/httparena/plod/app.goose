@@ -226,11 +226,13 @@ var turn = 0;
 let REPLY_SLOT: i32 = 512;
 
 // The cache's admission: the most asks a worker has on the lanes at once,
-// each from its plod::try_ask until its outcome reaches the route. A
-// connection carries one ask at a time, so this covers the connections a
-// worker serves under load, and one past it gets 503 busy at once (Plod's
-// "Sizing a lane's admissions and boxes", docs/best-practices/lanes.md).
-let ADMITTED = 256;
+// each from its plod::try_ask until its outcome reaches the route. It covers
+// the requests in flight a worker gets under production-stack's load: 1,024
+// h2 connections of 16 streams each at the edge, which reach the workers as
+// one request per upstream connection, some 400 cache asks a worker at 24
+// workers. One past it gets 503 busy at once (Plod's "Sizing a lane's
+// admissions and boxes", docs/best-practices/lanes.md).
+let ADMITTED = 1024;
 
 // The worker's asks on the lanes now.
 var admitted = 0;
