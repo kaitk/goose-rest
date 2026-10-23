@@ -14,12 +14,12 @@ on arm64, which the release has no archive for.
 
 | Package | Tag | What for |
 |---|---|---|
-| [Plod](https://github.com/kaitk/plod) | `v0.5.3` | The framework, with `plod::try_reply` |
-| [goose-http](https://github.com/kaitk/goose-http) | `v0.5.7` | HTTP/1.1, h2, WebSocket, the loop, and mail between threads |
-| [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.3` | gzip, deflate, and zstd |
+| [Plod](https://github.com/kaitk/plod) | `v0.5.4` | The framework, with `plod::try_reply` |
+| [goose-http](https://github.com/kaitk/goose-http) | `v0.5.8` | HTTP/1.1, h2, WebSocket, the loop, and mail between threads |
+| [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.4` | gzip, deflate, and zstd |
 | [goose-tls](https://github.com/kaitk/goose-tls) | `v0.0.5` | A TLS 1.3 server in Goose, over OpenSSL's libcrypto for the ciphers and keys |
 | [goose-hash](https://github.com/kaitk/goose-hash) | `v0.0.4` | SHA-1 for the WebSocket handshake, SHA-256 for SCRAM |
-| [goose-postgres](https://github.com/kaitk/goose-postgres) | `v0.0.5` | Goose's Postgres driver: the protocol, an async pool per worker, and a blocking connection |
+| [goose-postgres](https://github.com/kaitk/goose-postgres) | `v0.0.6` | Goose's Postgres driver: the protocol, an async pool per worker, and a blocking connection |
 
 ## Listeners
 
@@ -74,14 +74,14 @@ over keys without such a bound needs a capacity and eviction.
 Each is documented configuration, set as the documentation says, not tuning.
 
 - Workers: goose-http's default, one per CPU of the container's cpuset
-  ([`http::worker_count`](https://github.com/kaitk/goose-http/blob/v0.5.7/docs/api.md#config-and-shutdown)).
+  ([`http::worker_count`](https://github.com/kaitk/goose-http/blob/v0.5.8/docs/api.md#config-and-shutdown)).
 - `mail_slots` and `max_waiting` turn waiting on, and are 0 by default
-  ([answers that wait](https://github.com/kaitk/goose-http/blob/v0.5.7/docs/api.md#answers-that-wait)):
+  ([answers that wait](https://github.com/kaitk/goose-http/blob/v0.5.8/docs/api.md#answers-that-wait)):
   `/delay` and `/async-db` need them. `max_waiting` is a worker's connection limit,
   `max_conns`: one wait per connection.
 - production-stack's cache follows Plod's production guidance for lanes that every
   worker asks
-  ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/v0.5.3/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
+  ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/v0.5.4/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
   A worker admits at most 1,024 asks to the lanes at once, less its Postgres pool's
   hand-overs: 1,015 at 24 workers (`admission` in `app.goose`).
   The profile's load keeps about 16,000 requests in flight at the edge, 1,024 h2
@@ -101,7 +101,8 @@ Each is documented configuration, set as the documentation says, not tuning.
   each worker's pool, and in production-stack at most half for the lanes.
 - `API_CACHE`, set only in `compose.production-stack.yml`, opens the lanes.
 - Compression is `plod::compressed`'s defaults: the coding `Accept-Encoding` weighs
-  highest, at goose-http's default levels.
+  highest, at goose-http's default levels, for bodies from goose-http's default 256
+  bytes.
 - The C that Goose writes is compiled with `-O3 -march=native`, for the machine that
   builds the image, as actix, userver, and Aegon build theirs. Goose's documentation
   names no flags, and `goose build` takes none, so the Dockerfile passes `--cc` a gcc
@@ -109,7 +110,7 @@ Each is documented configuration, set as the documentation says, not tuning.
 
 goose-http's head writers, `http::start`, `http::field`, and `http::finish`, are Plod's
 documented way to add a header, as `X-Cache` here
-([reference](https://github.com/kaitk/plod/blob/v0.5.3/docs/reference.md#12-cookies-out)),
+([reference](https://github.com/kaitk/plod/blob/v0.5.4/docs/reference.md#12-cookies-out)),
 and `http::respond` its way to send bytes as they came, as `/echo` does.
 
 ## Completeness
