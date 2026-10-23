@@ -9,7 +9,7 @@ serialized per request with `plod::format_fields`, `/async-db`'s and the cache's
 decoded into structs; production-stack's cache admits at most 256 asks a worker, with
 its boxes sized from that count ("Bounding production-stack's memory", below); it has a
 README, a two-line Dockerfile per proxy, `*_CPUSET` variables in its compose files, and
-imports Plod at commit `a23bd98` of branch `try-reply` until `v0.5.2` is tagged, its
+imports Plod `v0.5.2` and goose-compress `v0.1.3`, its
 Dockerfile downloading Goose's release. The submission and the benchmark runs remain.
 
 This task is the master plan: which profiles the entry can run, what each one needs, and

@@ -4,10 +4,10 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.6";
-import compress from "github.com/kaitk/goose-compress@v0.1.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.3";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import pg from "github.com/kaitk/goose-postgres@v0.0.4";
-import plod from "github.com/kaitk/plod@a23bd9846b0add4dccaedcd52b7fb3b164a58b61";
+import plod from "github.com/kaitk/plod@v0.5.2";
 import app;
 
 thread_fn worker(cfg: http::Config) {

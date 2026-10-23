@@ -14,9 +14,9 @@ on arm64, which the release has no archive for.
 
 | Package | Tag | What for |
 |---|---|---|
-| [Plod](https://github.com/kaitk/plod) | `a23bd98`, until `v0.5.2` is tagged | The framework, with `plod::try_reply` |
+| [Plod](https://github.com/kaitk/plod) | `v0.5.2` | The framework, with `plod::try_reply` |
 | [goose-http](https://github.com/kaitk/goose-http) | `v0.5.6` | HTTP/1.1, h2, WebSocket, the loop, and mail between threads |
-| [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.2` | gzip, deflate, and zstd |
+| [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.3` | gzip, deflate, and zstd |
 | [goose-tls](https://github.com/kaitk/goose-tls) | `v0.0.5` | TLS 1.3 over OpenSSL |
 | [goose-hash](https://github.com/kaitk/goose-hash) | `v0.0.4` | SHA-1 for the WebSocket handshake, SHA-256 for SCRAM |
 | [goose-postgres](https://github.com/kaitk/goose-postgres) | `v0.0.4` | Goose's Postgres driver: the protocol, an async pool per worker, and a blocking connection |
