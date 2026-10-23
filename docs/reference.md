@@ -702,6 +702,7 @@ plod::lane_stop(reports);
 | `plod::lane_job(jobs, bytes) { u, a => ... }` | One job of `plod::lane`, from a message's bytes: for a thread that writes its own loop, as one doing timed work between jobs does, and for a test that reads the job a route sent, with a `plod::Jobs<U> { .. }` of its own. `plod::lane_of<U>(box, mark)`, a lane of a box with no thread, and a `plod::Jobs<U>` literal passed here are for tests and hand-written loops: nothing checks their `U` against the lane's enum, as `plod::lane_open` checks a thread's. | |
 | `plod::lane_stop(lane)` | `http::lane_stop`: stops every box of `lane` and waits for its threads, each of which takes what its box holds first. A full box can't refuse the stop. | |
 | `plod::ask(cx, lane, job, ms, most)` | Sends `job`, a variant of the lane's enum, to the least busy thread of `lane`, the one whose box holds the fewest, or to the others in turn while each is full, and waits for the reply with the lane's mark in `cx.state.use` ([Later calls](#4-later-calls)), promised `most` bytes, 64 KB by default, of the worker's gather budget while it waits. A variant of another lane's enum doesn't compile. | 503 `unavailable` with `Retry-After: 1`, before the job is sent, when the gather budget can't promise `most`; 503 `unavailable` when every box is full, the lane is stopped, or the job is longer than a slot; 500 `job_too_large`, before the job is sent, when the job and its 4-byte length don't fit one message of the reply; 500 `already_waiting` |
+| `plod::try_ask(cx, lane, job, ms, most)` | `plod::ask`, except that a job it can't admit doesn't fail the route. Returns `http::SENT` once the job is sent, the route waiting as `plod::ask` leaves it, or else why not, with nothing sent or promised and `cx.state.use` as it was: `plod::NO_BUDGET` when the gather budget can't promise `most`, `http::FULL` when every box is full, `http::STALE` once the lane is stopped, or `http::TOO_LONG` for a job longer than a slot. goose-http's `TIMEOUT` at once, with no timer free, comes after the handler returns, as for `plod::ask`. | 500 `job_too_large`; 500 `already_waiting` |
 | `plod::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job, in pieces of the worker's message size, each marked as a value's, which the worker collects whole before the `resume` runs. Returns false once the route has gone. | The route: 502 `reply_too_large` past the `most` its `plod::ask` gave |
 | `plod::reply(a, data)` | On the lane: replies `data` after the job, in pieces of the worker's message size, for `plod::relay`. Returns false once the route has gone. | |
 | `plod::fail(a, status, code)` | On the lane: refuses the job, which fails the route with `status` and `code` before its `resume` runs. A domain's `check(e, x)` that calls `plod::fail(x, ...)` serves a route's `cx` and a lane's `a` alike. | |
@@ -710,7 +711,26 @@ plod::lane_stop(reports);
 | `plod::answer<T>(cx)` | In a job's `resume`: the value `plod::reply_value` replied, whole however many pieces it came in. | 502 `bad_reply` for a reply that isn't a `T`, as one `plod::reply` sent in pieces |
 | `plod::relay(cx, status, content_type)` | In a job's `resume`: answers with the bytes `plod::reply` replied after the job, whole, or chunked as the pieces come. | 502 `bad_reply` |
 
-`ms` defaults to 5000, as for every `plod::ask`. A reply longer than one message of
+`plod::try_ask` refuses at admission and leaves what follows to the route: it answers
+its own way, or pauses and asks again within a deadline it keeps in its variant. A
+refusal promises nothing and leaves the route not waiting, so it can pause:
+
+```rust
+plod::get(cx, "/items/:id") {
+    let job = Looks.Item { id: plod::param_int(cx, "id") };
+    if plod::try_ask(cx, cx.app.items, job) != http::SENT {
+        plod::pause(cx, 5, Use.Retry { job: job, until: clock_ns() + 250000000 });
+    }
+};
+
+fn resume(u: Use.Retry, cx) {
+    if plod::try_ask(cx, cx.app.items, u.job) == http::SENT { return; }
+    guard clock_ns() < u.until else { plod::fail(cx, 503, "busy"); }
+    plod::pause(cx, 5, u);
+}
+```
+
+`ms` defaults to 5000, as for every `plod::ask` and `plod::try_ask`. A reply longer than one message of
 the worker's box, `http::Config.mail_size` bytes, 256 by default, comes in pieces. The
 pieces of a `plod::reply_value` carry a tag bit of their own, `plod::REPLY_VALUE`, and
 the worker collects them in a run of its gather pool, the memory it gathers bodies in,

@@ -102,6 +102,26 @@ fn is_waiting(cx) -> bool { cx.out.stream.waiting }
 // unavailable and Retry-After before the job is sent, and a reply_value
 // past them gets 502 reply_too_large.
 fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000, most: i64 = REPLY_LIMIT) {
+    let sent = try_ask(cx, lane, job, ms, most);
+    if sent == NO_BUDGET { unavailable(cx); }
+    if sent != http::SENT { fail(cx, 503, "unavailable"); }
+}
+
+// What plod::try_ask returns when the worker's gather budget can't promise
+// the reply its most bytes; its other refusals are http::lane_send's.
+let NO_BUDGET: i32 = 4;
+
+// plod::ask, except that a job it can't admit doesn't fail the route: it
+// returns http::SENT once the job is sent, the route waiting as ask leaves
+// it, or else why not, with nothing sent or promised and cx.state.use as it
+// was: NO_BUDGET, http::FULL when every box of the lane is full,
+// http::STALE once the lane is stopped, or http::TOO_LONG for a job longer
+// than a slot. The route then answers its own way, or pauses and asks
+// again, as a Tina handler decides what follows a send to a full mailbox.
+// goose-http's lack of a timer past max_waiting still comes after the
+// handler returns, as for ask. Fails as ask does with 500 job_too_large and
+// 500 already_waiting.
+fn try_ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000, most: i64 = REPLY_LIMIT) -> i32 {
     if is_waiting(cx) { fail(cx, 500, "already_waiting"); }
     let back = http::later(cx.out, ms);
     let piece = http::mail_slot_size(back);
@@ -114,15 +134,17 @@ fn ask<U, M>(cx, lane: const Lane<U, M>&, job: U, ms: i64 = 5000, most: i64 = RE
     if x && !promise_reply(x, most) {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
-        unavailable(cx);
+        return NO_BUDGET;
     }
-    guard http::lane_send_value(lane.lane, 0, Ask<U> { reply: back, piece: piece, job: job }) == http::SENT else {
+    let sent = http::lane_send_value(lane.lane, 0, Ask<U> { reply: back, piece: piece, job: job });
+    guard sent == http::SENT else {
         cx.out.stream.waiting = false;
         cx.out.stream.rearm = false;
         if x { drop_reply(x); }
-        fail(cx, 503, "unavailable");
+        return sent;
     }
     cx.state.use = lane.mark;
+    return sent;
 }
 
 // Whether the handler is called after a request's first call: for a reply

@@ -224,6 +224,8 @@ the thread's parameter names `U`, `thread_spawn` checks it against the lane's, a
 doesn't compile. `plod::ask` sends through
 `http::lane_send`, which puts the job in the box holding the fewest jobs, and in the
 next in turn while each is full, so the route gets 503 only when every box is full.
+`plod::try_ask` is the same ask, but returns that refusal, or the gather budget's, to
+the route, which decides what follows, as a Tina handler does with `mailbox_full`.
 `main` stops each lane with `plod::lane_stop`, which calls `http::lane_stop`, once the workers have returned: a flag in
 each box, which a full box can't refuse, and each thread's `http::lane` loop returns
 once its box is stopped and empty, so the jobs queued before the stop are still done
