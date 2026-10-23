@@ -53,7 +53,8 @@ workers. The cache now follows Plod's production guidance
 ([sizing a lane's admissions and boxes](../docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes),
 and the decision of the same date):
 
-- A worker admits at most 1,024 cache asks at once, and answers one past them with
+- A worker admits at most 1,024 cache asks at once, less its pool's hand-overs (1,015
+  at 24 workers), and answers one past them with
   503 `busy` at once. HttpArena's `scripts/lib/tools/h2load.sh` runs the reads at 1,024
   connections of `-m 16` streams, about 16,000 in flight, and the writes at 128 of
   `-m 8`; 60% of the reads go to `/api/`, so up to about 10,000 cache asks, some 400 a
@@ -73,7 +74,9 @@ and the decision of the same date):
 - Each lane's box holds its share of the admissions, 1,024 at a lane per worker: 3 and
   10 lanes at their share refused nothing under healthy load (at 256 admissions, three
   runs each; at 1,024 under 1,024 connections, one run each). Each worker's box holds
-  2,048 replies, and `max_waiting` is 1,024.
+  1,024 replies, the admission and the pool's hand-overs, and `max_waiting` is the
+  admission. Admitting 1,024 and rounding the box up to 2,048 had put 80% of the boxes'
+  memory in the workers' boxes, half of it never used (2026-10-23).
 - The lanes reply with `plod::try_reply` and refuse with `plod::try_refuse` (Plod
   branch `try-reply`, for `v0.5.2`), which drop a reply that finds the worker's box
   full; a reply past one 512-byte message is 500 `reply_too_long`. Each lane checks
@@ -81,9 +84,10 @@ and the decision of the same date):
 - `plod::try_ask`'s contract holds (its test, and the code): a refusal sends nothing,
   leaves no gather promise and no wait armed, and leaves `cx.state.use` as it was.
 
-Boxes take 5.3, 31.7, and 84.5 MiB at 4, 24, and 64 workers, and the timer tables
-192 KiB, 1.1 MiB, and 3 MiB, where `max_conns` made them 51, 306, and 816 MiB, and 3,
-18, and 48 MiB. Measured on Docker Desktop on an M1 Pro (2026-10-23, one run each), the
+Boxes take 3.2, 19.1, and 51.0 MiB at 4, 24, and 64 workers, and the timer tables
+180 KiB, 1.1 MiB, and 3 MiB, where `max_conns` made them 51, 306, and 816 MiB, and 3,
+18, and 48 MiB. Measured before the workers' boxes shrank to 1,024 slots, on Docker
+Desktop on an M1 Pro (2026-10-23, one run each), the
 server on its own Postgres under wrk at 256 connections, 15 s on `/api/items/:id` and
 10 s on `/api/me`: peak RSS (`VmHWM`) 52 MiB at 3 workers against 95a8822's 86 MiB, and
 90 MiB at 10 workers against 209 MiB; every request answered 200 by both;

@@ -455,8 +455,8 @@ keys sent to it. HttpArena's production-stack entry,
 
 Don't size the boxes for every wait goose-http allows instead. One wait per connection,
 `max_conns`, is 16,384 a worker by default, and boxes that hold a reply and a job for
-each of them take 306 MiB at 24 workers. Boxes sized from an admission count of 1,024
-take 32 MiB.
+each of them take 306 MiB at 24 workers. Boxes sized from an admission count of about
+1,000 take 19 MiB.
 
 ### 6.7.1 Pick the admission count
 
@@ -478,7 +478,7 @@ HttpArena's production-stack is the worked example. Its load opens 1,024 HTTP/2
 connections of 16 streams each for reads, about 16,000 requests in flight, and 128 of 8
 streams for writes. 60% of the reads go to `/api/`, which asks the cache, so up to
 about 10,000 cache asks can be in flight: about 400 a worker at 24 workers. The entry
-admits 1,024 asks a worker. How many the edge and its token check let through at once
+admits 1,024 asks a worker less its pool's hand-overs, 1,015 at 24 workers. How many the edge and its token check let through at once
 hasn't been measured.
 
 An *A* below the requests a worker gets refuses healthy load. With *A* = 64, 3 workers
@@ -488,8 +488,8 @@ with 503 `busy` while their lanes kept up. With *A* = 256 they refused none
 *A* adds no throughput.
 
 A large *A* still bounds memory, because the boxes are sized from it, not from every
-worker's worst case: each admission costs about 1.3 KiB of boxes and a 48-byte timer, so
-1,024 a worker take 32 MiB at 24 workers, where boxes for every connection take
+worker's worst case: each admission costs about 0.8 KiB of boxes and a 48-byte timer, so
+1,015 a worker take 19 MiB at 24 workers, where boxes for every connection take
 306 MiB.
 
 ### 6.7.2 Count the admissions in the route
@@ -502,7 +502,7 @@ reaches the route, and its admission is never given back. The entry's route:
 
 ```rust
 fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
-    guard admitted < ADMITTED else { plod::fail(cx, 503, "busy"); }
+    guard admitted < admission else { plod::fail(cx, 503, "busy"); }
     plod::own_waits(cx, Use.None);
     let sent = plod::try_ask(cx, caches[owner % caches.len], job, 5000, REPLY_SLOT);
     guard sent != http::TOO_LONG else { plod::fail(cx, 500, "job_too_long"); }
@@ -534,7 +534,7 @@ reply. `http::TIMEOUT` answers 504 and never asks again, since a write may have 
 
 | Setting | Size | Why |
 |---|---|---|
-| A worker's box, `Config.mail_slots` | *A*, plus the worker's other senders, such as a pool's hand-over per connection, to a power of two | A reply for each admitted ask, and room for replies to asks that ended while their replies were in flight |
+| A worker's box, `Config.mail_slots` | A power of two, with *A* what the worker's other senders leave, such as a pool's hand-over per connection | A reply for each admitted ask, and room for replies to asks that ended while their replies were in flight. Rounding *A* plus the others up to a power of two would leave half the box empty |
 | A worker's message, `Config.mail_size` | The largest reply: the job, its 4-byte length, and the value | Each reply takes one slot. `plod::try_reply` returns `http::TOO_LONG` for a reply that doesn't fit, which the lane refuses with 500 |
 | A worker's waits, `Config.max_waiting` | *A*, plus the worker's other waits | Each admitted ask holds one wait, and its outcome frees it |
 | A lane's box, `LaneConfig.slots` | Its share of every worker's admissions, `workers × A / lanes`, to a power of two | 3 and 10 lanes at their share refused nothing under healthy load: at *A* = 256 under 256 connections, three runs each, and at *A* = 1,024 under 1,024 connections, one run each. Not every worker's admissions: a hot key can send them all to one lane, whose box then refuses them |
@@ -573,15 +573,16 @@ fn reply_to(a, v) {
 ### 6.7.5 What it costs
 
 A box takes its slots times the slot size plus 24 bytes, and the timer table 48 bytes a
-wait. With *A* = 1,024, a lane per worker, 512-byte replies, and 256-byte jobs, as the
-entry has, each lane's box has 1,024 slots, and each worker's 2,048: *A* and the pool's
-hand-overs, to a power of two.
+wait. With a lane per worker, 512-byte replies, and 256-byte jobs, as the entry has,
+each worker's box has 1,024 slots, *A* and the pool's hand-overs, and each lane's box
+1,024. With `DATABASE_MAX_CONN` at 256, the pool takes 62, 9, and 2 hand-overs a worker
+at 4, 24, and 64 workers, so *A* is 962, 1,015, and 1,022.
 
 | Workers | Boxes, from *A* | Boxes, for `max_conns` | Timers, from *A* | Timers, for `max_conns` |
 |---:|---:|---:|---:|---:|
-| 4 | 5.3 MiB | 51 MiB | 192 KiB | 3 MiB |
-| 24 | 31.7 MiB | 306 MiB | 1.1 MiB | 18 MiB |
-| 64 | 84.5 MiB | 816 MiB | 3 MiB | 48 MiB |
+| 4 | 3.2 MiB | 51 MiB | 180 KiB | 3 MiB |
+| 24 | 19.1 MiB | 306 MiB | 1.1 MiB | 18 MiB |
+| 64 | 51.0 MiB | 816 MiB | 3 MiB | 48 MiB |
 
 Each worker's box also keeps a live-key table of 8 bytes a connection, 128 KiB at the
 default `max_conns`, however the boxes are sized.

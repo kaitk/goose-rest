@@ -225,36 +225,40 @@ var turn = 0;
 // echoes, and the job's length take about 300 bytes.
 let REPLY_SLOT: i32 = 512;
 
-// The cache's admission: the most asks a worker has on the lanes at once,
-// each from its plod::try_ask until its outcome reaches the route. It covers
-// the requests in flight a worker gets under production-stack's load: 1,024
-// h2 connections of 16 streams each at the edge, which reach the workers as
-// one request per upstream connection, some 400 cache asks a worker at 24
-// workers. One past it gets 503 busy at once (Plod's "Sizing a lane's
-// admissions and boxes", docs/best-practices/lanes.md).
-let ADMITTED = 1024;
+// A worker's box: a reply for each ask it admits and a hand-over for each
+// connection of its pool, a power of two.
+let REPLY_SLOTS = 1024;
+
+// The cache's admission, the box's slots less the pool's hand-overs: the
+// most asks a worker has on the lanes at once, each from its plod::try_ask
+// until its outcome reaches the route. It covers the requests in flight a
+// worker gets under production-stack's load: 1,024 h2 connections of 16
+// streams each at the edge, which reach the workers as one request per
+// upstream connection, some 400 cache asks a worker at 24 workers. One past
+// it gets 503 busy at once (Plod's "Sizing a lane's admissions and boxes",
+// docs/best-practices/lanes.md).
+var admission = 0;
 
 // The worker's asks on the lanes now.
 var admitted = 0;
 
-// Opens cache_lanes lanes, and sizes the boxes and the waits from ADMITTED:
-// each lane's box holds its share of every worker's admitted jobs, and
-// refuses one past them, as a hot id makes it; each worker's box a reply
-// for each ask it admits and a hand-over for each connection of its pool;
-// and the worker's waits are its admitted asks, the only waits
-// production-stack's routes make. A box's slots are a power of two.
+// Opens cache_lanes lanes, and sizes the boxes and the waits from the
+// admission: each lane's box holds its share of every worker's admitted jobs,
+// and refuses one past them, as a hot id makes it; and the worker's waits are
+// its admitted asks, the only waits production-stack's routes make.
 fn open_caches(cfg: http::Config&) {
     guard cache_lanes > 0 else { return; }
+    admission = REPLY_SLOTS - per_worker;
     let workers = http::worker_count(cfg);
-    let lane_slots = power_of_two((workers * ADMITTED + cache_lanes - 1) / cache_lanes);
+    let lane_slots = power_of_two((workers * admission + cache_lanes - 1) / cache_lanes);
     for i in cache_lanes {
         caches.push(plod::lane_open<CacheJob>(http::LaneConfig { slots: lane_slots, .. }, Use.Cache, cache));
     }
-    cfg.mail_slots = power_of_two(ADMITTED + per_worker);
+    cfg.mail_slots = REPLY_SLOTS;
     cfg.mail_size = REPLY_SLOT;
-    cfg.max_waiting = ADMITTED;
+    cfg.max_waiting = admission;
     write_stderr(str("cache: ", workers, " workers, ", cache_lanes, " lanes of ", lane_slots, " slots, ",
-                     ADMITTED, " asks and ", cfg.mail_slots, " reply slots a worker, pools of ", per_worker, "\n"));
+                     admission, " asks and ", cfg.mail_slots, " reply slots a worker, pools of ", per_worker, "\n"));
 }
 
 // The least power of two of at least n and 2, a box's slots.
@@ -275,7 +279,7 @@ fn stop_caches() {
 fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
     guard id > 0 else { plod::fail(cx, 404, "not_found"); }
     guard caches.len > 0 else { plod::fail(cx, 503, "no_cache"); }
-    guard admitted < ADMITTED else { plod::fail(cx, 503, "busy"); }
+    guard admitted < admission else { plod::fail(cx, 503, "busy"); }
     // The route gets its wait's TIMEOUT and CLOSED, so that every outcome
     // reaches on_call, which ends the admission.
     plod::own_waits(cx, Use.None);
