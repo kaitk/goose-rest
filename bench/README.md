@@ -14,6 +14,8 @@ sudo bench/rest.sh count  # user instructions per request, with perf
 bench/all.sh           # both repositories' Goose servers in one unattended session
 bench/routes.sh        # instructions per request of the routers, on macOS
 bench/stack.sh         # instructions per request of a JSON body and the middleware, on macOS
+bench/httparena.sh validate   # HttpArena's validation of Plod's entry, in Docker
+bench/httparena.sh run        # HttpArena's harness, with Plod's entry
 ```
 
 `bench/rest.sh` and `bench/stack.sh` use goose-http's benchmark scripts and datasets.
@@ -67,6 +69,25 @@ build, given goose-http's datasets in its `build/rest` (`goose build` and run it
 install. Both Goose servers call glibc's `mallopt`, so they build only on Linux: on a
 Mac, in an arm64 Linux container
 ([known issues](../docs/known-issues.md#the-rest-benchmark-on-macos)).
+
+## The HttpArena entry
+
+`bench/httparena/plod/` is Plod's entry in [HttpArena](https://github.com/MDA2AV/HttpArena)
+(task 047): `meta.json`, which lists the profiles it subscribes to, a Dockerfile, and
+the server, `app.goose`'s routes under two root files, `server.goose` without TLS and
+`server_tls.goose` with it. `bench/httparena.sh` copies the entry and the package into
+an HttpArena checkout at a pinned commit and runs HttpArena's own `validate.sh` or
+`benchmark.sh`; its header lists what it changes in the checkout and its settings.
+It follows goose-http's `bench/httparena.sh`, whose
+[README](https://github.com/kaitk/goose-http/blob/main/bench/README.md#httparena-under-docker-on-macos)
+says how to run the harness from a Mac. The server builds on macOS as well, where it
+serves the routes with a dataset that `DATASET` names, but the static files only from
+`/data/static`:
+
+```sh
+goose build -o build/arena bench/httparena/plod/server.goose
+DATASET=path/to/HttpArena/data/dataset.json build/arena
+```
 
 ## An unattended session
 

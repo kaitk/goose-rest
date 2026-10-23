@@ -1,7 +1,10 @@
 # 047: HttpArena
 
-Status: todo. The plan for entering HttpArena (2026-10-19); the entry comes after task
-046's rename.
+Status: in-progress. The plan for entering HttpArena (2026-10-19). The entry,
+`bench/httparena/plod/`, subscribes to the 18 profiles goose-http serves, and passes
+HttpArena's `validate.sh` at `3717e25`: 101 checks, none failed, the static files'
+optional compression skipped (2026-10-23, Docker Desktop on an M1 Pro). The benchmark
+runs remain.
 
 This task is the master plan: which profiles the entry can run, what each one needs, and
 which repository builds it. The protocol and database work happens in those
@@ -43,13 +46,22 @@ experimental (very new work, hidden on the leaderboard unless a reader opts in).
 entry picks its tier, and HttpArena's maintainers may change it on review. Aegon entered
 as experimental.
 
-The entry asks for emerging (2026-10-19). What makes that case, before the entry goes in:
+The entry asks for emerging (2026-10-19). HttpArena's only requirement of a framework
+entry is that it implements HTTP itself and passes `validate.sh` on its own; nothing
+else is checked, and Plod fits emerging as its rules word it (2026-10-23, replacing a
+list of conditions for emerging set on 2026-10-19). What follows is this project's own
+bar, held so that a crash doesn't surface on a public leaderboard, not what earns the
+tier:
 
 1. Releases to rely on: tagged versions with a changelog, under the new name (task 046),
    and goose-http's API settled (its task 027).
-2. Correctness beyond HttpArena's validation: h2spec passing, the HTTP/1.1 parser and
-   HPACK fuzzed, the limits and timeouts documented, and no known crash open.
+2. Correctness beyond HttpArena's validation: h2spec passing (goose-http's tasks 014.01
+   and 061, over h2c and TLS on each loop), the parsers of what a client sends fuzzed
+   (goose-http's `fuzz/`), the limits and timeouts documented, and no known crash open.
 3. Documentation for writing an application: the tutorial and best-practices guides.
+
+goose-http's own benchmark entry (its `bench/httparena/`, of type `engine`) isn't
+submitted for now (2026-10-23); Plod's is the only one.
 
 Flagship needs applications in production that others built and run. snowtime-native
 in production is a start on that, not enough on its own.
@@ -100,7 +112,7 @@ implementations.
 
 - [x] goose-http has tasks for outbound connections (053) and WebSocket (054), and its
       task 014 records this order (2026-10-19, on goose-http's `main`)
-- [ ] The case for emerging made, as "The entry's tier" lists, and `meta.json` says
+- [ ] The project's own bar met, as "The entry's tier" lists, and `meta.json` says
       `emerging`
 - [ ] The entry runs the six HTTP/1.1 profiles; `validate.sh` passes and the results are
       saved
