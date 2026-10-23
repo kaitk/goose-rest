@@ -498,25 +498,26 @@ Keep the count in a global, which each worker has its own copy of. Refuse an ask
 *A* with 503 before sending it, and count it once `plod::try_ask` sends it. Call
 `plod::own_waits` before the ask, so that the route gets the wait's `TIMEOUT` and the
 `CLOSED` of a client that leaves. Without it, a client that leaves during the wait never
-reaches the route, and its admission is never given back. The entry's route:
+reaches the route, and its admission is never given back. The HttpArena entry's
+`ask_cache` does this in seven lines
+([`bench/httparena/plod/app.goose`](../../bench/httparena/plod/app.goose)):
 
-```rust
-fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
-    guard admitted < admission else { plod::fail(cx, 503, "busy"); }
-    plod::own_waits(cx, Use.None);
-    let sent = plod::try_ask(cx, caches[owner % caches.len], job, 5000, REPLY_SLOT);
-    guard sent != http::TOO_LONG else { plod::fail(cx, 500, "job_too_long"); }
-    guard sent == http::SENT else { plod::fail(cx, 503, "unavailable"); }
-    admitted++;
-}
+```text
+guard admitted < admission else { plod::fail(cx, 503, "busy"); }
+plod::own_waits(cx, Use.None);
+let sent = plod::try_ask(cx, caches[owner % caches.len], job, 5000, REPLY_SLOT);
+guard sent != http::TOO_LONG else { plod::fail(cx, 500, "job_too_long"); }
+guard sent == http::SENT else { plod::fail(cx, 503, "unavailable"); }
+admitted++;
 ```
 
 Give the admission back at the route's first later call with the lane's mark, before
 `plod::on_reply`. That call carries the ask's outcome: the reply, the lane's refusal, the
 `TIMEOUT`, or the `CLOSED`, and only one of them comes. `plod::on_reply` answers a
-refusal before the mark's `resume` runs, so the count can't wait for the `resume`:
+refusal before the mark's `resume` runs, so the count can't wait for the `resume`. The
+entry's `on_call`:
 
-```rust
+```text
 if plod::resumed(cx) {
     match cx.state.use {
         Cache => { admitted--; },
@@ -564,7 +565,7 @@ long reply, and room comes back within a pass of the worker's loop. A lane that 
 worker asks shouldn't wait on one worker, because the other workers' jobs queue behind
 it. The entry's lane:
 
-```rust
+```text
 fn reply_to(a, v) {
     if plod::try_reply(a, v) == http::TOO_LONG { plod::try_refuse(a, 500, "reply_too_long"); }
 }
