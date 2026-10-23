@@ -241,8 +241,8 @@ git -C "$gh" diff --quiet "$ref" HEAD -- . ':!bench/results' ':!bench/*.sh' ':!t
 } >"$log/env.txt"
 
 # 2 to 7.
-rest_servers="goose-uring goose-epoll goose-uring-rest goose-epoll-rest"
-rest_extra="goose-uring-rest goose-epoll-rest"
+rest_servers="goose-uring goose-epoll goose-uring-plod goose-epoll-plod"
+rest_extra="goose-uring-plod goose-epoll-plod"
 tests() { cd "$1" && scripts/test.sh; }
 http_build() { cd "$gh" && ONLY=goose bench/build.sh; }
 rest_build() { cd "$root" && ONLY=goose bench/rest.sh build; }

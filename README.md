@@ -167,7 +167,7 @@ For differences from Actix and the reasons behind them, see the
 
 *Slow by name only.*
 
-Measured as goose-rest `v0.2.1`, Plod's name before `v0.4.0`, on goose-http `v0.4.3`
+Measured on Plod `v0.2.1`, goose-http `v0.4.3`,
 and Goose master `f114b5a`. The machine: a Ryzen 7 5800X3D running Ubuntu under WSL2,
 4 workers per server, with wrk as the client.
 [All results, the method, and the losses](docs/benchmarks.md).
@@ -181,7 +181,7 @@ middleware.
 - **F**, **R**, and **M** measure the framework itself: one route, 203 routes, and A
   behind CORS, a bearer token, and `Server-Timing`.
 
-| Workload | goose-rest | Aegon (C++) | dusty (Zig) | ntex | actix-web | Axum |
+| Workload | Plod | Aegon (C++) | dusty (Zig) | ntex | actix-web | Axum |
 |---|:---|---:|---:|---:|---:|---:|
 | [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **583k req/s** (99%) | 513k | 374k | 332k | 276k | 253k |
 | [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **317k req/s** (100%) | 287k | 166k | 173k | 149k | 142k |

@@ -54,7 +54,7 @@ step "test/run_tests.py"
 mkdir -p "$root/build/gen"
 for f in "$root"/test/gen/*.json "$root"/examples/*/api.json \
          $(find "$root/docs/tutorial" -name api.json | sort) \
-         "$root"/bench/rest/goose-rest/github.json; do
+         "$root"/bench/rest/plod/github.json; do
     name=$(basename "$f" .json)
     dir=$(dirname "$f")
     step "gen ${f#"$root"/}"

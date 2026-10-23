@@ -57,7 +57,17 @@ entry.
 - Results measured before the rename keep the name goose-rest, and so does the
   benchmark server, `bench/rest/goose-rest/` (`rest-goose-rest`), so runs compare by
   one name across the rename. Rejected: renaming the server, which would split its
-  history in `bench/results/`.
+  history in `bench/results/`. Replaced on 2026-10-23 (next).
+- The old name stays only in history (2026-10-23), replacing the entry above, so that
+  what a reader sees now names the project one way. History is tasks,
+  `bench/results/`, spikes, the changelog's entries before `v0.4.0`, and decisions
+  dated before 2026-10-22. Everything else says Plod: the server is `bench/rest/plod/`,
+  run as `goose-uring-plod` and `goose-epoll-plod` (`rest-goose-plod`, by goose-http's
+  `goose-<loop>-TAG` naming), and the tables label it Plod. No script compares across
+  result directories, so splitting the server's history costs a sentence in
+  [Benchmarks](benchmarks.md) that names the old keys. Rejected: rewriting the files
+  in `bench/results/`, which record what ran, and a mapping from the old keys to the
+  new, which no script needs.
 - Rejected names: Tardy (a Zig framework on a runtime of that name, with the same
   joke), Tardigrade, Saunter, Slowpoke, Slowloris, and others already taken by a
   project or a mark. Trudge was the second choice, and Glacial is the reserve.

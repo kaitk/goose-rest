@@ -80,7 +80,7 @@ Expected: `2`. Importing `mylib2.extra` in `app/main.goose` as well doesn't help
 `user.goose` keeps its import.
 
 Workaround: the module leaves the import out and the root imports the module instead:
-`bench/rest/goose-rest/main.goose` imports `http.store` for `app.goose`.
+`bench/rest/plod/main.goose` imports `http.store` for `app.goose`.
 
 ### A block given a local struct gets a copy of it
 
@@ -148,7 +148,7 @@ charged to the optional field's target alone, as the reference parameter's is.
     error: call trim stores a reference rooted at i into what its parameter o leads to,
     which may be the caller's storage behind o, which i does not outlive (§9.2)
 
-goose-rest meets it with a context that holds the router a route's block adds: `rest::scope`
+Plod meets it with a context that holds the router a route's block adds: `rest::scope`
 narrows the router's path through the context's optional field.
 
 Workaround: move the store into a function that takes the field's type by reference,
@@ -199,7 +199,7 @@ Reports.Totals as U (Writes, from argument 1)".
     error: no matching overload for call to ask
       candidate ask at bound.goose:5: argument 2: cannot pass Reports.Totals as U
 
-goose-rest meets it when a route sends a job to the wrong lane (spike 11): the error
+Plod meets it when a route sends a job to the wrong lane (spike 11): the error
 names the job but not the lane's enum it should be a variant of.
 
 Workaround: read the lane's type at the call: `cx.app.writer` is a
@@ -248,7 +248,7 @@ one statement.
 
     error: cannot return a valueless expression
 
-goose-rest's plan wrote each generated route as `return rest::route(cx) { ... };`.
+Plod's plan wrote each generated route as `return rest::route(cx) { ... };`.
 
 Workaround: `rest::route(cx) { ... };` and then `return;`, as the generated router does.
 
@@ -286,7 +286,7 @@ default, such as the first few frames and the last, with an option for all of th
       in fn serve<H = {block at main.goose:12:14}>(literal i64) instantiated from main.goose:12
       in fn main() instantiated from main.goose:11
 
-goose-rest meets it when a handler the schema names is missing: the generated
+Plod meets it when a handler the schema names is missing: the generated
 `dispatch` is generic in `cx` and `state`, and runs inside `rest::serve`'s block, which
 runs inside goose-http's event loop, so the error lists 18 frames, 8 of them in
 goose-http's loop (`http::answer`, `http::pump`, `http::mail_take`, and so on). The
@@ -318,7 +318,7 @@ cover every variant, or a form of call that only dispatches.
         run(u);   // prints nothing, without a warning
     }
 
-goose-rest's lanes dispatch each job to the program's `run` cases, and each reply to
+Plod's lanes dispatch each job to the program's `run` cases, and each reply to
 the program's `resume` cases. A catch-all `run` drops every job, and the route waits
 for a reply that never comes; a catch-all `resume` answers every reply alike.
 
@@ -382,12 +382,12 @@ times larger, it's inlined again.
         print(b);
     }
 
-goose-rest meets it in a handler behind middleware: a block-taking function such as
+Plod meets it in a handler behind middleware: a block-taking function such as
 `rest::cors`, given the handler's routes as its block, passes the size at once. It then
 stays a call that reaches the handler's locals through pointers, and the handler stays
 a call around it. `inline fn` makes each one inline.
 
-Workaround: goose-rest's functions that take a block are `inline fn` (`route`,
+Workaround: Plod's functions that take a block are `inline fn` (`route`,
 `attempt`, `cors`, `bearer`, `timed`, `json_body`), so the middleware, the route, and
 the code that fails all fold into the handler, which may stay one function of its own
 (`test/inline_route.goose`).
@@ -423,7 +423,7 @@ loop at `-O2`, and the C has `main_g` alone:
         print(b);
     }
 
-goose-rest meets it in `rest::serve`: the calls after a request's first, for bodies and
+Plod meets it in `rest::serve`: the calls after a request's first, for bodies and
 responses in pieces, go through one function, `on_later`, so that the program's handler
 has one copy there. goose-http's loop calls `serve`'s block once in each of its places,
 and Goose inlines `on_later` into each, the request path's included. A `while` with a
@@ -466,7 +466,7 @@ alone:
         print("end");
     }
 
-goose-rest meets it in spike 12's `compact::on`, which runs a route's block and then
+Plod meets it in spike 12's `compact::on`, which runs a route's block and then
 leaves `routes` with `return from routes`. `rest::param_int` in the block stays a call.
 It's a function that fails, so its route and everything around the route stay out of
 line too.
@@ -515,7 +515,7 @@ gcc `-O2` an 8 KB frame that it probes twice per call:
         print(t);
     }
 
-goose-rest meets it in a router. `rest::route` is an `inline fn`, and `rest::Cx`, about
+Plod meets it in a router. `rest::route` is an `inline fn`, and `rest::Cx`, about
 170 bytes, goes by value to each call in a route, so a function that holds many routes
 holds about 1 KB of frame for each. The generated router for the 203 routes of tier R
 had a frame of 217 KB, and its probes took 56% of the server's user cycles per request;
@@ -548,7 +548,7 @@ Within the library itself, and for programs in the global namespace, nothing cha
 
     error: unknown function or member: text
 
-Every goose-rest call takes the context first: `rest::text(cx, 200, "ok")`,
+Every Plod call takes the context first: `rest::text(cx, 200, "ok")`,
 `rest::fail(cx, 404, "project_not_found")`, `rest::param_int(cx, "id")`. With the lookup,
 they'd read `cx.text(200, "ok")`, `cx.fail(404, "project_not_found")`, and
 `cx.param_int("id")`, which is what a reader of Actix or Axum expects. A test that

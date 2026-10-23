@@ -178,7 +178,7 @@ three times:
 | goose-http `check.py`, tiers a to c | pass | pass |
 | goose-http `check.py`, tier d | pass | |
 | goose-http tier c against `TIER=d`, once | pass | pass |
-| goose-rest `tiers/check.py`, tiers f, r, and m | pass | |
+| Plod `tiers/check.py`, tiers f, r, and m | pass | |
 
 The same requests at the edges (unknown paths and methods, bad ids, queries, and bodies,
 missing tokens, media types, declared lengths over a limit, preflights) got the same

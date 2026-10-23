@@ -1,7 +1,7 @@
 #!/bin/sh
 # Instructions per request for a JSON body and for the middleware stack, on
 # macOS, beside bench/routes.sh's routers. The server is the REST benchmark's
-# (bench/rest/goose-rest/main.goose); the requests are bench/stack/pipelined.lua's:
+# (bench/rest/plod/main.goose); the requests are bench/stack/pipelined.lua's:
 #
 #   json   tier F, POST /json read with plod::take
 #   item   GET /api/items/42 on tier A, then on tier M, which is tier A inside
@@ -45,7 +45,7 @@ trap '[ -z "$tpid" ] || pkill -INT -P "$tpid" 2>/dev/null; rm -rf "$tmp"' EXIT
 [ -f "$data/arena-items.json" ] || { echo "bench/stack.sh: no datasets in $data" >&2; exit 2; }
 
 mkdir -p "$bin"
-"$goose" build --standalone -o "$bin/rest" "$root/bench/rest/goose-rest/main.goose" >"$tmp/build" 2>&1 ||
+"$goose" build --standalone -o "$bin/rest" "$root/bench/rest/plod/main.goose" >"$tmp/build" 2>&1 ||
     { cat "$tmp/build" >&2; exit 1; }
 
 start() {

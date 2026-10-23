@@ -2,10 +2,10 @@
 
     python3 bench/rest/tiers/github_goose.py
 
-- bench/rest/goose-rest/github.json, an OpenAPI 3.1 document of the 203
+- bench/rest/plod/github.json, an OpenAPI 3.1 document of the 203
   routes, operation n named rN, each path parameter a string, from which
   plod gen writes github_gen.goose's router (bench/rest.sh build);
-- bench/rest/goose-rest/github_app.goose, the handlers both routers call,
+- bench/rest/plod/github_app.goose, the handlers both routers call,
   app::rN, and chain, the same routes as an http::router if chain in
   github.txt's order.
 
@@ -17,7 +17,7 @@ import os
 import re
 
 here = os.path.dirname(os.path.abspath(__file__))
-out = os.path.join(here, "..", "goose-rest")
+out = os.path.join(here, "..", "plod")
 routes = [line.split() for line in open(os.path.join(here, "github.txt")).read().splitlines()]
 
 

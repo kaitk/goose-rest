@@ -7,10 +7,10 @@
 #
 #   bench/rest.sh build   goose-http's bench/rest.sh build, then this
 #                         repository's servers into goose-http's build/rest:
-#                         rest-goose-rest, rest-axum, rest-actix-web,
+#                         rest-goose-plod, rest-axum, rest-actix-web,
 #                         rest-ntex, rest-dusty-routes, and, on Linux,
 #                         rest-aegon and rest-aegon-small; with ONLY=goose,
-#                         goose-http's ONLY=goose build and rest-goose-rest
+#                         goose-http's ONLY=goose build and rest-goose-plod
 #                         alone
 #   bench/rest.sh check   each server on each tier it serves, against
 #                         goose-http's bench/rest/check.py and
@@ -25,8 +25,8 @@
 #
 # The servers, by name: goose-epoll and goose-uring, goose-http alone
 # (goose-http's build/rest/rest; on tier F, goose-*-bare, this repository's
-# server with BARE=1 on http::serve); goose-epoll-rest and goose-uring-rest,
-# Plod; goose-*-rest-gen, Plod through the generated router, tier
+# server with BARE=1 on http::serve); goose-epoll-plod and goose-uring-plod,
+# Plod; goose-*-plod-gen, Plod through the generated router, tier
 # R only; axum, actix-web, ntex, dusty-routes; aegon, and aegon-small with
 # its buffers for a low memlock limit; and goose-http's dusty, its
 # catch-all entry, and hyper, as anchors to its tables.
@@ -48,12 +48,12 @@
 #                pinned release, scripts/goose.sh)
 #   GOOSE_HTTP   a goose-http checkout at the pin plod.goose names (default:
 #                a clone at the pin in build/, scripts/goose-http.sh)
-#   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-rest
-#                goose-epoll-rest axum actix-web ntex dusty-routes aegon
+#   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-plod
+#                goose-epoll-plod axum actix-web ntex dusty-routes aegon
 #                aegon-small dusty hyper
-#   EXTRA        tiers F, R, and M: goose-uring-rest goose-epoll-rest axum
+#   EXTRA        tiers F, R, and M: goose-uring-plod goose-epoll-plod axum
 #                actix-web ntex dusty-routes aegon aegon-small, with
-#                goose-*-bare on F and goose-*-rest-gen on R added
+#                goose-*-bare on F and goose-*-plod-gen on R added
 #   AEGON_CXX    the C++ compiler for Aegon (default: g++-16)
 #   TIERS        f r m, or a subset; STEPS goose-http's, or "none" to skip it
 set -eu
@@ -81,13 +81,14 @@ build)
     # goose-http's build can't run; the datasets must be in DATA already.
     [ "${OWN:-}" = 1 ] || "$gh/bench/rest.sh" build
     goose=$GOOSE
-    "$goose" "$root/gen/main.goose" -- gen "$root/bench/rest/goose-rest/github.json" -o "$bin/github_gen.goose" >/dev/null
-    cmp -s "$bin/github_gen.goose" "$root/bench/rest/goose-rest/github_gen.goose" ||
+    "$goose" "$root/gen/main.goose" -- gen "$root/bench/rest/plod/github.json" -o "$bin/github_gen.goose" >/dev/null
+    cmp -s "$bin/github_gen.goose" "$root/bench/rest/plod/github_gen.goose" ||
         { echo "bench/rest.sh: github_gen.goose is stale; regenerate it (scripts/test.sh)"; exit 1; }
     if [ "$(uname -s)" = Darwin ]; then
-        echo "bench/rest.sh: rest-goose-rest calls glibc's mallopt; build it on Linux" >&2
+        echo "bench/rest.sh: rest-goose-plod calls glibc's mallopt; build it on Linux" >&2
     else
-        "$goose" build --cc gcc --standalone -o "$bin/rest-goose-rest" "$root/bench/rest/goose-rest/main.goose"
+        # goose-http's bench/rest.sh runs server goose-<loop>-TAG as rest-goose-TAG.
+        "$goose" build --cc gcc --standalone -o "$bin/rest-goose-plod" "$root/bench/rest/plod/main.goose"
     fi
     if [ "${ONLY:-}" = goose ]; then
         ls -l "$bin"
@@ -152,8 +153,8 @@ esac
 # runs it with memlock unlimited; the other servers lock nothing.
 ulimit -l unlimited 2>/dev/null || echo "bench/rest.sh: memlock stays at $(ulimit -l) KB; Aegon may not register its buffers" >&2
 
-servers=${SERVERS:-goose-uring goose-epoll goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes aegon aegon-small dusty hyper}
-extra=${EXTRA:-goose-uring-rest goose-epoll-rest axum actix-web ntex dusty-routes aegon aegon-small}
+servers=${SERVERS:-goose-uring goose-epoll goose-uring-plod goose-epoll-plod axum actix-web ntex dusty-routes aegon aegon-small dusty hyper}
+extra=${EXTRA:-goose-uring-plod goose-epoll-plod axum actix-web ntex dusty-routes aegon aegon-small}
 which=${TIERS:-f r m}
 port=${PORT:-29380}
 url=http://127.0.0.1:$port
@@ -163,11 +164,11 @@ url=http://127.0.0.1:$port
 extra_of() {
     for s in $extra; do
         case $1:$s in
-        f:goose-uring-rest | f:goose-epoll-rest) echo "${s%-rest}-bare" ;;
+        f:goose-uring-plod | f:goose-epoll-plod) echo "${s%-plod}-bare" ;;
         esac
         echo "$s"
         case $1:$s in
-        r:goose-uring-rest | r:goose-epoll-rest) echo "$s-gen" ;;
+        r:goose-uring-plod | r:goose-epoll-plod) echo "$s-gen" ;;
         esac
     done
 }
@@ -176,13 +177,13 @@ extra_of() {
 binary() {
     case $1 in
     goose-uring | goose-epoll) echo rest ;;
-    goose-*-bare | goose-*-rest | goose-*-rest-gen) echo rest-goose-rest ;;
+    goose-*-bare | goose-*-plod | goose-*-plod-gen) echo rest-goose-plod ;;
     *) echo "rest-$1" ;;
     esac
 }
 env_of() {
     case $1 in goose-uring*) printf 'LOOP=uring ' ;; goose-epoll*) printf 'LOOP=epoll ' ;; esac
-    case $1 in *-bare) printf 'BARE=1 ' ;; *-rest-gen) printf 'ROUTER=gen ' ;; esac
+    case $1 in *-bare) printf 'BARE=1 ' ;; *-plod-gen) printf 'ROUTER=gen ' ;; esac
     printf 'ROUTES=%s\n' "$tiers/github.txt"
 }
 
@@ -275,27 +276,27 @@ if [ "$1" = count ]; then
     # count.sh starts build/bench/NAME with "PORT" when NAME doesn't start with
     # goose, and passes on the environment.
     ln -sf "$bin/rest" "$gh/build/bench/restc-http"
-    ln -sf "$bin/rest-goose-rest" "$gh/build/bench/restc-rest"
+    ln -sf "$bin/rest-goose-plod" "$gh/build/bench/restc-plod"
     export REST_DATA="$data" LOOP="${LOOP:-epoll}"
     # tier, target, status class, servers
     while read -r tier target class servers; do
         echo "== TIER=$tier $target"
         for s in $servers; do
             case $s in
-            bare) TIER=$tier BARE=1 TARGET=$target STATUS=$class "$gh/bench/count.sh" restc-rest ;;
-            gen) TIER=$tier ROUTER=gen TARGET=$target STATUS=$class "$gh/bench/count.sh" restc-rest ;;
+            bare) TIER=$tier BARE=1 TARGET=$target STATUS=$class "$gh/bench/count.sh" restc-plod ;;
+            gen) TIER=$tier ROUTER=gen TARGET=$target STATUS=$class "$gh/bench/count.sh" restc-plod ;;
             *) TIER=$tier TARGET=$target STATUS=$class "$gh/bench/count.sh" "restc-$s" ;;
             esac
         done
     done <<EOF
-a /api/items/1 2 http rest
-a /api/me 4 http rest
-a /nothing 4 http rest
-m /api/items/1 4 rest
-f / 2 bare rest
-f /id/1?name=bun 2 bare rest
-r /authorizations 2 rest gen
-r /user/keys/id201 2 rest gen
+a /api/items/1 2 http plod
+a /api/me 4 http plod
+a /nothing 4 http plod
+m /api/items/1 4 plod
+f / 2 bare plod
+f /id/1?name=bun 2 bare plod
+r /authorizations 2 plod gen
+r /user/keys/id201 2 plod gen
 EOF
     exit 0
 fi

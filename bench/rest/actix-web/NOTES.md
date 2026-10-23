@@ -144,9 +144,9 @@ goose-http `e27ab21`'s datasets in `build/rest`, tiers A to D three times each:
 | goose-http tier c | pass | pass |
 | goose-http tier d | pass | pass |
 | goose-http tier c against `TIER=d` | pass | not run |
-| goose-rest tier f | pass | |
-| goose-rest tier r | pass | |
-| goose-rest tier m | fails at the preflight status only | |
+| Plod tier f | pass | |
+| Plod tier r | pass | |
+| Plod tier m | fails at the preflight status only | |
 
 A 3 s wrk run of each tier's script (tiers A to C at `-t2 -c16`; tier D's roles at
 `-t1 -c2` and `-t2 -c14` at once; tier F's three routes, R, and M at `-t2 -c16`)

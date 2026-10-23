@@ -30,13 +30,14 @@ scripts work around.
 
 The REST servers live under `rest/`:
 
-- `goose-rest/`: goose-http's REST tier server at goose-http's pin, served through
+- `plod/`: goose-http's REST tier server at goose-http's pin, served through
   Plod: `main.goose` holds its routes, extractors, middleware, error shapes, and
   threads, and imports the rest from goose-http's `bench/rest/goose/app.goose` as
   `http.bench.rest.goose.app`: the records, their loaders and JSON, and tier D's work
   on a body. Both Goose servers do the same work outside the framework, and load, hand
   over, and hold their records the same way, their prebuilt JSON in goose-http's shared
-  store.
+  store. The servers `goose-uring-plod` and `goose-epoll-plod` run it as
+  `rest-goose-plod`, by goose-http's `bench/rest.sh`'s naming.
 - `axum/`, `actix-web/`, and `ntex/`, with `rust-app/` holding the records and JSON they
   share. Axum and actix-web run on epoll through Tokio; ntex runs on its own runtime,
   on io_uring on Linux.
@@ -56,7 +57,7 @@ strongest of their TechEmpower entries' (`opt-level = 3`, `codegen-units = 1`, f
 entry does, and `AFFINITY=0` unpins them; the other servers don't pin theirs. `bench/rest.sh` wraps goose-http's `bench/rest.sh`, from that
 checkout.
 
-`rest/goose-rest/github_gen.goose` is generated from `github.json`, which
+`rest/plod/github_gen.goose` is generated from `github.json`, which
 `rest/tiers/github_goose.py` writes with `github_app.goose` from `github.txt`.
 `scripts/test.sh` checks it as a golden file.
 
