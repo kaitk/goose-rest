@@ -12,7 +12,9 @@
 #   machine, becomes SERVER_CPUS (0-3). So does every cpuset of the gateway
 #   profiles' compose files, Plod's and the other entries' alike, through the
 #   variables they read: PROXY_CPUSET, SERVER_CPUSET, EDGE_CPUSET,
-#   CACHE_CPUSET, and AUTH_CPUSET. A proxy then shares the server's CPUs.
+#   CACHE_CPUSET, and AUTH_CPUSET, where the environment doesn't set them. A
+#   proxy then shares the server's CPUs. Write a single CPU as a range, 10-10:
+#   the harness reads a cpuset without "-" as a count of CPUs.
 # - The load generators run in Docker (LOADGEN_DOCKER) on LOAD_CPUS (4-15) with
 #   THREADS (4) threads.
 # - latency-1m offers LATENCY_RATE (200,000) requests per second instead of
@@ -60,8 +62,9 @@ entry=$arena/frameworks/plod
 rm -rf "$entry"
 cp -r "$root/bench/httparena/plod" "$entry"
 sed -i "s/0-31,64-95/$server_cpus/g" "$arena/scripts/lib/profiles.sh"
-export PROXY_CPUSET=$server_cpus SERVER_CPUSET=$server_cpus EDGE_CPUSET=$server_cpus \
-    CACHE_CPUSET=$server_cpus AUTH_CPUSET=$server_cpus
+export PROXY_CPUSET=${PROXY_CPUSET:-$server_cpus} SERVER_CPUSET=${SERVER_CPUSET:-$server_cpus} \
+    EDGE_CPUSET=${EDGE_CPUSET:-$server_cpus} CACHE_CPUSET=${CACHE_CPUSET:-$server_cpus} \
+    AUTH_CPUSET=${AUTH_CPUSET:-$server_cpus}
 if docker info --format '{{.OperatingSystem}}' | grep -q 'Docker Desktop'; then
     sed -i 's|if curl -sk -o /dev/null --max-time 2 |if docker run --rm --network host curlimages/curl:8.11.1 -sk -o /dev/null --max-time 2 |' \
         "$arena/scripts/lib/framework.sh"

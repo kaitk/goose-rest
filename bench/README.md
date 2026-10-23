@@ -86,6 +86,10 @@ requests on `PROXY_PORT` as well as 8080, and keeps production-stack's cache in
 process, in lanes of its own. `bench/httparena.sh` copies the entry into an HttpArena
 checkout at a pinned commit and runs HttpArena's own `validate.sh` or `benchmark.sh`;
 its header lists what it changes in the checkout and its settings.
+A gateway profile's containers take their CPUs from `SERVER_CPUSET`, `EDGE_CPUSET`,
+`AUTH_CPUSET`, `CACHE_CPUSET`, and `PROXY_CPUSET` where set, and `SERVER_CPUS`
+otherwise. Write a single CPU as `10-10`, not `10`: the harness reads a cpuset without
+`-` as a count of CPUs.
 It follows goose-http's `bench/httparena.sh`, whose
 [README](https://github.com/kaitk/goose-http/blob/main/bench/README.md#httparena-under-docker-on-macos)
 says how to run the harness from a Mac. The server builds on macOS as well, where it
