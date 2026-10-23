@@ -221,30 +221,44 @@ var caches: plod::Lane<CacheJob, Use>[>..];
 // The worker's count of /api/me requests, which picks their lanes.
 var turn = 0;
 
-// A reply's slot: a Cached<Item>, the job it echoes, and the job's length
-// take under 512 bytes.
+// A reply's slot, which holds a whole reply: the job it echoes, the job's
+// length, and the Cached row, as open_caches checks.
 let REPLY_SLOT: i32 = 512;
 
-// A reply's promise from the worker's gather budget, 64 MB: ask's default,
-// 64 KB, would hold 1,024 waits, where this holds max_waiting's 16,384.
-let REPLY_MOST = 4096;
+// The cache's admission: the most asks a worker has on the lanes at once,
+// each from its plod::try_ask until its outcome reaches the route. One past
+// them gets 503 at once (Plod's "Sizing a lane's admissions",
+// docs/best-practices/lanes.md).
+let ADMITTED = 64;
 
-// Opens cache_lanes lanes, and sizes the boxes from the waits there can be:
-// each worker's box takes a reply for each of its max_waiting waits, and
-// each lane's box a job for its share of every worker's, so that neither
-// refuses one while the waits are within their bound. A box's slots are a
-// power of two.
+// The worker's asks on the lanes now.
+var admitted = 0;
+
+// Opens cache_lanes lanes, and sizes the boxes and the waits from ADMITTED:
+// each lane's box holds four times its share of every worker's admitted
+// jobs, since the ids a lane gets come unevenly, and refuses one past them,
+// as a hot id makes it; each worker's box a reply for each ask it admits
+// and a hand-over for each connection of its pool; and the worker's waits
+// are its admitted asks, the only waits production-stack's routes make. A
+// box's slots are a power of two. Ends the program where a reply can't be
+// one message.
 fn open_caches(cfg: http::Config&) {
     guard cache_lanes > 0 else { return; }
+    let job = plod::echo_head_len(CacheJob.Item { id: 0 });
+    let row = max(plod::value_bytes(Cached<Item> { v: Item { .. } }).len,
+                  plod::value_bytes(Cached<User> { v: User { .. } }).len);
+    guard job + row <= REPLY_SLOT else { abort(str("cache: a reply of ", job + row, " bytes, past its slot")); }
     let workers = http::worker_count(cfg);
-    let lane_slots = power_of_two((workers * cfg.max_waiting + cache_lanes - 1) / cache_lanes);
+    let lane_slots = power_of_two(4 * ((workers * ADMITTED + cache_lanes - 1) / cache_lanes));
     for i in cache_lanes {
         caches.push(plod::lane_open<CacheJob>(http::LaneConfig { slots: lane_slots, .. }, Use.Cache, cache));
     }
-    cfg.mail_slots = max(cfg.mail_slots, power_of_two(cfg.max_waiting));
+    cfg.mail_slots = power_of_two(ADMITTED + per_worker);
     cfg.mail_size = REPLY_SLOT;
+    cfg.max_waiting = ADMITTED;
     write_stderr(str("cache: ", workers, " workers, ", cache_lanes, " lanes of ", lane_slots, " slots, ",
-                     cfg.mail_slots, " reply slots a worker, pools of ", per_worker, "\n"));
+                     ADMITTED, " asks and ", cfg.mail_slots, " reply slots a worker, replies of ", job + row,
+                     " bytes, pools of ", per_worker, "\n"));
 }
 
 // The least power of two of at least n and 2, a box's slots.
@@ -258,14 +272,32 @@ fn stop_caches() {
     for l in caches { plod::lane_stop(l); }
 }
 
-// Asks the lane owner picks for job.
+// Asks the lane owner picks for job, within the worker's admission, and
+// promises its reply one slot of the worker's gather budget. An ask past the
+// admission gets 503 busy at once, and one that the lane's box refuses 503
+// unavailable; neither is asked again.
 fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
     guard id > 0 else { plod::fail(cx, 404, "not_found"); }
     guard caches.len > 0 else { plod::fail(cx, 503, "no_cache"); }
-    plod::ask(cx, caches[owner % caches.len], job, 5000, REPLY_MOST);
+    guard admitted < ADMITTED else { plod::fail(cx, 503, "busy"); }
+    // The route gets its wait's TIMEOUT and CLOSED, so that every outcome
+    // reaches on_call, which ends the admission.
+    plod::own_waits(cx, Use.None);
+    let sent = plod::try_ask(cx, caches[owner % caches.len], job, 5000, REPLY_SLOT);
+    guard sent != http::TOO_LONG else { plod::fail(cx, 500, "job_too_long"); }
+    guard sent == http::SENT else { plod::fail(cx, 503, "unavailable"); }
+    admitted++;
 }
 
-fn resume(u: Use.Cache, cx) { resume(plod::job<CacheJob>(cx), cx); }
+// An ask's outcome: its reply; its time limit, 504, which doesn't ask again,
+// since an update may have run; or CLOSED, the client gone.
+fn resume(u: Use.Cache, cx) {
+    if cx.kind == http::WAKE {
+        resume(plod::job<CacheJob>(cx), cx);
+    } else if cx.kind == http::TIMEOUT {
+        plod::fail(cx, 504, "timeout");
+    }
+}
 fn resume(u: CacheJob.Item, cx) { cached(cx, plod::answer<Cached<Item>>(cx)); }
 fn resume(u: CacheJob.User, cx) { cached(cx, plod::answer<Cached<User>>(cx)); }
 fn resume(u: CacheJob.Update, cx) { plod::empty(cx, 204); }
@@ -283,8 +315,35 @@ thread_fn cache(box: http::Box, jobs: plod::Jobs<CacheJob>) {
     var items = dictionary<i64, Cached<Item>> {};
     var users = dictionary<i64, Cached<User>> {};
     var db = pg::Db { t: pg::Socket { .. }, .. };
-    plod::lane(box, jobs) { u, a => run(u, items, users, db, a); };
+    plod::lane(box, jobs) { u, a =>
+        if plod::still_wanted(a) { run(u, items, users, db, a); }
+    };
     pg::close(db);
+}
+
+// Sends the reply to a's job in one message, or drops it where the worker's
+// box is full, and the route's ask then times out: a lane that waited for
+// room, as plod::reply_value and plod::fail do, would hold every worker's
+// jobs behind one worker's. open_caches checks that a reply fits one
+// message.
+fn send_once(a, tag: i32, m: const u8[:]) {
+    a.replied = true;
+    http::mail_send(a.reply, tag, m);
+}
+
+// Replies v, as plod::reply_value does.
+fn reply_once(a, v) {
+    var m = plod::echo_head(a.job);
+    m.append(plod::value_bytes(v));
+    send_once(a, plod::REPLY_VALUE, m);
+}
+
+// Refuses a's job with status and code, as plod::fail does on a lane.
+fn refuse_once(a, status: i32, code: const u8[:]) {
+    var m: u8[>..] = [];
+    for i in 4 { m.push(((status >> (i * 8)) & 0xFF) as u8); }
+    m.append(code);
+    send_once(a, plod::REPLY_REFUSED, m);
 }
 
 // ITEMS' columns, for item_of.
@@ -313,10 +372,16 @@ fn run(u: CacheJob.Update, items: dictionary<i64, Cached<Item>>&, users: diction
         connected(db);
         n = pg::exec(db, UPDATE_ITEM, u.name[..], u.price, u.quantity, u.id);
     };
-    guard failed.len == 0 else { plod::fail(a, 503, "database_unavailable"); }
-    guard n == 1 else { plod::fail(a, 404, "not_found"); }
+    guard failed.len == 0 else {
+        refuse_once(a, 503, "database_unavailable");
+        return;
+    }
+    guard n == 1 else {
+        refuse_once(a, 404, "not_found");
+        return;
+    }
     items.remove(u.id);
-    plod::reply_value(a, n);
+    reply_once(a, n);
 }
 
 // Replies the row cache holds for key while it holds, or else the row sql
@@ -328,7 +393,7 @@ inline fn cache_aside<F, T>(cache: dictionary<i64, Cached<T>>&, db, a, key: i64,
     if held && held.until > now {
         var c = held;
         c.hit = true;
-        plod::reply_value(a, c);
+        reply_once(a, c);
     } else {
         var c = Cached<T> { v: default<T>(), until: now + ttl_ns };
         // A reference, which F's untyped parameter takes as one, where it
@@ -340,11 +405,20 @@ inline fn cache_aside<F, T>(cache: dictionary<i64, Cached<T>>&, db, a, key: i64,
             connected(db);
             n = pg::query(db, sql, key) { r => fits = F(r, v); };
         };
-        guard failed.len == 0 else { plod::fail(a, 503, "database_unavailable"); }
-        guard n == 1 else { plod::fail(a, 404, "not_found"); }
-        guard fits else { plod::fail(a, 500, "too_long"); }
+        guard failed.len == 0 else {
+            refuse_once(a, 503, "database_unavailable");
+            return;
+        }
+        guard n == 1 else {
+            refuse_once(a, 404, "not_found");
+            return;
+        }
+        guard fits else {
+            refuse_once(a, 500, "too_long");
+            return;
+        }
         cache.insert(key, c);
-        plod::reply_value(a, c);
+        reply_once(a, c);
     }
 }
 
@@ -379,6 +453,12 @@ fn plod::from_request(cx, v: const ItemUpdate?) -> ItemUpdate {
 
 fn on_call(cx) {
     if plod::resumed(cx) {
+        // A cache ask's outcome, whichever reaches the route, a refusal
+        // included, ends its admission.
+        match cx.state.use {
+            Cache => { admitted--; },
+            _ => {},
+        }
         plod::on_reply(cx) { resume(cx.state.use, cx); };
     } else {
         handle(cx);

@@ -14,7 +14,7 @@ on arm64, which the release has no archive for.
 
 | Package | Tag | What for |
 |---|---|---|
-| [Plod](https://github.com/kaitk/plod) | `v0.5.0` | The framework |
+| [Plod](https://github.com/kaitk/plod) | `v0.5.1` | The framework |
 | [goose-http](https://github.com/kaitk/goose-http) | `v0.5.6` | HTTP/1.1, h2, WebSocket, the loop, and mail between threads |
 | [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.2` | gzip, deflate, and zstd |
 | [goose-tls](https://github.com/kaitk/goose-tls) | `v0.0.5` | TLS 1.3 over OpenSSL |
@@ -64,6 +64,10 @@ after it meet one cache. `POST /api/items/:id` updates the row and drops it from
 lane's cache. The Redis the profile requires runs, and the server waits for it to be
 healthy, but doesn't use it.
 
+The cache's dictionaries don't evict: an entry past its time is fetched again, and its
+slot reused, but every id fetched keeps one. The dataset's ids bound them here. A cache
+over keys without such a bound needs a capacity and eviction.
+
 ## Settings
 
 Each is documented configuration, set as the documentation says, not tuning.
@@ -73,8 +77,19 @@ Each is documented configuration, set as the documentation says, not tuning.
 - `mail_slots` and `max_waiting` turn waiting on, and are 0 by default
   ([answers that wait](https://github.com/kaitk/goose-http/blob/v0.5.6/docs/api.md#answers-that-wait)):
   `/delay` and `/async-db` need them. `max_waiting` is a worker's connection limit,
-  `max_conns`: one wait per connection. production-stack's boxes hold a reply for
-  each of a worker's waits, and each lane's box a job for its share of every worker's.
+  `max_conns`: one wait per connection.
+- production-stack's cache follows Plod's production guidance for lanes that every
+  worker asks
+  ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/main/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
+  A worker admits at most 64 asks to the lanes at once (`ADMITTED` in `app.goose`), and
+  answers one past them with 503 `busy`, and one a full lane box refuses with 503
+  `unavailable`, at once; it doesn't retry. The boxes and waits are sized from that
+  count: each lane's box holds 256 jobs, four times its share of every worker's
+  admissions; each worker's box 128 replies, its admitted asks and its pool's
+  hand-overs; and `max_waiting` is 64, so production-stack's waits are its admitted
+  asks. At 24 workers the boxes take 3.2 MiB. A reply is one message of 512 bytes, which the server
+  checks as it starts. A lane that finds a worker's box full drops the reply, and the
+  ask times out with 504, rather than hold up every other worker's jobs.
 - The Postgres pools are sized from `DATABASE_MAX_CONN`, less one connection left for
   another client, as go-stdlib, chi, echo, and gin leave headroom: an even share for
   each worker's pool, and in production-stack at most half for the lanes.
@@ -84,7 +99,7 @@ Each is documented configuration, set as the documentation says, not tuning.
 
 goose-http's head writers, `http::start`, `http::field`, and `http::finish`, are Plod's
 documented way to add a header, as `X-Cache` here
-([reference](https://github.com/kaitk/plod/blob/v0.5.0/docs/reference.md#12-cookies-out)),
+([reference](https://github.com/kaitk/plod/blob/v0.5.1/docs/reference.md#12-cookies-out)),
 and `http::respond` its way to send bytes as they came, as `/echo` does.
 
 ## Completeness
