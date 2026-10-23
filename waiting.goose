@@ -230,6 +230,41 @@ fn reply_tagged<U>(a: Asked<U>&, data: const u8[:], tag: i32) -> bool {
     return send_reply(a, echo_head(a.job), data, tag);
 }
 
+// plod::reply_value in one message, which never waits for room: returns
+// http::SENT once it's sent, or else why not, with nothing sent:
+// http::FULL when the worker's box is full, http::STALE once the route has
+// gone, or http::TOO_LONG when the job, its length, and v don't fit one
+// message. The job counts as answered either way, so plod::lane adds no
+// refusal of its own, and a reply not sent leaves the route to its time
+// limit. For a lane that every worker asks, which must not wait on one
+// worker's box; plod::reply_value and plod::reply wait for room, which a
+// stream's pieces need.
+fn try_reply<U>(a: Asked<U>&, v) -> i32 {
+    var m = echo_head(a.job);
+    m.append(value_bytes(v));
+    return send_once(a, m, REPLY_VALUE);
+}
+
+// plod::fail on a lane, as try_reply sends a reply: the refusal of a's job
+// with status and code, in one message, its code cut to fit, with
+// try_reply's results. The lane's run returns after it.
+fn try_refuse<U>(a: Asked<U>&, status: i32, code: const u8[:]) -> i32 {
+    return send_once(a, refusal_image(a, status, code), REPLY_REFUSED);
+}
+
+// Sends m whole, with tag, to the route that asked a: try_reply's work.
+fn send_once<U>(a: Asked<U>&, m: const u8[:], tag: i32) -> i32 {
+    a.replied = true;
+    var p .= a.played;
+    if p {
+        p.tag = tag;
+        p.data.append(m);
+        return http::SENT;
+    }
+    guard m.len <= a.piece else { return http::TOO_LONG; }
+    return http::mail_send(a.reply, tag, m);
+}
+
 // A reply starts with its job: the length of the job's image in ECHO_HEAD
 // bytes, least significant first, then the image.
 let ECHO_HEAD = 4;
@@ -258,11 +293,17 @@ fn echo_head_len<U>(job: U) -> i64 {
 // that the worker reads it whole.
 fn refuse<U>(a: Asked<U>&, status: i32, code: const u8[:]) -> bool {
     a.replied = true;
+    return send_reply(a, refusal_image(a, status, code), "", REPLY_REFUSED);
+}
+
+// refuse's message: the status's 4 bytes, least significant first, and the
+// code, cut to fit one message.
+fn refusal_image<U>(a: const Asked<U>&, status: i32, code: const u8[:]) -> u8[>..] {
     var image: u8[>..] = [];
     for i in 4 { image.push(((status >> (i * 8)) & 0xFF) as u8); }
     let room = if a.played { code.len } else { max(a.piece - 4, 0) };
     image.append(code[..min(code.len, room)]);
-    return send_reply(a, image, "", REPLY_REFUSED);
+    return image;
 }
 
 // The status and code of a refusal's bytes, and whether they're one.

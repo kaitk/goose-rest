@@ -703,9 +703,11 @@ plod::lane_stop(reports);
 | `plod::lane_stop(lane)` | `http::lane_stop`: stops every box of `lane` and waits for its threads, each of which takes what its box holds first. A full box can't refuse the stop. | |
 | `plod::ask(cx, lane, job, ms, most)` | Sends `job`, a variant of the lane's enum, to the least busy thread of `lane`, the one whose box holds the fewest, or to the others in turn while each is full, and waits for the reply with the lane's mark in `cx.state.use` ([Later calls](#4-later-calls)), promised `most` bytes, 64 KB by default, of the worker's gather budget while it waits. A variant of another lane's enum doesn't compile. | 503 `unavailable` with `Retry-After: 1`, before the job is sent, when the gather budget can't promise `most`; 503 `unavailable` when every box is full, the lane is stopped, or the job is longer than a slot; 500 `job_too_large`, before the job is sent, when the job and its 4-byte length don't fit one message of the reply; 500 `already_waiting` |
 | `plod::try_ask(cx, lane, job, ms, most)` | `plod::ask`, except that a job it can't admit doesn't fail the route. Returns `http::SENT` once the job is sent, the route waiting as `plod::ask` leaves it, or else why not, with nothing sent or promised and `cx.state.use` as it was: `plod::NO_BUDGET` when the gather budget can't promise `most`, `http::FULL` when every box is full, `http::STALE` once the lane is stopped, or `http::TOO_LONG` for a job longer than a slot. goose-http's `TIMEOUT` at once, with no timer free, comes after the handler returns, as for `plod::ask`. | 500 `job_too_large`; 500 `already_waiting` |
-| `plod::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job, in pieces of the worker's message size, each marked as a value's, which the worker collects whole before the `resume` runs. Returns false once the route has gone. | The route: 502 `reply_too_large` past the `most` its `plod::ask` gave |
-| `plod::reply(a, data)` | On the lane: replies `data` after the job, in pieces of the worker's message size, for `plod::relay`. Returns false once the route has gone. | |
-| `plod::fail(a, status, code)` | On the lane: refuses the job, which fails the route with `status` and `code` before its `resume` runs. A domain's `check(e, x)` that calls `plod::fail(x, ...)` serves a route's `cx` and a lane's `a` alike. | |
+| `plod::reply_value(a, v)` | On the lane: replies `v`, a flat value, after the job, in pieces of the worker's message size, each marked as a value's, which the worker collects whole before the `resume` runs. A piece that finds the worker's box full waits for room, a millisecond at a time, until the route's wait ends. Returns false once the route has gone. | The route: 502 `reply_too_large` past the `most` its `plod::ask` gave |
+| `plod::reply(a, data)` | On the lane: replies `data` after the job, in pieces of the worker's message size, for `plod::relay`, waiting for room as `plod::reply_value` does. Returns false once the route has gone. | |
+| `plod::fail(a, status, code)` | On the lane: refuses the job, which fails the route with `status` and `code` before its `resume` runs, waiting for room as `plod::reply_value` does. A domain's `check(e, x)` that calls `plod::fail(x, ...)` serves a route's `cx` and a lane's `a` alike. | |
+| `plod::try_reply(a, v)` | On the lane: `plod::reply_value` in one message, which never waits for room. Returns `http::SENT`, or why nothing was sent: `http::FULL` when the worker's box is full, `http::STALE` once the route has gone, or `http::TOO_LONG` when the job, its 4-byte length, and `v` don't fit one message. The job counts as answered either way, so a reply not sent leaves the route to its time limit, 504 `timeout`. | |
+| `plod::try_refuse(a, status, code)` | On the lane: `plod::fail` in one message, as `plod::try_reply` sends a reply, with its results; `code` is cut to fit. The `run` returns after it. | |
 | `plod::still_wanted(a)` | On the lane: whether the route still waits, for work worth skipping. A snapshot: the route can still go before the reply. | |
 | `plod::job<U>(cx)` | In the mark's `resume`: the job the reply carries back. | 500 `not_a_reply` at another event than `WAKE`; 502 `bad_reply` |
 | `plod::answer<T>(cx)` | In a job's `resume`: the value `plod::reply_value` replied, whole however many pieces it came in. | 502 `bad_reply` for a reply that isn't a `T`, as one `plod::reply` sent in pieces |
@@ -727,6 +729,26 @@ fn resume(u: Use.Retry, cx) {
     if plod::try_ask(cx, cx.app.items, u.job) == http::SENT { return; }
     guard clock_ns() < u.until else { plod::fail(cx, 503, "busy"); }
     plod::pause(cx, 5, u);
+}
+```
+
+`plod::try_reply` and `plod::try_refuse` are the lane's side of the same rule: a send to
+a full box returns at once, and the lane decides. `plod::reply_value`, `plod::reply`,
+and `plod::fail` wait for room instead, which suits most lanes: every lane that replies
+to a worker shares its box, as do the pieces of a long reply, which the wait paces. A
+lane that every worker asks uses `try_reply`, so that one worker whose box is full
+doesn't hold up the jobs of all the others; the reply it drops ends as that route's
+504:
+
+```rust
+fn run(u: Looks.Item, c: Cache&, a) {
+    guard plod::still_wanted(a) else { return; }
+    let row, found = look_up(c, u.id);
+    guard found else {
+        plod::try_refuse(a, 404, "not_found");
+        return;
+    }
+    if plod::try_reply(a, row) == http::TOO_LONG { plod::try_refuse(a, 500, "reply_too_long"); }
 }
 ```
 
