@@ -331,11 +331,14 @@ inline fn cache_aside<F, T>(cache: dictionary<i64, Cached<T>>&, db, a, key: i64,
         plod::reply_value(a, c);
     } else {
         var c = Cached<T> { v: default<T>(), until: now + ttl_ns };
+        // A reference, which F's untyped parameter takes as one, where it
+        // would take the field c.v as a copy.
+        let v .= c.v;
         var fits = true;
         var n: i64 = 0;
         let failed = pg::run() {
             connected(db);
-            n = pg::query(db, sql, key) { r => fits = F(r, c.v); };
+            n = pg::query(db, sql, key) { r => fits = F(r, v); };
         };
         guard failed.len == 0 else { plod::fail(a, 503, "database_unavailable"); }
         guard n == 1 else { plod::fail(a, 404, "not_found"); }
