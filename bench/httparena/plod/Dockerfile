@@ -1,23 +1,37 @@
-# Plod's HttpArena entry. bench/httparena.sh copies this directory into
-# HttpArena's frameworks/plod/, with the package's *.goose under src/, and
-# app.goose and the root files at src/bench/httparena/plod/, where they import
-# the package from "../../../", and scripts/goose.sh beside them.
+# Plod's HttpArena entry: app.goose, served by the root files server.goose
+# and server_tls.goose, which declare Plod and its packages at their tags;
+# Goose fetches them from GitHub as it builds.
 FROM ubuntu:26.04 AS build
 RUN apt-get update -qq && \
     apt-get install -y -qq --no-install-recommends ca-certificates curl git cmake ninja-build gcc g++ \
         liburing-dev libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# The release scripts/goose.sh pins, or with GOOSE_COMMIT that commit built
-# from source.
-ARG GOOSE_COMMIT=
-COPY src/scripts/goose.sh /src/scripts/goose.sh
-RUN GOOSE_COMMIT="$GOOSE_COMMIT" /src/scripts/goose.sh >/goose-path
+# Goose's release, checked against its SHA-256. The release has no archive
+# for Linux on arm64, so there its tag is built from source.
+ARG GOOSE_RELEASE=v2026.3
+ARG GOOSE_SHA256=06ac30284338269d3996d457412bf4f2b47c1f9a5601de65b6317187fe78d5c9
+RUN set -eu; \
+    case "$(uname -m)" in \
+    x86_64) \
+        curl -fsSL -o /tmp/goose.tar.gz \
+            "https://github.com/aardappel/goose/releases/download/$GOOSE_RELEASE/goose-$GOOSE_RELEASE-linux-x64.tar.gz"; \
+        echo "$GOOSE_SHA256  /tmp/goose.tar.gz" | sha256sum -c -; \
+        tar -xzf /tmp/goose.tar.gz -C /opt; \
+        rm /tmp/goose.tar.gz; \
+        echo "/opt/goose-$GOOSE_RELEASE-linux-x64/goose" >/goose-path ;; \
+    *) \
+        git clone -q --depth 1 --branch "$GOOSE_RELEASE" https://github.com/aardappel/goose.git /opt/goose; \
+        cmake -S /opt/goose -B /opt/goose/build -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null; \
+        cmake --build /opt/goose/build >/dev/null; \
+        echo /opt/goose/build/goose >/goose-path ;; \
+    esac
 
-COPY src /src
-# Two builds: without TLS, and with the TLS listeners, which links OpenSSL.
-# Goose fetches goose-http and the packages the root files name.
-RUN goose=$(cat /goose-path) && cd /src/bench/httparena/plod && \
+WORKDIR /src
+COPY app.goose server.goose server_tls.goose ./
+# Two builds: server, without TLS, and server-tls, with the TLS listeners,
+# which links OpenSSL; the plain profiles don't load it.
+RUN goose=$(cat /goose-path) && \
     $goose build --cc gcc --standalone -o /server server.goose && \
     $goose build --cc gcc --standalone -o /server-tls server_tls.goose
 

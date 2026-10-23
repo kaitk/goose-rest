@@ -42,7 +42,8 @@ when it applies and when your application is the exception.
    audience, and each scope behind one stack.
 6. [Lanes and jobs](lanes.md): a lane for each kind of slow work, long CPU work kept
    off the workers, how many jobs a lane's box holds, which work is refused under
-   load, and lanes of several threads.
+   load, lanes of several threads, and sizing the admissions and boxes of lanes every
+   worker asks.
 7. [State](state.md): where data lives, by what it is.
 8. [Testing](testing.md): small tests per domain, and scenarios over HTTP.
 

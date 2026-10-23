@@ -4,11 +4,11 @@
 import std;
 import os;
 import http from "github.com/kaitk/goose-http@v0.5.6";
-import compress from "github.com/kaitk/goose-compress@v0.1.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.3";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import pg from "github.com/kaitk/goose-postgres@v0.0.3";
-import plod from "../../../";
+import pg from "github.com/kaitk/goose-postgres@v0.0.4";
+import plod from "github.com/kaitk/plod@v0.5.2";
 import plod.tls;
 import app;
 
@@ -33,5 +33,7 @@ fn main() {
     cfg.listeners.push(http::Listener { port: 8081, tls: true });
     cfg.listeners.push(http::Listener { port: 8443, tls: true });
     load_database(cfg);
+    open_caches(cfg);
     http::run(cfg, ctx, worker);
+    stop_caches();
 }

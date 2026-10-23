@@ -1,10 +1,13 @@
-// The entry without TLS (app.goose), for the profiles on 8080 and 8082.
+// The entry without TLS (app.goose), for the profiles on 8080 and 8082, and
+// behind the gateway profiles' proxies, which reach it on PROXY_PORT as well:
+// on the host network, the entry's own container can hold 8080 meanwhile.
 import std;
+import os;
 import http from "github.com/kaitk/goose-http@v0.5.6";
-import compress from "github.com/kaitk/goose-compress@v0.1.2";
+import compress from "github.com/kaitk/goose-compress@v0.1.3";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import pg from "github.com/kaitk/goose-postgres@v0.0.3";
-import plod from "../../../";
+import pg from "github.com/kaitk/goose-postgres@v0.0.4";
+import plod from "github.com/kaitk/plod@v0.5.2";
 import app;
 
 thread_fn worker(cfg: http::Config) {
@@ -17,7 +20,15 @@ thread_fn worker(cfg: http::Config) {
 fn main() {
     http::exit_on_error(http::stop_on_signals());
     load_dataset();
-    let cfg = config();
+    var cfg = config();
+    var port: u8[>..] = [];
+    if env("PROXY_PORT", port) {
+        let p, ok = parse_int(trim(port));
+        guard ok else { abort("PROXY_PORT: not a port"); }
+        cfg.listeners.push(http::Listener { port: p as i32 });
+    }
     load_database(cfg);
+    open_caches(cfg);
     http::run(cfg, worker);
+    stop_caches();
 }

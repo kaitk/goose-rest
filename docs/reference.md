@@ -732,6 +732,10 @@ fn resume(u: Use.Retry, cx) {
 }
 ```
 
+A server whose lanes every worker asks answers a refusal at once, without retrying, and
+sizes its boxes from the asks each worker admits
+([Sizing a lane's admissions and boxes](best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
+
 `plod::try_reply` and `plod::try_refuse` are the lane's side of the same rule: a send to
 a full box returns at once, and the lane decides. `plod::reply_value`, `plod::reply`,
 and `plod::fail` wait for room instead, which suits most lanes: every lane that replies
