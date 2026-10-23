@@ -502,7 +502,9 @@ var per_worker = 1;
 var cache_lanes = 0;
 
 // Reads DATABASE_URL and DATABASE_MAX_CONN, the connections over all of
-// cfg's workers and the cache's lanes, 256 without it. The lanes are only
+// cfg's workers and the cache's lanes, 256 without it, less one: HttpArena's
+// Postgres allows exactly DATABASE_MAX_CONN, and a pool that took them all
+// would refuse any other client, such as a check with psql. The lanes are only
 // where API_CACHE is set, as production-stack's compose file sets it.
 // Without a usable URL, /async-db answers NO_ITEMS, and /api 503.
 fn load_database(cfg: http::Config) {
@@ -518,6 +520,7 @@ fn load_database(cfg: http::Config) {
         let n, ok = parse_int(trim(text));
         if ok && n > 0 { total = n; }
     }
+    total = max(total - 1, 1);
     let workers = http::worker_count(cfg);
     var on: u8[>..] = [];
     if env("API_CACHE", on) { cache_lanes = max(min(workers, total / 2), 1); }

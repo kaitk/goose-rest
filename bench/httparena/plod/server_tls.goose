@@ -7,7 +7,7 @@ import http from "github.com/kaitk/goose-http@v0.5.6";
 import compress from "github.com/kaitk/goose-compress@v0.1.2";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
-import pg from "github.com/kaitk/goose-postgres@v0.0.3";
+import pg from "github.com/kaitk/goose-postgres@v0.0.4";
 import plod from "../../../";
 import plod.tls;
 import app;
