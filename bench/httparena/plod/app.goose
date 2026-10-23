@@ -450,14 +450,15 @@ fn format(out: u8[>..]&, r: const Rating&) { plod::format_fields(out, r); }
 fn format(out: u8[>..]&, it: const Item&) { plod::format_fields(out, it); }
 
 // /json's item: the dataset's, with its total at the request's multiplier.
+// Its strings are slices of the dataset's, not copies.
 struct Priced {
     id: i64,
-    name: u8[..64],
-    category: u8[..24],
+    name: const u8[:],
+    category: const u8[:],
     price: i64,
     quantity: i64,
     active: bool,
-    tags: u8[..24][..6],
+    tags: const u8[..24][:],
     rating: Rating,
     total: i64,
 }
@@ -476,10 +477,11 @@ fn items(cx, count: i64) {
     var m, has_m = plod::query_int(cx, "m");
     if !has_m { m = 1; }
     var priced: Priced[>..] = [];
-    for it in dataset[..count] {
-        priced.push(Priced { id: it.id, name: it.name, category: it.category, price: it.price,
-                             quantity: it.quantity, active: it.active, tags: it.tags, rating: it.rating,
-                             total: it.price * it.quantity * m });
+    for i in count {
+        priced.push(Priced { id: dataset[i].id, name: dataset[i].name, category: dataset[i].category,
+                             price: dataset[i].price, quantity: dataset[i].quantity,
+                             active: dataset[i].active, tags: dataset[i].tags, rating: dataset[i].rating,
+                             total: dataset[i].price * dataset[i].quantity * m });
     }
     plod::json(cx, 200, Listing<Priced> { items: priced, count: count });
 }
