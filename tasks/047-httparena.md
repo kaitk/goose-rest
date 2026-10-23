@@ -57,7 +57,11 @@ tier:
    and goose-http's API settled (its task 027).
 2. Correctness beyond HttpArena's validation: h2spec passing (goose-http's tasks 014.01
    and 061, over h2c and TLS on each loop), the parsers of what a client sends fuzzed
-   (goose-http's `fuzz/`), the limits and timeouts documented, and no known crash open.
+   (goose-http's `fuzz/`: the request head and chunked body, HPACK, h2 frames, and
+   multipart, an hour each with no finding, 2026-10-23, its `docs/development.md`), the
+   limits and timeouts documented, and no known crash open. A security audit after
+   Cloudflare's security-audit skill (2026-10-23) found one issue, `plod::cors`
+   echoing any origin with credentials under `*`, fixed the same day.
 3. Documentation for writing an application: the tutorial and best-practices guides.
 
 goose-http's own benchmark entry (its `bench/httparena/`, of type `engine`) isn't
