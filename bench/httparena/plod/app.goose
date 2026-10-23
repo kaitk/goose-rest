@@ -16,8 +16,20 @@
 //   GET        /async-db?min=&max=&limit=
 //                                  the items priced min to max, at most limit,
 //                                  from Postgres at DATABASE_URL
+//
+// production-stack's, behind its edge, which verifies the JWT and passes
+// X-User-Id on /api:
+//
+//   GET        /public/baseline?a=&b=, /public/json/:count
+//                                  as /baseline2 and /json/:count
+//   GET        /api/items/:id      the item, from the cache or Postgres, with
+//                                  X-Cache HIT or MISS
+//   POST       /api/items/:id      {"name","price","quantity"}: updates the
+//                                  item, and drops it from the cache; 204
+//   GET        /api/me             the user X-User-Id names, through the cache
 import std;
 import os;
+import dictionary;
 import json;
 import http;
 import plod;
@@ -25,6 +37,7 @@ import plod.compression;
 import plod.websocket;
 import pg;
 import pg.pool;
+import pg.socket;
 
 enum Use {
     None,
@@ -32,6 +45,7 @@ enum Use {
     File,
     Echo,
     Items { lo: i64, hi: i64, limit: i64 },
+    Cache,
 }
 
 struct St {
@@ -64,6 +78,33 @@ fn handle(cx) {
         plod::get(cx, "/static/*name") { plod::files(cx, STATIC, "name", cx.state.file, Use.File); };
         plod::get(cx, "/ws") { plod::ws_upgrade(cx, cx.state.ws, Use.Echo); };
         plod::get(cx, "/async-db") { async_db(cx); };
+        plod::scope(cx, "/public") {
+            plod::get(cx, "/baseline") { sum(cx, ""); };
+            plod::scope(cx, "/json") {
+                plod::compressed(cx) { cx =>
+                    plod::get(cx, "/:count") { items(cx, plod::param_int(cx, "count")); };
+                };
+            };
+        };
+        plod::scope(cx, "/api") {
+            // The edge sets it after authsvc has verified the token; without
+            // it, the request didn't come through the edge.
+            let user, has_user = plod::header(cx, "X-User-Id");
+            guard has_user else { plod::fail(cx, 401, "unauthorized"); }
+            plod::get(cx, "/items/:id") {
+                let id = plod::param_int(cx, "id");
+                ask_cache(cx, id, CacheJob.Item { id: id });
+            };
+            plod::post(cx, "/items/:id") {
+                let id = plod::param_int(cx, "id");
+                let b = plod::take<ItemUpdate>(cx);
+                ask_cache(cx, id, CacheJob.Update { id: id, name: b.name, price: b.price, quantity: b.quantity });
+            };
+            plod::get(cx, "/me") {
+                let id = plod::int_of(cx, user, "X-User-Id");
+                ask_cache(cx, id, CacheJob.User { id: id });
+            };
+        };
     };
 }
 
@@ -135,6 +176,159 @@ fn resume(u: Use.Items, cx) {
     }
     format(body, "],\"count\":", n, "}");
     plod::json_bytes(cx, 200, body);
+}
+
+// production-stack's cache, of CACHE_LANES lanes, each a thread that owns
+// the cache of the ids it's given and a Postgres connection. One thread
+// answers for each id, so that a write and the reads after it meet one
+// cache, where a worker's own would miss the writes other workers took.
+let CACHE_LANES = 8;
+let ITEM_TTL_NS: i64 = 1000000000;
+let USER_TTL_NS: i64 = 30000000000;
+
+enum CacheJob {
+    Item { id: i64 },
+    Update { id: i64, name: u8[..64], price: i64, quantity: i64 },
+    User { id: i64 },
+}
+
+// What the cache holds for an id: its JSON, until when, by the monotonic
+// clock, and, in a reply, whether it came from the cache.
+struct Cached { body: u8[..640], until: i64 = 0, hit: bool = false }
+
+var caches: plod::Lane<CacheJob, Use>[>..];
+
+fn open_caches() {
+    for i in CACHE_LANES {
+        caches.push(plod::lane_open<CacheJob>(http::LaneConfig { slots: 1024, .. }, Use.Cache, cache));
+    }
+}
+
+fn stop_caches() {
+    for l in caches { plod::lane_stop(l); }
+}
+
+fn ask_cache(cx, id: i64, job: CacheJob) {
+    guard id > 0 else { plod::fail(cx, 404, "not_found"); }
+    guard db_ok else { plod::fail(cx, 503, "no_database"); }
+    plod::ask(cx, caches[id % caches.len], job);
+}
+
+fn resume(u: Use.Cache, cx) { resume(plod::job<CacheJob>(cx), cx); }
+fn resume(u: CacheJob.Item, cx) { cached(cx); }
+fn resume(u: CacheJob.User, cx) { cached(cx); }
+fn resume(u: CacheJob.Update, cx) { plod::empty(cx, 204); }
+
+fn cached(cx) {
+    let c = plod::answer<Cached>(cx);
+    http::start(cx.out, 200);
+    http::field(cx.out, "X-Cache", if c.hit { "HIT" } else { "MISS" });
+    http::finish(cx.out, http::JSON, c.body);
+}
+
+thread_fn cache(box: http::Box, jobs: plod::Jobs<CacheJob>) {
+    var items = dictionary<i64, Cached> {};
+    var users = dictionary<i64, Cached> {};
+    var db = pg::Db { t: pg::Socket { .. }, .. };
+    plod::lane(box, jobs) { u, a => run(u, items, users, db, a); };
+    pg::close(db);
+}
+
+let ITEM = "SELECT id, name, category, price, quantity, active, rating_score, rating_count FROM items WHERE id = $1";
+let USER = "SELECT id, name, email, plan FROM users WHERE id = $1";
+let UPDATE_ITEM = "UPDATE items SET name = $1, price = $2, quantity = $3 WHERE id = $4";
+
+fn run(u: CacheJob.Item, items: dictionary<i64, Cached>&, users: dictionary<i64, Cached>&, db, a) {
+    var body: u8[>..] = [];
+    cache_aside(items, db, a, u.id, ITEM, ITEM_TTL_NS, body) { r =>
+        format(body, "{\"id\":", pg::text(r, 0), ",\"name\":");
+        http::json_string(body, pg::text(r, 1));
+        body.append(",\"category\":");
+        http::json_string(body, pg::text(r, 2));
+        format(body, ",\"price\":", pg::text(r, 3), ",\"quantity\":", pg::text(r, 4), ",\"active\":",
+               if pg::boolean(r, 5) { "true" } else { "false" },
+               ",\"rating\":{\"score\":", pg::text(r, 6), ",\"count\":", pg::text(r, 7), "}}");
+    };
+}
+
+fn run(u: CacheJob.User, items: dictionary<i64, Cached>&, users: dictionary<i64, Cached>&, db, a) {
+    var body: u8[>..] = [];
+    cache_aside(users, db, a, u.id, USER, USER_TTL_NS, body) { r =>
+        format(body, "{\"id\":", pg::text(r, 0), ",\"name\":");
+        http::json_string(body, pg::text(r, 1));
+        body.append(",\"email\":");
+        http::json_string(body, pg::text(r, 2));
+        body.append(",\"plan\":");
+        http::json_string(body, pg::text(r, 3));
+        body.push('}');
+    };
+}
+
+fn run(u: CacheJob.Update, items: dictionary<i64, Cached>&, users: dictionary<i64, Cached>&, db, a) {
+    var n: i64 = 0;
+    let failed = pg::run() {
+        connected(db);
+        n = pg::exec(db, UPDATE_ITEM, u.name[..], u.price, u.quantity, u.id);
+    };
+    guard failed.len == 0 else { plod::fail(a, 503, "database_unavailable"); }
+    guard n == 1 else { plod::fail(a, 404, "not_found"); }
+    items.remove(u.id);
+    plod::reply_value(a, n);
+}
+
+// Replies the JSON cache holds for key while it holds, or else the body F
+// writes of the row sql finds for key, which cache then holds for ttl_ns.
+inline fn cache_aside<F>(cache: dictionary<i64, Cached>&, db, a, key: i64, sql: const u8[:], ttl_ns: i64,
+                         body: const u8[>..]&) {
+    let now = clock_ns();
+    let held = cache.get(key);
+    if held && held.until > now {
+        var c = held;
+        c.hit = true;
+        plod::reply_value(a, c);
+    } else {
+        var n: i64 = 0;
+        let failed = pg::run() {
+            connected(db);
+            n = pg::query(db, sql, key) { r => F(r); };
+        };
+        guard failed.len == 0 else { plod::fail(a, 503, "database_unavailable"); }
+        guard n == 1 else { plod::fail(a, 404, "not_found"); }
+        var c = Cached { until: now + ttl_ns, .. };
+        guard body.len <= c.body.cap else { plod::fail(a, 500, "too_long"); }
+        c.body.append(body);
+        cache.insert(key, c);
+        plod::reply_value(a, c);
+    }
+}
+
+// Opens the lane's connection, again after one that broke.
+fn connected(db) {
+    if !pg::ready(db.c) { pg::open(db, db_cfg, 5000); }
+}
+
+// A POST /api/items/:id body.
+struct ItemUpdate { name: u8[..64], price: i64, quantity: i64 }
+
+fn read_update(r: json::Reader&, scratch: u8[>..]&) -> ItemUpdate {
+    var name = r.text[..0];
+    var price: i64 = 0;
+    var quantity: i64 = 0;
+    var has = 0;
+    json::each_member(r) { key =>
+        if key == "name" { name = json::read_string(r, scratch); has |= 1; }
+        else if key == "price" { price = json::read_int(r); has |= 2; }
+        else if key == "quantity" { quantity = json::read_int(r); has |= 4; }
+        else { json::skip(r); }
+    };
+    if has != 7 { json::fail(r, "name, price, and quantity: required"); }
+    if name.len > 64 { json::fail(r, "name: longer than 64 bytes"); }
+    if r.error.len > 0 { return ItemUpdate { name: "", price: 0, quantity: 0 }; }
+    return ItemUpdate { name: name, price: price, quantity: quantity };
+}
+
+fn plod::from_request(cx, v: const ItemUpdate?) -> ItemUpdate {
+    plod::json_body(cx) { r, scratch => read_update(r, scratch) }
 }
 
 fn on_call(cx) {

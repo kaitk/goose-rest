@@ -33,5 +33,7 @@ fn main() {
     cfg.listeners.push(http::Listener { port: 8081, tls: true });
     cfg.listeners.push(http::Listener { port: 8443, tls: true });
     load_database(cfg);
+    open_caches();
     http::run(cfg, ctx, worker);
+    stop_caches();
 }

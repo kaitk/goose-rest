@@ -9,7 +9,8 @@
 #                                             and profile, logs into OUT
 #
 # - Every profile's server cpuset, 0-31,64-95 on HttpArena's 128-thread
-#   machine, becomes SERVER_CPUS (0-3).
+#   machine, becomes SERVER_CPUS (0-3), and so does each cpuset of the entry's
+#   compose files, which the gateway profiles start.
 # - The load generators run in Docker (LOADGEN_DOCKER) on LOAD_CPUS (4-15) with
 #   THREADS (4) threads.
 # - latency-1m offers LATENCY_RATE (200,000) requests per second instead of
@@ -61,6 +62,7 @@ cp "$root"/*.goose "$entry/src/"
 cp "$root"/bench/httparena/plod/*.goose "$entry/src/bench/httparena/plod/"
 cp "$root/scripts/goose.sh" "$entry/src/scripts/"
 sed -i "s/0-31,64-95/$server_cpus/g" "$arena/scripts/lib/profiles.sh"
+sed -i "s/^\( *cpuset:\).*/\1 \"$server_cpus\"/" "$entry"/compose.*.yml
 if docker info --format '{{.OperatingSystem}}' | grep -q 'Docker Desktop'; then
     sed -i 's|if curl -sk -o /dev/null --max-time 2 |if docker run --rm --network host curlimages/curl:8.11.1 -sk -o /dev/null --max-time 2 |' \
         "$arena/scripts/lib/framework.sh"

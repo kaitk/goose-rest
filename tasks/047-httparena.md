@@ -1,10 +1,10 @@
 # 047: HttpArena
 
 Status: in-progress. The plan for entering HttpArena (2026-10-19). The entry,
-`bench/httparena/plod/`, subscribes to the 18 profiles goose-http serves, and passes
-HttpArena's `validate.sh` at `3717e25`: 101 checks, none failed, the static files'
-optional compression skipped (2026-10-23, Docker Desktop on an M1 Pro). The benchmark
-runs remain.
+`bench/httparena/plod/`, subscribes to 22 profiles, the gateway three among them,
+and passes HttpArena's `validate.sh` at `3717e25`: 144 checks, none failed, the
+static files' optional compression skipped (2026-10-23, Docker Desktop on an M1 Pro).
+The benchmark runs remain.
 
 This task is the master plan: which profiles the entry can run, what each one needs, and
 which repository builds it. The protocol and database work happens in those
@@ -29,7 +29,7 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | baseline, limited-conn, json-comp, async, latency-1m, latency-10k | Nothing more: goose-http passes them (goose-http's task 018), and `rest::pause(cx, ms, u)` (done, 2026-10-21) pauses a route before its response begins so `/delay/{ms}` answers 200 `text/plain` from the worker's timer table | This task's entry |
 | json-tls, 8gbit; static-tls (reference) | TLS 1.3 on port 8081 with the mounted RSA-2048 certificate, ALPN `http/1.1`. 8gbit echoes 10 KB at a pinned 50K requests per second and is scored on CPU per request | goose-tls task 001; goose-http task 014 |
 | api-4, api-16; async-db (reference) | `/async-db`: a Postgres range query, through an async driver with a pool of `DATABASE_MAX_CONN` (256) connections. The async-db profile itself is published but not scored | goose-postgres tasks 001 (the protocol, done) and 005 (the pool) |
-| gateway-64, gateway-h3, production-stack | `/async-db` again, behind a standard proxy that terminates TLS, h2, and h3. The rules forbid a custom proxy, so the server speaks plaintext HTTP/1.1. In production-stack the shared `authsvc` verifies the JWT at the edge, and the cache can be in-process | goose-postgres task 001; a compose file and an nginx config here |
+| gateway-64, gateway-h3, production-stack | `/async-db` again, behind a standard proxy that terminates TLS, h2, and h3. The rules forbid a custom proxy, so the server speaks plaintext HTTP/1.1. In production-stack the shared `authsvc` verifies the JWT at the edge, and the cache can be in-process | Done (2026-10-23): a compose file each, stock nginx for gateway-64 and production-stack and stock Caddy for gateway-h3 (stock nginx has no QUIC), and production-stack's routes in `app.goose`, its cache in lanes that each own the ids they're given and a blocking Postgres connection. validate.sh checks h3 only through h2; one h2load-h3 run got 2xx over h3 on Docker Desktop. Measuring, and sizing the lanes and boxes for the profile's load, remain |
 | echo-ws, echo-ws-pipeline, echo-ws-limited | WebSocket: the handshake, framing, and masking over `rest::upgrade` | goose-http task 054 |
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
@@ -130,6 +130,6 @@ implementations.
       saved
 - [ ] json-tls and 8gbit in the entry, passing HttpArena's TLS checks
 - [ ] api-4 and api-16 in the entry
-- [ ] gateway-64, gateway-h3, and production-stack in the entry
+- [x] gateway-64, gateway-h3, and production-stack in the entry (2026-10-23)
 - [ ] The three WebSocket profiles in the entry
 - [ ] The four h2 profiles in the entry
