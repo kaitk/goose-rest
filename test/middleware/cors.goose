@@ -1,6 +1,6 @@
 // plod::cors: a request without Origin, an allowed origin, an error inside,
-// a refused origin, a preflight, an OPTIONS that isn't one, and any origin
-// with credentials.
+// a refused origin, a preflight, an OPTIONS that isn't one, any origin
+// with credentials (answered "*", without them), and a listed origin with credentials.
 import std;
 import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../";
@@ -44,7 +44,19 @@ fn main() {
     let any = answer(expect::request("GET", "/", "Origin: https://c.example\r\n")) { cx =>
         plod::cors(cx, plod::Cors { origins: "*", credentials: true, .. }) { plod::text(cx, 200, "ok"); };
     };
-    expect::same(any, str("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: https://c.example\r\n",
-                          "Access-Control-Allow-Credentials: true\r\nVary: Origin\r\n", OK));
+    expect::same(any, str("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nVary: Origin\r\n", OK));
+    let any_preflight = answer(expect::request("OPTIONS", "/",
+                                               "Origin: https://c.example\r\nAccess-Control-Request-Method: PUT\r\n")) { cx =>
+        plod::cors(cx, plod::Cors { origins: "*", credentials: true, .. }) { plod::text(cx, 200, "ok"); };
+    };
+    expect::same(any_preflight, str("HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\n",
+                     "Access-Control-Allow-Methods: GET, HEAD, POST, PUT, PATCH, DELETE\r\n",
+                     "Access-Control-Allow-Headers: Authorization, Content-Type\r\nAccess-Control-Max-Age: 600\r\n",
+                     "Vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers\r\n\r\n"));
+    let listed = answer(expect::request("GET", "/", "Origin: https://c.example\r\n")) { cx =>
+        plod::cors(cx, plod::Cors { origins: "https://c.example", credentials: true, .. }) { plod::text(cx, 200, "ok"); };
+    };
+    expect::same(listed, str("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: https://c.example\r\n",
+                             "Access-Control-Allow-Credentials: true\r\nVary: Origin\r\n", OK));
     print("plod::cors: ok");
 }

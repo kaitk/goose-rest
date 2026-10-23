@@ -168,11 +168,34 @@ fn release_coded(x, fd: i32) {}
 // sendfile.
 fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, content_type: const u8[:] = "") {
     let f, status = http::open_file(path);
+    serve_opened(cx, f, status, if content_type.len > 0 { content_type } else { http::content_type_of(path) }, body,
+                 u);
+}
+
+// Answers a GET or HEAD with the file in dir that the route's path parameter
+// name names, as plod::file does, or with the copy http::open_precompressed
+// picks by the request's Accept-Encoding, under the original's type. The
+// parameter is decoded once, by http::file_path, which refuses a "." or ".."
+// segment, a backslash, a colon, or NUL: 404 file_not_found, as for no file.
+// An empty name, or one that ends in '/', serves the index.html in that
+// directory, if any; a directory named without the '/' is 404, as no file is,
+// since its page's relative links would resolve against its parent.
+fn files<S, A>(cx: Cx<S, A, http::Router>&, dir: const u8[:], name: const u8[:], body: http::FileBody&, u) {
+    var path: u8[>..] = [];
+    guard http::file_path(dir, http::param(cx.router, name), path) else { fail(cx, 404, "file_not_found"); }
+    if path.len == 0 || path[path.len - 1] == '/' { path.append("index.html"); }
+    let f, status = http::open_precompressed(cx.req, path);
+    serve_opened(cx, f, status, http::content_type_of(path), body, u);
+}
+
+// plod::file's answer for f, which open_file or open_precompressed opened
+// with status.
+fn serve_opened<S, A, R>(cx: Cx<S, A, R>&, f: http::File, status: i32, content_type: const u8[:],
+                         body: http::FileBody&, u) {
     if status == 404 { fail(cx, 404, "file_not_found"); }
     if status == 403 { fail(cx, 403, "forbidden"); }
     if status != 200 { fail(cx, 500, "file_unreadable"); }
-    http::serve_file(cx.req, cx.out, f, if content_type.len > 0 { content_type } else { http::content_type_of(path) },
-                     body);
+    http::serve_file(cx.req, cx.out, f, content_type, body);
     guard cx.out.stream.open else { return; }
     cx.state.use = u;
     var x .= cx.ex;

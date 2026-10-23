@@ -198,7 +198,7 @@ can have its own, and a public route none.
 | Call | Does |
 |---|---|
 | `plod::timed(cx) { ... }` | Adds `Server-Timing: app;dur=<ms>` with a 12-byte duration field padded with trailing spaces, and writes an access log line to standard error: method, target, status, bytes, milliseconds. `plod::timed(cx, false)` skips the log. |
-| `plod::cors(cx, plod::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
+| `plod::cors(cx, plod::Cors { origins: "...", .. }) { ... }` | Adds the CORS fields to every answer inside, errors included, for an origin in `origins` (separated by spaces, or `*`). `*` answers `Access-Control-Allow-Origin: *` and never sends credentials, whatever `credentials` says, so a program that sends credentials lists its origins. Answers a preflight with 204 itself, and an origin not listed with 403 `origin_not_allowed`. `methods`, `headers`, `expose`, `max_age`, and `credentials` set the rest. |
 | `plod::security_headers(cx, cfg) { ... }` | Adds a prepared security policy to every answer inside, errors included. HTML and API presets, configurable per scope: [Security headers](#22-security-headers). |
 | `plod::compressed(cx) { cx => ... }` | Compresses the answers inside, errors included, by the request's `Accept-Encoding`, with goose-http's gzip, deflate, and zstd. An optional module: [Compression](#21-compression). |
 | `plod::bearer(cx) { token => ... }` | Fails 401 `unauthenticated` with `WWW-Authenticate: Bearer` without a bearer token; `plod::invalid_token(cx)` refuses one. `plod::bearer_token(cx)` returns it, for a generated router's security check. |
@@ -567,7 +567,7 @@ and the request state holds the route's progress.
 | `plod::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
 | `plod::pause`, before `plod::begin` | `http::TIMEOUT` | goose-http's `TIMEOUT` at once, with no timer free: 503 `unavailable` with `Retry-After: 1` |
 | `plod::pause`, after `plod::begin` | `http::TIMEOUT`, the response still open; `http::CLOSED` if the client goes first | goose-http's `TIMEOUT` at once, with no timer free: the response ends, then `CLOSED` |
-| `plod::file` | `http::MORE`; `http::CLOSED`, both for `plod::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
+| `plod::file`, `plod::files` | `http::MORE`; `http::CLOSED`, both for `plod::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
 | `plod::upgrade` | `http::BODY` per arrival; `http::CLOSED`; `http::DRAINED` after `http::after_drain` | |
 | `plod::ws_upgrade` | `http::BODY` per arrival and `http::CLOSED`, both for `plod::ws_read`; `http::DRAINED` after `http::after_drain` | pings, Closes, and frames the protocol forbids ([WebSocket](#43-websocket)) |
 | `plod::relay`, at a reply's first piece | none | the reply's later pieces |
@@ -592,8 +592,26 @@ response cut short.
 | `plod::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `plod::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
 | `plod::file(cx, path, body, u, content_type)` | With `u` in `cx.state.use`, `http::serve_file`'s answer, with `ETag`, `Last-Modified`, and `Accept-Ranges`, and a type by `path`'s extension when `content_type` is empty. `body`, an `http::FileBody` in the request state, holds what's left to send. | 404 `file_not_found`, 403 `forbidden`, 500 `file_unreadable` |
+| `plod::files(cx, dir, name, body, u)` | In a route, `plod::file`'s answer for the file in `dir` that the path parameter `name` names, decoded once. A name that is empty or ends in `/` serves that directory's `index.html`. A copy beside the file, `NAME.br`, `NAME.zst`, or `NAME.gz`, goes in its place when the request's `Accept-Encoding` takes it, with `Content-Encoding` and the original's type (`http::open_precompressed`); each answer has `Vary: Accept-Encoding`. | 404 `file_not_found` also for a `.` or `..` segment, a backslash, a colon, or NUL in the decoded name; 403 `forbidden`, 500 `file_unreadable` |
 | `plod::send_file(cx, body)` | For the case function: at `MORE`, the next piece of up to 64 KB, and the end after the last; at `CLOSED`, closes the file. | |
 | `plod::upgrade(cx, protocol, u)` | With `u` in `cx.state.use`, `http::upgrade`'s 101. The client's bytes then come as `BODY`, with no `END` and no limit, and `plod::send` writes bytes as they are. `http::upgrade_of(cx.req)` is what the request asks to switch to. An HTTP/2 stream can't switch: goose-http answers it 501, and the route gets no calls. | |
+
+`plod::files` mounts a directory under a route that ends in `*name`, and its case
+function is `plod::file`'s:
+
+```rust
+plod::get(cx, "/static/*name") { plod::files(cx, "/data/static", "name", cx.state.file, Use.File); };
+
+fn resume(u: Use.File, cx) { plod::send_file(cx, cx.state.file); }
+```
+
+It reads the parameter as the path has it, still encoded, since a second decoding would
+turn `%252e` into `.`. The router answers a `.` or `..` segment, escaped or not, with 400
+`bad_path` before any route runs. Only a name that is empty or ends in `/` gets the
+directory's `index.html`: a directory requested without the `/`, such as
+`/static/docs`, answers 404 `file_not_found`, since its page's relative links would
+resolve against `/static/`. The type comes from goose-http's `http::content_type_of`, and an extension it
+doesn't know gets `application/octet-stream`.
 
 `http::Config`'s `max_body` caps `plod::body_in_pieces`'s limit as it caps `plod::body`'s. A
 piece of about 16 KB at each `MORE` keeps within `Config.max_queued`

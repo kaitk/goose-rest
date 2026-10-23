@@ -5,11 +5,22 @@ Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that 
 
 ## Unreleased
 
+Changed:
+
+- `plod::cors` with `origins: "*"` answers `Access-Control-Allow-Origin: *` and never
+  sends `Access-Control-Allow-Credentials`, even with `credentials: true`; it used to
+  echo any origin with credentials, which let any website read a signed-in user's
+  answers. A program that sends credentials lists its origins
+  ([reference](docs/reference.md)).
+
 Added:
 
 - An upgraded route, a WebSocket's among them, gets goose-http's `http::DRAINED` after
   it calls `http::after_drain(cx.out)`, so a publisher sends its next batch once the
   last has reached the socket ([WebSocket](docs/reference.md#43-websocket)).
+- `plod::files` serves a directory under a `*name` route: a directory's `index.html`,
+  `.br`, `.zst`, and `.gz` copies by `Accept-Encoding`, and 404 for a name that would
+  leave the directory ([Later calls](docs/reference.md#4-later-calls)).
 
 ## v0.4.0 (2026-10-23)
 

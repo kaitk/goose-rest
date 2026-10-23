@@ -28,7 +28,8 @@ fn fill_timing(out: http::Reply, mark: i64, before: i64, ms: const u8[:]) {
 
 // Cross-origin resource sharing (the Fetch standard's CORS protocol), for
 // plod::cors. origins lists the origins allowed, separated by spaces, as
-// "https://app.example https://admin.example", or is "*" for any.
+// "https://app.example https://admin.example", or is "*" for any, answered
+// as "*" and never with credentials: a program that sends them lists its origins.
 struct Cors {
     origins: const u8[:],
     methods: const u8[:] = "GET, HEAD, POST, PUT, PATCH, DELETE",
@@ -44,6 +45,13 @@ fn origin_in(list: const u8[:], origin: const u8[:]) -> bool {
     var found = false;
     each_split(list, ' ') { if it.len > 0 && it == origin { found = true; } };
     return found;
+}
+
+// The Access-Control-Allow-Origin value for an allowed origin: "*" for any,
+// which never goes with credentials, or the origin itself.
+fn allow_origin(c: Cors, origin: const u8[:]) -> const u8[:] {
+    if c.origins == "*" { return "*"; }
+    return origin;
 }
 
 // Runs F for a request c allows, with the CORS fields in every answer F
@@ -121,8 +129,8 @@ fn format_ms(out: u8[..32]&, ns: i64) {
 
 fn answer_preflight(out: http::Reply, c: Cors, origin: const u8[:]) {
     http::start(out, 204);
-    http::field(out, "Access-Control-Allow-Origin", origin);
-    if c.credentials { http::field(out, "Access-Control-Allow-Credentials", "true"); }
+    http::field(out, "Access-Control-Allow-Origin", allow_origin(c, origin));
+    if c.credentials && c.origins != "*" { http::field(out, "Access-Control-Allow-Credentials", "true"); }
     http::field(out, "Access-Control-Allow-Methods", c.methods);
     if c.headers.len > 0 { http::field(out, "Access-Control-Allow-Headers", c.headers); }
     if c.max_age > 0 {
@@ -140,9 +148,9 @@ fn with_cors(scratch: u8[>..]&, common: const u8[:], c: Cors, origin: const u8[:
     let at = scratch.len;
     scratch.append(common);
     scratch.append("Access-Control-Allow-Origin: ");
-    scratch.append(origin);
+    scratch.append(allow_origin(c, origin));
     scratch.append("\r\n");
-    if c.credentials { scratch.append("Access-Control-Allow-Credentials: true\r\n"); }
+    if c.credentials && c.origins != "*" { scratch.append("Access-Control-Allow-Credentials: true\r\n"); }
     if c.expose.len > 0 {
         scratch.append("Access-Control-Expose-Headers: ");
         scratch.append(c.expose);
