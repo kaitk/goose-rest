@@ -710,6 +710,7 @@ plod::lane_stop(reports);
 | `plod::job<U>(cx)` | In the mark's `resume`: the job the reply carries back. | 500 `not_a_reply` at another event than `WAKE`; 502 `bad_reply` |
 | `plod::answer<T>(cx)` | In a job's `resume`: the value `plod::reply_value` replied, whole however many pieces it came in. | 502 `bad_reply` for a reply that isn't a `T`, as one `plod::reply` sent in pieces |
 | `plod::relay(cx, status, content_type)` | In a job's `resume`: answers with the bytes `plod::reply` replied after the job, whole, or chunked as the pieces come. | 502 `bad_reply` |
+| `plod::echo_head(job)`, `plod::echo_head_len(job)`, `plod::value_bytes(v)` | The front of a reply, the job behind its 4-byte length, and its length; and the bytes of `v` after it, as `plod::reply_value` sends them with `plod::REPLY_VALUE`. For a lane that sends a reply itself, in one message, and for checking at startup that the largest reply fits one ([Sizing a lane's admissions and boxes](best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)). | |
 
 `plod::try_ask` refuses at admission and leaves what follows to the route: it answers
 its own way, or pauses and asks again within a deadline it keeps in its variant. A
@@ -729,6 +730,10 @@ fn resume(u: Use.Retry, cx) {
     plod::pause(cx, 5, u);
 }
 ```
+
+A server whose lanes every worker asks answers a refusal at once, without retrying, and
+sizes its boxes from the asks each worker admits
+([Sizing a lane's admissions and boxes](best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
 
 `ms` defaults to 5000, as for every `plod::ask` and `plod::try_ask`. A reply longer than one message of
 the worker's box, `http::Config.mail_size` bytes, 256 by default, comes in pieces. The

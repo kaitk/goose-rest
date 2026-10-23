@@ -445,6 +445,141 @@ allows one writer.
 are in goose-http's
 [lanes](https://github.com/kaitk/goose-http/blob/main/docs/api.md#lanes).
 
+## 6.7 Sizing a lane's admissions and boxes
+
+When every worker asks the same lanes, bound the asks in flight with an admission count
+per worker, and size the boxes from it. Don't size the boxes for every wait goose-http
+allows. One wait per connection, `max_conns`, is 16,384 a worker by default, and boxes
+that hold a reply and a job for each of them take 306 MiB at 24 workers. This is the
+production setting for a server whose lanes serve all its workers, such as a cache with
+a lane per worker that owns the keys sent to it. HttpArena's production-stack entry,
+[`bench/httparena/plod/app.goose`](../../bench/httparena/plod/app.goose), follows it.
+
+### 6.7.1 Pick the admission count
+
+The admission count, *A*, is the most asks a worker has on the lanes at once, each from
+its `plod::try_ask` until its outcome reaches the route. Start from Little's law: the
+asks in flight across all workers average the asks per second times the time each takes
+from the ask to its reply, queueing included. Pick a few times that mean, so that a
+worker whose connections bring it more than its share still admits them. Then check
+that the boxes it implies fit your memory budget
+([What it costs](#675-what-it-costs)). The HttpArena entry admits 64 asks a worker:
+1,536 at 24 workers, four to eight times the 200 to 400 its load keeps in flight.
+
+Check *A* against the connections too. When the server is the bottleneck, every
+connection that sends a request waits on the lanes at once, so a worker with more such
+connections than *A* refuses the rest with 503, even while its lanes keep up. With
+*A* = 64 and 256 connections from wrk on `/api/items/:id`, 10 workers answered every
+request, and 3 workers, 85 connections each, refused 15% with 503 `busy`
+([What it costs](#675-what-it-costs) has the setup). HttpArena's production-stack opens
+256 and then 1,024 connections to its edge, which pass at most 1,024 requests at once
+to 24 workers: 43 a worker on average.
+
+A larger *A* adds no throughput: past what the lanes finish, the extra asks queue in the
+lanes' boxes and time out. A smaller one refuses bursts the lanes could absorb.
+
+### 6.7.2 Count the admissions in the route
+
+Keep the count in a global, which each worker has its own copy of. Refuse an ask past
+*A* with 503 before sending it, and count it once `plod::try_ask` sends it. Call
+`plod::own_waits` before the ask, so that the route gets the wait's `TIMEOUT` and the
+`CLOSED` of a client that leaves. Without it, a client that leaves during the wait never
+reaches the route, and its admission is never given back. The entry's route:
+
+```rust
+fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
+    guard admitted < ADMITTED else { plod::fail(cx, 503, "busy"); }
+    plod::own_waits(cx, Use.None);
+    let sent = plod::try_ask(cx, caches[owner % caches.len], job, 5000, REPLY_SLOT);
+    guard sent != http::TOO_LONG else { plod::fail(cx, 500, "job_too_long"); }
+    guard sent == http::SENT else { plod::fail(cx, 503, "unavailable"); }
+    admitted++;
+}
+```
+
+Give the admission back at the route's first later call with the lane's mark, before
+`plod::on_reply`. That call carries the ask's outcome: the reply, the lane's refusal, the
+`TIMEOUT`, or the `CLOSED`, and only one of them comes. `plod::on_reply` answers a
+refusal before the mark's `resume` runs, so the count can't wait for the `resume`:
+
+```rust
+if plod::resumed(cx) {
+    match cx.state.use {
+        Cache => { admitted--; },
+        _ => {},
+    }
+    plod::on_reply(cx) { resume(cx.state.use, cx); };
+}
+```
+
+The mark's `resume` tells the outcomes apart by `cx.kind`. `http::WAKE` decodes the
+reply. `http::TIMEOUT` answers 504 and never asks again, since a write may have run.
+`http::CLOSED` returns.
+
+### 6.7.3 Size the boxes from it
+
+| Setting | Size | Why |
+|---|---|---|
+| A worker's box, `Config.mail_slots` | *A*, plus the worker's other senders, such as a pool's hand-over per connection, to a power of two | A reply for each admitted ask, and room for replies to asks that ended while their replies were in flight |
+| A worker's message, `Config.mail_size` | The largest reply: the job, its 4-byte length, and the value | Each reply takes one slot. Check it at startup with `plod::echo_head_len` and `plod::value_bytes` |
+| A worker's waits, `Config.max_waiting` | *A*, plus the worker's other waits | Each admitted ask holds one wait, and its outcome frees it |
+| A lane's box, `LaneConfig.slots` | Four times its share of every worker's admissions, `4 × workers × A / lanes`, to a power of two | The keys spread unevenly over the lanes from moment to moment. At its share alone, 10 lanes refused 0.2% of the requests of a load they kept up with; at twice it, 0.003%; at four times, none. Not every worker's admissions: a hot key can send them all to one lane, whose box then refuses them |
+| The reply's promise, `plod::try_ask`'s `most` | One message | A reply in one message collects no pieces |
+
+Don't retry a refused ask. A retry waits in the route as the job would in a box, and
+under sustained overload it delays the same 503 while it holds a connection and a timer.
+Have each lane check `plod::still_wanted` before a job's work, so that a lane that
+recovers from a stall skips the jobs whose clients have gone.
+
+### 6.7.4 What is refused, and how
+
+| Where | What happens | The client gets |
+|---|---|---|
+| Past the worker's admissions | The route refuses before it asks | 503 `busy`, at once |
+| The lane's box is full | `plod::try_ask` returns `http::FULL` | 503 `unavailable`, at once |
+| A job longer than a lane's slot | `plod::try_ask` returns `http::TOO_LONG`, a configuration error | 500 |
+| The worker's box is full when the reply comes | The lane drops the reply | 504 `timeout`, at the ask's time limit |
+| No reply within the ask's time limit | The route gets `TIMEOUT` | 504 `timeout` |
+
+`plod::reply_value` and a lane's `plod::fail` wait for room when the worker's box is
+full, a millisecond at a time, until the route's wait ends. That suits most lanes. Every
+lane that replies to a worker shares its box, as do the pieces of a long reply, and the
+room comes back within a pass of the worker's loop. A lane that every worker asks
+shouldn't wait on one worker, because the other workers' jobs queue behind it. The
+entry's lanes send each reply in one message with `http::mail_send`, built as
+`plod::reply_value` builds it, and drop the reply when the box is full.
+
+### 6.7.5 What it costs
+
+A box takes its slots times the slot size plus 24 bytes, and the timer table 48 bytes a
+wait. With *A* = 64, a lane per worker, 512-byte replies, and 256-byte jobs, as the
+entry has:
+
+| Workers | Boxes, from *A* | Boxes, for `max_conns` | Timers, from *A* | Timers, for `max_conns` |
+|---:|---:|---:|---:|---:|
+| 4 | 0.54 MiB | 51 MiB | 12 KiB | 3 MiB |
+| 24 | 3.21 MiB | 306 MiB | 72 KiB | 18 MiB |
+| 64 | 8.56 MiB | 816 MiB | 192 KiB | 48 MiB |
+
+Each worker's box also keeps a live-key table of 8 bytes a connection, 128 KiB at the
+default `max_conns`, however the boxes are sized.
+
+Measured on the entry's server alone, under Docker Desktop on an M1 Pro (2026-10-23):
+its own Postgres, then wrk with 4 threads and 256 connections, 15 seconds on
+`/api/items/:id` over 10,000 ids and 10 seconds on `/api/me`, one run each. The peak
+resident memory, `VmHWM`:
+
+| Workers (CPUs) | Boxes from *A* | Boxes for `max_conns` |
+|---:|---:|---:|
+| 3 | 46 MiB | 85 MiB |
+| 10 | 77 MiB | 209 MiB |
+
+With 10 workers both answered every request, at 365,000 and 383,000 requests a second
+on `/api/items/:id`: 5% apart, from one run each. With 3 workers, the boxes from *A*
+refused 15% of `/api/items/:id` with 503 `busy` and still answered 6% more of it with
+200, and refused 7% of `/api/me`. The boxes for `max_conns` refused none
+([Pick the admission count](#671-pick-the-admission-count)).
+
 ---
 
 [Best practices](README.md) · Previous: [Middleware and stacks](middleware.md) · Next:
