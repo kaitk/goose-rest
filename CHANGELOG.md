@@ -3,6 +3,20 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## v0.5.4 (2026-10-23)
+
+Goose `v2026.3`, goose-http `v0.5.8`, goose-compress `v0.1.4`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` goose-tls `v0.0.5`. No breaking changes.
+
+Changed:
+
+- goose-http `v0.5.8`: `plod::compressed` compresses bodies from 256 bytes, down from
+  1,024, since gzip saves bytes on JSON from about 192 bytes on. A route that wants the
+  old threshold passes `http::Compression { min_size: 1024, .. }`
+  ([Compression](docs/reference.md#21-compression)).
+- goose-compress `v0.1.4`: gzip at level 1 takes 12 to 15 percent less time on 4 to 8
+  KB JSON bodies, with the same bytes; its level 1 matcher and symbol coder are C.
+
 ## v0.5.3 (2026-10-23)
 
 Goose `v2026.3`, goose-http `v0.5.7`, goose-compress `v0.1.3`; `plod.websocket`
