@@ -140,3 +140,9 @@ Pro):
   `GIT_CONFIG_*` variables for both.
 - Docker's seccomp profile blocks `io_uring_setup`, so `plod::serve` runs on goose-http's
   emulated ring over epoll there.
+- Building the HttpArena entry's image for amd64 on an Apple Silicon Mac
+  (`docker buildx build --platform linux/amd64`) fails where it unpacks Goose's
+  release: `ubuntu:26.04`'s GNU tar 1.35, emulated, gets "Function not implemented" for
+  every file and directory inside a directory of the archive (2026-10-23). A native
+  x86-64 build unpacks it. To check the rest of the build from a Mac, unpack the
+  archive in a stage `FROM --platform=$BUILDPLATFORM` and copy it into the build stage.
