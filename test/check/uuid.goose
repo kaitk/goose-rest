@@ -1,6 +1,6 @@
 // plod::is_uuid, format uuid's check.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../";
 
 fn main() {

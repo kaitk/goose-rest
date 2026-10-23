@@ -4,7 +4,7 @@
 //
 //   goose docs/best-practices/routes-and-rules/test.goose
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../../";
 import projects.rules;
 

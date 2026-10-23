@@ -4,7 +4,7 @@
 //   build/plod gen docs/tutorial/04-json/types/api.json -o docs/tutorial/04-json/types/api_gen.goose
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../../../";
 import .api_gen;
 

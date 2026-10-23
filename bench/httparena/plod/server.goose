@@ -1,7 +1,7 @@
 // The entry without TLS (app.goose), for the profiles on 8080 and 8082.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
-import compress from "github.com/kaitk/goose-compress@v0.1.1";
+import http from "github.com/kaitk/goose-http@v0.5.6";
+import compress from "github.com/kaitk/goose-compress@v0.1.2";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import pg from "github.com/kaitk/goose-postgres@v0.0.3";
 import plod from "../../../";

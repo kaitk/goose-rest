@@ -4,7 +4,7 @@
 // then gets CLOSED when the connection ends. Event by event, as goose-http
 // gives them.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "../../";
 import plod.websocket;

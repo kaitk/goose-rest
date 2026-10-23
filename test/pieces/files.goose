@@ -3,7 +3,7 @@
 // Accept-Encoding, HEAD, and a range. Writes test_files/ in the working
 // directory.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../";
 import expect from "../";
 import common;

@@ -4,7 +4,7 @@
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 
 // What serve answers to text, one request's bytes, through H(cx) inside
 // plod::route: the status line, the fields, and the body, without Date or
