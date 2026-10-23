@@ -93,16 +93,17 @@ fn handle(cx) {
             guard has_user else { plod::fail(cx, 401, "unauthorized"); }
             plod::get(cx, "/items/:id") {
                 let id = plod::param_int(cx, "id");
-                ask_cache(cx, id, CacheJob.Item { id: id });
+                ask_cache(cx, id, id, CacheJob.Item { id: id });
             };
             plod::post(cx, "/items/:id") {
                 let id = plod::param_int(cx, "id");
                 let b = plod::take<ItemUpdate>(cx);
-                ask_cache(cx, id, CacheJob.Update { id: id, name: b.name, price: b.price, quantity: b.quantity });
+                ask_cache(cx, id, id, CacheJob.Update { id: id, name: b.name, price: b.price, quantity: b.quantity });
             };
             plod::get(cx, "/me") {
                 let id = plod::int_of(cx, user, "X-User-Id");
-                ask_cache(cx, id, CacheJob.User { id: id });
+                turn++;
+                ask_cache(cx, id, turn, CacheJob.User { id: id });
             };
         };
     };
@@ -178,11 +179,18 @@ fn resume(u: Use.Items, cx) {
     plod::json_bytes(cx, 200, body);
 }
 
-// production-stack's cache, of CACHE_LANES lanes, each a thread that owns
-// the cache of the ids it's given and a Postgres connection. One thread
-// answers for each id, so that a write and the reads after it meet one
-// cache, where a worker's own would miss the writes other workers took.
-let CACHE_LANES = 8;
+// production-stack's cache, of lanes, each a thread that owns the cache of
+// the ids it's given and a Postgres connection. One lane answers for each
+// item, so that a write and the reads after it meet one cache, where a
+// worker's own would miss the writes other workers took. Users, which
+// nothing writes, go to each lane in turn, so that /api/me, whose user is
+// the same on every request, doesn't queue on one lane.
+//
+// A lane blocks on Postgres for each miss, and the jobs behind it wait, so
+// there are as many lanes as workers: the misses grow with the load the
+// workers take. A lane costs a thread and its box, and waits on the box
+// while idle. The lanes' connections take at most half of
+// DATABASE_MAX_CONN, and the workers' pools share the rest.
 let ITEM_TTL_NS: i64 = 1000000000;
 let USER_TTL_NS: i64 = 30000000000;
 
@@ -198,20 +206,53 @@ struct Cached { body: u8[..640], until: i64 = 0, hit: bool = false }
 
 var caches: plod::Lane<CacheJob, Use>[>..];
 
-fn open_caches() {
-    for i in CACHE_LANES {
-        caches.push(plod::lane_open<CacheJob>(http::LaneConfig { slots: 1024, .. }, Use.Cache, cache));
+// The worker's count of /api/me requests, which picks their lanes.
+var turn = 0;
+
+// production-stack's load, at its larger connection count, holds 1,024 × 16
+// read streams and 128 × 8 write streams open, each with at most one job
+// waiting on a lane. Each lane's box takes twice its even share of them, so
+// that it doesn't refuse one (503), and each worker's box twice its share of
+// their replies, one message each, so that a lane doesn't sleep on a full box.
+let STREAMS = 1024 * 16 + 128 * 8;
+
+// A reply's slot: a Cached and the job it echoes take under 800 bytes.
+let REPLY_SLOT: i32 = 1024;
+
+// A reply's promise from the worker's gather budget, 64 MB: ask's default,
+// 64 KB, would hold 1,024 waits, where this holds max_waiting's 16,384.
+let REPLY_MOST = 4096;
+
+// Opens cache_lanes lanes, and sizes cfg's boxes for their replies.
+fn open_caches(cfg: http::Config&) {
+    guard cache_lanes > 0 else { return; }
+    let workers = http::worker_count(cfg);
+    let lane_slots = power_of_two(2 * STREAMS / cache_lanes);
+    for i in cache_lanes {
+        caches.push(plod::lane_open<CacheJob>(http::LaneConfig { slots: lane_slots, .. }, Use.Cache, cache));
     }
+    cfg.mail_slots = max(cfg.mail_slots, power_of_two(2 * STREAMS / workers));
+    cfg.mail_size = REPLY_SLOT;
+    write_stderr(str("cache: ", workers, " workers, ", cache_lanes, " lanes of ", lane_slots, " slots, ",
+                     cfg.mail_slots, " reply slots a worker, pools of ", per_worker, "\n"));
+}
+
+// The least power of two of at least n and 2, a box's slots.
+fn power_of_two(n: i64) -> i32 {
+    var p = 2;
+    while p < n { p *= 2; }
+    return p as i32;
 }
 
 fn stop_caches() {
     for l in caches { plod::lane_stop(l); }
 }
 
-fn ask_cache(cx, id: i64, job: CacheJob) {
+// Asks the lane owner picks for job.
+fn ask_cache(cx, id: i64, owner: i64, job: CacheJob) {
     guard id > 0 else { plod::fail(cx, 404, "not_found"); }
-    guard db_ok else { plod::fail(cx, 503, "no_database"); }
-    plod::ask(cx, caches[id % caches.len], job);
+    guard caches.len > 0 else { plod::fail(cx, 503, "no_cache"); }
+    plod::ask(cx, caches[owner % caches.len], job, 5000, REPLY_MOST);
 }
 
 fn resume(u: Use.Cache, cx) { resume(plod::job<CacheJob>(cx), cx); }
@@ -453,15 +494,17 @@ fn load_dataset() {
 }
 
 // The Postgres settings, which main reads before the workers start, and each
-// worker copies: db_ok once DATABASE_URL is usable, and each worker's share
-// of DATABASE_MAX_CONN.
+// worker copies: db_ok once DATABASE_URL is usable, each worker's share of
+// DATABASE_MAX_CONN, and the cache's lanes, one connection each.
 var db_cfg: pg::Config;
 var db_ok = false;
 var per_worker = 1;
+var cache_lanes = 0;
 
 // Reads DATABASE_URL and DATABASE_MAX_CONN, the connections over all of
-// cfg's workers, 256 without it. Without a usable URL, /async-db answers
-// NO_ITEMS.
+// cfg's workers and the cache's lanes, 256 without it. The lanes are only
+// where API_CACHE is set, as production-stack's compose file sets it.
+// Without a usable URL, /async-db answers NO_ITEMS, and /api 503.
 fn load_database(cfg: http::Config) {
     var url: u8[>..] = [];
     guard env("DATABASE_URL", url) else { return; }
@@ -475,7 +518,10 @@ fn load_database(cfg: http::Config) {
         let n, ok = parse_int(trim(text));
         if ok && n > 0 { total = n; }
     }
-    per_worker = max(total / http::worker_count(cfg), 1);
+    let workers = http::worker_count(cfg);
+    var on: u8[>..] = [];
+    if env("API_CACHE", on) { cache_lanes = max(min(workers, total / 2), 1); }
+    per_worker = max((total - cache_lanes) / workers, 1);
 }
 
 // The configuration both root files serve: HttpArena's 8080, h2c on 8082,

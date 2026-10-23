@@ -28,7 +28,7 @@ fn main() {
         cfg.listeners.push(http::Listener { port: p as i32 });
     }
     load_database(cfg);
-    open_caches();
+    open_caches(cfg);
     http::run(cfg, worker);
     stop_caches();
 }

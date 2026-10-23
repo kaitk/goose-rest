@@ -88,6 +88,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - DATABASE_MAX_CONN=256
       - PROXY_PORT=8085
+      - API_CACHE=1
     volumes:
       - ${DATA_DIR}/dataset.json:/data/dataset.json:ro
     depends_on:
