@@ -10,7 +10,8 @@
 //                                  as the request's Accept-Encoding takes
 //   GET        /delay/:ms          ms, after ms milliseconds
 //   POST       /echo               the body, as it came
-//   GET        /static/*name       the file of /data/static
+//   GET        /static/*name       the file of /data/static, or its .br or .gz
+//                                  copy as the request's Accept-Encoding takes
 //   GET        /ws                 a WebSocket that echoes each message
 import std;
 import os;
@@ -50,11 +51,7 @@ fn handle(cx) {
             plod::pause(cx, ms, Use.Delay { ms: ms });
         };
         plod::post(cx, "/echo") { http::respond(cx.out, 200, "application/octet-stream", plod::body(cx)); };
-        plod::get(cx, "/static/*name") {
-            var path: u8[>..] = [];
-            guard http::file_path(STATIC, plod::param(cx, "name"), path) else { plod::fail(cx, 404, "file_not_found"); }
-            plod::file(cx, path, cx.state.file, Use.File);
-        };
+        plod::get(cx, "/static/*name") { plod::files(cx, STATIC, "name", cx.state.file, Use.File); };
         plod::get(cx, "/ws") { plod::ws_upgrade(cx, cx.state.ws, Use.Echo); };
     };
 }
