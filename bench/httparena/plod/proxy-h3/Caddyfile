@@ -1,7 +1,7 @@
 # The edge of gateway-h3: stock Caddy terminating TLS and h1, h2, and h3 on
 # 8443, tcp and udp, serving /static/* from disk, and forwarding the rest over
-# HTTP/1.1 to the server on PROXY_PORT, 8085. Caddy rather than nginx.conf's
-# nginx because the stock nginx image has no QUIC. Modelled on
+# HTTP/1.1 to the server on PROXY_PORT, 8085. Caddy rather than the nginx
+# of proxy/ because the stock nginx image has no QUIC. Modelled on
 # aspnet-minimal_caddy's proxy/Caddyfile.
 {
 	admin off
@@ -12,7 +12,7 @@
 }
 
 https://localhost:8443 {
-	# As in nginx.conf: the loopback addresses, not the wildcard the entry's
+	# As in proxy/nginx.conf: the loopback addresses, not the wildcard the entry's
 	# own container holds during validate.sh.
 	bind 127.0.0.1 [::1]
 	tls /certs/server.crt /certs/server.key
