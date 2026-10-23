@@ -7,14 +7,16 @@ import http from "github.com/kaitk/goose-http@v0.5.5";
 import compress from "github.com/kaitk/goose-compress@v0.1.1";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
+import pg from "github.com/kaitk/goose-postgres@dfd16c1b8a2aa0f678ffc59a1a47ed65e9f32812";
 import plod from "../../../";
 import plod.tls;
 import app;
 
 thread_fn worker(cfg: http::Config, ctx: tls::Context) {
     var server = http::tls_server(ctx);
-    var none = plod::NoState { .. };
-    let e = plod::serve(cfg, none, St { .. }, server) { cx => on_call(cx); };
+    var app = App { db: pg::pool(db_cfg, per_worker) };
+    let e = plod::serve(cfg, app, St { .. }, server) { cx => on_call(cx); };
+    pg::close(app.db);
     http::release(server);
     if e.code != 0 { http::report(e); }
 }
@@ -30,5 +32,6 @@ fn main() {
     var cfg = config();
     cfg.listeners.push(http::Listener { port: 8081, tls: true });
     cfg.listeners.push(http::Listener { port: 8443, tls: true });
+    load_database(cfg);
     http::run(cfg, ctx, worker);
 }

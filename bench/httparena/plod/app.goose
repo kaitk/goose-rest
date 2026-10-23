@@ -13,6 +13,9 @@
 //   GET        /static/*name       the file of /data/static, or its .br or .gz
 //                                  copy as the request's Accept-Encoding takes
 //   GET        /ws                 a WebSocket that echoes each message
+//   GET        /async-db?min=&max=&limit=
+//                                  the items priced min to max, at most limit,
+//                                  from Postgres at DATABASE_URL
 import std;
 import os;
 import json;
@@ -20,19 +23,26 @@ import http;
 import plod;
 import plod.compression;
 import plod.websocket;
+import pg;
+import pg.pool;
 
 enum Use {
     None,
     Delay { ms: i64 },
     File,
     Echo,
+    Items { lo: i64, hi: i64, limit: i64 },
 }
 
 struct St {
     use: Use = Use.None,
     file: http::FileBody = http::FileBody { .. },
     ws: http::WebSocket = http::WebSocket { .. },
+    ticket: pg::Ticket = pg::Ticket { .. },
 }
+
+// The worker state: the worker's pool of Postgres connections, which ends it.
+struct App { db: pg::Pool }
 
 fn handle(cx) {
     plod::routes(cx) { cx =>
@@ -53,6 +63,7 @@ fn handle(cx) {
         plod::post(cx, "/echo") { http::respond(cx.out, 200, "application/octet-stream", plod::body(cx)); };
         plod::get(cx, "/static/*name") { plod::files(cx, STATIC, "name", cx.state.file, Use.File); };
         plod::get(cx, "/ws") { plod::ws_upgrade(cx, cx.state.ws, Use.Echo); };
+        plod::get(cx, "/async-db") { async_db(cx); };
     };
 }
 
@@ -78,6 +89,52 @@ fn resume(u: Use.File, cx) { plod::send_file(cx, cx.state.file); }
 
 fn resume(u: Use.Echo, cx) {
     plod::ws_read(cx, cx.state.ws) { op, data => http::ws_send(cx.out, op, data); };
+}
+
+let ITEMS = "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN $1 AND $2 LIMIT $3";
+
+// What HttpArena asks for when Postgres doesn't answer.
+let NO_ITEMS = "{\"items\":[],\"count\":0}";
+
+fn async_db(cx) {
+    var lo, has_lo = plod::query_int(cx, "min");
+    var hi, has_hi = plod::query_int(cx, "max");
+    var limit, has_limit = plod::query_int(cx, "limit");
+    if !has_lo { lo = 10; }
+    if !has_hi { hi = 50; }
+    limit = if has_limit { min(max(limit, 1), 50) } else { 50 };
+    guard db_ok else {
+        plod::json_bytes(cx, 200, NO_ITEMS);
+        return;
+    }
+    plod::own_waits(cx, Use.Items { lo: lo, hi: hi, limit: limit });
+    resume(cx.state.use, cx);
+}
+
+// At the request, and at each later event of the query: a connection handed
+// over, the socket ready, its time limit passed, or the client gone, where
+// the pool gives its connection back. The block sees every row in the call
+// that finds the whole answer.
+fn resume(u: Use.Items, cx) {
+    var body: u8[>..] = [];
+    body.append("{\"items\":[");
+    let n = pg::query(cx.app.db, cx.state.ticket, cx.out, cx.kind, cx.reply, 5000, ITEMS, u.lo, u.hi, u.limit) { r =>
+        if body.len > 10 { body.push(','); }
+        format(body, "{\"id\":", pg::text(r, 0), ",\"name\":");
+        http::json_string(body, pg::text(r, 1));
+        body.append(",\"category\":");
+        http::json_string(body, pg::text(r, 2));
+        format(body, ",\"price\":", pg::text(r, 3), ",\"quantity\":", pg::text(r, 4), ",\"active\":",
+               if pg::boolean(r, 5) { "true" } else { "false" }, ",\"tags\":", pg::text(r, 6),
+               ",\"rating\":{\"score\":", pg::text(r, 7), ",\"count\":", pg::text(r, 8), "}}");
+    };
+    if n == pg::WAITS { return; }
+    if n == pg::FAILS {
+        plod::json_bytes(cx, 200, NO_ITEMS);
+        return;
+    }
+    format(body, "],\"count\":", n, "}");
+    plod::json_bytes(cx, 200, body);
 }
 
 fn on_call(cx) {
@@ -201,9 +258,35 @@ fn load_dataset() {
     guard fits else { abort(str(path, ": a name, category, or tag too long, or more than 6 tags")); }
 }
 
+// The Postgres settings, which main reads before the workers start, and each
+// worker copies: db_ok once DATABASE_URL is usable, and each worker's share
+// of DATABASE_MAX_CONN.
+var db_cfg: pg::Config;
+var db_ok = false;
+var per_worker = 1;
+
+// Reads DATABASE_URL and DATABASE_MAX_CONN, the connections over all of
+// cfg's workers, 256 without it. Without a usable URL, /async-db answers
+// NO_ITEMS.
+fn load_database(cfg: http::Config) {
+    var url: u8[>..] = [];
+    guard env("DATABASE_URL", url) else { return; }
+    let settings, why = pg::url_settings(url);
+    guard why.len == 0 else { return; }
+    db_cfg = settings;
+    db_ok = true;
+    var text: u8[>..] = [];
+    var total = 256;
+    if env("DATABASE_MAX_CONN", text) {
+        let n, ok = parse_int(trim(text));
+        if ok && n > 0 { total = n; }
+    }
+    per_worker = max(total / http::worker_count(cfg), 1);
+}
+
 // The configuration both root files serve: HttpArena's 8080, h2c on 8082,
-// and /delay's timers, up to 16,384 waiting a worker, as many as its
-// connections.
+// and the waits of /delay and /async-db, up to 16,384 a worker, as many as
+// its connections.
 fn config() -> http::Config {
     var cfg = http::Config { port: 8080, mail_slots: 256, max_waiting: 16384, .. };
     cfg.listeners.push(http::Listener { port: 8082, h2c: true });
