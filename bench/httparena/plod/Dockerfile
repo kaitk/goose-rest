@@ -29,8 +29,9 @@ RUN set -eu; \
 
 WORKDIR /src
 COPY app.goose server.goose server_tls.goose ./
-# Two builds: server, without TLS, and server-tls, with the TLS listeners,
-# which links OpenSSL; the plain profiles don't load it.
+# Two builds: server, without TLS, and server-tls, with the TLS listeners:
+# goose-tls's TLS 1.3 server, in Goose, over OpenSSL's libcrypto for the
+# ciphers and keys. The plain profiles don't load libcrypto.
 RUN goose=$(cat /goose-path) && \
     $goose build --cc gcc --standalone -o /server server.goose && \
     $goose build --cc gcc --standalone -o /server-tls server_tls.goose

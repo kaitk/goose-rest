@@ -17,7 +17,7 @@ on arm64, which the release has no archive for.
 | [Plod](https://github.com/kaitk/plod) | `v0.5.3` | The framework, with `plod::try_reply` |
 | [goose-http](https://github.com/kaitk/goose-http) | `v0.5.7` | HTTP/1.1, h2, WebSocket, the loop, and mail between threads |
 | [goose-compress](https://github.com/kaitk/goose-compress) | `v0.1.3` | gzip, deflate, and zstd |
-| [goose-tls](https://github.com/kaitk/goose-tls) | `v0.0.5` | TLS 1.3 over OpenSSL |
+| [goose-tls](https://github.com/kaitk/goose-tls) | `v0.0.5` | A TLS 1.3 server in Goose, over OpenSSL's libcrypto for the ciphers and keys |
 | [goose-hash](https://github.com/kaitk/goose-hash) | `v0.0.4` | SHA-1 for the WebSocket handshake, SHA-256 for SCRAM |
 | [goose-postgres](https://github.com/kaitk/goose-postgres) | `v0.0.5` | Goose's Postgres driver: the protocol, an async pool per worker, and a blocking connection |
 
@@ -29,9 +29,10 @@ on arm64, which the release has no archive for.
   HTTP/1.1 by ALPN on 8443.
 - 8085, under the compose files only (`PROXY_PORT`): HTTP/1.1 for the proxy.
 
-The image holds two binaries: `server`, without TLS, and `server-tls`, which links
-OpenSSL and adds 8081 and 8443. It starts `server-tls` where `/certs` holds the
-certificate and key, and `server` otherwise, so the plain profiles don't load OpenSSL.
+The image holds two binaries: `server`, without TLS, and `server-tls`, which adds 8081
+and 8443 with goose-tls's server, its handshake and records in Goose and its ciphers
+from libcrypto. It starts `server-tls` where `/certs` holds the certificate and key,
+and `server` otherwise, so the plain profiles don't load libcrypto.
 
 Under compose, the server gets no `/certs`, so 8443 is the proxy's. It still opens 8080,
 where `benchmark.sh`'s readiness probe looks for every compose profile, as libuvcpp's
