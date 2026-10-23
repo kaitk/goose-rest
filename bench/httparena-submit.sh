@@ -7,12 +7,11 @@
 #   HTTPARENA_COMMIT=origin/main bench/httparena.sh validate   # first
 #   bench/httparena-submit.sh DIR
 #
-# Where the fork has a branch plod, the pull request from it is open, and the
-# commit goes on top: HttpArena's bot commits benchmark results to that
-# branch. Push it with git push origin plod. Otherwise branch plod starts from
+# While a pull request from branch plod is open, as gh reports it, the commit
+# goes on top of the fork's plod: HttpArena's bot commits benchmark results
+# there. Push it with git push origin plod. Otherwise branch plod starts from
 # HttpArena's main: push it with git push -f origin plod, and open the pull
-# request with gh pr create --repo MDA2AV/HttpArena --head <owner>:plod. Delete
-# the fork's branch once the pull request is merged.
+# request with gh pr create --repo MDA2AV/HttpArena --head <owner>:plod.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -36,7 +35,8 @@ if [ -n "$(git -C "$dir" status --porcelain)" ]; then
     echo "$dir has uncommitted changes" >&2
     exit 1
 fi
-if git -C "$dir" ls-remote --exit-code -q origin plod >/dev/null; then
+open=$(gh pr list --repo MDA2AV/HttpArena --head plod --state open --json number --jq length)
+if [ "$open" -gt 0 ]; then
     git -C "$dir" fetch -q origin plod
     git -C "$dir" checkout -q plod
     git -C "$dir" merge -q --ff-only FETCH_HEAD
