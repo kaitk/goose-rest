@@ -732,24 +732,30 @@ doesn't fit one message is `TOO_LONG`, so one ask stays one message. This reject
 Decided (2026-10-23): a server whose lanes every worker asks bounds its asks in flight
 by an admission count per worker, and sizes its boxes and `max_waiting` from it
 ([Sizing a lane's admissions and boxes](best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
-The count covers the connections a worker serves under healthy load, since each
-carries one ask at a time, so refusal is the ceiling under overload, not part of normal
-operation. The route refuses an ask past the count with 503 `busy` at once, owns its
+The count covers the requests in flight a worker gets under healthy load, so refusal
+is the ceiling under overload, not part of normal operation. Requests, not client
+connections: an HTTP/2 edge passes each stream on as a request of its own over
+HTTP/1.1. The bound holds at any count, because the boxes are sized from the count, not
+from every worker's worst case. The route refuses an ask past the count with 503 `busy` at once, owns its
 waits so that every outcome reaches it, and gives the admission back at that outcome.
 A full lane box is 503 `unavailable`: a hot key can send every worker's asks to one
 lane, and no box size short of all of them prevents it. Each lane's box holds its share
 of every worker's admissions. The lanes reply with `plod::try_reply` and refuse with
 `plod::try_refuse` (the entry above), so that a full worker box drops the reply, which
 ends as that route's 504, and a lane never waits on one worker. HttpArena's
-production-stack entry admits 256 asks a worker. This rejected:
+production-stack entry admits 1,024 asks a worker. This rejected:
 
 - Boxes sized for every wait goose-http allows, `max_waiting` = `max_conns`: 306 MiB at
-  24 workers, where an admission count of 256 takes 7.9 MiB.
+  24 workers, where an admission count of 1,024 takes 32 MiB.
 - An admission count of 64 a worker, from Little's law's mean in flight: it was below
   the connections a worker serves, and 3 workers under 256 connections refused 15% of a
   load their lanes kept up with, where 256 refused none.
+- An admission count of 256 a worker, from client connections: too low behind an
+  HTTP/2 edge. production-stack's load opens 1,024 connections of 16 streams for reads,
+  about 16,000 requests in flight, 60% of them to the cache, plus 128 connections of 8
+  streams for writes: up to about 10,000 cache asks, some 400 a worker at 24 workers.
 - Lane boxes of four times their share, which 64 admissions a worker needed (at the
-  share, 10 lanes refused 0.2%): at 256, the share refused nothing.
+  share, 10 lanes refused 0.2%): at 256 and 1,024, the share refused nothing.
 - A connection cap at an nginx edge: open-source nginx answers 502 past an upstream's
   `max_conns`, with no queue, and without a shared zone it counts per nginx worker.
 - Retrying a refused ask from the route, paused, until a deadline: the retries are a

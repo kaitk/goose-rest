@@ -81,14 +81,16 @@ Each is documented configuration, set as the documentation says, not tuning.
 - production-stack's cache follows Plod's production guidance for lanes that every
   worker asks
   ([sizing a lane's admissions and boxes](https://github.com/kaitk/plod/blob/main/docs/best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).
-  A worker admits at most 256 asks to the lanes at once (`ADMITTED` in `app.goose`),
-  more than the connections it serves under the profile's load, since each carries one
-  ask at a time. It answers one past them with 503 `busy`, and one a full lane box
-  refuses with 503 `unavailable`, at once, and doesn't retry. The boxes and waits are
-  sized from that count: each lane's box holds 256 jobs, its share of every worker's
-  admissions; each worker's box 512 replies, its admitted asks and its pool's
-  hand-overs, to a power of two; and `max_waiting` is 256, so production-stack's waits
-  are its admitted asks. At 24 workers the boxes take 7.9 MiB. A reply is one message
+  A worker admits at most 1,024 asks to the lanes at once (`ADMITTED` in `app.goose`).
+  The profile's load keeps about 16,000 requests in flight at the edge, 1,024 h2
+  connections of 16 streams, which reach the server as one request per upstream
+  connection: up to about 400 cache asks a worker at 24 workers. It answers one past
+  them with 503 `busy`, and one a full lane box refuses with 503 `unavailable`, at
+  once, and doesn't retry. The boxes and waits are sized from that count: each lane's
+  box holds 1,024 jobs, its share of every worker's admissions; each worker's box 2,048
+  replies, its admitted asks and its pool's hand-overs, to a power of two; and
+  `max_waiting` is 1,024, so production-stack's waits are its admitted asks. At 24
+  workers the boxes take 32 MiB. A reply is one message
   of 512 bytes. The lanes reply with `plod::try_reply`, which drops a reply that finds
   a worker's box full, and the ask then times out with 504, rather than hold up every
   other worker's jobs.
