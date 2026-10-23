@@ -34,10 +34,15 @@ in its own file, with how they were measured.
 
 ## Archive
 
-When a task is done and nothing still builds on its file, move it to `000-archive/` with
-`git mv`, keeping its name. The main folder then lists only open work. Numbers stay
-unique across both folders: pick the next number after the highest in either. Refer to
-tasks by number ("task 001"), not by path, so a move breaks no reference.
+When a task is done or cancelled and nothing still builds on its file, move what a
+current doc needs from it into that doc, delete the file, and add one line to
+`000-archive/README.md`: its number, title, outcome, and file name. Git history keeps the
+full record: the archive README names the commit that holds the files archived together,
+and a line added later names its own last commit, as in `` (done; `060-x.md` at
+`abc1234`) ``. The main folder then lists only open work, and an agent reads only what
+is current. Numbers stay unique: pick the next number after the highest in the folder or
+the archive. Refer to tasks by number ("task 001"), not by path, so archiving breaks no
+reference.
 
 ## Order
 
