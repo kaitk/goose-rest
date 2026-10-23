@@ -86,10 +86,12 @@ requests on `PROXY_PORT` as well as 8080, and keeps production-stack's cache in
 process, in lanes of its own. `bench/httparena.sh` copies the entry into an HttpArena
 checkout at a pinned commit and runs HttpArena's own `validate.sh` or `benchmark.sh`;
 its header lists what it changes in the checkout and its settings.
-`bench/httparena-submit.sh DIR` prepares a pull request of the entry: in the HttpArena
-checkout `DIR`, a branch `plod` from HttpArena's main with `frameworks/plod` replaced by
-the entry, committed but not pushed. Validate at HttpArena's main first, with
-`HTTPARENA_COMMIT=origin/main bench/httparena.sh validate`.
+`bench/httparena-submit.sh DIR` prepares a pull request of the entry in the HttpArena
+checkout `DIR`, whose `origin` is the fork: `frameworks/plod` replaced by the entry, in
+one commit on branch `plod`, not pushed. While the fork's `plod` is open as a pull
+request, the commit goes on top of it, after the results HttpArena's bot commits there;
+otherwise the branch starts from HttpArena's main. Validate at HttpArena's main first,
+with `HTTPARENA_COMMIT=origin/main bench/httparena.sh validate`.
 A gateway profile's containers take their CPUs from `SERVER_CPUSET`, `EDGE_CPUSET`,
 `AUTH_CPUSET`, `CACHE_CPUSET`, and `PROXY_CPUSET` where set, and `SERVER_CPUS`
 otherwise. Write a single CPU as `10-10`, not `10`: the harness reads a cpuset without
