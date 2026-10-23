@@ -72,16 +72,20 @@ Mac, in an arm64 Linux container
 
 ## The HttpArena entry
 
-`bench/httparena/plod/` is Plod's entry in [HttpArena](https://github.com/MDA2AV/HttpArena)
-(task 047): `meta.json`, which lists the profiles it subscribes to, a Dockerfile, and
-the server, `app.goose`'s routes under two root files, `server.goose` without TLS and
-`server_tls.goose` with it. The gateway profiles start the server from compose files
-instead, `compose.gateway.yml`, `compose.gateway-h3.yml`, and
-`compose.production-stack.yml`, behind stock nginx or Caddy, configured in `proxy/`.
-The server takes the proxy's requests on `PROXY_PORT` as well as 8080, and keeps
-production-stack's cache in process, in lanes of its own. `bench/httparena.sh` copies the entry and the package into
-an HttpArena checkout at a pinned commit and runs HttpArena's own `validate.sh` or
-`benchmark.sh`; its header lists what it changes in the checkout and its settings.
+`bench/httparena/plod/` is Plod's entry in [HttpArena](https://github.com/MDA2AV/HttpArena),
+as it's submitted: its `README.md` says how it serves each profile and why each setting
+is what it is. It holds `meta.json`, which lists the profiles it subscribes to, a
+Dockerfile, which downloads Goose's release, and the server, `app.goose`'s routes under
+two root files, `server.goose` without TLS and `server_tls.goose` with it. The root
+files import Plod at its latest release, as an application would, so a change to the
+package reaches the entry with the next release. The gateway profiles start the server
+from compose files instead, `compose.gateway.yml`, `compose.gateway-h3.yml`, and
+`compose.production-stack.yml`, behind stock nginx or Caddy, each built from its
+directory: `proxy/`, `proxy-h3/`, and `proxy-production/`. The server takes the proxy's
+requests on `PROXY_PORT` as well as 8080, and keeps production-stack's cache in
+process, in lanes of its own. `bench/httparena.sh` copies the entry into an HttpArena
+checkout at a pinned commit and runs HttpArena's own `validate.sh` or `benchmark.sh`;
+its header lists what it changes in the checkout and its settings.
 It follows goose-http's `bench/httparena.sh`, whose
 [README](https://github.com/kaitk/goose-http/blob/main/bench/README.md#httparena-under-docker-on-macos)
 says how to run the harness from a Mac. The server builds on macOS as well, where it
