@@ -714,6 +714,21 @@ not load. This rejected:
 - Answering the refusal through the mark's `resume`, as a `TIMEOUT`: a second call for
   what the route can decide in the call that asked.
 
+Decided (2026-10-23): `plod::try_reply` and `plod::try_refuse` are the lane's side of
+`plod::try_ask`: one message, sent at once, or the send's `http::FULL`, `http::STALE`,
+or `http::TOO_LONG` returned with nothing sent, and the lane decides. A lane that
+every worker asks must not wait on one worker whose box is full, since the jobs of all
+the others queue behind it; the reply it drops ends as that route's 504. The job counts
+as answered either way, so `plod::lane` adds no refusal that would wait. A value that
+doesn't fit one message is `TOO_LONG`, so one ask stays one message. This rejected:
+
+- Dropping on a full box in `plod::reply_value`, `plod::reply`, and `plod::fail`, which
+  keep waiting for room: every lane that replies to a worker shares its box, as do the
+  pieces of a long reply, which the wait paces, so a drop there would turn a box full
+  for a moment into a 504 for an unrelated route.
+- Building the reply in the program, with Plod's echo head, value bytes, and tags,
+  which would make Plod's reply format part of every such program.
+
 Decided (2026-10-23): a server whose lanes every worker asks bounds its asks in flight
 by an admission count per worker, and sizes its boxes and `max_waiting` from it
 ([Sizing a lane's admissions and boxes](best-practices/lanes.md#67-sizing-a-lanes-admissions-and-boxes)).

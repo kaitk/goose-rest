@@ -3,6 +3,21 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## v0.5.2 (unreleased)
+
+Goose `v2026.3`, goose-http `v0.5.6`, goose-compress `v0.1.2`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` goose-tls `v0.0.5`. No breaking changes.
+
+Added:
+
+- `plod::try_reply(a, v)` replies on a lane as `plod::reply_value` does, in one message
+  that never waits for room: it returns `http::SENT`, or `http::FULL`, `http::STALE`,
+  or `http::TOO_LONG` with nothing sent, and the route's time limit answers a reply not
+  sent. `plod::try_refuse(a, status, code)` is `plod::fail` on a lane the same way. For
+  a lane that every worker asks, which must not wait on one worker's box
+  ([Lanes](docs/reference.md#41-lanes)). `plod::reply_value`, `plod::reply`, and
+  `plod::fail` still wait for room.
+
 ## v0.5.1 (2026-10-23)
 
 Goose `v2026.3`, goose-http `v0.5.6`, goose-compress `v0.1.2`; `plod.websocket`
