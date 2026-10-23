@@ -7,7 +7,7 @@ namespace plod;
 
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 
 // Writes v as a JSON object: each field in declaration order, keyed by its
 // name.

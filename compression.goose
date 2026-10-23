@@ -3,15 +3,15 @@
 // program that imports this module needs goose-compress, which its root file
 // declares at the tag goose-http's compression.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@v0.5.5";
-//   import compress from "github.com/kaitk/goose-compress@v0.1.1";
+//   import http from "github.com/kaitk/goose-http@v0.5.6";
+//   import compress from "github.com/kaitk/goose-compress@v0.1.2";
 //   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.compression;
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
-import compress from "github.com/kaitk/goose-compress@v0.1.1";
+import http from "github.com/kaitk/goose-http@v0.5.6";
+import compress from "github.com/kaitk/goose-compress@v0.1.2";
 import http.compression;
 
 // Runs F(c), c being cx with its answer written to a buffer of its own, then

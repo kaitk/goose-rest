@@ -1,7 +1,7 @@
 // What the extractors' tests share: a context to call a route with, the
 // route that answers with what an extractor read, and the requests.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../";
 import expect from "../";
 

@@ -1,7 +1,7 @@
 // Property names plod gen renames rather than refuses: a Goose
 // keyword, and a name in capitals.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../";
 import plod.gen.gen;
 import common;

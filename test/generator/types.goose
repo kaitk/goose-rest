@@ -1,7 +1,7 @@
 // plod gen's errors for types, formats, and bounds outside its
 // subset, or that leave no value.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../";
 import plod.gen.gen;
 import common;

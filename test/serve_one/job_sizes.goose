@@ -4,7 +4,7 @@
 // small for it; and a refusal's code longer than a message, which plod::play
 // gives whole and serve_one cuts to fit, as the lane does on the real path.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../";
 import expect from "../";
 

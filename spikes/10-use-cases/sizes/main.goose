@@ -2,7 +2,7 @@
 // when the use case's variant, the job, waits in cx.state. Sizes are of the
 // packed layout (spec C.2), from bytes_of a one-element array.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.5";
+import http from "github.com/kaitk/goose-http@v0.5.6";
 import plod from "../../../";
 
 // docs/best-practices/lanes/app.goose's state: steps, no payload.
