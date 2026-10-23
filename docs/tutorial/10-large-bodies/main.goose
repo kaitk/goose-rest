@@ -9,7 +9,7 @@
 import std;
 import os;
 import csv;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../../";
 
 // The most bytes an import takes: past the 8 KB read buffer, and below the

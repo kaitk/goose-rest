@@ -1,7 +1,7 @@
 // plod::header and plod::cookie, by name in any case for a header and in
 // its own for a cookie, plod::int_of, and each failure's answer.
 import std;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../";
 import expect from "../";
 import common;

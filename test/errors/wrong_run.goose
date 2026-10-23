@@ -2,7 +2,7 @@
 // A thread that takes the writer lane's jobs, but runs only the reports
 // lane's: plod::lane gives each job as a Writes, which no run takes.
 import std;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../";
 
 enum Writes { Create { project: i64 } }

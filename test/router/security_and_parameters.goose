@@ -2,7 +2,7 @@
 // parameters with their bounds.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../";
 import expect from "../";
 import expect.gen.routes_gen;

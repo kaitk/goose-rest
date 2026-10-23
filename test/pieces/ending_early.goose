@@ -1,7 +1,7 @@
 // A body read in pieces that ends early: a failure at a piece, an answer
 // before the END, and a client that hangs up midway.
 import std;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../";
 import expect from "../";
 import common;

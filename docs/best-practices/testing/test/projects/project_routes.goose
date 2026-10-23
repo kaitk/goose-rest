@@ -1,7 +1,7 @@
 // The projects' routes, through plod::serve_one: the request's bytes in, the
 // response's bytes out, with no socket or thread.
 import std;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../../../../";
 import app from "../../";
 import expect from "../";

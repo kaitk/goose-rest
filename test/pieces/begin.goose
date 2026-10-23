@@ -1,7 +1,7 @@
 // plod::begin: a response sent in pieces, chunked and with a length, for
 // HEAD, and cut short by a failure.
 import std;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 import plod from "../../";
 import expect from "../";
 import common;

@@ -17,7 +17,7 @@
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@ebb4238728179e82140550af50e5bab1a7e0dab2";
+import http from "github.com/kaitk/goose-http@v0.5.5";
 
 // Reads the request's body in pieces as they arrive, up to limit bytes, with
 // u in cx.state.use. The route returns without an answer, and the
