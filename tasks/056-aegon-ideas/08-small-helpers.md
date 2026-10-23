@@ -1,6 +1,7 @@
 # 08: Small helpers
 
-Status: partial. SSE and cookies out built (2026-10-20); the other parts remain open.
+Status: partial. SSE and cookies out built (2026-10-20), and the directory mount
+(2026-10-23); the SPA fallback, the `Cache-Control` hook, and CORS remain open.
 
 Each is a few lines over what goose-rest and goose-http have. Aegon's pages for them:
 `sse`, `static-files`, `response`, and `cors`.
@@ -51,12 +52,40 @@ Both modules are imported by `rest.goose`. Neither adds fields to `Cx` or other
 shared structs, or code to the common request path. The directory mount, SPA fallback,
 file caching hook, and CORS remain unchanged.
 
+## Built (2026-10-23)
+
+`plod::files(cx, dir, name, body, u)` in `pieces.goose` serves the directory mount
+inside a route that ends in `*name`, such as
+`plod::get(cx, "/static/*name") { plod::files(cx, dir, "name", cx.state.file, Use.File); }`,
+with `plod::file`'s case function, `plod::send_file`. A call in a route, not a mount
+call taking a prefix, since the router already matches the prefix and the program
+already chooses the method, guards, and middleware around the route. The mount takes
+the parameter's name and reads it still encoded, so `http::file_path` decodes it once.
+`plod::file` and `plod::files` share `serve_opened`, which maps the open's status to
+the failure and starts the response.
+
+- Paths: `http::file_path`. A refused name answers 404 `file_not_found`; the router
+  answers a `.` or `..` segment, escaped or not, with 400 `bad_path` first.
+- Index: a name that is empty or ends in `/` gets `index.html` appended. A directory
+  named without the `/` answers 404, as no file does: its page's relative links would
+  resolve against its parent, and a redirect is more than this needs.
+- Precompressed copies: `http::open_precompressed`, which also sets `Content-Encoding`
+  and `Vary: Accept-Encoding` through `http::serve_file`. The type is the original's.
+- MIME types: goose-http's `http::content_type_of`. It lacks `.map`
+  (`application/json`), `.webmanifest` (`application/manifest+json`), and `.otf`
+  (`font/otf`), which then go as `application/octet-stream`; adding them is a
+  goose-http change. It has `.avif`, `.wasm`, `.woff`, `.woff2`, and `.ttf`.
+
+`test/pieces/files.goose` covers a file with its type, a directory's `index.html`, a
+directory without one, a directory named without its `/`, `..`, `%2e%2e`, escaped `/` and `\`, `.gz` and `.br` copies by
+`Accept-Encoding` and the plain file without one, HEAD, and a range.
+
 ## Acceptance criteria
 
 - [x] SSE helpers with newline splitting, a heartbeat, a JSON event, and tests
 - [x] Cookies out and clearing with tests, using goose-http's validation
 - [x] Neither part adds state or work to requests that don't use it
-- [ ] Directory mount with tests
+- [x] Directory mount with tests
 - [ ] SPA fallback with tests
 - [ ] `Cache-Control` per-file hook with tests
 - [ ] CORS additions with tests

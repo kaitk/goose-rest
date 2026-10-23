@@ -18,6 +18,9 @@ Added:
 - An upgraded route, a WebSocket's among them, gets goose-http's `http::DRAINED` after
   it calls `http::after_drain(cx.out)`, so a publisher sends its next batch once the
   last has reached the socket ([WebSocket](docs/reference.md#43-websocket)).
+- `plod::files` serves a directory under a `*name` route: a directory's `index.html`,
+  `.br`, `.zst`, and `.gz` copies by `Accept-Encoding`, and 404 for a name that would
+  leave the directory ([Later calls](docs/reference.md#4-later-calls)).
 
 ## v0.4.0 (2026-10-23)
 
