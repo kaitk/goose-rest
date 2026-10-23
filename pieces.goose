@@ -185,8 +185,8 @@ fn file<S, A, R>(cx: Cx<S, A, R>&, path: const u8[:], body: http::FileBody&, u, 
 // client's bytes in cx.body as they arrive, with no END and no limit, and
 // writes with plod::send, bytes as they are, until plod::end closes the
 // connection. It gets http::CLOSED once if the client closes first, or the
-// route fails. http::upgrade_of(cx.req) says what the request asks to switch
-// to. A route that then waits on a lane (plod::ask) gets the bytes that come
+// route fails, and http::DRAINED after http::after_drain.
+// http::upgrade_of(cx.req) says what the request asks to switch to. A route that then waits on a lane (plod::ask) gets the bytes that come
 // meanwhile in the resume of the lane's mark, and sets cx.state.use back to
 // u's to get them where they went before. An HTTP/2 stream can't switch:
 // goose-http answers it 501, and the route gets no calls.

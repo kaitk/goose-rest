@@ -533,8 +533,9 @@ fn arrived<S>(ev: http::Event, st: Slot<S>&, out: http::Reply) -> u8 {
         return k;
     }
     // An upgraded connection's TIMEOUT can't be answered with 504, its 101
-    // being sent: the route gets it.
-    if ((k == http::BODY || k == http::TIMEOUT) && (x.mode & UPGRADED) != 0) ||
+    // being sent: the route gets it, as it does the DRAINED that
+    // http::after_drain asks for.
+    if ((k == http::BODY || k == http::TIMEOUT || k == http::DRAINED) && (x.mode & UPGRADED) != 0) ||
        (k == http::END && (x.mode & RECEIVING) != 0) || (k == http::MORE && (x.mode & SENDING) != 0) {
         return k;
     }

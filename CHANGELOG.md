@@ -3,6 +3,14 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## Unreleased
+
+Added:
+
+- An upgraded route, a WebSocket's among them, gets goose-http's `http::DRAINED` after
+  it calls `http::after_drain(cx.out)`, so a publisher sends its next batch once the
+  last has reached the socket ([WebSocket](docs/reference.md#43-websocket)).
+
 ## v0.4.0 (2026-10-23)
 
 goose-rest is now Plod. The package, its namespace, and its generator take the new

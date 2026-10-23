@@ -568,8 +568,8 @@ and the request state holds the route's progress.
 | `plod::pause`, before `plod::begin` | `http::TIMEOUT` | goose-http's `TIMEOUT` at once, with no timer free: 503 `unavailable` with `Retry-After: 1` |
 | `plod::pause`, after `plod::begin` | `http::TIMEOUT`, the response still open; `http::CLOSED` if the client goes first | goose-http's `TIMEOUT` at once, with no timer free: the response ends, then `CLOSED` |
 | `plod::file` | `http::MORE`; `http::CLOSED`, both for `plod::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
-| `plod::upgrade` | `http::BODY` per arrival; `http::CLOSED` | |
-| `plod::ws_upgrade` | `http::BODY` per arrival and `http::CLOSED`, both for `plod::ws_read` | pings, Closes, and frames the protocol forbids ([WebSocket](#43-websocket)) |
+| `plod::upgrade` | `http::BODY` per arrival; `http::CLOSED`; `http::DRAINED` after `http::after_drain` | |
+| `plod::ws_upgrade` | `http::BODY` per arrival and `http::CLOSED`, both for `plod::ws_read`; `http::DRAINED` after `http::after_drain` | pings, Closes, and frames the protocol forbids ([WebSocket](#43-websocket)) |
 | `plod::relay`, at a reply's first piece | none | the reply's later pieces |
 
 `http::CLOSED` means that the exchange ended before the route finished, and that the
@@ -799,6 +799,10 @@ Close its Close without the block, and a frame the protocol forbids or a message
 Once the connection closes, from either side, the case function gets `CLOSED`, where
 `ws_read` gives the pool its bytes back, so pass `CLOSED` to it too. A route that waits
 on a lane gets the frames in the mark's `resume`, as for [`plod::upgrade`](#4-later-calls).
+A route that publishes to a client that may read slowly calls
+`http::after_drain(cx.out)` after a batch, and sends the next one when the case function
+gets `http::DRAINED`
+([goose-http's broadcasts](https://github.com/kaitk/goose-http/blob/main/docs/patterns.md#broadcasts-to-upgraded-connections)).
 [`examples/websocket`](../examples/websocket/main.goose) echoes each message.
 
 ## 5. Errors
