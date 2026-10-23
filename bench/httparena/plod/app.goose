@@ -221,35 +221,30 @@ var caches: plod::Lane<CacheJob, Use>[>..];
 // The worker's count of /api/me requests, which picks their lanes.
 var turn = 0;
 
-// A reply's slot, which holds a whole reply: the job it echoes, the job's
-// length, and the Cached row, as open_caches checks.
+// A reply's slot, which holds a whole reply: a Cached<Item>, the job it
+// echoes, and the job's length take about 300 bytes.
 let REPLY_SLOT: i32 = 512;
 
 // The cache's admission: the most asks a worker has on the lanes at once,
-// each from its plod::try_ask until its outcome reaches the route. One past
-// them gets 503 at once (Plod's "Sizing a lane's admissions",
-// docs/best-practices/lanes.md).
-let ADMITTED = 64;
+// each from its plod::try_ask until its outcome reaches the route. A
+// connection carries one ask at a time, so this covers the connections a
+// worker serves under load, and one past it gets 503 busy at once (Plod's
+// "Sizing a lane's admissions and boxes", docs/best-practices/lanes.md).
+let ADMITTED = 256;
 
 // The worker's asks on the lanes now.
 var admitted = 0;
 
 // Opens cache_lanes lanes, and sizes the boxes and the waits from ADMITTED:
-// each lane's box holds four times its share of every worker's admitted
-// jobs, since the ids a lane gets come unevenly, and refuses one past them,
-// as a hot id makes it; each worker's box a reply for each ask it admits
-// and a hand-over for each connection of its pool; and the worker's waits
-// are its admitted asks, the only waits production-stack's routes make. A
-// box's slots are a power of two. Ends the program where a reply can't be
-// one message.
+// each lane's box holds its share of every worker's admitted jobs, and
+// refuses one past them, as a hot id makes it; each worker's box a reply
+// for each ask it admits and a hand-over for each connection of its pool;
+// and the worker's waits are its admitted asks, the only waits
+// production-stack's routes make. A box's slots are a power of two.
 fn open_caches(cfg: http::Config&) {
     guard cache_lanes > 0 else { return; }
-    let job = plod::echo_head_len(CacheJob.Item { id: 0 });
-    let row = max(plod::value_bytes(Cached<Item> { v: Item { .. } }).len,
-                  plod::value_bytes(Cached<User> { v: User { .. } }).len);
-    guard job + row <= REPLY_SLOT else { abort(str("cache: a reply of ", job + row, " bytes, past its slot")); }
     let workers = http::worker_count(cfg);
-    let lane_slots = power_of_two(4 * ((workers * ADMITTED + cache_lanes - 1) / cache_lanes));
+    let lane_slots = power_of_two((workers * ADMITTED + cache_lanes - 1) / cache_lanes);
     for i in cache_lanes {
         caches.push(plod::lane_open<CacheJob>(http::LaneConfig { slots: lane_slots, .. }, Use.Cache, cache));
     }
@@ -257,8 +252,7 @@ fn open_caches(cfg: http::Config&) {
     cfg.mail_size = REPLY_SLOT;
     cfg.max_waiting = ADMITTED;
     write_stderr(str("cache: ", workers, " workers, ", cache_lanes, " lanes of ", lane_slots, " slots, ",
-                     ADMITTED, " asks and ", cfg.mail_slots, " reply slots a worker, replies of ", job + row,
-                     " bytes, pools of ", per_worker, "\n"));
+                     ADMITTED, " asks and ", cfg.mail_slots, " reply slots a worker, pools of ", per_worker, "\n"));
 }
 
 // The least power of two of at least n and 2, a box's slots.
@@ -321,29 +315,13 @@ thread_fn cache(box: http::Box, jobs: plod::Jobs<CacheJob>) {
     pg::close(db);
 }
 
-// Sends the reply to a's job in one message, or drops it where the worker's
-// box is full, and the route's ask then times out: a lane that waited for
-// room, as plod::reply_value and plod::fail do, would hold every worker's
-// jobs behind one worker's. open_caches checks that a reply fits one
-// message.
-fn send_once(a, tag: i32, m: const u8[:]) {
-    a.replied = true;
-    http::mail_send(a.reply, tag, m);
-}
-
-// Replies v, as plod::reply_value does.
-fn reply_once(a, v) {
-    var m = plod::echo_head(a.job);
-    m.append(plod::value_bytes(v));
-    send_once(a, plod::REPLY_VALUE, m);
-}
-
-// Refuses a's job with status and code, as plod::fail does on a lane.
-fn refuse_once(a, status: i32, code: const u8[:]) {
-    var m: u8[>..] = [];
-    for i in 4 { m.push(((status >> (i * 8)) & 0xFF) as u8); }
-    m.append(code);
-    send_once(a, plod::REPLY_REFUSED, m);
+// Replies v to a's job in one message, which plod::try_reply drops where the
+// worker's box is full, the route's ask then timing out: a lane that waited
+// for room would hold every worker's jobs behind one worker's. A reply past
+// one message is refused, 500. The lane's refusals are plod::try_refuse's,
+// for the same reason.
+fn reply_to(a, v) {
+    if plod::try_reply(a, v) == http::TOO_LONG { plod::try_refuse(a, 500, "reply_too_long"); }
 }
 
 // ITEMS' columns, for item_of.
@@ -373,15 +351,15 @@ fn run(u: CacheJob.Update, items: dictionary<i64, Cached<Item>>&, users: diction
         n = pg::exec(db, UPDATE_ITEM, u.name[..], u.price, u.quantity, u.id);
     };
     guard failed.len == 0 else {
-        refuse_once(a, 503, "database_unavailable");
+        plod::try_refuse(a,503, "database_unavailable");
         return;
     }
     guard n == 1 else {
-        refuse_once(a, 404, "not_found");
+        plod::try_refuse(a,404, "not_found");
         return;
     }
     items.remove(u.id);
-    reply_once(a, n);
+    reply_to(a,n);
 }
 
 // Replies the row cache holds for key while it holds, or else the row sql
@@ -393,7 +371,7 @@ inline fn cache_aside<F, T>(cache: dictionary<i64, Cached<T>>&, db, a, key: i64,
     if held && held.until > now {
         var c = held;
         c.hit = true;
-        reply_once(a, c);
+        reply_to(a,c);
     } else {
         var c = Cached<T> { v: default<T>(), until: now + ttl_ns };
         // A reference, which F's untyped parameter takes as one, where it
@@ -406,19 +384,19 @@ inline fn cache_aside<F, T>(cache: dictionary<i64, Cached<T>>&, db, a, key: i64,
             n = pg::query(db, sql, key) { r => fits = F(r, v); };
         };
         guard failed.len == 0 else {
-            refuse_once(a, 503, "database_unavailable");
+            plod::try_refuse(a,503, "database_unavailable");
             return;
         }
         guard n == 1 else {
-            refuse_once(a, 404, "not_found");
+            plod::try_refuse(a,404, "not_found");
             return;
         }
         guard fits else {
-            refuse_once(a, 500, "too_long");
+            plod::try_refuse(a,500, "too_long");
             return;
         }
         cache.insert(key, c);
-        reply_once(a, c);
+        reply_to(a,c);
     }
 }
 
