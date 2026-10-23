@@ -97,9 +97,24 @@ rest with 503; 1,024 answered every request with 200. validate.sh passes, 144 ch
 none failed, with the Plod commit seeded into the build's Goose cache, since the branch
 isn't on GitHub yet. The dictionaries don't evict: the dataset bounds them.
 
-Before submission, run D runs on the desktop (Ryzen 7 5800X3D, WSL2): production-stack
-under HttpArena's own h2load load (`-m 16` reads plus the writes) through its edge,
-against 95a8822, counting successes and 503s and recording the server's `VmHWM`.
+Run D, 2026-10-23: production-stack under HttpArena's own h2load load (`-m 16` reads
+plus the writes) through its edge, Ryzen 7 5800X3D, Ubuntu 26.04 in WSL2 (kernel
+6.18.54.1), Docker Desktop 29.8.2, the harness in a container on the VM's host network.
+`PROFILES=production-stack RUNS=1 bench/httparena.sh run`, the server on CPUs 0-3 (4
+workers), the edge on 4-7, authsvc on 8-9, the cache on 10-10, and the load on 11-15;
+HttpArena's network sysctls on, but for `netdev_max_backlog`, which Docker Desktop's
+VM doesn't expose. `VmHWM` read from `/proc` once a second during the run.
+
+| Build | Connections | Requests a second | 2xx | 503 | Other | Server `VmHWM` |
+|---|---:|---:|---:|---:|---:|---:|
+| 935abdf | 256 | 38,143 | 192,627 | 0 | 0 | 34.4 MiB |
+| 935abdf | 1,024 | 32,352 | 165,323 | 0 | 0 | 38.7 MiB |
+| 95a8822 | 256 | 37,200 | 188,609 | 0 | 0 | 84.8 MiB |
+| 95a8822 | 1,024 | 30,141 | 154,025 | 0 | 0 | 88.9 MiB |
+
+Neither build refused a request at 4 workers. The edge used all of its 4 CPUs (about
+400%) while the server used under 190% of its 4, so the edge, not the server, set the
+rate. The new build peaks at under half the memory, at the same rate or better.
 
 ## The entry's tier
 
