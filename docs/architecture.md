@@ -248,7 +248,10 @@ response begins, or after `plod::begin`, with `plod::pause`, and gets `TIMEOUT` 
 the time has passed. When goose-http has no timer free, it gives `TIMEOUT` at once,
 tagged `http::NO_ROOM`, and Plod answers 503 with `Retry-After` before
 `plod::begin`, as for `plod::ask`, or ends an open response after it; the exchange keeps
-a mode bit for a pause before `plod::begin`. One case function per variant
+a mode bit for a pause before `plod::begin`. A route that begins its own waits with
+goose-http, as a database pool does on its sockets, calls `plod::own_waits` first,
+another mode bit: it then gets each wait's `WAKE`, `TIMEOUT`, and `CLOSED`, and Plod
+answers none of them. One case function per variant
 handles every kind, because Goose can't keep a block to call at the next event.
 [Later calls](reference.md#4-later-calls) has each call and event.
 

@@ -668,6 +668,27 @@ the reply's run after the `resume` from that field, and no longer saves it first
 Rejected: a mode bit or field that records the wait's purpose in `Exchange` for the
 check, which the tag makes unneeded.
 
+Decided (2026-10-23), extending the entries above on who answers a wait's `TIMEOUT`:
+a route that begins its own waits with goose-http, as a database pool does with
+`http::wait_socket`, calls `plod::own_waits(cx, u)`, and from then until the
+exchange ends it gets every `TIMEOUT`, goose-http's `NO_ROOM` included, and the
+`CLOSED` of a client that goes during a wait, in `u`'s case function. Plod had
+answered such a `TIMEOUT` with 504 itself and given no `CLOSED`, so a route couldn't
+give back the connection it held, and couldn't answer as its protocol asks, as
+HttpArena's `/async-db` does with an empty list. The `WAKE` reached the route already.
+A bit of `Exchange.mode`, `OWNED`, says so; it stays out of `LATER`. `on_event` tests
+it at a `TIMEOUT`, and at a `CLOSED` where `on_later` gives none, with no test on the
+request path. `NO_ROOM` goes to the route too, since the route holds what the wait
+was for and gives it back then; a route that needs to tell the two apart waits, as on
+an upgraded connection, until `Cx` carries the tag. `plod::pause` and `plod::ask` keep
+their answers, and a paused route gets no `CLOSED`. This rejected:
+
+- A mark per wait, cleared at each event as `PAUSED` is, which the route sets again
+  after each step of a query that waits several times, for no case that needs it.
+- `plod::pause` before the wait, which sets `PAUSED` for its `TIMEOUT` only: it gives
+  no `CLOSED`, and the socket's wait replaces its timer.
+- A field in `Cx` or `Exchange`, which a bit of `mode` makes unneeded.
+
 Decided (2026-10-22), replacing the `PENDING` bit of the 2026-10-21 entry above: whether
 a request's body came whole is goose-http's `Event.whole`, given at each `REQUEST`, and
 goose-rest reads it there rather than copy it into each connection's `Exchange.mode`.

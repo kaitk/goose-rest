@@ -109,6 +109,22 @@ fn pause<S, A, R>(cx: Cx<S, A, R>&, ms: i64, u) {
     http::later(cx.out, ms);
 }
 
+// Gives the route, with u in cx.state.use, the events of the waits it
+// begins itself with goose-http, as on a socket with http::wait_socket, or
+// for mail with http::later, such as a database pool's: the handler is
+// called again with http::WAKE when the socket is ready or the mail comes,
+// with its bytes in cx.reply, http::TIMEOUT when the time limit passes or
+// goose-http has no room to wait, and http::CLOSED, writing nowhere, if the
+// client goes during a wait. It holds for the rest of the exchange, so a
+// plod::ask's TIMEOUT comes to the route too, in place of Plod's 504. 500
+// not_served outside serve and serve_one.
+fn own_waits<S, A, R>(cx: Cx<S, A, R>&, u) {
+    var x .= cx.ex;
+    guard x else { fail(cx, 500, "not_served"); }
+    cx.state.use = u;
+    x.mode |= OWNED;
+}
+
 // Sends data, the next piece of the response plod::begin began, or bytes as
 // they are on a connection plod::upgrade took.
 fn send(cx, data: const u8[:]) {

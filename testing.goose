@@ -31,8 +31,9 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S,
 
 // What serve_one gives a route that waits, in place of the thread it asked:
 // data with tag, a reply as a lane sends it, which plod::play gives (wake),
-// or with timeout, the end of the wait, which plod::ask answers with 504,
-// and plod::pause's route gets as http::TIMEOUT. early makes that timeout
+// or the WAKE of a wait the route owns (plod::own_waits), or with timeout,
+// the end of the wait, which plod::ask answers with 504, and plod::pause's
+// and plod::own_waits's route gets as http::TIMEOUT. early makes that timeout
 // goose-http's own, given at once with http::NO_ROOM when it has no timer:
 // plod::ask and a pause before a response begins then answer 503, and a
 // pause after ends its response. sent
@@ -78,8 +79,8 @@ fn refusal(p: const Played&) -> i32, const u8[:] {
 // checks its job against cfg.mail_size. A piece that comes
 // once the route no longer waits is dropped, as serve drops it. A wait with
 // no wake left ends the exchange with what the route wrote so far, or 500
-// if nothing; one with a response open is a client that goes, and H gets
-// http::CLOSED.
+// if nothing; one with a response open, or one the route owns
+// (plod::own_waits), is a client that goes, and H gets http::CLOSED.
 //
 //   let reply = plod::value_bytes(database::AssignReply { .. });
 //   let out = plod::serve_one(text, app, St { .. }, [plod::Wake { data: reply }]) { cx => handle(cx) };
@@ -191,12 +192,16 @@ fn serve_one<A, S, H>(text: const u8[:], app: A&, fresh: S, wakes: const Wake[:]
             tag = REPLY_CONT | (w.tag & REPLY_VALUE);
         }
     }
-    // A response still open with no wake left is a client that goes.
-    if stream.open && stream.waiting {
+    // A response still open, or a wait the route owns, with no wake left is a
+    // client that goes: what H writes then goes nowhere, as goose-http's
+    // CLOSED gives it.
+    if stream.waiting && (stream.open || (st.ex.mode & OWNED) != 0) {
         stream.waiting = false;
         stream.rearm = false;
-        deliver(http::Event { kind: http::CLOSED, req: gone, data: "", whole: false, trailers: "" },
-                st, app, reply) { cx => H(cx) };
+        var sink: u8[>..] = [];
+        deliver(http::Event { kind: http::CLOSED, req: gone, data: "", whole: false, trailers: "" }, st, app,
+                http::Reply { buf: sink, common: "", keep_alive: keep, minor: req.minor, head: req.method == "HEAD",
+                              stream: stream }) { cx => H(cx) };
     }
     if err.code == 0 { http::mail_close(box); }
     if out.len == 0 { http::refuse(out, 500, ""); }
