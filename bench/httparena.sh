@@ -9,9 +9,10 @@
 #                                             and profile, logs into OUT
 #
 # - Every profile's server cpuset, 0-31,64-95 on HttpArena's 128-thread
-#   machine, becomes SERVER_CPUS (0-3), and so does each cpuset of the entry's
-#   compose files, which the gateway profiles start, through their *_CPUSET
-#   variables.
+#   machine, becomes SERVER_CPUS (0-3). So does every cpuset of the gateway
+#   profiles' compose files, Plod's and the other entries' alike, through the
+#   variables they read: PROXY_CPUSET, SERVER_CPUSET, EDGE_CPUSET,
+#   CACHE_CPUSET, and AUTH_CPUSET. A proxy then shares the server's CPUs.
 # - The load generators run in Docker (LOADGEN_DOCKER) on LOAD_CPUS (4-15) with
 #   THREADS (4) threads.
 # - latency-1m offers LATENCY_RATE (200,000) requests per second instead of
@@ -58,10 +59,6 @@ git -C "$arena" clean -q -fdx frameworks/plod scripts
 entry=$arena/frameworks/plod
 rm -rf "$entry"
 cp -r "$root/bench/httparena/plod" "$entry"
-mkdir -p "$entry/src/bench/httparena/plod" "$entry/src/scripts"
-cp "$root"/*.goose "$entry/src/"
-cp "$root"/bench/httparena/plod/*.goose "$entry/src/bench/httparena/plod/"
-cp "$root/scripts/goose.sh" "$entry/src/scripts/"
 sed -i "s/0-31,64-95/$server_cpus/g" "$arena/scripts/lib/profiles.sh"
 export PROXY_CPUSET=$server_cpus SERVER_CPUSET=$server_cpus EDGE_CPUSET=$server_cpus \
     CACHE_CPUSET=$server_cpus AUTH_CPUSET=$server_cpus
