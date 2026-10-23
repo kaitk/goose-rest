@@ -2,7 +2,7 @@
 // one on a path the schema has, which dispatch answers with their Allow.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import expect from "../";
 import expect.gen.routes_gen;

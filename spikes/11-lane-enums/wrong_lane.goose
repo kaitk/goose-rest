@@ -3,7 +3,7 @@
 // Spike 11: a report's job sent to the writer lane. The lane is typed by its
 // enum, so the call fails to compile. See README.md.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import .app;
 

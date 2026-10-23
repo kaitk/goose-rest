@@ -4,7 +4,7 @@
 // and answering at the TIMEOUT; and plod::ask's own answers to the same
 // refusals, as before.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import expect from "../";
 

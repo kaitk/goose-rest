@@ -3,7 +3,7 @@
 // a plod::ask that times out (504), the middleware's kept fields on both,
 // and 500 already_waiting.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import expect from "../";
 

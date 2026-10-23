@@ -1,6 +1,6 @@
 // A string parameter's format is ascii or an error, and the router checks it.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import plod.gen.gen;
 import common;

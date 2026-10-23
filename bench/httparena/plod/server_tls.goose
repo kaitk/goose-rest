@@ -3,8 +3,8 @@
 // ALPN chooses.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.7";
-import compress from "github.com/kaitk/goose-compress@v0.1.3";
+import http from "github.com/kaitk/goose-http@v0.5.8";
+import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import pg from "github.com/kaitk/goose-postgres@v0.0.5";

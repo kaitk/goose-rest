@@ -5,7 +5,7 @@
 //   curl -s localhost:8080/hello/goose
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../../";
 
 fn handle(cx) {

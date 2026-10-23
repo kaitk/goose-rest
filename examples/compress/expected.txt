@@ -17,5 +17,5 @@ GET /v1/export?limit=0 200 encoding=gzip vary=Accept-Encoding sent=20 body=42949
 GET /archive/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=402 body=1564805783/5793
 GET /archive/events?limit=100 200 encoding=gzip vary=Accept-Encoding sent=402 body=1564805783/5793
 GET /archive/events?limit=5 200 encoding=gzip vary=Accept-Encoding sent=104 body=1576705413/286
-GET /v1/events?limit=5 200 encoding=none vary=Accept-Encoding sent=286 body=1576705413/286
+GET /v1/events?limit=5 200 encoding=gzip vary=Accept-Encoding sent=104 body=1576705413/286
 GET /archive/events/7 200 encoding=none vary=Accept-Encoding sent=56 body=2088668682/56

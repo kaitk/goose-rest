@@ -1,7 +1,7 @@
 // Bodies past their route's limit: one with a Content-Length refused at its
 // head, and a chunked one once it passes, which closes the connection.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import expect from "../";
 import common;

@@ -33,9 +33,9 @@ coded GET '/v1/export?limit=1000' -H 'Accept-Encoding: identity'
 coded GET '/v1/export?limit=1000' -H 'Accept-Encoding: gzip'
 coded GET '/v1/export?limit=1000' -H 'Accept-Encoding: deflate'
 coded GET '/v1/export?limit=0' -H 'Accept-Encoding: gzip'
-# /archive's options: level 9, smaller than /v1's level 1; gzip where zstd
-# is offered, since the archive doesn't offer zstd; and a listing of five,
-# past its 256-byte minimum, compressed where /v1 sends it as it is.
+# /archive's options: level 9, smaller than /v1's level 1; and gzip where
+# zstd is offered, since the archive doesn't offer zstd. A listing of five,
+# past the 256-byte minimum, is compressed under both.
 coded GET '/archive/events?limit=100' -H 'Accept-Encoding: gzip'
 coded GET '/archive/events?limit=100' -H 'Accept-Encoding: zstd, gzip'
 coded GET '/archive/events?limit=5' -H 'Accept-Encoding: gzip'

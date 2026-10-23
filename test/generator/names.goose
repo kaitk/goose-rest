@@ -1,7 +1,7 @@
 // plod gen's errors for names it can't write: type and field names
 // that aren't Goose identifiers, collide, or are the reader's own.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import plod from "../../";
 import plod.gen.gen;
 import common;

@@ -1,9 +1,9 @@
 // Answers compressed by the request's Accept-Encoding: a service's event log
 // behind plod::compressed, which only a program that imports
 // plod.compression builds with, and goose-compress with it. Under /v1, with
-// goose-http's defaults, a listing past 1 KB comes compressed; one event, an
-// error, or /health is too short for it. /v1/export sends the events in
-// pieces, compressed as they go. /archive serves the same events with options
+// goose-http's defaults, a listing of 256 bytes or more comes compressed; one
+// event, an error, or /health is too short for it. /v1/export sends the
+// events in pieces, compressed as they go. /archive serves the same events with options
 // of its own.
 //
 //   goose build -o build/examples/compress examples/compress/main.goose
@@ -11,8 +11,8 @@
 //   curl -s --compressed -D - 'localhost:8080/v1/events?limit=100'
 //   curl -s --compressed -D - 'localhost:8080/v1/export?limit=1000'
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.7";
-import compress from "github.com/kaitk/goose-compress@v0.1.3";
+import http from "github.com/kaitk/goose-http@v0.5.8";
+import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "../../";
 import plod.compression;
 
@@ -39,16 +39,16 @@ fn format(out: u8[>..]&, l: const Listing&) {
 }
 
 // The archive's options: gzip and deflate at level 9, their smallest and
-// slowest, no zstd, and bodies from 256 bytes. Only zstd can be turned off:
-// gzip and deflate are always offered, and the request's Accept-Encoding
-// picks among the codings left.
-let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
+// slowest, and no zstd. Only zstd can be turned off: gzip and deflate are
+// always offered, and the request's Accept-Encoding picks among the codings
+// left.
+let ARCHIVE = http::Compression { level: 9, zstd: false, .. };
 
 fn handle(cx) {
     plod::timed(cx) {
         plod::routes(cx) { cx =>
             plod::get(cx, "/health") { plod::text(cx, 200, "ok"); };
-            // goose-http's defaults: level 1, zstd offered, from 1 KB.
+            // goose-http's defaults: level 1, zstd offered, from 256 bytes.
             plod::scope(cx, "/v1") { plod::compressed(cx) { cx => events(cx); }; };
             plod::scope(cx, "/archive") { plod::compressed(cx, ARCHIVE) { cx => events(cx); }; };
         };

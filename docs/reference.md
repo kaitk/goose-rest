@@ -134,7 +134,7 @@ use them, declare goose-tls in the root file at the tag goose-http's `tls.goose`
 import the module, and give each worker goose-http's `http::TlsServer`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.tls;
@@ -262,8 +262,8 @@ the root file at the tag goose-http's `compression.goose` names, and import the
 module:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.7";
-import compress from "github.com/kaitk/goose-compress@v0.1.3";
+import http from "github.com/kaitk/goose-http@v0.5.8";
+import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.compression;
 
@@ -287,10 +287,10 @@ are offered, as [`examples/compress`](../examples/compress/main.goose)'s `/archi
 
 ```rust
 // The archive's options: gzip and deflate at level 9, their smallest and
-// slowest, no zstd, and bodies from 256 bytes. Only zstd can be turned off:
-// gzip and deflate are always offered, and the request's Accept-Encoding
-// picks among the codings left.
-let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
+// slowest, and no zstd. Only zstd can be turned off: gzip and deflate are
+// always offered, and the request's Accept-Encoding picks among the codings
+// left.
+let ARCHIVE = http::Compression { level: 9, zstd: false, .. };
 ```
 
 | Field | Default | Sets |
@@ -298,7 +298,7 @@ let ARCHIVE = http::Compression { min_size: 256, level: 9, zstd: false, .. };
 | `level` | 1 | gzip's and deflate's level, 1 to 9 |
 | `zstd_level` | 1 | zstd's level, 1 to 22 |
 | `zstd` | `true` | whether zstd is offered |
-| `min_size` | 1024 | the shortest body compressed, in bytes |
+| `min_size` | 256 | the shortest body compressed, in bytes |
 
 gzip and deflate can't be turned off. The server follows the
 request's `Accept-Encoding` weights when choosing the coding, with zstd before gzip before
@@ -836,7 +836,7 @@ goose-hash in the root file at the tag goose-http's `websocket.goose` names, imp
 module, and keep the connection's `http::WebSocket` in the request state:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.7";
+import http from "github.com/kaitk/goose-http@v0.5.8";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.websocket;
