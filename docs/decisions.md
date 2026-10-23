@@ -48,8 +48,12 @@ entry.
 - The brand: the slogan "Takes its time, not yours.", the benchmark line "Slow by name
   only.", and the mascot Ari, a banana slug (*Ariolimax*), drawn with all four
   tentacles. Slogans hold no figures, so they never go stale; numbers stay in the
-  benchmark tables with how they were measured. The logo is a PNG in `docs/assets/`
-  until a low-poly SVG replaces it.
+  benchmark tables with how they were measured. The logo's images are in
+  `docs/assets/`: the illustration stays raster where it's shown as a picture (the
+  README header, the social preview), because its blurred ground looks softer than
+  the traced scene's. The low-poly SVGs, each face its own element with a stable id,
+  serve animation and the small sizes: the icon, its 512 px export, and the favicons
+  (2026-10-23).
 - Results measured before the rename keep the name goose-rest, and so does the
   benchmark server, `bench/rest/goose-rest/` (`rest-goose-rest`), so runs compare by
   one name across the rename. Rejected: renaming the server, which would split its
