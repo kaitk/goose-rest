@@ -567,6 +567,7 @@ and the request state holds the route's progress.
 | `plod::begin` | `http::MORE`; `http::CLOSED` | a `HEAD` request: no calls |
 | `plod::pause`, before `plod::begin` | `http::TIMEOUT` | goose-http's `TIMEOUT` at once, with no timer free: 503 `unavailable` with `Retry-After: 1` |
 | `plod::pause`, after `plod::begin` | `http::TIMEOUT`, the response still open; `http::CLOSED` if the client goes first | goose-http's `TIMEOUT` at once, with no timer free: the response ends, then `CLOSED` |
+| `plod::own_waits`, then a wait of goose-http's, such as `http::wait_socket` | `http::WAKE` when the socket is ready or mail comes, with the mail's bytes in `cx.reply`; `http::TIMEOUT`, goose-http's at once included; `http::CLOSED` if the client goes during a wait | nothing: the route answers each |
 | `plod::file`, `plod::files` | `http::MORE`; `http::CLOSED`, both for `plod::send_file` | a range, as 206; 304, 416, and `HEAD`: no calls |
 | `plod::upgrade` | `http::BODY` per arrival; `http::CLOSED`; `http::DRAINED` after `http::after_drain` | |
 | `plod::ws_upgrade` | `http::BODY` per arrival and `http::CLOSED`, both for `plod::ws_read`; `http::DRAINED` after `http::after_drain` | pings, Closes, and frames the protocol forbids ([WebSocket](#43-websocket)) |
@@ -576,8 +577,9 @@ and the request state holds the route's progress.
 case function releases what the state holds, such as a file. It comes once, to a route
 that called `body_in_pieces`, `begin`, `file`, or `upgrade`, when the client goes, when a body
 passes its limit, when the route answers or fails before a body's `END`, when it
-fails with its response begun, or when Plod ends a paused response. Anything the case function writes is discarded. A route that answers at the
-`END`, or calls `plod::end`, gets none, nor does one that only asked.
+fails with its response begun, or when Plod ends a paused response; and to a route
+that called `own_waits`, when the client goes during a wait. Anything the case function writes is discarded. A route that answers at the
+`END`, or calls `plod::end`, gets none, nor does one that only asked, or paused before a response.
 
 A failure after a response has begun can't be answered: its head has already been sent. The route
 leaves the response unended, goose-http closes the connection, and the client sees the
@@ -589,6 +591,7 @@ response cut short.
 | `plod::begin(cx, status, content_type, length, u)` | With `u` in `cx.state.use`, begins a response sent in pieces: `Content-Type` unless `content_type` is empty, and a `Content-Length` of `length`, or chunked for -1. `MORE` comes each time the client has taken what was sent; one that neither sends nor ends closes the connection. If the response begins while a body is being read, the body's pieces still arrive, followed by `MORE`. Inside `plod::compressed`, a response of a type worth compressing is compressed ([Compression](#21-compression)). | |
 | `plod::pause(cx, ms, u)` | With `u` in `cx.state.use`, pauses the route for `ms` milliseconds before a response has begun: `TIMEOUT` comes after `ms` milliseconds, and the case function answers or waits again. Needs `Config.mail_slots` and `max_waiting`: past `max_waiting`, or with no mail slots, goose-http has no timer and gives `TIMEOUT` at once, tagged `http::NO_ROOM`, which Plod answers with 503 `unavailable` and `Retry-After: 1` without calling the handler. | 500 `already_waiting`; 500 `not_served` outside `plod::serve` and `serve_one` |
 | `plod::pause(cx, ms)` | Pauses the response `plod::begin` began, for events sent over time such as Server-Sent Events: `TIMEOUT` comes after `ms` milliseconds, and the case function sends the next piece and pauses again, or ends. What was sent still goes out meanwhile, and no `MORE` comes until the pause ends; a `TIMEOUT` call that neither pauses nor ends gets `MORE` next. Call it in the route, or at `MORE` or `TIMEOUT`. Needs `Config.mail_slots` and `max_waiting`: past `max_waiting`, goose-http has no timer and gives `TIMEOUT` at once, tagged `http::NO_ROOM`, which Plod answers by ending the response. | 500 `not_sending` without a response begun and open; 500 `not_served` outside `plod::serve` and `serve_one` |
+| `plod::own_waits(cx, u)` | With `u` in `cx.state.use`, gives the route every event of the waits it begins itself with goose-http, as on a socket with `http::wait_socket`, or for mail with `http::later`, as a database pool does: the `WAKE`, the `TIMEOUT`, which Plod then doesn't answer, goose-http's at once with no timer free included, and the `CLOSED` of a client that goes during a wait, where the route gives back what it holds. It holds from the call to the end of the exchange, so a `plod::ask`'s `TIMEOUT` comes to the route too. Each wait needs `Config.mail_slots` and `max_waiting`, as `http::later`'s does. | 500 `not_served` outside `plod::serve` and `serve_one` |
 | `plod::send(cx, data)` | `http::send`: the next piece, or raw bytes after an upgrade. | |
 | `plod::end(cx, trailers)` | `http::end`: ends the response, with trailers when chunked, or closes an upgraded connection. The route gets no more calls. | |
 | `plod::file(cx, path, body, u, content_type)` | With `u` in `cx.state.use`, `http::serve_file`'s answer, with `ETag`, `Last-Modified`, and `Accept-Ranges`, and a type by `path`'s extension when `content_type` is empty. `body`, an `http::FileBody` in the request state, holds what's left to send. | 404 `file_not_found`, 403 `forbidden`, 500 `file_unreadable` |

@@ -149,7 +149,8 @@ let RETRY_AFTER = "1";
 // response plod::begin began there holds an encoder (compression.goose).
 // ASKED says the exchange holds a promise for the reply plod::ask waits for,
 // which collects a reply_value's pieces (collect_reply). PAUSED says the
-// route paused before beginning a response (plod::pause).
+// route paused before beginning a response (plod::pause), and OWNED that it
+// gets its waits' TIMEOUT and CLOSED itself (plod::own_waits).
 let GATHERING: u16 = 1;
 let RECEIVING: u16 = 2;
 let SENDING: u16 = 4;
@@ -160,6 +161,7 @@ let OFFERED: u16 = 32;
 let CODED: u16 = 64;
 let ASKED: u16 = 128;
 let PAUSED: u16 = 256;
+let OWNED: u16 = 512;
 
 // What serve keeps of a request past the handler's first call. run is a run
 // of the worker's gather pool: a body gathered for plod::body, the head
@@ -240,8 +242,9 @@ fn serve_epoll<H>(cfg: http::Config) -> http::Error {
 // once collect_reply has collected them; the later pieces of a reply relay
 // sends on itself; and 504 when a reply doesn't come in time, or 503 when
 // goose-http had no room for the wait, except on an upgraded connection,
-// whose route on_later calls with the TIMEOUT. A reply cut short by its
-// time limit leaves the response open, and goose-http closes the
+// whose route on_later calls with the TIMEOUT, and for a route that owns its
+// waits (plod::own_waits), which H gets the TIMEOUT for. A reply cut short
+// by its time limit leaves the response open, and goose-http closes the
 // connection. An answer after REQUEST gets the fields its middleware kept
 // (stash_kept). Returns out.buf.len from before its call to H, or after a
 // reply past its limit, or -1 for none, for on_later, which the caller then
@@ -261,12 +264,13 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
     // A TIMEOUT tagged NO_ROOM is goose-http's, given at once for want of a
     // timer: a refusal at admission, 503, where a wait that ran out gets 504.
     // A pause's own goes to H below, as a WAKE does, so that the handler is
-    // inlined at one call here.
+    // inlined at one call here, and so does every TIMEOUT of a route that
+    // owns its waits, and its CLOSED where on_later doesn't give it one.
     if ev.kind == http::TIMEOUT {
         let paused = (st.ex.mode & PAUSED) != 0;
         let no_room = (ev.tag & http::NO_ROOM) != 0;
         st.ex.mode &= ~PAUSED;
-        guard paused && !no_room else {
+        guard (paused && !no_room) || (st.ex.mode & OWNED) != 0 else {
             let refused = paused || no_room;
             drop_reply(st.ex);
             end_wait(st, out, if refused { 503 } else { 504 }, if refused { "unavailable" } else { "timeout" }, false,
@@ -279,7 +283,8 @@ inline fn on_event<S, A, H>(ev: http::Event, st: Slot<S>&, app: A&, out: http::R
         drop_reply(st.ex);
     }
     var mark: i64 = -1;
-    if ev.kind == http::REQUEST || ev.kind == http::WAKE || ev.kind == http::TIMEOUT {
+    if ev.kind == http::REQUEST || ev.kind == http::WAKE || ev.kind == http::TIMEOUT ||
+       (ev.kind == http::CLOSED && (st.ex.mode & (OWNED | LATER)) == OWNED) {
         var scratch: u8[>..] = [];
         var fields: u8[>..] = [];
         var kept = Kept { .. };

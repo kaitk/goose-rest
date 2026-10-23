@@ -21,6 +21,11 @@ Added:
 - `plod::files` serves a directory under a `*name` route: a directory's `index.html`,
   `.br`, `.zst`, and `.gz` copies by `Accept-Encoding`, and 404 for a name that would
   leave the directory ([Later calls](docs/reference.md#4-later-calls)).
+- `plod::own_waits(cx, u)` gives a route every event of the waits it begins itself
+  with goose-http, as on a database pool's sockets with `http::wait_socket`: the
+  `WAKE`, the `TIMEOUT`, which Plod then doesn't answer with 504 or 503, and the
+  `CLOSED` of a client that goes during a wait
+  ([Later calls](docs/reference.md#4-later-calls)).
 
 ## v0.4.0 (2026-10-23)
 
