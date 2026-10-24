@@ -30,6 +30,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -266,6 +267,10 @@ def main():
                     help="write each run's stdout to its test/expected/<name>.out")
     ap.add_argument("-v", "--verbose", action="store_true", help="print the passes too")
     args = ap.parse_args()
+    # The tests that listen on a Unix socket put it in TMPDIR, or the working
+    # directory without one, which WSL can't hold one in under /mnt/c.
+    if not os.environ.get("TMPDIR"):
+        os.environ["TMPDIR"] = tempfile.gettempdir()
 
     tests = find_tests(args.names)
     goose = find_goose()

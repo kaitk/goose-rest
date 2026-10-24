@@ -72,6 +72,11 @@ traps apply too.
 - perf can't write its data to the Windows drive: `perf record` into a directory under
   `/mnt/c` fails with "failed to write perf data, error: Bad address". Keep `OUT` on
   WSL's filesystem (2026-10-22).
+- A Unix socket can't be made on the Windows drive: `listen` on a path under `/mnt/c`
+  fails with "Operation not supported". `tls/choose` and `tls/tls_served` listen on
+  sockets in `TMPDIR`, and in the working directory without it, so they failed when
+  `bench/all.sh` ran the tests from a checkout there. `test/run_tests.py` sets `TMPDIR`
+  to Python's temporary directory when it isn't set (2026-10-24).
 - A perf built from the WSL kernel's source without libelf records, but its reports name
   only kernel functions and show a program's own as bare addresses.
   `perf version --build-options` shows `libelf: [ OFF ]`. Ubuntu 26.04's `linux-perf`
