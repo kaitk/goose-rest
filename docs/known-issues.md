@@ -108,6 +108,12 @@ Traps met counting the routers' instructions (2026-10-13, h2load 1.70.0):
   log, and WSL's clock steps count about 250 timeouts in each cell. `bench/rest.sh count`
   fails at `ln`. Build the helpers first with
   `ONLY=goose "$GOOSE_HTTP"/bench/build.sh` (2026-10-20).
+- Aegon's CMake build directory in the cache, `aegon-build/`, kept the source path of
+  the checkout it was first configured from, so `bench/rest.sh build` from another
+  checkout, or from goose-rest's before the rename, stops at Aegon with "does not match
+  the source ... used to generate cache", before viltrum is built. Delete
+  `aegon-build/CMakeCache.txt` and build again; CMake configures afresh and keeps the
+  fetched sources (2026-10-24).
 
 ### The REST benchmark on macOS
 
