@@ -85,7 +85,8 @@ directory: `proxy/`, `proxy-h3/`, and `proxy-production/`. The server takes the 
 requests on `PROXY_PORT` as well as 8080, and keeps production-stack's cache in
 process, in lanes of its own. `bench/httparena.sh` copies the entry into an HttpArena
 checkout at a pinned commit and runs HttpArena's own `validate.sh` or `benchmark.sh`;
-its header lists what it changes in the checkout and its settings.
+its header lists what it changes in the checkout and its settings. `run` measures the
+entries `FRAMEWORKS` names: Plod's and viltrum's (V) by default.
 `bench/httparena-submit.sh DIR` prepares a pull request of the entry in the HttpArena
 checkout `DIR`, whose `origin` is the fork: `frameworks/plod` replaced by the entry, in
 one commit on branch `plod`, not pushed. While the fork's `plod` is open as a pull

@@ -21,14 +21,15 @@
 #   1,000,000.
 # - Under Docker Desktop, the readiness probe and the cgroup CPU reads run in
 #   helper containers (bench/httparena/docker-desktop.sh).
-# - On an arm64 Docker host, zrk's image takes zrk's aarch64-linux release.
+# - On an arm64 Docker host, zrk's image takes zrk's aarch64-linux release,
+#   and viltrum's image V's linux-arm64 release.
 #
 # The harness needs bash 4 and GNU tools: on macOS, run this script in a Linux
 # container that drives Docker Desktop through its socket, as goose-http's
 # bench/README.md describes ("HttpArena under Docker on macOS").
 #
 # Settings, from the environment:
-#   FRAMEWORKS  plod
+#   FRAMEWORKS  plod viltrum
 #   PROFILES    baseline limited-conn latency-1m pipelined latency-10k async
 #   SERVER_CPUS 0-3, LOAD_CPUS 4-15, and THREADS 4, as above
 #   HTTPARENA_COMMIT  the pin below; origin/main validates what a pull request
@@ -41,14 +42,14 @@ set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 cache=${CACHE:-$HOME/.cache/plod-bench}
 arena=$cache/httparena
-frameworks=${FRAMEWORKS:-plod}
+frameworks=${FRAMEWORKS:-plod viltrum}
 profiles=${PROFILES:-baseline limited-conn latency-1m pipelined latency-10k async}
 server_cpus=${SERVER_CPUS:-0-3}
 machine=${MACHINE:-$(hostname -s)}
 out=${OUT:-$root/bench/results/httparena-$(date -u +%Y-%m-%dT%H%M)-$machine}
 case $out in /*) ;; *) out=$PWD/$out ;; esac
 
-HTTPARENA_COMMIT=${HTTPARENA_COMMIT:-3717e256e9e4c1783f040c126341c5c4a11abe42}
+HTTPARENA_COMMIT=${HTTPARENA_COMMIT:-d9438f684ae3894eaf5b7d5f8935ae70eb7ddea3}
 GCANNON_COMMIT=11c802b2bdfe9af2fac4ac2571ae2de4c530cc62
 # zrk-2.3.0-aarch64-linux.tar.gz's SHA-256, from the release's SHA256SUMS.txt.
 ZRK_ARM64_SHA256=361f2632e3cee672cf6a8676438c9fa93e8a5702a0007bacc266861767bab213
@@ -75,6 +76,7 @@ fi
 if [ "$(docker info --format '{{.Architecture}}')" = aarch64 ]; then
     sed -i -e 's/x86_64-linux\.tar\.gz/aarch64-linux.tar.gz/' \
         -e "s/^ARG ZRK_SHA256=.*/ARG ZRK_SHA256=$ZRK_ARM64_SHA256/" "$arena/docker/zrk.Dockerfile"
+    sed -i 's/v_linux\.zip/v_linux_arm64.zip/' "$arena/frameworks/viltrum/Dockerfile"
 fi
 
 export LOADGEN_DOCKER=true SKIP_TUNE=true
