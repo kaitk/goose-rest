@@ -62,6 +62,14 @@ V's `x.json2` instead, whose `json` attribute names a key and `json_null` writes
 `json2.decode`. JSON=template splices the per-request values into each record's JSON,
 written once by `x.json2` at startup.
 
+`x.json2` isn't safe across threads the first time it meets a struct type: its encoder
+and decoder each list a type's fields into a function `static` on first use, without a
+lock (`vlib/x/json2/encode.v`, `cached_field_infos`, and `decode.v`,
+`cached_struct_field_infos`), and a worker that reads the list while another fills it
+panics with an index out of range. Each tier's routes therefore encode, and decode,
+every struct type they answer with once on the main thread before `listen` (`warm` in
+`app.v`); after that the lists only are read.
+
 ## Routes
 
 Each tier's file registers its routes, and `main.v` the tier's: tier D serves tier C's

@@ -464,3 +464,13 @@ fn push_string(mut out strings.Builder, s string) {
 fn written[T](value T) []u8 {
 	return json2.encode(value).bytes()
 }
+
+// x.json2 lists a struct type's fields on its first encode, into a static it
+// fills without a lock, and its decoder does the same: a worker that encodes
+// a type while another fills the list reads it part-filled and panics. Each
+// tier's routes call warm, on the main thread before the workers start, with
+// a value of every struct type their answers hold, those in arrays and
+// options included, as encoding a value reaches only what it holds.
+fn warm[T](value T) {
+	_ := json2.encode(value)
+}

@@ -868,6 +868,19 @@ fn (h &Heavy) schedule_version(mut c viltrum.Ctx) Reply {
 }
 
 fn heavy_routes(mut app viltrum.App, h &Heavy) {
+	warm(BookingsOut{})
+	warm(BookingOut{})
+	warm(LineOut{})
+	warm(Reminder{})
+	warm(ShiftsOut{})
+	warm(ShiftOut{})
+	warm(HistoryOut{})
+	warm(VisitOut{})
+	warm(NoteOut{})
+	warm(EncounterOut{})
+	warm(CaseNoteOut{})
+	warm(VersionOut{})
+	warm(Client{})
 	mut v2 := app.group('/api/v2', heavy_bearer)
 	v2.get('/schedule/version', fn [h] (mut c viltrum.Ctx) {
 		answer(mut c, h.schedule_version(mut c))

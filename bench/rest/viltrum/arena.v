@@ -153,6 +153,9 @@ fn arena_not_found() Reply {
 }
 
 fn arena_routes(mut app viltrum.App, a &Arena) {
+	warm(ServedItem{})
+	warm(ServedUser{})
+	json2.decode[Write]('{}') or {}
 	app.get('/api/items/:id', fn [a] (mut c viltrum.Ctx) {
 		answer(mut c, a.item(c.param('id') or { '' }))
 	})

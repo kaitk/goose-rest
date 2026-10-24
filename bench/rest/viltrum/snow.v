@@ -1076,6 +1076,16 @@ fn load_snow(cfg Config) &Snow {
 }
 
 fn snow_routes(mut app viltrum.App, s &Snow) {
+	warm(SessionOut{
+		settings: &Settings{}
+		fill:     &Fill{}
+	})
+	warm(OrgOut{})
+	warm(LastDay{})
+	warm(ProjectOut{})
+	warm(ProjectRef{})
+	warm(TimerOut{})
+	warm(StartOut{})
 	mut api := app.group('/api/v1', same_origin)
 	api.get('/session', fn [s] (mut c viltrum.Ctx) {
 		u := s.signed_in(c) or {
