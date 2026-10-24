@@ -1,7 +1,7 @@
 // plod::body beside plod::body_in_pieces, before it and after it: the
 // second read fails with body_already_read.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../";
 import expect from "../";
 import common;

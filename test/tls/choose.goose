@@ -5,7 +5,7 @@
 // are goose-tls's, each trusting the one certificate it should get.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import tls from "github.com/kaitk/goose-tls@v0.0.6";
 import plod from "../../";
 import plod.tls;

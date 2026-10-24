@@ -1,7 +1,7 @@
 // plod gen's errors for paths, operations, parameters, request
 // bodies, and security outside its subset.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../";
 import plod.gen.gen;
 import common;

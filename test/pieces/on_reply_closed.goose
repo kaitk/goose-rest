@@ -2,7 +2,7 @@
 // fails, or answers before the END, leaves the variant in cx.state.use, so
 // the CLOSED that follows reaches it and not Use.None.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../";
 import expect from "../";
 import common;

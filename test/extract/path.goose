@@ -1,7 +1,7 @@
 // Path parameters, plod::param and plod::param_int, decoded, each failure's
 // answer, and given a program's own http::router.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../";
 import expect from "../";
 import common;

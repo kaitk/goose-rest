@@ -8,7 +8,7 @@
 //   gen60 http [port]   (WORKERS 1)
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../../";
 import .routes_gen;
 import .app;

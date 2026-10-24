@@ -2,7 +2,7 @@
 // plod::cors, plod::timed, or both, that asks another thread and answers
 // its reply at WAKE, or 504 at TIMEOUT, and one that gathers its body first.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../";
 import expect from "../";
 import common;

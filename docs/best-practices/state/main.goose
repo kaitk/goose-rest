@@ -7,7 +7,7 @@
 //   curl -s localhost:8080/holidays
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../../";
 import .app;
 

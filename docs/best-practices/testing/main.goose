@@ -9,7 +9,7 @@
 //   curl -s -d 'project=1&started=1767250800&stopped=1767254400' localhost:8080/entries
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../../";
 import .app;
 

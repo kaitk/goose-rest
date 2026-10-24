@@ -5,7 +5,7 @@ namespace plod;
 
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 
 // A request's context: its head, its body, where its answer goes, the
 // application's request state, which goose-http keeps in the

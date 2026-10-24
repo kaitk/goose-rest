@@ -4,7 +4,7 @@
 // client of goose-tls's that trusts the certificate.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import tls from "github.com/kaitk/goose-tls@v0.0.6";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "../../";

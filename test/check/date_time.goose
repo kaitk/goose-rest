@@ -1,6 +1,6 @@
 // plod::is_date_time, format date-time's check.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.10";
+import http from "github.com/kaitk/goose-http@v0.5.11";
 import plod from "../../";
 
 fn main() {
