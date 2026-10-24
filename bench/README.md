@@ -48,6 +48,9 @@ The REST servers live under `rest/`:
   built twice: `rest-aegon` with HttpArena's entry's buffers, and `rest-aegon-small`
   with the entry's buffers for a low memlock limit. Linux only; its `NOTES.md` lists
   what the build needs.
+- `viltrum/`: viltrum (V), built with V's release and viltrum's tag, which
+  `bench/rest.sh build` fetches. Linux only; its `NOTES.md` says why its answers go
+  through V's `x.json2`.
 - `tiers/`: Plod's own tiers F, R, and M, with their checker, loads, and summary.
 
 Each framework serves through its own router, extractors or body readers, and JSON,

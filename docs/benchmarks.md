@@ -34,6 +34,7 @@ whose `bench/rest.sh` is wrapped by this repository's script of the same name.
 | Server | Tier | Why |
 |---|---|---|
 | Aegon, both builds | D, uploads | Aegon reads a body whole before a route runs, and its only early refusal is the server's 16 MB limit. A batch that declares more than its route's 1 MB and never sends the body gets no answer, where goose-http's checker wants a 413 at once ([its NOTES.md](../bench/rest/aegon/NOTES.md#tier-d-isnt-measured)). |
+| viltrum | D, uploads | The same as Aegon's: viltrum reads a body whole before a route runs, up to the server's 16 MB, so a batch declared over its route's 1 MB and never sent gets no answer ([its NOTES.md](../bench/rest/viltrum/NOTES.md#tier-d-isnt-measured)). |
 
 ## Pins
 

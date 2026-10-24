@@ -243,6 +243,14 @@ default, at HttpArena's `d9438f6` (2026-10-24). Steps 1 to 3 are goose-http's ta
 1 and 3 are built there, and 2 is measured there before its default changes. This
 task tracks the order and the entry's results.
 
+Step 5 is built (2026-10-24): `bench/rest/viltrum/`, at viltrum `v1.5.1`, passes both
+checkers on tiers A to C, F, R, and M in an arm64 Linux container. Tier D is left out,
+as for Aegon: viltrum reads a body whole before a route runs, so it can't refuse a
+batch declared over 1 MB until the body arrives (its `NOTES.md`). goose-http's `no_d`
+doesn't name viltrum yet, so goose-http's run still measures it on tier D, and that
+cell isn't reported. Left: `bench/rest.sh build` and `check` on the desktop, a run, and
+a column in the README's table.
+
 ## Method
 
 The server is the entry's `server.goose` and `app.goose`, built in WSL with
@@ -266,6 +274,8 @@ a wrk script that sends 16 `GET /pipeline` requests per write.
       connections or fewer within viltrum's at HttpArena's 64 threads, async's
       lateness under 1 ms at 64 connections, and no profile's rate lower, measured on
       the same machine
-- [ ] `bench/rest/viltrum/` serves every tier, passes both checkers, and has a
-      `NOTES.md`; `agents/benchmarks.md` and `bench/README.md` list it
+- [x] `bench/rest/viltrum/` serves every tier, passes both checkers, and has a
+      `NOTES.md`; `agents/benchmarks.md` and `bench/README.md` list it. Tier D fails
+      the declared-length check, as Aegon's does (2026-10-24)
+- [ ] The REST tiers measured on the desktop, in `docs/benchmarks.md` and the README
 - [ ] Each idea in step 7 taken or recorded as left, with the measurement

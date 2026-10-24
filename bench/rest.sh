@@ -1,7 +1,7 @@
 #!/bin/sh
 # The REST benchmark (docs/benchmarks.md): goose-http's REST tiers A to D
 # through its own bench/rest.sh, with Plod, Axum, actix-web, ntex,
-# dusty with a route per path, and Aegon beside goose-http alone, and Plod's tiers
+# dusty with a route per path, Aegon, and viltrum beside goose-http alone, and Plod's tiers
 # F, R, and M (bench/rest/tiers) run here the same way. Results go to
 # bench/results/<date>-rest-<machine>/ unless OUT names another directory.
 #
@@ -9,7 +9,8 @@
 #                         repository's servers into goose-http's build/rest:
 #                         rest-goose-plod, rest-axum, rest-actix-web,
 #                         rest-ntex, rest-dusty-routes, and, on Linux,
-#                         rest-aegon and rest-aegon-small; with ONLY=goose,
+#                         rest-aegon, rest-aegon-small, and rest-viltrum;
+#                         with ONLY=goose,
 #                         goose-http's ONLY=goose build and rest-goose-plod
 #                         alone
 #   bench/rest.sh check   each server on each tier it serves, against
@@ -28,7 +29,7 @@
 # server with BARE=1 on http::serve); goose-epoll-plod and goose-uring-plod,
 # Plod; goose-*-plod-gen, Plod through the generated router, tier
 # R only; axum, actix-web, ntex, dusty-routes; aegon, and aegon-small with
-# its buffers for a low memlock limit; and goose-http's dusty, its
+# its buffers for a low memlock limit; viltrum; and goose-http's dusty, its
 # catch-all entry, and hyper, as anchors to its tables.
 #
 # What run measures beyond goose-http's bench/rest.sh, each server with
@@ -50,9 +51,9 @@
 #                a clone at the pin in build/, scripts/goose-http.sh)
 #   SERVERS      tiers A to D: goose-uring goose-epoll goose-uring-plod
 #                goose-epoll-plod axum actix-web ntex dusty-routes aegon
-#                aegon-small dusty hyper
+#                aegon-small viltrum dusty hyper
 #   EXTRA        tiers F, R, and M: goose-uring-plod goose-epoll-plod axum
-#                actix-web ntex dusty-routes aegon aegon-small, with
+#                actix-web ntex dusty-routes aegon aegon-small viltrum, with
 #                goose-*-bare on F and goose-*-plod-gen on R added
 #   AEGON_CXX    the C++ compiler for Aegon (default: g++-16)
 #   TIERS        f r m, or a subset; STEPS goose-http's, or "none" to skip it
@@ -68,6 +69,11 @@ data=${DATA:-$gh/build/rest}
 tiers=$root/bench/rest/tiers
 PATH=$HOME/.cargo/bin:$PATH
 export GOOSE_HTTP=$gh
+# viltrum's release, and V's release its CI pins.
+viltrum=v1.5.1
+v_release=0.5.2
+v=$cache/v-$v_release/v/v
+vmodules=$cache/vmodules-$viltrum
 
 # goose-http at the pin plod.goose imports.
 ref=$(sed -n 's/^import http from .*goose-http@\([^"]*\)".*/\1/p' "$root/plod.goose" | head -1)
@@ -139,6 +145,23 @@ build)
     else
         echo "bench/rest.sh: Aegon builds on Linux only" >&2
     fi
+    # viltrum, with V's release and viltrum's tag fetched into CACHE
+    # (bench/rest/viltrum/NOTES.md). It serves on Linux only.
+    if [ "$(uname -s)" = Linux ]; then
+        if [ ! -x "$v" ]; then
+            case $(uname -m) in aarch64) zip=v_linux_arm64.zip ;; *) zip=v_linux.zip ;; esac
+            rm -rf "$cache/v-$v_release"
+            mkdir -p "$cache/v-$v_release"
+            curl -fsSL -o "$cache/v.zip" "https://github.com/vlang/v/releases/download/$v_release/$zip"
+            unzip -q "$cache/v.zip" -d "$cache/v-$v_release"
+            rm "$cache/v.zip"
+        fi
+        [ -d "$vmodules/viltrum" ] ||
+            git clone -q --depth 1 --branch "$viltrum" https://github.com/Tuntii/viltrum "$vmodules/viltrum"
+        VMODULES=$vmodules "$v" -prod -cflags -march=native -o "$bin/rest-viltrum" "$root/bench/rest/viltrum"
+    else
+        echo "bench/rest.sh: viltrum serves on Linux only" >&2
+    fi
     ls -l "$bin"
     exit 0
     ;;
@@ -153,8 +176,8 @@ esac
 # runs it with memlock unlimited; the other servers lock nothing.
 ulimit -l unlimited 2>/dev/null || echo "bench/rest.sh: memlock stays at $(ulimit -l) KB; Aegon may not register its buffers" >&2
 
-servers=${SERVERS:-goose-uring goose-epoll goose-uring-plod goose-epoll-plod axum actix-web ntex dusty-routes aegon aegon-small dusty hyper}
-extra=${EXTRA:-goose-uring-plod goose-epoll-plod axum actix-web ntex dusty-routes aegon aegon-small}
+servers=${SERVERS:-goose-uring goose-epoll goose-uring-plod goose-epoll-plod axum actix-web ntex dusty-routes aegon aegon-small viltrum dusty hyper}
+extra=${EXTRA:-goose-uring-plod goose-epoll-plod axum actix-web ntex dusty-routes aegon aegon-small viltrum}
 which=${TIERS:-f r m}
 port=${PORT:-29380}
 url=http://127.0.0.1:$port
@@ -235,9 +258,11 @@ if [ "$1" = check ]; then
         case $s in goose-uring | goose-epoll | dusty | hyper) continue ;; esac
         [ -x "$bin/$(binary "$s")" ] || { echo "check: no $bin/$(binary "$s"); skipped"; continue; }
         for t in a b c d; do
-            # Aegon has no tier D; no_d in goose-http's bench/rest.sh says why.
-            case $t:$s in d:aegon | d:aegon-small)
-                echo "$s d: skipped, as goose-http's bench/rest.sh skips it"
+            # Aegon and viltrum have no tier D: each reads a body whole before a
+            # route runs (their NOTES.md). no_d in goose-http's bench/rest.sh
+            # names Aegon.
+            case $t:$s in d:aegon | d:aegon-small | d:viltrum)
+                echo "$s d: skipped; it can't refuse a body declared over its route's limit"
                 continue
                 ;;
             esac
@@ -330,6 +355,7 @@ fi
     echo "aegon: $(sed -n '/Aegon.git/{n;s/.*GIT_TAG \([0-9a-f]\{7\}\).*/\1/p;}' "$root/bench/rest/aegon/CMakeLists.txt")," \
         "glaze: $(sed -n '/glaze.git/{n;s/.*GIT_TAG //p;}' "$root/bench/rest/aegon/CMakeLists.txt")," \
         "aegon c++: $(${AEGON_CXX:-g++-16} --version | head -1)"
+    echo "viltrum: $viltrum, v: $("$v" version)"
     # Aegon's buffers come from the huge-page pool when it has pages, which
     # VmRSS leaves out.
     echo "vm.nr_hugepages: $(cat /proc/sys/vm/nr_hugepages), memlock: $(ulimit -l)"
