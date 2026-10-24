@@ -29,6 +29,10 @@ Traps met while writing the generator and its tests (2026-10-13):
   the run. Two runs at once in one checkout also share `build/examples/body`, so each
   can print the other's bodies against its own statuses: a diff of shifted answers in
   examples that didn't change (2026-10-16). Run one at a time.
+- The first `scripts/test.sh` after a pin moves, natively on Windows, can fail one test
+  with `lld-link: error: undefined symbol: mail_open`: `test/run_tests.py`'s parallel
+  builds meet the newly fetched goose-http while its C is still being compiled. The
+  same test passes on its own and in the next run (2026-10-24).
 
 ## Git Bash on Windows
 
