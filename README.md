@@ -181,21 +181,21 @@ middleware.
 - **F**, **R**, and **M** measure the framework itself: one route, 203 routes, and A
   behind CORS, a bearer token, and `Server-Timing`.
 
-| Workload | Plod | Aegon (C++) | dusty (Zig) | ntex | actix-web | Axum |
-|---|:---|---:|---:|---:|---:|---:|
-| [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **583k req/s** (99%) | 513k | 374k | 332k | 276k | 253k |
-| [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **317k req/s** (100%) | 287k | 166k | 173k | 149k | 142k |
-| [C](docs/benchmarks.md#the-tiers): records, up to 728 KB | **63.2k req/s** (100%) | 54.0k | 24.6k | 33.5k | 32.5k | 35.2k |
-| C, templates | **155k req/s** (99%) | 117k | 138k | 107k | 97.3k | 92.4k |
-| [F](docs/benchmarks.md#the-tiers): one route | 498k req/s (100%) | **512k** | 395k | 331k | 278k | 266k |
-| [R](docs/benchmarks.md#the-tiers): 203 routes | 471k req/s | **497k** | 359k | 306k | 148k | 264k |
-| [M](docs/benchmarks.md#the-tiers): A with middleware | **509k req/s** | 402k | 343k | 284k | 227k | 198k |
-| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,124 req/s (98%) | [fails](docs/benchmarks.md#failed-checks) | **1,230** | 1,198 | 1,201 | 1,168 |
-| [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **123 MB**, uploads beside forms | 644 MB, C templates | 781 MB, uploads beside forms | 328 MB, C templates | 384 MB, C templates | 584 MB, C templates |
+| Workload | Plod | Aegon (C++) | dusty (Zig) | actix-web | Axum |
+|---|:---|---:|---:|---:|---:|
+| [A](docs/benchmarks.md#the-tiers): items, 0.2 KB | **583k req/s** (99%) | 513k | 374k | 276k | 253k |
+| [B](docs/benchmarks.md#the-tiers): time entries, 0.3-13 KB | **317k req/s** (100%) | 287k | 166k | 149k | 142k |
+| [C](docs/benchmarks.md#the-tiers): records, up to 728 KB | **63.2k req/s** (100%) | 54.0k | 24.6k | 32.5k | 35.2k |
+| C, templates | **155k req/s** (99%) | 117k | 138k | 97.3k | 92.4k |
+| [F](docs/benchmarks.md#the-tiers): one route | 498k req/s (100%) | **512k** | 395k | 278k | 266k |
+| [R](docs/benchmarks.md#the-tiers): 203 routes | 471k req/s | **497k** | 359k | 148k | 264k |
+| [M](docs/benchmarks.md#the-tiers): A with middleware | **509k req/s** | 402k | 343k | 227k | 198k |
+| [Uploads](docs/benchmarks.md#uploads-and-memory): up to 8 MB | 1,124 req/s (98%) | [fails](docs/benchmarks.md#failed-checks) | **1,230** | 1,201 | 1,168 |
+| [Peak RSS](docs/benchmarks.md#against-other-frameworks), the worst tier for each | **123 MB**, uploads beside forms | 644 MB, C templates | 781 MB, uploads beside forms | 384 MB, C templates | 584 MB, C templates |
 
 *Note: percentages, such as (98%), are Plod's share of goose-http's rate with no
-framework.* Goose ran on 2026-10-20, Aegon on 2026-10-19, and dusty, ntex, actix-web,
-and Axum on 2026-10-18, on the same machine. "Fails" marks a cell whose checks the framework
+framework.* Goose ran on 2026-10-20, Aegon on 2026-10-19, and dusty, actix-web, and
+Axum on 2026-10-18, on the same machine. "Fails" marks a cell whose checks the framework
 fails, which isn't measured.
 
 Goose uses io_uring. Results for every server, both Goose event loops, and memory:
