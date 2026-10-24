@@ -1,16 +1,16 @@
 # 047: HttpArena
 
 Status: in-progress. The plan for entering HttpArena (2026-10-19). The entry,
-`bench/httparena/plod/`, subscribes to 22 profiles, the gateway three among them,
-and passes HttpArena's `validate.sh` at `3717e25`: 144 checks, none failed, the
-static files' optional compression skipped (2026-10-23, Docker Desktop on an M1 Pro).
-A review against peer entries (2026-10-23) left it ready to submit: its JSON is
+`bench/httparena/plod/`, subscribes to 22 profiles, the gateway three among them, and
+is HttpArena's pull request [#1623](https://github.com/MDA2AV/HttpArena/pull/1623),
+open, as experimental in standard mode. It imports Plod `v0.5.6` and goose-http
+`v0.5.9`, and passes HttpArena's `validate.sh` at `d9438f6`, still HttpArena's `main`:
+144 checks, none failed (2026-10-24, Docker Desktop on an M1 Pro). Its JSON is
 serialized per request with `plod::format_fields`, `/async-db`'s and the cache's rows
-decoded into structs; production-stack's cache admits at most 256 asks a worker, with
-its boxes sized from that count ("Bounding production-stack's memory", below); it has a
-README, a two-line Dockerfile per proxy, `*_CPUSET` variables in its compose files, and
-imports Plod `v0.5.2` and goose-compress `v0.1.3`, its
-Dockerfile downloading Goose's release. The submission and the benchmark runs remain.
+decoded into structs, and production-stack's cache admits at most 1,024 asks a worker,
+less its pool's hand-overs ("Bounding production-stack's memory", below). What a review
+of the pull request found, and what it leaves to do, is under "The pull request",
+below.
 
 This task is the master plan: which profiles the entry can run, what each one needs, and
 which repository builds it. The protocol and database work happens in those
@@ -42,6 +42,97 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
 | unary-grpc, unary-grpc-tls | gRPC over h2, and protobuf | After h2 |
 | baseline-h3, static-h3 | QUIC | Last |
+
+## The pull request
+
+Reviewed 2026-10-24 against HttpArena at `d9438f6`: the pull request's thread, the
+owner's comments on the pull requests since 2026-04-19, the rules and scoring docs,
+and the published results.
+
+The owner ran `/benchmark --save` on 2026-10-23, at the entry's first commit
+(`64062ae`: Plod `v0.5.4`, goose-http `v0.5.8`), and the bot committed the results to the
+fork's `plod` (`ee81770`). The update to Plod `v0.5.5` (`e64ab48`) came after, so the
+results on the branch aren't the branch's code, and a later `--save` replaces them
+("one --save per PR … it clears previous --save commited data",
+[#866](https://github.com/MDA2AV/HttpArena/pull/866)). The next `--save` is asked for
+once the h3 profiles are in.
+
+Done after the review (2026-10-24): Plod `v0.5.6` writes `format_fields`' JSON through
+Goose's `json` writer and adds `plod::bytes` and `plod::field`, which `/echo` and
+production-stack's `X-Cache` now use; gateway-h3's edge is stock nginx with its HTTP/3;
+the entry's README and `meta.json` say so, and the pull request's description matches.
+
+Among framework entries, from those results: first on json-tls, json-h2c,
+baseline-h2, baseline-h2c, and gateway-64; second on async-db,
+echo-ws-limited, and production-stack; third on json-comp, limited-conn, echo-ws,
+echo-ws-pipeline, and pipelined; fourth on baseline. Where it scores low:
+
+| Profile | Score of 1,000 | Why |
+|---|---:|---|
+| static-h2 | about 350 | `plod::files` opens and reads each file per request; the leaders, at about 1.1 M against 392 K, serve from memory. The rules allow a cache that is the framework's own and follows the disk (`add-framework/implementation-rules/frameworks/standard.md`) |
+| gateway-h3 | about 490 | Caddy at the edge. The stock `nginx:1.27-alpine` image, which `proxy/` already uses, has `--with-http_v3_module` (checked with `nginx -V`), so the README's reason for Caddy was wrong; anole's stock nginx edge gets 162 K, where aspnet-minimal_caddy's and libuvcpp's Caddy edges get 69 K and 74 K, and the entry's 79 K. Now stock nginx, unmeasured |
+| json-comp | about 910 | gzip only, at level 1, 1,438 bytes a response against the leader's 1,225: the score scales by the square of that ratio, ×0.73 |
+
+static-tls, async-db, pipelined, fortunes, and latency-500k-8cpu are reference-only
+(`site/leaderboard/data.js`, `scored: false`). The scoring docs still list api-4 and
+api-16; `scripts/benchmark.sh` has removed them. baseline-h3, static-h3, unary-grpc,
+and unary-grpc-tls are the scored profiles the entry doesn't run.
+
+What the owner asks of framework entries, and where the entry stands:
+
+- JSON through a serialization library, "preferably the standard one for that
+  language", or the entry is marked tuned or engine
+  ([#1616](https://github.com/MDA2AV/HttpArena/pull/1616),
+  [#1568](https://github.com/MDA2AV/HttpArena/pull/1568): "You need to use a proper
+  json parser (for example nlohmann/json) … unless you classify as an engine").
+  Up to Plod `v0.5.5`, `plod::format_fields` wrote strings with `http::json_string`
+  and integers with `format`; from `v0.5.6` every field but a `u64` goes through
+  Goose's `json` writer.
+- No HTTP details in the entry ([#1542](https://github.com/MDA2AV/HttpArena/pull/1542):
+  "no http details like http headers or parsing logic on the entry"). Up to `v0.5.5`,
+  `/echo` answered with `http::respond`, and production-stack added `X-Cache` with
+  `http::start`, `http::field`, and `http::finish`; from `v0.5.6` they use
+  `plod::bytes` and `plod::json`'s block with `plod::field`.
+- Established libraries for TLS and the Postgres driver, or tuned
+  ([#998](https://github.com/MDA2AV/HttpArena/pull/998),
+  [#1219](https://github.com/MDA2AV/HttpArena/pull/1219)); both comments were on
+  engines, and viltrum, experimental and standard, was merged with TLS records of its
+  own ([#1605](https://github.com/MDA2AV/HttpArena/pull/1605)).
+- Experimental for a new entry, and every scored HTTP/1.1 profile for a framework:
+  the entry meets both.
+- No pushback anywhere on `-march=native`, which actix, userver, and Aegon use.
+
+Smaller points: the benchmark mounts `/certs` for every profile
+(`scripts/lib/framework.sh`), so `server-tls` serves them all, as the entry's README
+now says; and goose-postgres `v0.0.6` declares goose-http `v0.5.8`, so the image's
+build prints that the entry declares `v0.5.9`.
+
+### Before h3 joins the entry
+
+The rules (`site/content/docs/test-profiles/h3/`), the scripts, and the h3 entries at
+`d9438f6`:
+
+- Standard mode: "the framework native QUIC/HTTP3 support with default
+  configuration"; tuned "may tune QUIC parameters, congestion control, and UDP buffer
+  sizes". `Listener.h3` and `h3` in the ALPN list turn HTTP/3 on as Aegon's
+  `enable_http3(true)` and agensio's `protocols` list do. Anything tuned for the load
+  has to be goose-http's documented default, chosen for production, not the entry's.
+- QUIC of the server's own is accepted: zix-http3's is Zig on `std.crypto`, agensio's
+  its own over OpenSSL's QUIC TLS API.
+- static-h3's cache must be the framework's own and follow the disk; `plod::files`
+  reads the disk each request, and its `.br` and `.gz` copies come through
+  `http::open_precompressed`.
+- `validate.sh` publishes `8443/udp` for an h3 entry and sends four requests per
+  profile with h2load-h3; the benchmark's readiness probe is curl over TCP 8443, which
+  the entry's h2 answers. HttpArena's host sets `rmem_max` and `wmem_max` to 7,500,000
+  and loopback's MTU to 1,500 (`scripts/lib/system.sh`); an entry sets no sysctl.
+- The load is 64 connections of 64 streams. A per-connection stream limit that isn't
+  raised as streams close held one entry to 1.3 K requests a second
+  ([#772](https://github.com/MDA2AV/HttpArena/pull/772)); goose-http's credit comes
+  back as streams are taken. With 64 workers and `SO_REUSEPORT` hashing 64 clients,
+  about a third of the workers get no connection; goose-http has no BPF steering yet.
+- Nothing in goose-http task 066's "Not built" list is checked by `validate.sh` or
+  exercised by h2load-h3: the h3 routes, `/baseline2` and `/static/*name`, don't wait.
 
 ## Bounding production-stack's memory
 
