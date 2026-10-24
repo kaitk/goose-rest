@@ -911,6 +911,64 @@ fn empty(cx, status: i32) {
     http::finish(cx.out, http::NO_TYPE, "");
 }
 
+// Answers status with body as it is, under content_type, or none where it's
+// empty.
+fn bytes(cx, status: i32, content_type: const u8[:], body: const u8[:]) {
+    http::respond(cx.out, status, content_type, body);
+}
+
+// The answers above with fields of the route's own: F runs with the head
+// open, after the status line and before the body's fields, and writes them
+// with plod::field and plod::set_cookie.
+inline fn json<F>(cx, status: i32, v) {
+    var body: u8[>..] = [];
+    format(body, v);
+    http::start(cx.out, status);
+    in_head(cx, F);
+    http::finish(cx.out, http::JSON, body);
+}
+
+inline fn json_bytes<F>(cx, status: i32, body: const u8[:]) {
+    http::start(cx.out, status);
+    in_head(cx, F);
+    http::finish(cx.out, http::JSON, body);
+}
+
+inline fn text<F>(cx, status: i32, s: const u8[:]) {
+    http::start(cx.out, status);
+    in_head(cx, F);
+    http::finish(cx.out, TEXT_UTF8, s);
+}
+
+inline fn empty<F>(cx, status: i32) {
+    http::start(cx.out, status);
+    in_head(cx, F);
+    http::finish(cx.out, http::NO_TYPE, "");
+}
+
+inline fn bytes<F>(cx, status: i32, content_type: const u8[:], body: const u8[:]) {
+    http::start(cx.out, status);
+    if content_type.len > 0 { http::field(cx.out, "Content-Type", content_type); }
+    in_head(cx, F);
+    http::finish(cx.out, http::NO_TYPE, body);
+}
+
+// Runs an answer's block with the response marked open, so that a failure
+// inside it cuts the response short and closes the connection, as for a
+// response begun, rather than leave its head unended on a connection kept.
+inline fn in_head<F>(cx) {
+    cx.out.stream.open = true;
+    F();
+    cx.out.stream.open = false;
+}
+
+// Writes the field name: value on the answer whose head is open, inside the
+// block of an answer above or between plod::begin and the first plod::send,
+// and returns whether it did: it writes nothing for a name or value that
+// http::is_field refuses, so a value from the request can't split the
+// response.
+fn field(cx, name: const u8[:], value: const u8[:]) -> bool { http::field(cx.out, name, value) }
+
 // Answers a request no route took, as http::otherwise does, with each error in
 // the JSON shape: an unknown method 501 not_implemented, a path the router
 // refused 400 bad_path, a path no route matched 404 not_found, and another

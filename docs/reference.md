@@ -72,7 +72,23 @@ true for every call after a request's first.
 `plod::json` and `plod::json_bytes` answer `application/json`; `plod::text` answers
 `text/plain; charset=utf-8`. `plod::empty(cx,
 status)` answers without a body: 204 and 304 omit `Content-Length`, and other statuses write
-`Content-Length: 0`.
+`Content-Length: 0`. `plod::bytes(cx, status, content_type, body)` answers `body` as it
+is, under `content_type`, or with no `Content-Type` where that's empty.
+
+Each of the five also takes a block, which runs with the response's head open and
+writes fields of the route's own with `plod::field(cx, name, value)` or
+[`plod::set_cookie`](#12-cookies-out):
+
+```rust
+plod::json(cx, 201, p) { plod::field(cx, "Location", str("/projects/", p.id)); };
+```
+
+`plod::field` returns whether it wrote the field: it writes nothing for a name or value
+that `http::is_field` refuses, such as one holding a line break, so a value taken from
+the request can't split the response. It also works between `plod::begin` and the first
+`plod::send`. Compute what the fields need before the answer: a `plod::fail` inside the
+block comes after the head began, so it leaves the response unended and closes the
+connection ([Errors](#5-errors)).
 
 ### 1.1 JSON from a struct's fields
 
@@ -86,10 +102,10 @@ fn format(out: u8[>..]&, p: const Project&) { plod::format_fields(out, p); }
 
 | Field type | Written as |
 |---|---|
-| An integer type | a number |
+| An integer type | a number, by `json::format_int`; a `u64` by Goose's `format`, since `format_int` takes an `i64` |
 | `f64`, `f32` | a number, by `json::format_number` |
-| `bool` | `true` or `false` |
-| A `u8` array or slice of any kind (`u8[..64]`, `u8[]`, `u8[16]`, `const u8[:]`) | a string, by `http::json_string` |
+| `bool` | `true` or `false`, by `json::format_bool` |
+| A `u8` array or slice of any kind (`u8[..64]`, `u8[]`, `u8[16]`, `const u8[:]`) | a string, by `json::format_string` |
 | Another array or slice | an array, each element by these rules |
 | A struct or enum | by the program's `format` overload for it |
 | An optional | `null`, or its value by Goose's `format` |
@@ -109,16 +125,15 @@ writes both from a schema. It builds on Goose's `const for` over `fields<T>` (sp
 It returns `false` and writes nothing when goose-http refuses the cookie. Each call
 writes a separate field.
 
-Call it while the response's head is open: between `http::start` and `http::finish`,
-or after `plod::begin` and before the first `plod::send` or `plod::end`.
-`plod::json`, `plod::text`, and `plod::empty` write the whole answer at once, so use
-the head and body writers separately for an answer with cookies:
+Call it while the response's head is open: in the block of an answer
+([Context and routes](#1-context-and-routes)), or after `plod::begin` and before the
+first `plod::send` or `plod::end`:
 
 ```rust
-http::start(cx.out, 200);
-plod::set_cookie(cx, http::Cookie { name: "sid", value: id, path: "/",
-                                  secure: true, http_only: true, same_site: "Lax" });
-http::finish(cx.out, http::JSON, "{\"ok\":true}");
+plod::json_bytes(cx, 200, "{\"ok\":true}") {
+    plod::set_cookie(cx, http::Cookie { name: "sid", value: id, path: "/",
+                                      secure: true, http_only: true, same_site: "Lax" });
+};
 ```
 
 `plod::clear_cookie(cx, cookie)` uses the same writer, with an empty value,

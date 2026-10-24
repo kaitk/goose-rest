@@ -117,11 +117,7 @@ fn run(u: ReportJob.Start, all: Report[>..]&, a) {
 // The report has started: 202, and where to ask about it.
 fn resume(u: ReportJob.Start, cx) {
     let r = plod::answer<Report>(cx);
-    var body: u8[>..] = [];
-    format(body, r);
-    http::start(cx.out, 202);
-    http::field(cx.out, "Location", str("/v1/reports/", r.id));
-    http::finish(cx.out, http::JSON, body);
+    plod::json(cx, 202, r) { plod::field(cx, "Location", str("/v1/reports/", r.id)); };
 }
 
 fn run(u: ReportJob.Status, all: Report[>..]&, a) {

@@ -7,7 +7,6 @@ namespace plod;
 
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.9";
 
 // Writes v as a JSON object: each field in declaration order, keyed by its
 // name.
@@ -34,25 +33,27 @@ fn format_fields<T>(out: u8[>..]&, v: const T&) {
 // coercion, which it would otherwise tie.
 // One per integer type, since one integer type widening to another is a
 // coercion, which would tie with an integer's conversion to f64 for u64 and
-// with a slice's for the rest.
-fn field_json(out: u8[>..]&, v: i8, rank: i32) { format(out, v); }
-fn field_json(out: u8[>..]&, v: i16, rank: i32) { format(out, v); }
-fn field_json(out: u8[>..]&, v: i32, rank: i32) { format(out, v); }
-fn field_json(out: u8[>..]&, v: i64, rank: i32) { format(out, v); }
-fn field_json(out: u8[>..]&, v: u8, rank: i32) { format(out, v); }
-fn field_json(out: u8[>..]&, v: u16, rank: i32) { format(out, v); }
-fn field_json(out: u8[>..]&, v: u32, rank: i32) { format(out, v); }
+// with a slice's for the rest. Each writes through Goose's json writer, but
+// u64, whose values past i64's json::format_int can't take.
+fn field_json(out: u8[>..]&, v: i8, rank: i32) { json::format_int(out, v); }
+fn field_json(out: u8[>..]&, v: i16, rank: i32) { json::format_int(out, v); }
+fn field_json(out: u8[>..]&, v: i32, rank: i32) { json::format_int(out, v); }
+fn field_json(out: u8[>..]&, v: i64, rank: i32) { json::format_int(out, v); }
+fn field_json(out: u8[>..]&, v: u8, rank: i32) { json::format_int(out, v); }
+fn field_json(out: u8[>..]&, v: u16, rank: i32) { json::format_int(out, v); }
+fn field_json(out: u8[>..]&, v: u32, rank: i32) { json::format_int(out, v); }
 fn field_json(out: u8[>..]&, v: u64, rank: i32) { format(out, v); }
 fn field_json(out: u8[>..]&, v: f64, rank: i32) { json::format_number(out, v); }
+fn field_json(out: u8[>..]&, v: bool, rank: i32) { json::format_bool(out, v); }
 fn field_json<T>(out: u8[>..]&, v: const T[:], rank: i32) { elements_json(out, v, rank); }
-// bool, an optional, and a struct or enum through the program's format
-// overload, which Goose finds in the namespace that declares the type. No
-// writer takes T?: any value reaches one by coercion, which ties with i64's
-// and the slice's.
+// An optional, and a struct or enum through the program's format overload,
+// which Goose finds in the namespace that declares the type. No writer takes
+// T?: any value reaches one by coercion, which ties with i64's and the
+// slice's.
 fn field_json(out: u8[>..]&, v, rank: f64) { format(out, v); }
 
 // A u8 slice is a string; a slice of anything else, an array.
-fn elements_json(out: u8[>..]&, v: const u8[:], rank: i32) { http::json_string(out, v); }
+fn elements_json(out: u8[>..]&, v: const u8[:], rank: i32) { json::format_string(out, v); }
 fn elements_json<T>(out: u8[>..]&, v: const T[:], rank: i32) {
     out.push('[');
     for e, i in v {

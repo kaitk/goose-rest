@@ -512,6 +512,12 @@ a widening is a coercion too. Rejected: a writer for `T?`, which any value reach
 coercion, tying with the integer and slice writers; an optional goes through the
 catch-all, so an optional string isn't quoted.
 
+Decided (2026-10-24): every field the writer can, it writes through Goose's `json`
+writer (`format_string`, `format_int`, `format_bool`, `format_number`), rather than
+goose-http's `json_string` and Goose's plain `format`, so a program's JSON comes from
+the language's standard serializer, as HttpArena asks of a framework. The bytes are the
+same. A `u64` stays with `format`, since `format_int` takes an `i64`.
+
 Rejected for now: a generic reader. Choosing how to read a field needs its type, which
 `const for` v1 doesn't bind (its design's future work, `<N, A, U>`), and the expected
 result type never selects an overload (§7.1). Readers stay hand-written or generated.
@@ -526,6 +532,15 @@ a response leaves that response, because `route` can't shrink the write buffer w
 slice of the request is live (spec §5.1). Decided (2026-10-15): a failure with a response
 still open, begun in this call or an earlier one, leaves it unended and closes the
 connection, so that the client sees it cut short rather than an error inside it.
+
+Decided (2026-10-24): an answer with fields of the route's own, a `Location`, a
+cookie, or an `X-Cache`, is the answer's block form, `plod::json(cx, 201, p) {
+plod::field(cx, "Location", url); };`, whose block runs while the head is open, and
+`plod::bytes(cx, status, content_type, body)` answers bytes under any type. A route
+then writes status, fields, and body in one call, as the response axis of HttpArena's
+completeness asks, rather than through goose-http's `http::start`, `http::field`, and
+`http::finish`. Rejected: fields kept on `Cx` until the answer, which would cost every
+request a field for a few routes' use.
 
 ## Waiting on another thread
 

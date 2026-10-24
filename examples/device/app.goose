@@ -32,10 +32,7 @@ fn security_token(cx) -> bool {
     return true;
 }
 
-fn page(cx) {
-    http::start(cx.out, 200);
-    http::finish(cx.out, "Content-Type: text/html; charset=utf-8\r\nContent-Length: ", PAGE);
-}
+fn page(cx) { plod::bytes(cx, 200, "text/html; charset=utf-8", PAGE); }
 
 fn health(cx) { plod::text(cx, 200, "ok"); }
 

@@ -10,8 +10,12 @@ of these calls:
 | `plod::json_bytes(cx, status, body)` | JSON the program wrote itself |
 | `plod::text(cx, status, s)` | `s` as `text/plain; charset=utf-8` |
 | `plod::empty(cx, status)` | no body; 204 and 304 have no `Content-Length`, other statuses have `Content-Length: 0` |
+| `plod::bytes(cx, status, content_type, body)` | `body` as it is, under `content_type`, such as a page |
 | `plod::fail(cx, status, code)` | `{"error": code}`, from anywhere inside a route |
-| `http::start`, `http::field`, `http::finish` | anything else, such as a page |
+
+Each answer but `fail` also takes a block, which adds fields of the route's own with
+`plod::field`, such as a `Location`:
+`plod::json(cx, 201, p) { plod::field(cx, "Location", str("/projects/", p.id)); };`.
 
 ## A value as JSON
 

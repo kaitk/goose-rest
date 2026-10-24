@@ -54,6 +54,7 @@ spec.
 | Middleware: `wrap`, `from_fn`, `Transform` | Blocks around the dispatch or a route, inlined into it | No boxing and no call per layer. |
 | `ResponseError`, `Result<impl Responder, E>`, `?` | `plod::fail(cx, status, code)` returns from the route, `plod::routes`' or `plod::route`'s, from any depth | `return ... from` replaces threading a `Result` up. |
 | `Responder`, `web::Json<T>` | `plod::json(cx, status, v)`, which calls `format(out, v)` | The `format` hook is Goose's one type-directed lookup (§3.7, §11.1). |
+| `HttpResponse::build(status).insert_header(...).body(...)` | `plod::bytes(cx, status, content_type, body)`, and any answer's block form, whose block writes fields with `plod::field` | The block runs while the head is open, so nothing holds the fields in between. |
 | serde's `Serialize` and `Deserialize` | `format` and a reader per type, written by hand or generated | No derive. |
 | `async fn` handlers awaiting a database | A handler that asks another thread, and a case function that resumes it | No async. |
 
