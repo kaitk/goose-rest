@@ -3,6 +3,26 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## v0.5.6 (2026-10-24)
+
+Goose `v2026.3`, goose-http `v0.5.9`, goose-compress `v0.1.4`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` goose-tls `v0.0.5`. No breaking changes.
+
+Added:
+
+- `plod::bytes(cx, status, content_type, body)` answers bytes as they are, under any
+  type, such as a page.
+- `plod::json`, `json_bytes`, `text`, `empty`, and `bytes` each take a block, which
+  writes fields of the route's own with the new `plod::field(cx, name, value)` or with
+  `plod::set_cookie`: `plod::json(cx, 201, p) { plod::field(cx, "Location", url); };`
+  ([Context and routes](docs/reference.md#1-context-and-routes)).
+
+Changed:
+
+- `plod::format_fields` writes integers, booleans, and strings through Goose's `json`
+  writer (`json::format_int`, `format_bool`, `format_string`), as it already wrote
+  floats; a `u64` still goes through `format`. The bytes are the same.
+
 ## v0.5.5 (2026-10-24)
 
 Goose `v2026.3`, goose-http `v0.5.9`, goose-compress `v0.1.4`; `plod.websocket`
