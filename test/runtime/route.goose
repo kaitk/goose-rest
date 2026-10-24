@@ -1,7 +1,7 @@
 // plod::route: an answer, a failure from two calls below it, one with text
 // the failure owns, and a failure after an answer, which leaves it.
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import plod from "../../";
 import expect from "../";
 import common;

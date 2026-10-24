@@ -1,7 +1,7 @@
 // Valid Projects read and written back by the generated reader and writer.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import plod from "../../";
 import expect from "../";
 import expect.gen.api_gen;

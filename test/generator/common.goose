@@ -2,7 +2,7 @@
 // error it must give, or the code it must write. The code it writes is
 // tested by test/generated/ and by scripts/test.sh's golden files.
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import plod from "../../";
 import plod.gen.gen;
 

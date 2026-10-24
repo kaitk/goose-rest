@@ -3,7 +3,7 @@
 // needs goose-hash, which its root file declares at the tag goose-http's
 // websocket.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+//   import http from "github.com/kaitk/goose-http@v0.5.9";
 //   import hash from "github.com/kaitk/goose-hash@v0.0.4";
 //   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.websocket;
@@ -13,7 +13,7 @@
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import http.websocket;
 

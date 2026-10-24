@@ -1,7 +1,7 @@
 // plod::compressed: a large answer compressed in each coding the client
 // takes, at the default level and at a level of the program's.
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "../../";
 import plod.compression;

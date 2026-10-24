@@ -2,7 +2,7 @@
 // A lane of Writes opened with a thread that takes the reports lane's jobs:
 // thread_spawn checks the thread's plod::Jobs against lane_open's.
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import plod from "../../";
 
 enum Writes { Create { project: i64 } }

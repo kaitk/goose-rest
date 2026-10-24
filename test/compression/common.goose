@@ -3,7 +3,7 @@
 // inside it, with the case function that sends them. scripts/test-examples.sh
 // decompresses real answers of examples/compress.
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "../../";
 import plod.compression;

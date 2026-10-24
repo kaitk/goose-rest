@@ -2,7 +2,7 @@
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
+import http from "github.com/kaitk/goose-http@v0.5.9";
 
 // A 200 event stream, with u in cx.state.use as for begin. Pause it with
 // plod::pause and finish it with plod::end.
