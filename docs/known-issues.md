@@ -93,9 +93,8 @@ traps apply too.
   `--network host` gets the answer. `bench/httparena.sh run` probes through a helper
   container for that reason, but `bench/httparena.sh validate` runs HttpArena's
   `validate.sh`, whose every check curls `localhost`, so it fails with "Server did not
-  start within 30s" and the server's container empty of output. Run the validation
-  inside a Linux container on the host network that drives Docker through its socket, as
-  goose-http's `bench/README.md` describes for macOS (2026-10-24).
+  start within 30s" and the server's container empty of output. Validate from a container
+  on the host network, as `bench/README.md` shows (2026-10-24).
 
 ## Benchmarks
 

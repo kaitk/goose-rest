@@ -96,6 +96,20 @@ one commit on branch `plod`, not pushed. While the fork's `plod` is open as a pu
 request, the commit goes on top of it, after the results HttpArena's bot commits there;
 otherwise the branch starts from HttpArena's main. Validate at HttpArena's main first,
 with `HTTPARENA_COMMIT=origin/main bench/httparena.sh validate`.
+In WSL under Docker Desktop, the shell can't reach a container on the host network, and
+`validate.sh` checks every endpoint on `localhost`, so validate from a container on that
+network, `bench/httparena/harness.Dockerfile`'s. Docker Desktop resolves the paths the
+harness mounts as the distribution's, so mount the cache and the checkout at their own
+paths:
+
+```sh
+docker build -t plod-arena -f bench/httparena/harness.Dockerfile bench/httparena
+docker run --rm --network host -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$HOME/.cache/plod-bench:$HOME/.cache/plod-bench" -v "$PWD:$PWD" -e HOME="$HOME" \
+    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+    -e HTTPARENA_COMMIT=origin/main -w "$PWD" plod-arena bench/httparena.sh validate
+```
+
 A gateway profile's containers take their CPUs from `SERVER_CPUSET`, `EDGE_CPUSET`,
 `AUTH_CPUSET`, `CACHE_CPUSET`, and `PROXY_CPUSET` where set, and `SERVER_CPUS`
 otherwise. Write a single CPU as `10-10`, not `10`: the harness reads a cpuset without
