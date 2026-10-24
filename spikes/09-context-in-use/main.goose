@@ -9,7 +9,7 @@
 // fixed: each request goes through plod::on_event, the code plod::serve
 // runs, and each reply message addressed to it comes back as a WAKE.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import .api_gen;
 import .app;

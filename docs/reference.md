@@ -145,12 +145,12 @@ same cookie. Neither helper stores cookies or adds request state.
 
 `plod::serve` and `plod::serve_epoll` with HTTPS are in the module `plod.tls`, which
 `plod` doesn't import, so a program without it builds without goose-tls and OpenSSL. To
-use them, declare goose-tls in the root file at the tag goose-http's `tls.goose` names,
-import the module, and give each worker goose-http's `http::TlsServer`:
+use them, declare goose-tls in the root file at the reference goose-http's `tls.goose`
+names, import the module, and give each worker goose-http's `http::TlsServer`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.9";
-import tls from "github.com/kaitk/goose-tls@v0.0.5";
+import http from "github.com/kaitk/goose-http@v0.5.10";
+import tls from "github.com/kaitk/goose-tls@v0.0.6";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.tls;
 
@@ -300,7 +300,7 @@ the root file at the tag goose-http's `compression.goose` names, and import the
 module:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.compression;
@@ -874,7 +874,7 @@ goose-hash in the root file at the tag goose-http's `websocket.goose` names, imp
 module, and keep the connection's `http::WebSocket` in the request state:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.websocket;

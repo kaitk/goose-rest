@@ -1,7 +1,7 @@
 // plod::timed outside fills its field in the head compressed copies, and
 // plod::cors inside adds its fields to the answer compressed.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "../../";
 import plod.compression;

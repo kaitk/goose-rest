@@ -2,7 +2,7 @@
 // that the count below is the server's.
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../../";
 
 struct User { name: u8[..64] }

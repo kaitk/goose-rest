@@ -1,7 +1,7 @@
 // plod::once: a value computed at the first call of a request, and kept for
 // the calls after.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 import common;

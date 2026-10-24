@@ -2,7 +2,7 @@
 // detail and offset.
 import std;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 import expect.gen.api_gen;

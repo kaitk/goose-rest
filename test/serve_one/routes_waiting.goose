@@ -3,7 +3,7 @@
 // lane and answers at the reply's WAKE. Neither gets routes' 404 beside its
 // answer.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 

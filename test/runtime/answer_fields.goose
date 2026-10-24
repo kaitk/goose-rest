@@ -1,7 +1,7 @@
 // plod::bytes, and the answers' block forms, whose fields plod::field and
 // plod::set_cookie write, byte for byte.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 import common;

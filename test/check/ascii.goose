@@ -1,6 +1,6 @@
 // plod::is_ascii, format ascii's check.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 
 fn main() {

@@ -5,7 +5,7 @@
 // closed; the job answered every time, so plod::lane adds no refusal; and
 // the same replies under plod::play.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 

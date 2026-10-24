@@ -1,7 +1,7 @@
 // error: no matching overload for call to plod::get
 // plod::get outside plod::routes' block, whose context alone has a router.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 
 fn main() {

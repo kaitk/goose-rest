@@ -1,17 +1,17 @@
 // plod::serve and plod::serve_epoll with HTTPS on the listeners that ask for
 // it, with goose-http's http.tls. Only a program that imports this module
-// needs goose-tls, which its root file declares at the tag goose-http's
+// needs goose-tls, which its root file declares at the reference goose-http's
 // tls.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@v0.5.9";
-//   import tls from "github.com/kaitk/goose-tls@v0.0.5";
+//   import http from "github.com/kaitk/goose-http@v0.5.10";
+//   import tls from "github.com/kaitk/goose-tls@v0.0.6";
 //   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.tls;
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
-import tls from "github.com/kaitk/goose-tls@v0.0.5";
+import http from "github.com/kaitk/goose-http@v0.5.10";
+import tls from "github.com/kaitk/goose-tls@v0.0.6";
 import http.tls;
 
 // serve, whose listeners with tls (http::Listener.tls, or Config.tls for

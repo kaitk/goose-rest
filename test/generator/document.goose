@@ -1,7 +1,7 @@
 // plod gen's errors for a document it can't read: another OpenAPI
 // version, no schemas, and JSON that doesn't parse.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import plod.gen.gen;
 import common;

@@ -2,7 +2,7 @@
 // piece flushed in a chunk of its own, every encoder back after, and one
 // entry reused by each response in turn.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "../../";
 import plod.compression;

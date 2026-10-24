@@ -1,7 +1,7 @@
 // plod::scope: prefix scopes, nested, with 404, 405, and OPTIONS across
 // them, an escaped prefix, and the paths that aren't in one.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 import common;

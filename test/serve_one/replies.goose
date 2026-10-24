@@ -6,7 +6,7 @@
 // waits in turn, whole and in pieces, a timeout, and a wait with no wake
 // left.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../";
 import expect from "../";
 

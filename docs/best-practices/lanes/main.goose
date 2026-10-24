@@ -10,7 +10,7 @@
 //   curl -s -d 'email=ada@example.com&password=goose' localhost:8080/auth/session
 import std;
 import os;
-import http from "github.com/kaitk/goose-http@v0.5.9";
+import http from "github.com/kaitk/goose-http@v0.5.10";
 import plod from "../../../";
 import .app;
 
