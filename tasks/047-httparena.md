@@ -69,7 +69,7 @@ echo-ws-pipeline, and pipelined; fourth on baseline. Where it scores low:
 
 | Profile | Score of 1,000 | Why |
 |---|---:|---|
-| static-h2 | about 350 | `plod::files` opens and reads each file per request; the leaders, at about 1.1 M against 392 K, serve from memory. The rules allow a cache that is the framework's own and follows the disk (`add-framework/implementation-rules/frameworks/standard.md`) |
+| static-h2 | about 350 | `plod::files` opens and reads each file per request, at about 160 µs of CPU a request; the leaders get about 1.1 M against 392 K. The rules allow a cache that is the framework's own and follows the disk (`add-framework/implementation-rules/frameworks/standard.md`). Whether one pays is task 062 |
 | gateway-h3 | about 490 | Caddy at the edge. The stock `nginx:1.27-alpine` image, which `proxy/` already uses, has `--with-http_v3_module` (checked with `nginx -V`), so the README's reason for Caddy was wrong; anole's stock nginx edge gets 162 K, where aspnet-minimal_caddy's and libuvcpp's Caddy edges get 69 K and 74 K, and the entry's 79 K. Now stock nginx, unmeasured |
 | json-comp | about 910 | gzip only, at level 1, 1,438 bytes a response against the leader's 1,225: the score scales by the square of that ratio, ×0.73 |
 
@@ -104,8 +104,9 @@ What the owner asks of framework entries, and where the entry stands:
 
 Smaller points: the benchmark mounts `/certs` for every profile
 (`scripts/lib/framework.sh`), so `server-tls` serves them all, as the entry's README
-now says; and goose-postgres `v0.0.6` declares goose-http `v0.5.8`, so the image's
-build prints that the entry declares `v0.5.9`.
+now says; and goose-postgres `v0.0.6` declared goose-http `v0.5.8`, so the image's
+build printed that the entry declares `v0.5.9`, until goose-postgres `v0.0.7`
+(2026-10-24), which the entry imports.
 
 ### Before h3 joins the entry
 
