@@ -3,6 +3,20 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## v0.5.8 (2026-10-24)
+
+Goose `v2026.3`, goose-http `v0.5.11`, goose-compress `v0.1.4`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` and `plod.h3` goose-tls `v0.0.6`. No
+breaking changes.
+
+Changed:
+
+- goose-http `v0.5.11`: `plod.h3`'s HTTP/3 does less work a request and holds less,
+  with new requests waiting while a connection has 64 KB queued unsent. HttpArena's
+  baseline-h3 +25% and static-h3 +11% requests a second, and static-h3's memory 193 to
+  119 MiB, in the entry's build
+  ([goose-http's task 067](https://github.com/kaitk/goose-http/blob/v0.5.11/tasks/067-http3.md#tuning)).
+
 ## v0.5.7 (2026-10-24)
 
 Goose `v2026.3`, goose-http `v0.5.10`, goose-compress `v0.1.4`; `plod.websocket`
