@@ -41,9 +41,10 @@
 #   REUSE        passed on to bench/run.sh, to copy competitor cells into its
 #                summary
 #   MACHINE      the host name
-#   IDLE_LOAD    the highest 1-minute load average counted idle (0.5), and on
-#                WSL, IDLE_CPU the highest Windows CPU load in percent (10);
-#                IDLE_WAIT the minutes to wait for both (15)
+#   IDLE_LOAD    the highest 1-minute load average counted idle (a quarter of
+#                the logical CPUs), and on WSL, IDLE_CPU the highest Windows
+#                CPU load in percent (25); IDLE_WAIT the minutes to wait for
+#                both (5)
 #   DRY          1 prepares and names each step without running it, nor
 #                waiting for an idle machine
 #   HEARTBEAT    seconds between progress lines during a step (600): its time
@@ -52,9 +53,15 @@
 set -u
 
 # Run from a copy in the session's directory: pulling this checkout would
-# otherwise change the script while sh reads it.
+# otherwise change the script while sh reads it. The pull comes first, so the
+# copy is origin/main's script, not the one the session started as;
+# sync_repo below says where the checkout ended.
 if [ -z "${BENCH_ALL_ROOT:-}" ]; then
     BENCH_ALL_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+    if [ "${PULL:-1}" != 0 ] && git -C "$BENCH_ALL_ROOT" diff --quiet HEAD &&
+        git -C "$BENCH_ALL_ROOT" fetch -q origin; then
+        git -C "$BENCH_ALL_ROOT" merge -q --ff-only origin/main 2>/dev/null
+    fi
     copy=$(mktemp)
     cp "$0" "$copy"
     BENCH_ALL_ROOT=$BENCH_ALL_ROOT exec sh "$copy" "$@"
@@ -160,26 +167,25 @@ windows_cpu() {
         tr -d '\r'
 }
 
-# Idle when two checks 30 s apart both pass, within IDLE_WAIT minutes.
+# Idle when one check passes, within IDLE_WAIT minutes, checking every 30 s.
+# What it keeps out is another benchmark or a build, not a desktop's
+# background.
 wait_idle() {
-    passed=0 tries=0 limit=$((${IDLE_WAIT:-15} * 2))
-    while [ $passed -lt 2 ]; do
+    tries=0 limit=$((${IDLE_WAIT:-5} * 2))
+    max_load=${IDLE_LOAD:-$(awk -v n="$(nproc)" 'BEGIN { print n / 4 }')}
+    while :; do
         load=$(cut -d' ' -f1 /proc/loadavg)
         cpu=-
         command -v powershell.exe >/dev/null && cpu=$(windows_cpu)
-        if awk -v l="$load" -v c="$cpu" -v ml="${IDLE_LOAD:-0.5}" -v mc="${IDLE_CPU:-10}" \
-            'BEGIN { exit !(l <= ml && (c == "-" || c <= mc)) }'; then
-            passed=$((passed + 1))
-        else
-            passed=0
-        fi
+        awk -v l="$load" -v c="$cpu" -v ml="$max_load" -v mc="${IDLE_CPU:-25}" \
+            'BEGIN { exit !(l <= ml && (c == "-" || c <= mc)) }' && break
         tries=$((tries + 1))
-        [ $tries -eq 1 ] && [ $passed -eq 0 ] && say "waiting for an idle machine: load $load, Windows CPU $cpu%"
+        [ $tries -eq 1 ] && say "waiting for an idle machine: load $load, Windows CPU $cpu%"
         if [ $tries -ge $limit ]; then
-            warn "not idle after ${IDLE_WAIT:-15} min (load $load, Windows CPU $cpu%); measuring anyway"
+            warn "not idle after ${IDLE_WAIT:-5} min (load $load, Windows CPU $cpu%); measuring anyway"
             return
         fi
-        [ $passed -ge 2 ] || sleep 30
+        sleep 30
     done
     say "idle: load $load, Windows CPU $cpu%"
 }

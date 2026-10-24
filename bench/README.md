@@ -119,10 +119,12 @@ DRY=1 bench/all.sh                 # the preparation and the steps, without runn
 ```
 
 It prepares first: the tools, both checkouts fast-forwarded to `origin/main` where they
-are clean and behind it (`PULL=0` leaves them), the pinned Goose compiler, and up to
-`IDLE_WAIT` minutes (15) for an idle machine, a 1-minute load average of at most
-`IDLE_LOAD` (0.5) in two checks 30 s apart, and on WSL a Windows CPU load of at most
-`IDLE_CPU` percent (10). Then it runs both repositories' `scripts/test.sh` (`TESTS=0`
+are clean and behind it (`PULL=0` leaves them), this one before it copies its own script,
+so the session runs `origin/main`'s; the pinned Goose compiler; and up to `IDLE_WAIT`
+minutes (5) for an idle machine, a 1-minute load average of at most `IDLE_LOAD` (a
+quarter of the logical CPUs), and on WSL a Windows CPU load of at most `IDLE_CPU`
+percent (25). The idle check keeps out another benchmark or a build, not a desktop's
+background (2026-10-24). Then it runs both repositories' `scripts/test.sh` (`TESTS=0`
 skips them), the Goose builds with `ONLY=goose`, `bench/rest.sh check`, goose-http's
 `bench/run.sh` and `bench/files.sh`, `bench/rest.sh run`, and, as root, goose-http's
 `bench/instructions.sh` and `bench/rest.sh count`. It took about 2 h 40 min on the
