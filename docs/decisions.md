@@ -445,6 +445,12 @@ compression keeps for a response's encoder, would add a lookup and nothing else,
 field in `Cx` or the exchange would cost every program. goose-rest adds no send or close
 of its own, which would only rename goose-http's.
 
+Since goose-http `9997570` (2026-10-24), a WebSocket is promised its bytes only while it
+holds part of a message, and `http::ws_admit` is gone
+([goose-http's decision](https://github.com/kaitk/goose-http/blob/main/docs/decisions.md#a-websocket-is-promised-its-bytes-while-it-holds-a-message)).
+`plod::ws_upgrade` composes `ws_check` and `ws_switch` alone, and no longer answers 503
+`unavailable`; a message the budget can't hold closes its connection with 1013.
+
 Decided (2026-10-22): HTTPS is `rest::serve` and `rest::serve_epoll` overloads that take
 goose-http's `http::TlsServer`, in `rest.tls`, a module `rest` doesn't import, so only a
 program that imports it declares goose-tls and builds with OpenSSL. Each repeats

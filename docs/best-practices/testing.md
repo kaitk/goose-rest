@@ -32,7 +32,7 @@ it imports ([Layout by domain](layout.md#27-the-programs-types-are-in-appgoose))
 
 ```rust
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import plod from "../../../../../";
 import app from "../../";
 import expect from "../";

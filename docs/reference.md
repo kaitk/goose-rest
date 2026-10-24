@@ -134,7 +134,7 @@ use them, declare goose-tls in the root file at the tag goose-http's `tls.goose`
 import the module, and give each worker goose-http's `http::TlsServer`:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.tls;
@@ -262,7 +262,7 @@ the root file at the tag goose-http's `compression.goose` names, and import the
 module:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import compress from "github.com/kaitk/goose-compress@v0.1.4";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.compression;
@@ -836,7 +836,7 @@ goose-hash in the root file at the tag goose-http's `websocket.goose` names, imp
 module, and keep the connection's `http::WebSocket` in the request state:
 
 ```rust
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "github.com/kaitk/plod@<tag>";
 import plod.websocket;
@@ -855,7 +855,7 @@ fn resume(u: Use.Echo, cx) {
 
 | Call | Does | Fails with |
 |---|---|---|
-| `plod::ws_upgrade(cx, ws, u, protocol)` | With `u` in `cx.state.use`, answers a request to open a WebSocket with 101 and `Sec-WebSocket-Accept`, as `plod::upgrade` does, and promises `ws` its `limit`, 64 KiB by default, and `http::WS_SLACK` bytes of the worker's gather pool, under the budget `http::gather_budget` sets. Set `ws.limit` before it. With `protocol`, the 101 names it in `Sec-WebSocket-Protocol`; `http::field_of(cx.req, "sec-websocket-protocol")` gives those the client offered. | 426 `upgrade_required`, with `Connection: Upgrade` and `Upgrade: websocket`, or with `Sec-WebSocket-Version: 13` for another version; 400 `bad_handshake` for a method other than `GET`, a malformed `Sec-WebSocket-Key`, or a `protocol` that isn't a valid field value (`http::is_field`); 501 `not_implemented` on an HTTP/2 stream; 503 `unavailable` with `Retry-After: 1` where the budget can't promise `ws` its bytes |
+| `plod::ws_upgrade(cx, ws, u, protocol)` | With `u` in `cx.state.use`, answers a request to open a WebSocket with 101 and `Sec-WebSocket-Accept`, as `plod::upgrade` does, `ws.limit`, 64 KiB by default, is the longest message it takes: while `ws` holds part of a message, a fragment or a frame split across reads, it's promised that many and `http::WS_SLACK` bytes of the worker's gather pool, under the budget `http::gather_budget` sets, and a message the budget can't hold closes the connection with 1013. With `protocol`, the 101 names it in `Sec-WebSocket-Protocol`; `http::field_of(cx.req, "sec-websocket-protocol")` gives those the client offered. | 426 `upgrade_required`, with `Connection: Upgrade` and `Upgrade: websocket`, or with `Sec-WebSocket-Version: 13` for another version; 400 `bad_handshake` for a method other than `GET`, a malformed `Sec-WebSocket-Key`, or a `protocol` that isn't a valid field value (`http::is_field`); 501 `not_implemented` on an HTTP/2 stream |
 | `plod::ws_read(cx, ws) { op, data => ... }` | For the case function: at `BODY`, reads the frames `cx.body` completes and runs the block with each whole message, `op` `http::WS_TEXT` or `http::WS_BINARY`, a message in fragments joined; `data` lasts until the block returns. At `CLOSED`, gives back what `ws` holds. Other kinds, such as `TIMEOUT`, are the case function's. | |
 
 Send with goose-http's `http::ws_send(cx.out, op, data)`, at any later call, and close
@@ -912,7 +912,7 @@ another shape, as the end of this section shows:
 | 502 | `bad_reply` | `plod::job`, `plod::answer`, and `plod::relay`: a reply that doesn't hold its job, or a value of the type read |
 | 502 | `reply_too_large` | `plod::ask`: a reply of `plod::reply_value`, in pieces, past the `most` the ask gave ([Lanes](#41-lanes)) |
 | 503 | `unavailable` | `plod::ask`: every box of the lane is full, or the lane is stopped ([Lanes](#41-lanes)) |
-| 503 | `unavailable`, with `Retry-After: 1` | `plod::body`, `plod::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)); `plod::ask`: a reply past it; `plod::cors` and `plod::timed`: fields kept for a later answer past it; `plod::ask` and `plod::pause(cx, ms, u)`: no timer free ([Later calls](#4-later-calls)); `plod::ws_upgrade`: a WebSocket's bytes past the budget |
+| 503 | `unavailable`, with `Retry-After: 1` | `plod::body`, `plod::take` of a schema type, and the form extractors: a body past the worker's gather budget ([Extractors](#3-extractors)); `plod::ask`: a reply past it; `plod::cors` and `plod::timed`: fields kept for a later answer past it; `plod::ask` and `plod::pause(cx, ms, u)`: no timer free ([Later calls](#4-later-calls)) |
 
 The generated router answers 404, 405, 501, and `bad_path` as `plod::otherwise` does,
 through `plod::no_route`, `plod::no_method`, and `plod::not_found`. Each takes the status

@@ -3,7 +3,7 @@
 // needs goose-hash, which its root file declares at the tag goose-http's
 // websocket.goose names:
 //
-//   import http from "github.com/kaitk/goose-http@v0.5.8";
+//   import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 //   import hash from "github.com/kaitk/goose-hash@v0.0.4";
 //   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.websocket;
@@ -13,7 +13,7 @@
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import http.websocket;
 
@@ -22,25 +22,20 @@ import http.websocket;
 // plod::ws_read reads at each later call, as for plod::upgrade. With
 // protocol, the 101 names it in Sec-WebSocket-Protocol;
 // http::field_of(cx.req, "sec-websocket-protocol") gives those the client
-// offered. Set ws.limit before it: http::ws_admit promises ws that many
-// bytes of the worker's gather pool, and WS_SLACK. Refusals, in the
-// program's error shape, leave the route: 426 upgrade_required with the
-// fields http::ws_check gives; 400 bad_handshake, and for a protocol that
-// http::is_field refuses, as http::ws_upgrade answers it; 501
-// not_implemented on an HTTP/2 stream; and 503 unavailable with
-// Retry-After where the budget can't promise ws its bytes.
+// offered. ws.limit is the longest message it takes; while ws holds part of
+// one, it's promised that many bytes of the worker's gather pool, and a
+// message the budget can't hold closes the connection with 1013. Refusals,
+// in the program's error shape, leave the route: 426 upgrade_required with
+// the fields http::ws_check gives; 400 bad_handshake, and for a protocol
+// that http::is_field refuses, as http::ws_upgrade answers it; and 501
+// not_implemented on an HTTP/2 stream.
 fn ws_upgrade<S, A, R>(cx: Cx<S, A, R>&, ws: http::WebSocket&, u, protocol: const u8[:] = "") {
     var status, key, fields = http::ws_check(cx.req, cx.out.minor);
     if status == 101 && protocol.len > 0 && !http::is_field("Sec-WebSocket-Protocol", protocol) { status = 400; }
-    if status == 101 && !http::ws_admit(ws) {
-        status = 503;
-        fields = "Retry-After: 1\r\n";
-    }
     guard status == 101 else {
         let code = if status == 426 { "upgrade_required" }
                    else if status == 400 { "bad_handshake" }
-                   else if status == 501 { "not_implemented" }
-                   else { "unavailable" };
+                   else { "not_implemented" };
         var body: u8[>..] = [];
         error_body(body, cx.state, status, code, "", -1);
         http::start(cx.out, status);

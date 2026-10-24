@@ -31,7 +31,7 @@
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 
 // A reply message's tag: REPLY_REFUSED for a job its lane refused, which
 // holds a Refusal; REPLY_VALUE on every piece of a reply_value, which the

@@ -3,7 +3,7 @@
 import std;
 import os;
 import json;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import plod from "../../../../";
 
 struct Project { id: i64, name: u8[..256] }

@@ -4,7 +4,7 @@
 // its bytes back; then a subprotocol named in the 101, and the refusals in
 // Plod's error shape, a protocol that isn't a field value's among them.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import hash from "github.com/kaitk/goose-hash@v0.0.4";
 import plod from "../../";
 import plod.websocket;
@@ -87,7 +87,14 @@ fn main() {
     print(served(expect::request("GET", "/ws")));
     print(served(expect::request("GET", "/ws", "Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 8\r\n")));
     print(served(expect::request("GET", "/ws", str(ASKED, "Sec-WebSocket-Key: short\r\n"))));
-    print(served(expect::request("GET", "/ws", str(ASKED, KEY)), 1024));
+    // With the budget spent, the upgrade still succeeds, and a message in
+    // fragments, which must be held, closes the connection with 1013.
+    var held: u8[>..] = [];
+    frame(held, 0x01, "hel");
+    frame(held, 0x80, "lo!");
+    let spent = served(str(expect::request("GET", "/ws", str(ASKED, KEY)), held), 0);
+    assert(ends_with(spent, "\x88\x02\x03\xf5"));
+    print("no budget: 1013");
     print(served(expect::request("GET", "/bad", str(ASKED, KEY))));
     assert(http::gather_promised == 0);
 }

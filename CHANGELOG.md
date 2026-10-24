@@ -3,6 +3,20 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## Unreleased
+
+Changed:
+
+- goose-http at `9997570`: timers fall due by the precise clock, so `plod::pause` and
+  a route's time limit answer on time rather than up to a scheduler tick late; a
+  worker commits about 1.5 MiB less, from timer tables that grow as used and 64
+  io_uring provided buffers rather than 256.
+- `plod::ws_upgrade` no longer answers 503 `unavailable` where the gather budget is
+  spent: a WebSocket is promised its bytes only while it holds part of a message, so
+  idle connections and whole messages cost none, and a message the budget can't hold
+  closes its connection with 1013. A worker holds as many WebSockets as
+  `Config.max_conns` allows, where the defaults stopped it at 1,021.
+
 ## v0.5.4 (2026-10-23)
 
 Goose `v2026.3`, goose-http `v0.5.8`, goose-compress `v0.1.4`; `plod.websocket`

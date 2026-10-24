@@ -1,7 +1,7 @@
 // Spike 06's handler served by goose-http's loop, for curl: one worker and
 // the database thread, on port 8080. Ctrl+C stops it.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import app;
 
 thread_fn worker(cfg: http::Config) {

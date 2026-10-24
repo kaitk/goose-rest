@@ -1,7 +1,7 @@
 // The worker's gather budget, through plod::serve_one: a body with a length
 // past it refused at its head, in the route's first run, and one it holds.
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import plod from "../../";
 import expect from "../";
 import common;
