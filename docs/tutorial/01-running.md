@@ -50,12 +50,12 @@ functions:
 ## Workers and `main`
 
 A program's root file declares both packages, goose-http at the reference that its
-Plod imports. The latest Plod release, `v0.5.6`, and the goose-http tag it
-imports, `v0.5.9`, build with Goose `v2026.3`:
+Plod imports. The latest Plod release, `v0.5.7`, and the goose-http tag it
+imports, `v0.5.10`, build with Goose `v2026.3`:
 
 ```text
-import http from "github.com/kaitk/goose-http@v0.5.9";
-import plod from "github.com/kaitk/plod@v0.5.6";
+import http from "github.com/kaitk/goose-http@v0.5.10";
+import plod from "github.com/kaitk/plod@v0.5.7";
 ```
 
 This tutorial tracks the libraries' `main` branches until their next releases. Its

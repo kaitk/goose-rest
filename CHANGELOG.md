@@ -3,6 +3,19 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
+## v0.5.7 (2026-10-24)
+
+Goose `v2026.3`, goose-http `v0.5.10`, goose-compress `v0.1.4`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` and `plod.h3` goose-tls `v0.0.6`. No
+breaking changes.
+
+Added:
+
+- `plod.h3`: `plod::serve` and `plod::serve_epoll` with HTTP/3 beside HTTPS, on the
+  listeners with `h3`, over goose-http `v0.5.10`'s HTTP/3, and `plod::h3_server` for
+  each worker ([HTTPS](docs/reference.md#13-https)). A program that doesn't import it
+  opens no UDP socket.
+
 ## v0.5.6 (2026-10-24)
 
 Goose `v2026.3`, goose-http `v0.5.9`, goose-compress `v0.1.4`; `plod.websocket`
