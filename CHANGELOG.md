@@ -3,11 +3,16 @@
 What each tag adds. Each release names the Goose compiler it was built and tested with.
 Plod was named goose-rest up to `v0.3.4`; the entries before `v0.4.0` keep that name.
 
-## Unreleased
+## v0.5.5 (2026-10-24)
+
+Goose `v2026.3`, goose-http `v0.5.9`, goose-compress `v0.1.4`; `plod.websocket`
+declares goose-hash `v0.0.4`, and `plod.tls` goose-tls `v0.0.5`. Plod's API is
+unchanged; goose-http `v0.5.9` removes `http::ws_admit`, which a program that upgrades
+with `plod::ws_upgrade` never called.
 
 Changed:
 
-- goose-http at `9997570`: timers fall due by the precise clock, so `plod::pause` and
+- goose-http `v0.5.9`: timers fall due by the precise clock, so `plod::pause` and
   a route's time limit answer on time rather than up to a scheduler tick late; a
   worker commits about 1.5 MiB less, from timer tables that grow as used and 64
   io_uring provided buffers rather than 256.
