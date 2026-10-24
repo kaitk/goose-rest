@@ -238,18 +238,74 @@ What it shows as limits:
    answers, and the Date field once a second (goose-http already caches it per
    second; check the cost of the rest of the head).
 
-Step 4 is done: `bench/httparena.sh run` measures Plod's and viltrum's entries by
-default, at HttpArena's `d9438f6` (2026-10-24). Steps 1 to 3 are goose-http's task 065:
-1 and 3 are built there, and 2 is measured there before its default changes. This
-task tracks the order and the entry's results.
+Steps 1 to 3 and 6 are on goose-http's `main` (its tasks 065 and 066, 2026-10-24):
+timer tables that grow, the precise clock, 64 provided buffers, and WebSockets promised
+their bytes only while they hold a message. Plod's pin follows. Step 4 is done:
+`bench/httparena.sh run` measures Plod's and viltrum's entries by default, at
+HttpArena's `d9438f6`.
 
 Step 5 is built (2026-10-24): `bench/rest/viltrum/`, at viltrum `v1.5.1`, passes both
-checkers on tiers A to C, F, R, and M in an arm64 Linux container. Tier D is left out,
-as for Aegon: viltrum reads a body whole before a route runs, so it can't refuse a
-batch declared over 1 MB until the body arrives (its `NOTES.md`). goose-http's `no_d`
-doesn't name viltrum yet, so goose-http's run still measures it on tier D, and that
-cell isn't reported. Left: `bench/rest.sh build` and `check` on the desktop, a run, and
-a column in the README's table.
+checkers on tiers A to C, F, R, and M. Tier D is left out, as for Aegon: viltrum reads
+a body whole before a route runs, so it can't refuse a batch declared over 1 MB until
+the body arrives (its `NOTES.md`); goose-http's `no_d` names it from `e62bc415`. Under
+load the server first panicked in V's `x.json2`, whose per-type field cache is filled
+without a lock; it now fills the caches before the workers start (`6d43f2b`). Left: a
+column in the README's table.
+
+## The REST tiers (2026-10-24)
+
+`bench/rest.sh run`, `STEPS=1`, one round of 2 s warm-up and 5 s, Plod on io_uring at
+goose-http `v0.5.8` (Plod's pin then) against viltrum `v1.5.1`, each with 4 workers on
+CPUs 0-3 and wrk on 4-15, on the desktop above. Requests a second, the server's CPU
+time a request, and peak RSS; every check passed.
+
+| Tier | Plod | viltrum | Plod ÷ viltrum |
+|---|---|---|---:|
+| A serialize | 560.3K, 7.1 µs, 13 MB | 225.7K, 16.9 µs, 40 MB | 2.5 |
+| A template | 577.9K, 6.9 µs, 12 MB | 362.9K, 11.0 µs, 57 MB | 1.6 |
+| B serialize | 306.3K, 13.1 µs, 30 MB | 52.4K, 65.3 µs, 146 MB | 5.8 |
+| B template | 383.1K, 10.5 µs, 50 MB | 186.2K, 18.5 µs, 423 MB | 2.1 |
+| C serialize | 62.6K, 64.1 µs, 71 MB | 2.3K, 1,666 µs, 458 MB | 27 |
+| C template | 151.7K, 26.3 µs, 58 MB | 11.5K, 327 µs, 468 MB | 13 |
+| F `/` | 495.0K, 8.1 µs, 10 MB | 405.5K, 9.9 µs, 23 MB | 1.2 |
+| F `/id` | 484.8K, 8.3 µs | 387.7K, 10.4 µs | 1.3 |
+| F `/json` | 415.8K, 9.6 µs | 193.0K, 19.2 µs | 2.2 |
+| R, every GitHub route | 330.0K, 12.2 µs, 10 MB | 332.9K, 12.1 µs, 20 MB | 1.0 |
+| M, the middleware stack | 485.1K, 8.2 µs, 13 MB | 216.3K, 17.6 µs, 65 MB | 2.2 |
+
+goose-http alone on tier F served 492.8K, 490.3K, and 421.6K, so Plod adds nothing
+there. Plod's generated router served tier R at 461.2K, 8.7 µs.
+
+- viltrum's engine is close to Plod's on routes without JSON (tier F's first two), as
+  on HttpArena, where the answers are fixed. Its framework layer isn't: V's `x.json2`
+  builds each answer at 17 µs on tier A and 1.7 ms on tier C's 67 KB answers, and the
+  Boehm collector holds 3 to 8 times Plod's memory.
+- Routing is where they tie. Plod's hand-written routes cost tier R 12.2 µs a request,
+  as viltrum's router does, where Plod's generated router costs 8.7 µs. The 3.5 µs
+  between Plod's two routers is the REST layer's open gap (task 056's subtask 01
+  began on it).
+
+## Next (2026-10-24)
+
+Plod's pin is goose-http `9997570`, with `plod::ws_upgrade` composing `ws_check` and
+`ws_switch` alone; `scripts/test.sh` passed in WSL, and natively up to task 060's
+known Windows failure. Left, in order:
+
+1. echo-ws at 16,384 connections, and async and baseline as a check, on
+   `bench/httparena.sh run` with `RUNS=1`, the entry's root files declaring Plod and
+   goose-http at their new commits for the run only (a root's declaration wins over a
+   package's, with a warning). Expected: 16,384 WebSockets held on 4 workers, where
+   1,824 messages a second came through before.
+2. Releases, when asked for: goose-http `v0.5.9`, then Plod `v0.5.5`, then the entry's
+   imports, its README's table, and a `/benchmark` on its HttpArena pull request.
+3. goose-http task 065's last item: the ring's 4,096 submission entries, 260 KiB a
+   worker.
+4. The 3.5 µs a request between Plod's hand-written and generated routers on tier R.
+5. What of this, or of viltrum, helps the once-campfire workload (goose-http's closed
+   pull request 3 describes it: about 21 KiB responses and WebSocket fan-out, over
+   goose-http directly).
+6. Task 060, the WebSocket example's echo on Windows, which stops `scripts/test.sh`
+   before its later steps there.
 
 ## Method
 
