@@ -41,7 +41,7 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
 | unary-grpc, unary-grpc-tls | gRPC over h2, and protobuf | After h2 |
-| baseline-h3, static-h3 | Native QUIC on UDP 8443, which goose-http serves only where a program asks: the entry's TLS server turns it on, and `/static/` goes through `plod::files` as for static-h2 | goose-http's task 066 and goose-tls's task 008, and `plod.h3`. Built (2026-10-24): the entry serves both, `meta.json` lists them, and four requests each pass, built against the unreleased checkouts. Waiting on the releases, validate.sh, and the Linux runs |
+| baseline-h3, static-h3 | Native QUIC on UDP 8443, which goose-http serves only where a program asks: the entry's TLS server turns it on, and `/static/` goes through `plod::files` as for static-h2 | goose-http's task 067 and goose-tls's task 008, and `plod.h3`. Built (2026-10-24): the entry serves both, `meta.json` lists them, and four requests each pass, built against the unreleased checkouts. HttpArena's `validate.sh` at `d9438f6` passed, 146 checks, both h3 ones included, from a container in WSL with the entry built from those checkouts (2026-10-24). Waiting on the releases |
 
 ## The pull request
 
@@ -132,7 +132,7 @@ The rules (`site/content/docs/test-profiles/h3/`), the scripts, and the h3 entri
   ([#772](https://github.com/MDA2AV/HttpArena/pull/772)); goose-http's credit comes
   back as streams are taken. With 64 workers and `SO_REUSEPORT` hashing 64 clients,
   about a third of the workers get no connection; goose-http has no BPF steering yet.
-- Nothing in goose-http task 066's "Not built" list is checked by `validate.sh` or
+- Nothing in goose-http task 067's "Not built" list is checked by `validate.sh` or
   exercised by h2load-h3: the h3 routes, `/baseline2` and `/static/*name`, don't wait.
 
 ## Bounding production-stack's memory

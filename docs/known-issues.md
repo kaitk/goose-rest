@@ -95,6 +95,16 @@ traps apply too.
   `validate.sh`, whose every check curls `localhost`, so it fails with "Server did not
   start within 30s" and the server's container empty of output. Validate from a container
   on the host network, as `bench/README.md` shows (2026-10-24).
+- HttpArena's `validate.sh` looks for the HTTP/3 load generator's image as
+  `h2load-h3`, while `scripts/benchmark.sh` builds it as `h2load-h3:local`. Without
+  the first, validation prints "SKIP [h3]: no h2load-h3 image" and passes without
+  checking HTTP/3. Build `docker/h2load-h3.Dockerfile` with both tags (2026-10-24).
+- WSL's and Docker Desktop's virtual disks only grow on the Windows drive, and
+  HttpArena's image builds and Goose's per-program builds (`~/.goose/build/prog`) feed
+  them. The drive filled on 2026-10-24, and Docker's storage turned read-only during a
+  build. Prune after a benchmark session; goose-http's
+  [known issues](https://github.com/kaitk/goose-http/blob/main/docs/known-issues.md#kernel-and-toolchain)
+  say how, and how to recover.
 
 ## Benchmarks
 
