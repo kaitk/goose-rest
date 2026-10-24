@@ -318,17 +318,17 @@ there. Plod's generated router served tier R at 461.2K, 8.7 µs.
 
 ## Next (2026-10-24)
 
-goose-http `v0.5.9` and Plod `v0.5.5` are released, and Plod pins the first
-(`scripts/test.sh` passed in WSL). The entry imports both, and its image builds and
-answers; it passed HttpArena's validation at its `main` (144 checks, from a container,
-`bench/README.md`), and is on the pull request's branch (`e64ab480`). Left, in order:
+goose-http `v0.5.11` and Plod `v0.5.8` are released, and Plod pins the first
+(`scripts/test.sh` passed in WSL). The entry imports both, HTTP/3 included, and passes
+HttpArena's validation at its `main` (146 checks, from a container, `bench/README.md`);
+it is on the pull request's branch. Left, in order:
 
 1. Done: echo-ws at 16,384 connections on 4 workers, 439,682 messages a second
    ("WebSockets on 4 workers", above).
-2. The owner ran `/benchmark --save` on the pull request on 2026-10-23, at Plod
-   `v0.5.4` (task 047, "The pull request"). The next is asked for once goose-http's
-   h3 work is ready on Windows as well as macOS, has had a pass in WSL, and is in the
-   entry (2026-10-24).
+2. Ready (2026-10-24): the owner ran `/benchmark --save` on 2026-10-23, at Plod
+   `v0.5.4`. HTTP/3 is now in the entry, tuned, validated in WSL and on macOS, so the
+   next run is ours to ask for, with `/benchmark -f plod --save` (task 047, "The pull
+   request").
 3. goose-http task 065's last item: the ring's 4,096 submission entries, 260 KiB a
    worker.
 4. The 3.5 µs a request between Plod's hand-written and generated routers on tier R.

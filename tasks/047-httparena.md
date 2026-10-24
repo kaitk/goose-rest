@@ -41,7 +41,7 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
 | unary-grpc, unary-grpc-tls | gRPC over h2, and protobuf | After h2 |
-| baseline-h3, static-h3 | Native QUIC on UDP 8443, which goose-http serves only where a program asks: the entry's TLS server turns it on, and `/static/` goes through `plod::files` as for static-h2 | goose-http's task 067 and goose-tls's task 008, and `plod.h3`. Built (2026-10-24): the entry serves both, `meta.json` lists them, and four requests each pass, built against the unreleased checkouts. HttpArena's `validate.sh` at `d9438f6` passed, 146 checks, both h3 ones included, from a container in WSL with the entry built from those checkouts (2026-10-24). Waiting on the releases |
+| baseline-h3, static-h3 | Native QUIC on UDP 8443, which goose-http serves only where a program asks: the entry's TLS server turns it on, and `/static/` goes through `plod::files` as for static-h2 | goose-http's task 067 and goose-tls's task 008, and `plod.h3`. Built (2026-10-24): the entry serves both, `meta.json` lists them, and four requests each pass. In the entry from Plod `v0.5.7` (goose-http `v0.5.10`, goose-tls `v0.0.6`), and tuned in Plod `v0.5.8` (goose-http `v0.5.11`): HttpArena's `validate.sh` at `d9438f6` passes, 146 checks, both h3 ones included (2026-10-24). One run each in WSL ("The pull request", below): baseline-h3 1.53 M, static-h3 108 K |
 
 ## The pull request
 
@@ -56,6 +56,22 @@ results on the branch aren't the branch's code, and a later `--save` replaces th
 ("one --save per PR … it clears previous --save commited data",
 [#866](https://github.com/MDA2AV/HttpArena/pull/866)). The next `--save` is asked for
 once the h3 profiles are in.
+
+The h3 profiles are in (2026-10-24): Plod `v0.5.7` added them to the branch, and
+`v0.5.8` brings goose-http `v0.5.11`'s tuned HTTP/3. The entry at `v0.5.8` passes
+`validate.sh` at `d9438f6`, 146 checks, from a container in WSL. One run of the harness
+there, the server on CPUs 0-3 and the load on 4-15 (Tiamat: Ryzen 7 5800X3D, WSL2
+Ubuntu 26.04, Docker Desktop 29.8.2), against `v0.5.7`'s that morning:
+
+| Profile | `v0.5.7` | `v0.5.8` |
+|---|---:|---:|
+| baseline-h3 | 1.20 M, 241% CPU, 29 MiB | 1.53 M, 235%, 29 MiB |
+| static-h3 | 92.9 K, 297% CPU, 190 MiB | 108 K, 225%, 116 MiB |
+
+Beside them on the same setup: zix-http3 1.86 M and 53.9 K, Aegon at its entry's
+`e649022` 334 K and 32.6 K, and at its `main` 962 K and 121 K (goose-http's task 067,
+"Comparisons"). The comment that asks for the run is `/benchmark -f plod --save`, as
+HttpArena's pull request template gives it.
 
 Done after the review (2026-10-24): Plod `v0.5.6` writes `format_fields`' JSON through
 Goose's `json` writer and adds `plod::bytes` and `plod::field`, which `/echo` and
