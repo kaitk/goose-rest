@@ -67,6 +67,7 @@ Work can start at any point unless the table says otherwise.
 | 052: database work on lanes | goose-postgres's and goose-sqlite's decisions and tasks; beside 047. |
 | 053: a contained scope in Goose | A design note only; it builds on task 051, cancelled on 2026-10-21, so it waits until restarts are pursued. |
 | 048: Aegon in the REST benchmark | Built and checked on the desktop, without tier D; the nightly run measures it. |
+| 061: viltrum | The memory floor and async's lateness are goose-http's task 065; viltrum runs in `bench/httparena.sh`, and the REST tiers remain. |
 | 056: what to take from Aegon | Verdicts set; seventeen subtasks. 01, shorter routes, is merged as skip-based routing with block scopes; tier M's count on Linux and a full `bench/routes.sh` run are todo. 02 to 08 are small and can run beside goose-http's TLS and h2 work; 16 and 17 wait on 052. 05 (JWT) unblocks 035's full example and parts of 047. |
 | 055: a documentation site | Any time; at `kaitk.github.io/plod`. |
 | 049: ACME | Unblocked: `rest.tls` serves with a chooser (`v0.3.3`), and a goose-rest server got and renewed a Pebble certificate by hand; goose-acme `v0.0.3` reaches Let's Encrypt's staging service. The chooser fed by mail from the ACME lane, a committed Pebble run, and a staging certificate remain. |
