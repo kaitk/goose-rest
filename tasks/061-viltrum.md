@@ -153,7 +153,7 @@ messages for echo-ws; memory is the container's.
   that dominates at 64 workers is small at 4.
 - async's median fell from 57.2 to 37.1 ms with task 065's change, and its rate rose
   10% on less CPU. Here the 4 CPUs are the limit, not the timers; viltrum's median was
-  57.3 ms.
+  57.3 ms. Two later runs (below) put that within one run's spread.
 - Memory fell 2 to 5 MiB on every profile, about 0.8 MiB a worker, as task 065
   measured.
 - **echo-ws at 16,384 connections fails at 4 workers.** goose-http's gather budget,
@@ -166,6 +166,37 @@ messages for echo-ws; memory is the container's.
   set the pace there.
 - latency-500k-8cpu isn't meaningful on 4 server CPUs, which can't serve 500,000
   requests a second; both servers' p99 passed 7 s.
+
+## WebSockets on 4 workers (2026-10-24)
+
+The same setup, Plod alone, with the entry's root files declaring goose-http at
+`9997570` (WebSockets promised their bytes only while they hold a message, goose-http's
+task 066) and Plod at `eb3e439`, for the run only. One 5 s run per cell; results in
+`bench/results/httparena-2026-10-24-ws-Tiamat/`, whose `env.txt` says "modified" for
+those two lines. Messages a second, or requests for async and baseline; the server's
+CPU and the container's peak memory. "Before" and viltrum are the table above.
+
+| Profile, connections | Plod | Before | viltrum |
+|---|---|---|---|
+| echo-ws, 512 | 628,714, 298%, 15 MiB | 625,781, 21 MiB | 531,070, 23 MiB |
+| echo-ws, 4,096 | 591,443, 282%, 44 MiB | 581,178, 52 MiB | 498,056, 165 MiB |
+| echo-ws, 16,384 | 439,682, 261%, 145 MiB | 1,824, 132 MiB | 342,019, 652 MiB |
+| echo-ws-pipeline, 512 | 9,087,385, 290%, 14 MiB | | |
+| echo-ws-pipeline, 4,096 | 8,730,400, 272%, 44 MiB | | |
+| echo-ws-pipeline, 16,384 | 6,320,813, 253%, 145 MiB | 26,085, 131 MiB | 5,185,142, 652 MiB |
+| echo-ws-limited, 512 | 304,390, 230%, 17 MiB | | |
+| echo-ws-limited, 4,096 | 295,201, 215%, 48 MiB | | |
+| async, 32,000 | 247,378 and 267,460, 305%, 186 MiB | 258,583 and 284,882 | 222,446 |
+| baseline, 4,096 | 548,760, 263%, 44 MiB | 553,568 and 570,810 | 465,397 |
+
+- **4 workers hold all 16,384 WebSockets**, with no reconnects or errors: 1.29 times
+  viltrum's echo-ws rate and 1.22 times its pipelined rate, at 0.22 times its memory.
+  echo-ws-limited's reconnects are the profile's own: it closes each connection after
+  10 messages.
+- async and baseline are where they were. async's two runs here, 247K and 267K (medians
+  56.6 and 53.6 ms, about 41,000 connect errors each), fall within the "before" and
+  "after" runs above (258K and 285K): one run per cell on 4 server CPUs varies by 15%
+  there, so the earlier 37 ms median was within that spread, not a lasting gain.
 
 ## What viltrum does
 
@@ -291,11 +322,8 @@ Plod's pin is goose-http `9997570`, with `plod::ws_upgrade` composing `ws_check`
 `ws_switch` alone; `scripts/test.sh` passed in WSL, and natively up to task 060's
 known Windows failure. Left, in order:
 
-1. echo-ws at 16,384 connections, and async and baseline as a check, on
-   `bench/httparena.sh run` with `RUNS=1`, the entry's root files declaring Plod and
-   goose-http at their new commits for the run only (a root's declaration wins over a
-   package's, with a warning). Expected: 16,384 WebSockets held on 4 workers, where
-   1,824 messages a second came through before.
+1. Done: echo-ws at 16,384 connections on 4 workers, 439,682 messages a second
+   ("WebSockets on 4 workers", above).
 2. Releases, when asked for: goose-http `v0.5.9`, then Plod `v0.5.5`, then the entry's
    imports, its README's table, and a `/benchmark` on its HttpArena pull request.
 3. goose-http task 065's last item: the ring's 4,096 submission entries, 260 KiB a
@@ -324,8 +352,8 @@ a wrk script that sends 16 `GET /pipeline` requests per write.
 - [x] viltrum runs in `bench/httparena.sh run` beside Plod; one session of both, on
       the profiles both subscribe to, recorded here with how it was measured
       (2026-10-24)
-- [ ] The WebSocket admission (step 6) decided in goose-http, and echo-ws at 16,384
-      connections served at 4 workers, or the limit documented
+- [x] The WebSocket admission (step 6) decided in goose-http, and echo-ws at 16,384
+      connections served at 4 workers, or the limit documented (2026-10-24)
 - [ ] After steps 1 to 3 reach a goose-http release and Plod's: Plod's memory at 1,024
       connections or fewer within viltrum's at HttpArena's 64 threads, async's
       lateness under 1 ms at 64 connections, and no profile's rate lower, measured on
