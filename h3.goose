@@ -3,14 +3,14 @@
 // TLS on the same listener, and costs more per request than h2, so it's served
 // only where a program imports this module and a listener asks:
 //
-//   import http from "github.com/kaitk/goose-http@v0.5.8";
+//   import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 //   import tls from "github.com/kaitk/goose-tls@v0.0.5";
 //   import plod from "github.com/kaitk/plod@<tag>";
 //   import plod.h3;
 namespace plod;
 
 import std;
-import http from "github.com/kaitk/goose-http@v0.5.8";
+import http from "github.com/kaitk/goose-http@999757063408a9a50c7a865dcad309a213489e33";
 import tls from "github.com/kaitk/goose-tls@v0.0.5";
 import http.tls;
 import http.h3;
