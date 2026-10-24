@@ -318,14 +318,17 @@ there. Plod's generated router served tier R at 461.2K, 8.7 µs.
 
 ## Next (2026-10-24)
 
-Plod's pin is goose-http `9997570`, with `plod::ws_upgrade` composing `ws_check` and
-`ws_switch` alone; `scripts/test.sh` passed in WSL, and natively up to task 060's
-known Windows failure. Left, in order:
+goose-http `v0.5.9` and Plod `v0.5.5` are released, and Plod pins the first
+(`scripts/test.sh` passed in WSL). The entry imports both, and its image builds and
+answers. Left, in order:
 
 1. Done: echo-ws at 16,384 connections on 4 workers, 439,682 messages a second
    ("WebSockets on 4 workers", above).
-2. Releases, when asked for: goose-http `v0.5.9`, then Plod `v0.5.5`, then the entry's
-   imports, its README's table, and a `/benchmark` on its HttpArena pull request.
+2. The entry to HttpArena, held until goose-http's h3 work is ready on Windows as well
+   as macOS, and has had a pass in WSL (2026-10-24): validate it (from a container on
+   the host network, since `validate.sh` can't reach Docker Desktop's containers from
+   WSL, `docs/known-issues.md`), then `bench/httparena-submit.sh`, `git push origin
+   plod` to the fork, and a `/benchmark` on its pull request, each after review.
 3. goose-http task 065's last item: the ring's 4,096 submission entries, 260 KiB a
    worker.
 4. The 3.5 µs a request between Plod's hand-written and generated routers on tier R.

@@ -88,6 +88,14 @@ traps apply too.
 - Ubuntu 22.04's liburing-dev is 2.1, which lacks what goose-http's io_uring loop needs
   (`IORING_SETUP_SINGLE_ISSUER` and others), so the build fails. Use Ubuntu 26.04,
   which has 2.14 (2026-10-22).
+- Under Docker Desktop, WSL's own `localhost` doesn't reach a container on the host
+  network: `curl localhost:8080` from WSL fails to connect while a container on
+  `--network host` gets the answer. `bench/httparena.sh run` probes through a helper
+  container for that reason, but `bench/httparena.sh validate` runs HttpArena's
+  `validate.sh`, whose every check curls `localhost`, so it fails with "Server did not
+  start within 30s" and the server's container empty of output. Run the validation
+  inside a Linux container on the host network that drives Docker through its socket, as
+  goose-http's `bench/README.md` describes for macOS (2026-10-24).
 
 ## Benchmarks
 
