@@ -205,6 +205,29 @@ program's to free. A challenge or a renewed certificate from another thread reac
 the chooser as the program arranges, such as by mail that `tls_hello` takes
 ([goose-http's context per connection](https://github.com/kaitk/goose-http/blob/main/docs/api.md#https)).
 
+**HTTP/3.** The module `plod.h3` adds forms of `plod::serve` and `plod::serve_epoll`
+that take an HTTP/3 server beside the TLS one, for listeners with `h3` as well as
+`tls`. The context's ALPN list must offer `h3`, and routes don't change:
+
+```rust
+import plod.h3;
+
+thread_fn worker(cfg: http::Config, ctx: tls::Context) {
+    var server = http::tls_server(ctx);
+    var h3 = plod::h3_server(ctx, St { .. });
+    var app = plod::NoState { .. };
+    let e = plod::serve(cfg, app, St { .. }, server, h3) { cx => handle(cx) };
+    http::release(h3);
+    http::release(server);
+    if e.code != 0 { http::report(e); }
+}
+```
+
+HTTP/3 is off unless a listener asks, since it costs more per request than h2, and
+Plod adds no `Alt-Svc`. A route can't wait on HTTP/3 yet: `plod::ask` and the other
+waiting calls answer as if they timed out. The rest is goose-http's
+([HTTP/3](https://github.com/kaitk/goose-http/blob/main/docs/api.md#http3)).
+
 ## 2. Middleware
 
 Middleware is a block around the routes it applies to, inlined into the handler: a scope

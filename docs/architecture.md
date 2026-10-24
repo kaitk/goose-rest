@@ -63,8 +63,9 @@ spec.
 Each worker's thread builds its own state and calls `plod::serve`, which puts that
 state in `cx.app`, starts the request state `cx.state` fresh for each request, and
 calls the program's handler with one context, `cx`. Over HTTPS, with the optional
-module `plod.tls`, goose-http's loop decrypts the bytes before they reach `serve`, so
-the path below is the same. The handler is plain code:
+module `plod.tls`, goose-http's loop decrypts the bytes before they reach `serve`, and
+over HTTP/3, with `plod.h3`, its QUIC turns each request stream into the same events,
+so the path below is the same. The handler is plain code:
 
 ```rust
 fn handle(cx) {

@@ -41,7 +41,7 @@ Checked against `MDA2AV/HttpArena` at `2d85137` (2026-10-18), in
 | baseline-h2c, json-h2c | h2 with prior knowledge on port 8082, without TLS | goose-http task 014, phase 4 |
 | baseline-h2, static-h2 | h2 over TLS with ALPN on port 8443 | goose-http task 014, phase 5 |
 | unary-grpc, unary-grpc-tls | gRPC over h2, and protobuf | After h2 |
-| baseline-h3, static-h3 | QUIC | Last |
+| baseline-h3, static-h3 | Native QUIC on UDP 8443, which goose-http serves only where a program asks: the entry's TLS server turns it on, and `/static/` goes through `plod::files` as for static-h2 | goose-http's task 066 and goose-tls's task 008, and `plod.h3`. Built (2026-10-24): the entry serves both, `meta.json` lists them, and four requests each pass, built against the unreleased checkouts. Waiting on the releases, validate.sh, and the Linux runs |
 
 ## The pull request
 
@@ -280,7 +280,7 @@ until it has working code.
 5. WebSocket in goose-http (task 054), then the three echo profiles.
 6. h2c, then h2 over TLS (goose-http task 014, phases 4 and 5), then the four h2
    profiles.
-7. gRPC, then h3.
+7. h3 (asked for 2026-10-24), and gRPC.
 
 ## Hashes
 
@@ -304,3 +304,4 @@ implementations.
 - [x] gateway-64, gateway-h3, and production-stack in the entry (2026-10-23)
 - [ ] The three WebSocket profiles in the entry
 - [ ] The four h2 profiles in the entry
+- [ ] baseline-h3 and static-h3 in the entry, measured against Aegon and zix-http3

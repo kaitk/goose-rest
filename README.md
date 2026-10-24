@@ -33,22 +33,23 @@ pass their tests on arm64 Linux.
 
 | | Feature | Notes |
 |---|---|---|
-| 🟢 | Routes | Path parameters, 404, 405 with `Allow`, and `OPTIONS`; guards are `if` conditions ([reference](docs/reference.md#1-context-and-routes)). |
+| 🟢 | Routes | Path parameters, 404, 405, and `OPTIONS` ([reference](docs/reference.md#1-context-and-routes)). |
 | 🟢 | Scopes | Prefixes, each with its own middleware. |
-| 🟢 | Extractors | Path, query, header, and cookie parameters, a JSON body, and custom types ([reference](docs/reference.md#3-extractors)). |
-| 🟢 | Forms | URL-encoded form fields through `plod::form`, `plod::form_int`, and `plod::form_bool`, and multipart fields and files of a gathered body through `plod::part`, `plod::part_int`, `plod::part_bool`, and `plod::file_part` ([reference](docs/reference.md#3-extractors)). An upload read as it arrives goes through goose-http's `http::each_part`. |
-| 🟢 | State | Worker state in `cx.app` and request state in `cx.state`. |
-| 🟢 | Middleware | Blocks inlined into the handler; available middleware is listed [below](#middleware). |
-| 🟢 | Errors | JSON with an error code, a customizable format and media type, and an RFC 9457 preset ([reference](docs/reference.md#5-errors)). |
-| 🟢 | Async work | Send work to another thread, resume with its reply, and skip work if the client disconnects ([tutorial](docs/tutorial/11-waiting.md)). A lane of several threads takes each job on its least busy thread ([best practices](docs/best-practices/lanes.md#66-lanes-of-several-threads)). |
-| 🟢 | Testing | `plod::serve_one` handles raw request bytes without a socket ([reference](docs/reference.md#6-testing)). |
-| 🟢 | OpenAPI in | Types, validating readers, writers, and a router from OpenAPI 3.1 in JSON or TypeScript ([generator](docs/generator.md)). |
-| ⚪ | OpenAPI out | Generate a document from the routes. Planned. |
-| 🟢 | Bodies in pieces | `plod::body_in_pieces` reads a body of any size as it arrives, up to a route's limit, or `plod::body` gathers it whole ([reference](docs/reference.md#4-later-calls)). |
-| 🟢 | Static files, streaming | `plod::file` serves a file with ranges and conditional requests, `plod::begin` sends a response in pieces as the client takes them, and `plod::pause` spaces them over time, as for Server-Sent Events ([reference](docs/reference.md#4-later-calls)). |
-| 🟢 | WebSocket | `plod::ws_upgrade` and `plod::ws_read`, in an optional module, over goose-http's RFC 6455 frames; `plod::upgrade` hands any other upgraded protocol's bytes to the route ([reference](docs/reference.md#43-websocket)). |
-| 🟢 | HTTPS | `plod::serve` and `plod::serve_epoll` with goose-http's TLS 1.3 listeners, serving h2 or HTTP/1.1 by ALPN on one port, and a context chosen per connection at its ClientHello, as for ACME's TLS-ALPN-01, in an optional module ([reference](docs/reference.md#13-https)). |
-| 🟢 | HTTP client | goose-http's `http.client`: blocking HTTP/1.1 and HTTPS requests from a lane, with a JSON body from `plod::format_fields` ([its API](https://github.com/kaitk/goose-http/blob/main/docs/api.md#an-http-client)). |
+| 🟢 | Extractors | Path, query, header, and cookie parameters, JSON, and custom types ([reference](docs/reference.md#3-extractors)). |
+| 🟢 | Forms | URL-encoded and multipart fields and files ([reference](docs/reference.md#3-extractors)). |
+| 🟢 | State | Per worker in `cx.app`, per request in `cx.state`. |
+| 🟢 | Middleware | Blocks inlined into the handler ([below](#middleware)). |
+| 🟢 | Errors | JSON errors, a custom format, or RFC 9457 ([reference](docs/reference.md#5-errors)). |
+| 🟢 | Async work | Work on other threads and lanes, resumed with the reply ([tutorial](docs/tutorial/11-waiting.md)). |
+| 🟢 | Testing | `plod::serve_one` without a socket ([reference](docs/reference.md#6-testing)). |
+| 🟢 | OpenAPI in | Types, readers, writers, and a router from OpenAPI 3.1 ([generator](docs/generator.md)). |
+| ⚪ | OpenAPI out | A document from the routes. Planned. |
+| 🟢 | Bodies in pieces | Any size, as it arrives, or gathered ([reference](docs/reference.md#4-later-calls)). |
+| 🟢 | Files, streaming | Files with ranges and conditional requests, and responses in pieces, as for SSE ([reference](docs/reference.md#4-later-calls)). |
+| 🟢 | WebSocket | An optional module ([reference](docs/reference.md#43-websocket)). |
+| 🟢 | HTTPS | TLS 1.3, h2 or HTTP/1.1 by ALPN, and a context per connection, in an optional module ([reference](docs/reference.md#13-https)). |
+| 🟡 | HTTP/3 | Off unless a listener asks, in an optional module; routes can't wait on it yet ([reference](docs/reference.md#13-https)). |
+| 🟢 | HTTP client | goose-http's, from a lane ([its API](https://github.com/kaitk/goose-http/blob/main/docs/api.md#an-http-client)). |
 
 ### Middleware
 

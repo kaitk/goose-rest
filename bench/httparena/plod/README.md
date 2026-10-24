@@ -5,7 +5,7 @@
 allocator, garbage collector, or lifetime annotations. Plod has routes, scopes,
 middleware, and extractors in the manner of Actix, and builds on
 [goose-http](https://github.com/kaitk/goose-http), its HTTP engine: HTTP/1.1, h2, TLS,
-and WebSocket over an io_uring loop per worker.
+WebSocket, and HTTP/3 over an io_uring loop per worker.
 
 The entry is `app.goose`, an application written as one on Plod is, and two root files
 that declare the packages and serve it. The Dockerfile builds both with Goose's
@@ -26,7 +26,7 @@ on arm64, which the release has no archive for.
 - 8080: HTTP/1.1.
 - 8082: h2 with prior knowledge (h2c).
 - 8081 and 8443, where HttpArena mounts `/certs`: TLS 1.3, HTTP/1.1 on 8081, and h2 or
-  HTTP/1.1 by ALPN on 8443.
+  HTTP/1.1 by ALPN on 8443, with HTTP/3 on UDP 8443 too.
 - 8085, under the compose files only (`PROXY_PORT`): HTTP/1.1 for the proxy.
 
 The image holds two binaries: `server`, without TLS, and `server-tls`, which adds 8081
@@ -53,6 +53,7 @@ holds.
 | 8gbit | `POST /echo` over TLS, the body sent back with `plod::bytes` |
 | static-tls, static-h2 | `/static/*name` from disk through `plod::files`, which sends a `.br` or `.gz` sibling where `Accept-Encoding` takes it |
 | baseline-h2, baseline-h2c | `/baseline2`, over goose-http's h2 |
+| baseline-h3, static-h3 | `/baseline2` and `/static/*name`, the same routes, over goose-http's HTTP/3 on UDP 8443 (`plod.h3`): its QUIC is written in Goose, its handshake is goose-tls's server and its packet protection libcrypto's, and QPACK uses the static table only. The defaults are goose-http's |
 | async-db | `/async-db` on goose-postgres's async pool, the rows decoded into a struct and serialized with `plod::format_fields` |
 | echo-ws, echo-ws-pipeline, echo-ws-limited | `/ws` with `plod::ws_upgrade` and `plod::ws_read` |
 | gateway-64 | Stock nginx (`proxy/`) terminating TLS and h2, serving `/static/` from disk, and proxying the rest over HTTP/1.1 |
